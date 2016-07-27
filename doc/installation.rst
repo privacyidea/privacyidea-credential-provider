@@ -65,6 +65,10 @@ should be verified.
    An attacker who intercepts the communication could modify the authentication
    response and thus make the second factor useless.
 
+You may specify the path to a custom login image.
+
+.. note:: The image must be a BMP version 3 file.
+
 
 After these two steps the privacyIDEA Credential Provider is installed on
 your system and can be chosen for login.

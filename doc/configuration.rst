@@ -40,3 +40,10 @@ hostname in the certificate matches the hostname of the service.
 
 Set to ``1`` if the privacyIDEA Credential Provider should check, if the
 certificate has a valid signature of a trusted certificate authority.
+
+**v1_bitmap_path**
+
+The complete path and filename of a bitmap image. This is a customized 
+login image. The image must be a version 3 Windows BMP file with a resolution
+von 128x128 pixels.
+
