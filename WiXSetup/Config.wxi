@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+/* * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright 2012 Dominik Pretzsch
+** 
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+** 
+**        http://www.apache.org/licenses/LICENSE-2.0
+** 
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * */
+-->
+<Include>
+  <!-- <?define Version = "0.2.1023" ?> -->
+  <!-- Getting version from CredentialProvider set in versioning\version.h -->
+  <?define Version = "!(bind.FileVersion.CredentialProvider)" ?>
+
+  <?define EndpointName = "PrivacyIDEA" ?>
+  <?define ProviderRegistryGUID = "7BAF541E-F8E0-4EDF-B69A-BD2771139E8E" ?>
+  <?define ProviderFilterRegistryGUID = "34065473-D75F-4BC2-9782-E98E63ED0D41" ?>
+  
+  <?define BaseProductName = "$(var.EndpointName) Credential Provider for Windows" ?>
+  <?define Manufacturer = "Last Squirrel IT" ?>
+  
+  <?define Publisher = "PrivacyIDEA" ?>
+  <?define AppURLInfoAbout = "http://www.privacyidea.org" ?>
+  
+  <?define ProductFolderName = "$(var.EndpointName) Credential Provider" ?>
+  <?define SimpleProductName = "$(var.EndpointName)-CP" ?>
+  
+  <?if $(var.Platform) = x64 ?>
+    <?define ProductName = "$(var.BaseProductName) (64 bit)" ?>
+    <?define Win64 = "yes" ?>
+    <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+    <?define PlatformSystemFolder = "System64Folder" ?>
+  <?else ?>
+    <?define ProductName = "$(var.BaseProductName)" ?>
+    <?define Win64 = "no" ?>
+    <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+    <?define PlatformSystemFolder = "SystemFolder" ?>
+  <?endif ?>
+</Include>

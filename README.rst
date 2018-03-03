@@ -17,4 +17,8 @@ system via a REST API.
 For more information on the privacyIDEA Credential Provider see
 https://netknights.it/en/produkte/privacyidea-credential-provider/
 
+Build
+=====
+The Solution is built using the platform tools v140 (VS 2015)
+
 

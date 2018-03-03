@@ -1,0 +1,6 @@
+LIBRARY "WiXCustomActions"
+
+EXPORTS
+
+SanitizeDwordFromRegistry
+CheckAdministratorPrivileges

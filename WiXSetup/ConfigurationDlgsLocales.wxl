@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+/* * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright 2012 Dominik Pretzsch
+** 
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+** 
+**        http://www.apache.org/licenses/LICENSE-2.0
+** 
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * */
+-->
+<WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+  <!-- Configuration 1/2 -->
+  <String Id="ServerUrlInfo">
+This is the privacyIDEA service URL.
+
+Example: http://privacyidea.example.com/service_root/
+  </String>
+  <String Id="LoginTextInfo">
+This is the welcome-message to be displayed in the Windows login page.
+
+
+Note: Leave it empty to keep the default message ("privacyIDEA Logon").
+  </String>
+  
+  <!-- Configuration 2/2 -->
+  <String Id="UserConfigurationInfo">
+The following settings are for advanced configurations.
+You should keep the default values here.
+  </String>
+  <String Id="V1BitmapPathInfo">
+The path to a custom 128x128px 24-bit Bitmap (*.bmp) to show on the logon tile.
+  </String>
+</WixLocalization>
