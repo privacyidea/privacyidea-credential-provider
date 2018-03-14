@@ -1,4 +1,5 @@
-
+.idea/
+doc/_build/
 *.opensdf
 *.suo
 *.sdf
