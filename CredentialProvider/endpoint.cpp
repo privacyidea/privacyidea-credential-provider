@@ -309,6 +309,7 @@ HRESULT SendRequestToServer(struct BufferStruct *&buffer, char *relativePath, in
 			
 			strncat_s(url, sizeof(url), relativePath, relativePathSize);
 			curl_easy_setopt(curl, CURLOPT_URL, url);
+			curl_easy_setopt(curl, CURLOPT_USERAGENT, "privacyIDEA-CP");
 
 			DebugPrintLn("Request URL:");
 			DebugPrintLn(url);
