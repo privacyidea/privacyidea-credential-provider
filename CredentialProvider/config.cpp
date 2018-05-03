@@ -16,12 +16,13 @@ void Default()
 
 	ZERO(conf->server_url);
 	ZERO(conf->login_text);
-
-	conf->ssl_verify_hostname = 0;
-	conf->ssl_verify_signature = 0;
-
+	
 	ZERO(conf->v1_bitmap_path);
 	ZERO(conf->v2_bitmap_path);
+	
+	// DEFAULT IS SAFE MODE, NO ERRORS WILL BE IGNORED 
+	conf->ssl_ignore_unknown_ca = 0;
+	conf->ssl_ignore_invalid_cn = 0;
 }
 
 void Init()
@@ -60,39 +61,63 @@ void Read()
 	// Read config
 	readRegistryValueString(CONF_SERVER_URL, sizeof(conf->server_url), conf->server_url);
 
+	//DebugPrintLn("CONFIG READ - server url:");
+	//DebugPrintLn(conf->server_url);
+
 	if (readRegistryValueString(CONF_LOGIN_TEXT, sizeof(conf->login_text), conf->login_text) <= 1) // 1 = size of a char NULL-terminator in byte
 		strcpy_s(conf->login_text, sizeof(conf->login_text), CONFIG_DEFAULT_LOGIN_TEXT);
 
 	readRegistryValueString(CONF_V1_BITMAP_PATH, sizeof(conf->v1_bitmap_path), conf->v1_bitmap_path);
 	readRegistryValueString(CONF_V2_BITMAP_PATH, sizeof(conf->v2_bitmap_path), conf->v2_bitmap_path);
-
-	if (readRegistryValueString(CONF_SSL_VERIFY_HOSTNAME, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
-		conf->ssl_verify_hostname = 0; // if NULL
-	else 
-	{
-		conf->ssl_verify_hostname = buffer[0] - 0x30;
-	}
-
-	if (readRegistryValueString(CONF_SSL_VERIFY_SIGNATURE, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
-		conf->ssl_verify_signature = 0; // if NULL
-	else 
-	{
-		conf->ssl_verify_signature = buffer[0] - 0x30;
-	}
-
+	
+	// HIDE TWO STEP OTP
 	if (readRegistryValueString(CONF_TWO_STEP_HIDE_OTP, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
 		conf->two_step_hide_otp = 0; // if NULL
 	else
 	{
 		conf->two_step_hide_otp = buffer[0] - 0x30;
 	}
+	//DebugPrintLn("CONFIG READ - twostep hide otp value:");
+	//DebugPrintLn(conf->two_step_hide_otp);
 
+	// SEND PASSWORD TWO STEP
 	if (readRegistryValueString(CONF_TWO_STEP_SEND_PASSWORD, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
 		conf->two_step_send_password = 0; // if NULL
 	else
 	{
 		conf->two_step_send_password = buffer[0] - 0x30;
 	}
+	//DebugPrintLn("CONFIG READ - twostep sendpw value:");
+	//DebugPrintLn(conf->two_step_send_password);
+	
+	// SSL IGNORE UNKNOWN CA
+	if (readRegistryValueString(CONF_SSL_IGNORE_UNKNOWN_CA, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->ssl_ignore_unknown_ca = 0; // if NULL
+	else
+	{
+		conf->ssl_ignore_unknown_ca = buffer[0] - 0x30;
+	}
+	
+	//DebugPrintLn("CONFIG READ - ssl ignore unkown CA errors:");
+	//DebugPrintLn(conf->ssl_ignore_unknown_ca); 
+
+	// SSL IGNORE INVALID CN
+	if (readRegistryValueString(CONF_SSL_IGNORE_INVALID_CN, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->ssl_ignore_invalid_cn = 0; // if NULL
+	else
+	{
+		conf->ssl_ignore_invalid_cn = buffer[0] - 0x30;
+	}
+
+	//DebugPrintLn("CONFIG READ - ssl ignore invalid CN errors :");
+	//DebugPrintLn(conf->ssl_ignore_invalid_cn);
+
+	/////////// MODIFIED STATIC CONFIG /////////////
+	//conf->two_step_hide_otp = 1;
+	//conf->two_step_send_password = 1;
+
+	////////////////////////////////////////////////
+	
 	// END
 }
 

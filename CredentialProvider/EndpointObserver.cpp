@@ -4,7 +4,7 @@ namespace EndpointObserver
 {
 	FLAGS*& Flags()
 	{
-		DebugPrintLn(__FUNCTION__);
+		//DebugPrintLn(__FUNCTION__);
 
 		static struct FLAGS *data = NULL;
 		return data;
@@ -12,7 +12,7 @@ namespace EndpointObserver
 
 	RESULT*& Result()
 	{
-		DebugPrintLn(__FUNCTION__);
+		//DebugPrintLn(__FUNCTION__);
 
 		static struct RESULT *data = NULL;
 		return data;
@@ -20,7 +20,7 @@ namespace EndpointObserver
 
 	void Default()
 	{
-		DebugPrintLn(__FUNCTION__);
+		//DebugPrintLn(__FUNCTION__);
 
 		struct FLAGS*& flags = Flags();
 
@@ -40,7 +40,7 @@ namespace EndpointObserver
 
 	void Init()
 	{
-		DebugPrintLn(__FUNCTION__);
+		//DebugPrintLn(__FUNCTION__);
 
 		struct FLAGS*& flags = Flags();
 
@@ -61,7 +61,7 @@ namespace EndpointObserver
 
 	void Deinint()
 	{
-		DebugPrintLn(__FUNCTION__);
+		//DebugPrintLn(__FUNCTION__);
 
 		Default();
 

@@ -28,7 +28,7 @@
   <?define ProviderFilterRegistryGUID = "34065473-D75F-4BC2-9782-E98E63ED0D41" ?>
   
   <?define BaseProductName = "$(var.EndpointName) Credential Provider for Windows" ?>
-  <?define Manufacturer = "Last Squirrel IT" ?>
+  <?define Manufacturer = "Netknights GmbH" ?>
   
   <?define Publisher = "PrivacyIDEA" ?>
   <?define AppURLInfoAbout = "http://www.privacyidea.org" ?>

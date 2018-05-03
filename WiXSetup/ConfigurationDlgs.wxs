@@ -35,9 +35,9 @@
           <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
         </Control>
 
-        <Control Id="SSLVerifyHostnameCheckBox" Type="CheckBox" X="45" Y="153" Width="220" Height="17" Property="SSL_VERIFY_HOSTNAME" CheckBoxValue="1" Text="Verify hostname when using SSL." />
+        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="153" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
 
-        <Control Id="SSLVerifySignatureCheckBox" Type="CheckBox" X="45" Y="173" Width="220" Height="17" Property="SSL_VERIFY_SIGNATURE" CheckBoxValue="1" Text="Verify certificate signature when using SSL." />
+        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="173" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
         
         <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="193" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
         <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="213" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />

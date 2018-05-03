@@ -1,13 +1,13 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
 ** Copyright 2012 Dominik Pretzsch
-** 
+**
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
 **    You may obtain a copy of the License at
-** 
+**
 **        http://www.apache.org/licenses/LICENSE-2.0
-** 
+**
 **    Unless required by applicable law or agreed to in writing, software
 **    distributed under the License is distributed on an "AS IS" BASIS,
 **    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -75,7 +75,7 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR user_name,
 	__in_opt PWSTR domain_name,
 	__in_opt PWSTR password
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -99,7 +99,7 @@ HRESULT CCredential::Initialize(
 		DebugPrintLn("Copying domain_name to credential");
 		Data::Credential::Get()->domain_name = _wcsdup(domain_name);
 	}
-	
+
 	if (NOT_EMPTY(password))
 	{
 		DebugPrintLn("Copying password to credential");
@@ -123,7 +123,7 @@ HRESULT CCredential::Initialize(
 	for (DWORD i = 0; SUCCEEDED(hr) && i < General::Fields::GetCurrentNumFields(); i++)
 	{
 		DebugPrintLn("Copy field #:");
-		DebugPrintLn(i+1);
+		DebugPrintLn(i + 1);
 
 		_rgFieldStatePairs[i] = rgfsp[i];
 		hr = FieldDescriptorCopy(rgcpfd[i], &_rgCredProvFieldDescriptors[i]);
@@ -144,12 +144,17 @@ HRESULT CCredential::Initialize(
 	return hr;
 }
 
+HRESULT CCredential::EndpointCallback(__in DWORD dwFlag)
+{
+	return E_NOTIMPL;
+}
+
 // LogonUI calls this in order to give us a callback in case we need to notify it of anything.
 HRESULT CCredential::Advise(
 	__in ICredentialProviderCredentialEvents* pcpce
-	)
+)
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrintLn(__FUNCTION__);
 
 	if (_pCredProvCredentialEvents != NULL)
 	{
@@ -174,7 +179,7 @@ HRESULT CCredential::Advise(
 // LogonUI calls this to tell us to release the callback.
 HRESULT CCredential::UnAdvise()
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrintLn(__FUNCTION__);
 
 	if (_pCredProvCredentialEvents)
 	{
@@ -245,9 +250,9 @@ HRESULT CCredential::GetFieldState(
 	__in DWORD dwFieldID,
 	__out CREDENTIAL_PROVIDER_FIELD_STATE* pcpfs,
 	__out CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis
-	)
+)
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrintLn(__FUNCTION__);
 
 	HRESULT hr;
 
@@ -264,7 +269,7 @@ HRESULT CCredential::GetFieldState(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrintLn(hr);
+	//DebugPrintLn(hr);
 
 	return hr;
 }
@@ -273,9 +278,9 @@ HRESULT CCredential::GetFieldState(
 HRESULT CCredential::GetStringValue(
 	__in DWORD dwFieldID,
 	__deref_out PWSTR* ppwsz
-	)
+)
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrintLn(__FUNCTION__);
 
 	HRESULT hr;
 
@@ -291,7 +296,7 @@ HRESULT CCredential::GetStringValue(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrintLn(hr);
+	//DebugPrintLn(hr);
 
 	return hr;
 }
@@ -300,13 +305,13 @@ HRESULT CCredential::GetStringValue(
 HRESULT CCredential::GetBitmapValue(
 	__in DWORD dwFieldID,
 	__out HBITMAP* phbmp
-	)
+)
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrintLn(__FUNCTION__);
 
 	HRESULT hr = Hook::CredentialHooks::GetBitmapValue(HINST_THISDLL, dwFieldID, phbmp);
 
-	DebugPrintLn(hr);
+	//DebugPrintLn(hr);
 
 	return hr;
 }
@@ -318,7 +323,7 @@ HRESULT CCredential::GetBitmapValue(
 HRESULT CCredential::GetSubmitButtonValue(
 	__in DWORD dwFieldID,
 	__out DWORD* pdwAdjacentTo
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -334,14 +339,14 @@ HRESULT CCredential::GetSubmitButtonValue(
 HRESULT CCredential::SetStringValue(
 	__in DWORD dwFieldID,
 	__in PCWSTR pwz
-	)
+)
 {
 	HRESULT hr;
 
 	// Validate parameters.
 	if (dwFieldID < General::Fields::GetCurrentNumFields() &&
 		(CPFT_EDIT_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft ||
-		CPFT_PASSWORD_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft))
+			CPFT_PASSWORD_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
 		PWSTR* ppwszStored = &_rgFieldStrings[dwFieldID];
 		CoTaskMemFree(*ppwszStored);
@@ -352,7 +357,7 @@ HRESULT CCredential::SetStringValue(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrintLn(hr);
+	//DebugPrintLn(hr);
 
 	return hr;
 }
@@ -363,7 +368,7 @@ HRESULT CCredential::GetComboBoxValueCount(
 	__in DWORD dwFieldID,
 	__out DWORD* pcItems,
 	__out_range(< , *pcItems) DWORD* pdwSelectedItem
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -390,7 +395,7 @@ HRESULT CCredential::GetComboBoxValueAt(
 	__in DWORD dwFieldID,
 	__in DWORD dwItem,
 	__deref_out PWSTR* ppwszItem
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -416,7 +421,7 @@ HRESULT CCredential::GetComboBoxValueAt(
 HRESULT CCredential::SetComboBoxSelectedValue(
 	__in DWORD dwFieldID,
 	__in DWORD dwSelectedItem
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -442,7 +447,7 @@ HRESULT CCredential::GetCheckboxValue(
 	__in DWORD dwFieldID,
 	__out BOOL* pbChecked,
 	__deref_out PWSTR* ppwszLabel
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -465,7 +470,7 @@ HRESULT CCredential::GetCheckboxValue(
 HRESULT CCredential::SetCheckboxValue(
 	__in DWORD dwFieldID,
 	__in BOOL bChecked
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -504,7 +509,7 @@ HRESULT CCredential::GetSerialization(
 	__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 	__deref_out_opt PWSTR* ppwszOptionalStatusText,
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -685,7 +690,7 @@ HRESULT CCredential::ReportResult(
 	__in NTSTATUS ntsSubstatus,
 	__deref_out_opt PWSTR* ppwszOptionalStatusText,
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 	DebugPrintLn(ntsStatus);
@@ -701,3 +706,5 @@ HRESULT CCredential::ReportResult(
 	}
 	return E_NOTIMPL;
 }
+
+

@@ -79,7 +79,7 @@
   </ItemGroup>
   <Import Project="$(WixTargetsPath)" />
   <PropertyGroup>
-    <PostBuildEvent>"$(SolutionDir)versioning\scripts\RenameMsiAndZip.bat" "!(TargetPath)" "$(PlatformName)"</PostBuildEvent>
+    <PostBuildEvent />
   </PropertyGroup>
   <!--
 	To modify your build process, add your task inside one of the targets below and uncomment it.

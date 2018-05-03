@@ -350,7 +350,7 @@ namespace General
 
 		unsigned int GetCurrentNumFields()
 		{
-			DebugPrintLn(__FUNCTION__);
+			//DebugPrintLn(__FUNCTION__);
 
 			int numFields = 0;
 
@@ -374,7 +374,7 @@ namespace General
 				numFields = s_rgCredProvNumFieldsFor[Data::Provider::Get()->usage_scenario];
 			}
 
-			DebugPrintLn(numFields);
+			//DebugPrintLn(numFields);
 
 			return numFields;
 		}

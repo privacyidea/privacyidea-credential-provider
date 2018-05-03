@@ -120,11 +120,13 @@ public:
 		__in_opt PWSTR domain_name,
 		__in_opt PWSTR password);
 
+	HRESULT EndpointCallback(__in DWORD dwFlag);
+
 	///////////////////////////////////
 
 private: ////////////// FUNCS
 	// Endpoint funcs
-
+	
 	// END
 
 private: ////////////// VARS

@@ -128,7 +128,7 @@ HRESULT CProvider::SetSerialization(
 	)
 {
 	DebugPrintLn(__FUNCTION__);
-
+	
 	HRESULT result = E_NOTIMPL;
 
 	// retrieve authPackage		
@@ -198,7 +198,7 @@ HRESULT CProvider::SetSerialization(
 			}
 		}
 	}
-
+	DebugPrintLn(Data::Provider::Get()->usage_scenario);
 	DebugPrintLn(result);
 
 	return result;
@@ -265,7 +265,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 	__deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd
 	)
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrintLn(__FUNCTION__);
 
 	HRESULT hr;
 

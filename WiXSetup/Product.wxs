@@ -71,13 +71,13 @@
       <RegistrySearch Id="SearchLoginText"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="login_text"               Win64="$(var.Win64)" Type="raw" />
     </Property>
 
-    <Property Id="SSL_VERIFY_SIGNATURE">
+    <!--<Property Id="SSL_VERIFY_SIGNATURE">
       <RegistrySearch Id="SearchSSLVerifySignature"     Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_verify_signature"     Win64="$(var.Win64)" Type="raw" />
     </Property>
 
     <Property Id="SSL_VERIFY_HOSTNAME">
       <RegistrySearch Id="SearchSSLVerifyHostname"      Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_verify_hostname"      Win64="$(var.Win64)" Type="raw" />
-    </Property>
+    </Property>-->
 
     <Property Id="V1_BITMAP_PATH">
       <RegistrySearch Id="SearchV1BitmapPath"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="v1_bitmap_path"           Win64="$(var.Win64)" Type="raw" />
@@ -90,7 +90,15 @@
     <Property Id="TWO_STEP_SEND_PASSWORD">
       <RegistrySearch Id="SearchTwoStepSendPassword"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_password"           Win64="$(var.Win64)" Type="raw" />
     </Property>
+    
+    <Property Id="SSL_IGNORE_UNKNOWN_CA">
+      <RegistrySearch Id="SearchSSLIgnoreUnknownCA"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_ignore_unknown_ca"           Win64="$(var.Win64)" Type="raw" />
+    </Property>
 
+    <Property Id="SSL_IGNORE_INVALID_CN">
+      <RegistrySearch Id="SearchSSLIgnoreInvalidCN"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_ignore_invalid_cn"           Win64="$(var.Win64)" Type="raw" />
+    </Property>
+    
     <!-- Disabled:
     <Property Id="TIMEOUT">
       <RegistrySearch Id="SearchTimeout"                Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="timeout"                  Win64="$(var.Win64)" Type="raw" />
@@ -202,12 +210,13 @@
           <RegistryKey Root='HKLM' Key='SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)' ForceCreateOnInstall='yes'>
             <RegistryValue Name='server_url'            Type='string'  Value='[SERVER_URL]'           />
             <RegistryValue Name='login_text'            Type='string'  Value='[LOGIN_TEXT]'           />
-            <RegistryValue Name='ssl_verify_hostname'   Type='string'  Value='[SSL_VERIFY_HOSTNAME]'  />
-            <RegistryValue Name='ssl_verify_signature'  Type='string'  Value='[SSL_VERIFY_SIGNATURE]' />
+            <!--<RegistryValue Name='ssl_verify_hostname'   Type='string'  Value='[SSL_VERIFY_HOSTNAME]'  />
+            <RegistryValue Name='ssl_verify_signature'  Type='string'  Value='[SSL_VERIFY_SIGNATURE]' />-->
             <RegistryValue Name='v1_bitmap_path' Type='string'  Value='[V1_BITMAP_PATH]' />
             <RegistryValue Name='two_step_hide_otp' Type ='string' Value='[TWO_STEP_HIDE_OTP]' />
             <RegistryValue Name='two_step_send_password' Type='string' Value='[TWO_STEP_SEND_PASSWORD]' />
-            
+            <RegistryValue Name='ssl_ignore_unknown_ca' Type='string' Value='[SSL_IGNORE_UNKNOWN_CA]' />
+            <RegistryValue Name='ssl_ignore_invalid_cn' Type='string' Value='[SSL_IGNORE_INVALID_CN]' />
             <!-- Disabled:
             <RegistryValue Name='timeout'               Type='integer' Value='[TIMEOUT]' />
             -->

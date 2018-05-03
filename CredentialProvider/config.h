@@ -14,13 +14,13 @@ namespace Configuration
 {
 	#define CONFIG_DEFAULT_LOGIN_TEXT ENDPOINT_NAME" Login"
 
-	#define CONFIG_SSL_VERIFY_SIGNATURE_TRUE 1
-	#define CONFIG_SSL_VERIFY_SIGNATURE_FALSE 0
-
-	#define CONFIG_SSL_VERIFY_HOSTNAME_TRUE 1
-	#define CONFIG_SSL_VERIFY_HOSTNAME_FALSE 0
-
 	#define CONFIG_DEFAULT_TIMEOUT_IN_SECS 60
+	
+	#define CONFIG_SSL_IGNORE_UNKNOWN_CA_TRUE 1
+	#define CONFIG_SSL_IGNORE_UNKNOWN_CA_FALSE 0
+
+	#define CONFIG_SSL_IGNORE_INVALID_CN_TRUE 1
+	#define CONFIG_SSL_IGNORE_INVALID_CN_FALSE 0
 
 	/////////////////// BASE
 
@@ -28,14 +28,18 @@ namespace Configuration
 	{
 		char server_url[1024];
 		char login_text[64];
-		int ssl_verify_hostname;
-		int ssl_verify_signature;
+
+		/*int ssl_verify_hostname;
+		int ssl_verify_signature;*/
 
 		char v1_bitmap_path[1024];
 		char v2_bitmap_path[1024];
 
 		int two_step_hide_otp;
 		int two_step_send_password;
+
+		int ssl_ignore_unknown_ca;
+		int ssl_ignore_invalid_cn;
 	};
 
 	CONFIGURATION*& Get();

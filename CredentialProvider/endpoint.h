@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "config.h"
+#include "CCredential.h"
 
 /////////////////////////
 /////////////////////// CONCRETE ENDPOINT INCLUDES
@@ -26,7 +27,6 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/error/en.h"
 
-#include "curl/curl.h"  
 #include <time.h>
 
 #include "rapidjson/stringbuffer.h"
@@ -78,6 +78,7 @@ namespace Endpoint
 
 	static ENDPOINT_STATUS STATUS = NOT_READY;
 	static HRESULT LAST_ERROR_CODE = ENDPOINT_AUTH_FAIL;
+	static bool cert_fail = false;
 
 	//static struct ENDPOINT_PACK *_epPck;
 
@@ -107,48 +108,33 @@ namespace Endpoint
 		#define ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER	((HRESULT)0x88809007)
 		#define ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER		((HRESULT)0x88809008)
 		#define ENDPOINT_ERROR_HTTP_REQUEST_FAIL			((HRESULT)0x88809009)
-		#define ENDPOINT_ERROR_CURL_GLOBAL_INIT_FAIL		((HRESULT)0x8880900A)
-		#define ENDPOINT_ERROR_CURL_EASY_INIT_FAIL			((HRESULT)0x8880900B)
-		#define ENDPOINT_ERROR_CURL_RESPONSE_FAIL			((HRESULT)0x8880900C)
-
-		#define ENDPOINT_ERROR_CURL_HTTP_NO_CODE_RECEIVED	((HRESULT)0x88809900)
-		#define ENDPOINT_ERROR_CURL_HTTP_NOT_FOUND			((HRESULT)0x88809901)
-		#define ENDPOINT_ERROR_CURL_HTTP_BAD_REQUEST		((HRESULT)0x88809902)
-		#define ENDPOINT_ERROR_CURL_HTTP_UNAUTHORIZED		((HRESULT)0x88809903)
-		#define ENDPOINT_ERROR_CURL_HTTP_FORBIDDEN			((HRESULT)0x88809904)
-		#define ENDPOINT_ERROR_CURL_HTTP_ERROR				((HRESULT)0x8880990F)
-
-		#define ENDPOINT_ERROR_EMPTY						((HRESULT)0x88809401)
-
-		#define ENDPOINT_SUCCESS_STATUS_TRUE		((HRESULT)0x78809007)
-		#define ENDPOINT_SUCCESS_VALUE_TRUE			((HRESULT)0x78809008)
-		#define ENDPOINT_SUCCESS_HTTP_REQUEST_OK	((HRESULT)0x78809009)
+		
+		#define ENDPOINT_ERROR_CERT_ERROR					((HRESULT)0x8880900B)
+		#define ENDPOINT_ERROR_HTTP_ERROR					((HRESULT)0x8880990F)
+		
+		#define ENDPOINT_SUCCESS_STATUS_TRUE				((HRESULT)0x78809007)
+		#define ENDPOINT_SUCCESS_VALUE_TRUE					((HRESULT)0x78809008)
+		#define ENDPOINT_SUCCESS_HTTP_REQUEST_OK			((HRESULT)0x78809009)
 		#define ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE	((HRESULT)0x7880900A)
-		#define ENDPOINT_SUCCESS_CURL_RESPONSE_OK	((HRESULT)0x7880900C)
+		#define ENDPOINT_SUCCESS_RESPONSE_OK				((HRESULT)0x7880900C)
 
-		#define ENDPOINT_INFO_PLEASE_WAIT			((long)0x00000001)
-		#define ENDPOINT_INFO_CALLING_ENDPOINT		((long)0x00000002)
-		#define ENDPOINT_INFO_CHECKING_RESPONSE		((long)0x00000003)
+		#define ENDPOINT_INFO_PLEASE_WAIT					((long)0x00000001)
+		#define ENDPOINT_INFO_CALLING_ENDPOINT				((long)0x00000002)
+		#define ENDPOINT_INFO_CHECKING_RESPONSE				((long)0x00000003)
+		#define ENDPOINT_ERROR_CERT_ERROR_MSG				((long)0x00000004)
 
-		#define CURL_SSL_VERIFY_PEER_TRUE  1L
-		#define CURL_SSL_VERIFY_PEER_FALSE 0L
-
-		#define CURL_SSL_VERIFY_HOST_TRUE  2L
-		#define CURL_SSL_VERIFY_HOST_FALSE 0L
-
-		// Define our struct for accepting LCs output
+		// Define our struct for accepting Winhttp output
 		struct BufferStruct
 		{
 			char * buffer;
 			size_t size;
 		};
 
-		static size_t WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data);
+		HRESULT SendPOSTRequest(std::string domain, std::string url, std::string dat, struct BufferStruct *&buffer);
 		HRESULT SendRequestToServer(struct BufferStruct *&buffer, char *relativePath, int relativePathSize, char *post_data);
 		HRESULT SendValidateCheckRequestLDAP(struct BufferStruct *&buffer);
 		HRESULT SendValidateCheckRequestOTP(struct BufferStruct *&buffer);
 		HRESULT CheckJSONResponse(char *&buffer);
 	}
 }
-
 #endif

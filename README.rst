@@ -1,3 +1,4 @@
+
 About the privacyIDEA Credential Provider
 =========================================
 
@@ -19,4 +20,7 @@ Build
 =====
 The Solution is built using the platform tools v140 (VS 2015)
 
-
+Dependencies
+============
+This project uses *rapidjson*. Copy it to the ``/lib`` directory.
+You can get it from https://github.com/Tencent/rapidjson/.
