@@ -10,7 +10,7 @@ To use the privacyIDEA Credential Provider you need to have a privacyIDEA
 Authentication System. The installation and setup of this backend is covered
 in another documentation [#privacyideaSetup]_.
 
-Ask the company Netknights to get an evaluation version of the privacyIDEA
+Ask the company NetKnights to get an evaluation version of the privacyIDEA
 Credential Provider [#contact]_.
 
 MSI package
@@ -41,7 +41,7 @@ only his Windows password anymore.
 Configure the privacyIDEA Authentication Server
 ...............................................
 
-In the next step, you can configure the communitcation to the privacyIDEA
+In the next step, you can configure the communication to the privacyIDEA
 Authentication Server. The credential provider and the server communicate via
  the REST API */validate/check*.
 
@@ -54,14 +54,13 @@ Authentication Server. The credential provider and the server communicate via
 
    *Configure the privacyIDEA Credential Provider*
 
-You can also specify another **Login text**, which will be displayed
+You can specify a custom **login text**, which will be displayed
 underneath the provider.
 
-You can specify if the certificate of the privacyIDEA Authentication Server
-should be verified.
+You can also specify if certain SSL errors shall be ignored.
 
-.. warning:: We recommend to always verify the certificate in productive use.
-   Otherwise you will be vulnurable to man-in-the-middle attacks.
+.. warning:: We recommend NOT to ignore any SSL errors in productive use.
+   Otherwise you will be vulnerable to man-in-the-middle attacks.
    An attacker who intercepts the communication could modify the authentication
    response and thus make the second factor useless.
 

@@ -16,6 +16,10 @@ https://privacyidea.org
 For more information on the privacyIDEA Credential Provider see
 https://netknights.it/en/produkte/privacyidea-credential-provider/
 
+Documentation
+=============
+The documentation can be found in ``/doc``.
+
 Build
 =====
 The Solution is built using the platform tools v140 (VS 2015)

@@ -8,7 +8,7 @@ of your Windows Desktops, Servers and Windows Terminal Servers.
 It is used to add a second factor for authentication, when logging into your
 Windows system.
 
-The privacyIDEA Credential Provider does this by communitcating with the
+The privacyIDEA Credential Provider does this by communicating with the
 privacyIDEA Authentication System [#privacyidea]_.
 The privacyIDEA Authentication System can manage many different kind of
 second factors for the domain users. Ranging from classical OTP tokens, one

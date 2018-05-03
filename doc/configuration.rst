@@ -4,7 +4,7 @@ Configuration
 =============
 
 During installation of the privacyIDEA Credential Provider you already
-configured all necessary settings. But it can be interesting, to change
+configured all necessary settings, but it can be interesting to change
 settings later. Like changing the available credential providers or changing
 the verification of the authentication server certificate.
 
@@ -16,34 +16,40 @@ Registry Settings
 -----------------
 
 You can configure the privacyIDEA Credential Provider directly by modifying
-the corresponding registry keys. You can use adminsitrative templates
+the corresponding registry keys. You can use administrative templates
  to deploy the credential provider on many desktops in your network.
 
 The configuration is located at
-``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Last Squirrel IT\PrivacyIDEA-CP\``.
+``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
 
-**login_test**
+**login_text**
 
 Specify the text, that is displayed underneath the credential provider logo.
 
 **server_url**
 
 The base URL of the privacyIDEA Authentication Service. Usually this is
-*https://yourserver/* without any additional path information.
+*https://yourserver/privacyidea* without any additional path information.
 
-**ssl_verify_hostname**
+**ssl_ignore_invalid_cn**
 
-Set to ``1`` if the privacyIDEA Credential Provider should check, if the
-hostname in the certificate matches the hostname of the service.
+Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors originating from an invalid common name.
 
-**ssl_verify_signature**
+**ssl_ignore_unknown_ca**
 
-Set to ``1`` if the privacyIDEA Credential Provider should check, if the
-certificate has a valid signature of a trusted certificate authority.
+Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors originating from an unknown CA.
+
+**two_step_hide_otp**
+
+Set to ``1`` if the privacyIDEA Credential Provider should ask for the user's OTP in a second step. In the first step the user will only be asked for the password.
+
+**two_step_send_password**
+
+Set to ``1`` if the privacyIDEA Credential Provider should send the user's password to the privacyIDEA Authentication Service.
 
 **v1_bitmap_path**
 
 The complete path and filename of a bitmap image. This is a customized 
 login image. The image must be a version 3 Windows BMP file with a resolution
-von 128x128 pixels.
+of 128x128 pixels.
 
