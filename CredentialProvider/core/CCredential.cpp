@@ -146,6 +146,7 @@ HRESULT CCredential::Initialize(
 
 HRESULT CCredential::EndpointCallback(__in DWORD dwFlag)
 {
+	UNREFERENCED_PARAMETER(dwFlag);
 	return E_NOTIMPL;
 }
 

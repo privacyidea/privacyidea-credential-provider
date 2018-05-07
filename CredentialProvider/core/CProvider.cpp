@@ -128,13 +128,13 @@ HRESULT CProvider::SetSerialization(
 	)
 {
 	DebugPrintLn(__FUNCTION__);
-	
+	//GetSystemMetrics(SM_REMOTESESSION);
 	HRESULT result = E_NOTIMPL;
-
+	//pcpcs->ulAuthenticationPackage
 	// retrieve authPackage		
 	ULONG authPackage = NULL;
 	result = RetrieveNegotiateAuthPackage(&authPackage);
-
+	
 	if (!SUCCEEDED(result))
 	{
 		DebugPrintLn("Failed to retrieve authPackage");

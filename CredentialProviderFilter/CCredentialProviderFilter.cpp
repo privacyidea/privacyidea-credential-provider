@@ -82,9 +82,28 @@ CCredentialProviderFilter::~CCredentialProviderFilter()
 	DllRelease();
 }
 
-HRESULT CCredentialProviderFilter::UpdateRemoteCredential( const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION *pcpsIn , CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION *pcpcsOut)
+HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION *pcpcsIn, CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION *pcpcsOut)
 {
-	UNREFERENCED_PARAMETER(pcpsIn);
-	UNREFERENCED_PARAMETER(pcpcsOut);
-	return E_NOTIMPL;
+	//UNREFERENCED_PARAMETER(pcpsIn);
+	//UNREFERENCED_PARAMETER(pcpcsOut);
+
+	if (!pcpcsIn) // no point continuing as there are no credentials
+		return E_NOTIMPL;
+
+	// copy contents from pcpcsIn to pcpcsOut
+	pcpcsOut->ulAuthenticationPackage = pcpcsIn->ulAuthenticationPackage;
+	pcpcsOut->cbSerialization = pcpcsIn->cbSerialization;
+	pcpcsOut->rgbSerialization = pcpcsIn->rgbSerialization;
+
+	// set target CP to our CP
+	pcpcsOut->clsidCredentialProvider = CLSID_COTP_LOGON;
+
+	// copy the buffer contents if needed
+	if (pcpcsOut->cbSerialization > 0 && (pcpcsOut->rgbSerialization = (BYTE*)CoTaskMemAlloc(pcpcsIn->cbSerialization)) != NULL)
+	{
+		CopyMemory(pcpcsOut->rgbSerialization, pcpcsIn->rgbSerialization, pcpcsIn->cbSerialization);
+		return S_OK;
+	}
+	else
+		return E_NOTIMPL;
 }

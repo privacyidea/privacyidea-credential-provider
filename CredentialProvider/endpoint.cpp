@@ -414,13 +414,16 @@ namespace Endpoint
 			if (hSession) WinHttpCloseHandle(hSession);
 
 			// write response to bufferstruct
-			buffer->buffer = strdup(response.c_str());
+			buffer->buffer = _strdup(response.c_str());
 
 			return result;
 		}
 
 		HRESULT SendRequestToServer(struct BufferStruct *&buffer, char *relativePath, int relativePathSize, char *post_data)
 		{
+			UNREFERENCED_PARAMETER(relativePath);
+			UNREFERENCED_PARAMETER(relativePathSize);
+
 			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
 
 			DebugPrintLn(__FUNCTION__);
