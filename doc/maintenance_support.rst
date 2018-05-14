@@ -3,8 +3,8 @@
 Development, Maintenance and Support
 ====================================
 
-The privacyIDEA Credential Provider was first developed by Last Squirrel
- IT [#lastsquirrel]_. The company has a long experience in Microsoft Windows
+The privacyIDEA Credential Provider was first developed by Last Squirrel IT [#lastsquirrel]_.
+ The company has a long experience in Microsoft Windows
  security tools. They developed many different credential providers and
  plugins for Active Directory Federation Services.
  

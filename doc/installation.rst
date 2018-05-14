@@ -43,7 +43,7 @@ Configure the privacyIDEA Authentication Server
 
 In the next step, you can configure the communication to the privacyIDEA
 Authentication Server. The credential provider and the server communicate via
- the REST API */validate/check*.
+the REST API ``POST /validate/check``.
 
 .. note:: You only need to specify the base URL of the authentication server.
    In most cases you only need to enter the URL like *https://yourserver/*.
