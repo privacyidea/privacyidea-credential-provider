@@ -17,7 +17,7 @@ Registry Settings
 
 You can configure the privacyIDEA Credential Provider directly by modifying
 the corresponding registry keys. You can use administrative templates
- to deploy the credential provider on many desktops in your network.
+to deploy the credential provider on many desktops in your network.
 
 The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
