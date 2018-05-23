@@ -16,7 +16,7 @@ void Default()
 
 	ZERO(conf->server_url);
 	ZERO(conf->login_text);
-	
+	ZERO(conf->otp_text);
 	ZERO(conf->v1_bitmap_path);
 	ZERO(conf->v2_bitmap_path);
 	
@@ -60,12 +60,14 @@ void Read()
 
 	// Read config
 	readRegistryValueString(CONF_SERVER_URL, sizeof(conf->server_url), conf->server_url);
-
 	//DebugPrintLn("CONFIG READ - server url:");
 	//DebugPrintLn(conf->server_url);
 
 	if (readRegistryValueString(CONF_LOGIN_TEXT, sizeof(conf->login_text), conf->login_text) <= 1) // 1 = size of a char NULL-terminator in byte
 		strcpy_s(conf->login_text, sizeof(conf->login_text), CONFIG_DEFAULT_LOGIN_TEXT);
+
+	if (readRegistryValueString(CONF_OTP_TEXT, sizeof(conf->otp_text), conf->otp_text) <= 1) // 1 = size of a char NULL-terminator in byte
+		strcpy_s(conf->login_text, sizeof(conf->login_text), CONFIG_DEFAULT_OTP_TEXT);
 
 	readRegistryValueString(CONF_V1_BITMAP_PATH, sizeof(conf->v1_bitmap_path), conf->v1_bitmap_path);
 	readRegistryValueString(CONF_V2_BITMAP_PATH, sizeof(conf->v2_bitmap_path), conf->v2_bitmap_path);

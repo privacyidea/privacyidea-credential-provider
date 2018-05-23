@@ -22,26 +22,30 @@
   <Fragment>
     <UI>
       <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-
-        <Control Id="ServerUrlLabel" Type="Text" X="45" Y="73" Width="220" Height="15" TabSkip="no" Text="&amp;Server URL: (mandatory)" />
-        <Control Id="ServerUrlEdit" Type="Edit" X="45" Y="85" Width="220" Height="18" Property="SERVER_URL" Text="{1024}" />
-        <Control Id="ServerUrlInfo" Type="PushButton" X="270" Y="84" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
+        <!-- Text inputs (url, opt texts)-->
+        <Control Id="ServerUrlLabel" Type="Text" X="45" Y="53" Width="220" Height="15" TabSkip="no" Text="&amp;Server URL: (mandatory)" />
+        <Control Id="ServerUrlEdit" Type="Edit" X="45" Y="65" Width="220" Height="18" Property="SERVER_URL" Text="{1024}" />
+        <Control Id="ServerUrlInfo" Type="PushButton" X="270" Y="64" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
           <Publish Event="SpawnDialog" Value="ServerUrlInfoDlg">1</Publish>
         </Control>
 
-        <Control Id="LoginTextLabel" Type="Text" X="45" Y="113" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
-        <Control Id="LoginTextEdit" Type="Edit" X="45" Y="125" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
-        <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="124" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
+        <Control Id="LoginTextLabel" Type="Text" X="45" Y="89" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
+        <Control Id="LoginTextEdit" Type="Edit" X="45" Y="101" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
+        <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="104" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
           <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
         </Control>
 
-        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="153" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
-
-        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="173" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
+        <Control Id="OTPTextLabel" Type="Text" X="45" Y="124" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
+        <Control Id="OTPTextEdit" Type="Edit" X="45" Y="136" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
         
-        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="193" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
-        <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="213" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
-
+        <!-- Checkboxes -->
+        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="160" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
+        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="180" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
+        
+        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="200" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
+        <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="220" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
+       
+        <!-- Bottom Controls -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
           <Publish Event="NewDialog" Value="CustomizeDlg">1</Publish>
         </Control>

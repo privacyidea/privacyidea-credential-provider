@@ -8,9 +8,9 @@
 #define ENDPOINT_NAME				"privacyIDEA"
  
 #define VERSION_MAJOR               2
-#define VERSION_MINOR               0
-#define VERSION_REVISION            0503 // MMDD : MM = Month, DD = Day
-#define VERSION_BUILD               1801 // YYBB : YY = Year, BB = Build number
+#define VERSION_MINOR               1
+#define VERSION_REVISION            0510 // MMDD : MM = Month, DD = Day
+#define VERSION_BUILD               1804 // YYBB : YY = Year, BB = Build number
  
 #define VER_FILE_DESCRIPTION_STR    ENDPOINT_NAME " Credential Provider for Windows logon"
 #define VER_FILE_VERSION            VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION, VERSION_BUILD

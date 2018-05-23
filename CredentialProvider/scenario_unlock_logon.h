@@ -43,7 +43,7 @@ static const FIELD_INITIALIZOR s_rgScenarioLogonUnlockFieldInitializors[] =
 	{ FIT_VALUE_OR_LOCKED_TEXT, L"" },
 	{ FIT_USERNAME_AND_DOMAIN, L"" },
 	{ FIT_VALUE, L"" },
-	{ FIT_VALUE, L"" },
+	{ FIT_VALUE_OR_OTP_TEXT, L"" },
 	{ FIT_VALUE, L"Submit" },
 };
 

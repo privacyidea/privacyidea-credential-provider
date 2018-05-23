@@ -455,6 +455,20 @@ namespace General
 				else
 					hr = SHStrDupW(value, &rgFieldStrings[field_index]);
 				break;
+			case FIT_VALUE_OR_OTP_TEXT:
+				DebugPrintLn("...FIT_VALUE_OR_OTP_TEXT");
+				if (NOT_EMPTY(Configuration::Get()->otp_text))
+				{
+					DebugPrintLn("......Configuration::Get()->otp_text");
+					DebugPrintLn(Configuration::Get()->otp_text);
+					wchar_t value[sizeof(Configuration::Get()->otp_text)];
+					Helper::CharToWideChar(Configuration::Get()->otp_text, sizeof(Configuration::Get()->otp_text), value);
+					hr = SHStrDupW(value, &rgFieldStrings[field_index]);
+
+				}
+				else
+					hr = SHStrDupW(initializor.value, &rgFieldStrings[field_index]);
+				break;
 			case FIT_NONE:
 				DebugPrintLn("...FIT_NONE");
 				break;
