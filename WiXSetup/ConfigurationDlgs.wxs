@@ -20,7 +20,7 @@
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
-    <UI>
+    <UI> <!-- PAGE 1-->
       <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
         <!-- Text inputs (url, opt texts)-->
         <Control Id="ServerUrlLabel" Type="Text" X="45" Y="53" Width="220" Height="15" TabSkip="no" Text="&amp;Server URL: (mandatory)" />
@@ -29,22 +29,15 @@
           <Publish Event="SpawnDialog" Value="ServerUrlInfoDlg">1</Publish>
         </Control>
 
-        <Control Id="LoginTextLabel" Type="Text" X="45" Y="89" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
-        <Control Id="LoginTextEdit" Type="Edit" X="45" Y="101" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
-        <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="104" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
-          <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
-        </Control>
-
-        <Control Id="OTPTextLabel" Type="Text" X="45" Y="124" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
-        <Control Id="OTPTextEdit" Type="Edit" X="45" Y="136" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
         
         <!-- Checkboxes -->
-        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="160" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
-        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="180" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
+        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="85" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
+        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="105" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
         
-        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="200" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
-        <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="220" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
-       
+        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="125" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
+        <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="145" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
+        <Control Id="HideUserName" Type="CheckBox" X="45" Y="165" Width="220" Height="17" Property="HIDE_USERNAME" CheckBoxValue="1" Text="Hide the username when logging in" />
+        
         <!-- Bottom Controls -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
           <Publish Event="NewDialog" Value="CustomizeDlg">1</Publish>
@@ -60,7 +53,7 @@
 
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
         <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Setup server URLs, default domain, login text and client ID</Text>
+          <Text>Setup server URL and properties.</Text>
         </Control>
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
@@ -73,7 +66,7 @@
   </Fragment>
 
   <Fragment>
-    <UI>
+    <UI> <!-- PAGE 2-->
       <Dialog Id="UserConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
 
         <Control Id="UserConfigurationInfo" Type="Text" X="45" Y="43" Width="300" Height="45" TabSkip="no" Text="!(loc.UserConfigurationInfo)" />
@@ -83,7 +76,18 @@
         <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
           <Publish Event="SpawnDialog" Value="V1BitmapPathInfoDlg">1</Publish>
         </Control>
+        
+        <Control Id="LoginTextLabel" Type="Text" X="45" Y="120" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
+        <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
+        <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="131" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
+          <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
+        </Control>
 
+        <Control Id="OTPTextLabel" Type="Text" X="45" Y="152" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
+        <Control Id="OTPTextEdit" Type="Edit" X="45" Y="164" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
+
+
+        <!-- Bottom Controls -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
           <Publish Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
         </Control>
@@ -101,7 +105,7 @@
 
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
         <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Setup preferences for this machine.</Text>
+          <Text>Customize the login.</Text>
         </Control>
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes">

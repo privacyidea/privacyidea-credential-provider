@@ -249,15 +249,22 @@ namespace Endpoint
 			return S_OK;
 		}
 
+		// return the path from the config entry e.g. /foo/bar/validate/check
 		std::string getURL(std::string str) {
 			std::string res;
 			size_t pos = str.find("/", 0);
-			res = str.substr(pos, str.length() - 1);
-			if (res.back() == '/') {
-				res.erase(res.length() - 1);
+			if (pos != std::string::npos) {
+				res = str.substr(pos, str.length() - 1);
+				if (res.back() == '/') {
+					res.erase(res.length() - 1);
+				}
+				return res + ENDPOINT_VALIDATE_CHECK;
 			}
-			return res + ENDPOINT_VALIDATE_CHECK;
+			else {// no path found in URL, return validate/check
+				return ENDPOINT_VALIDATE_CHECK;
+			}
 
+			
 		}
 
 		std::wstring get_utf16(const std::string &str, int codepage)
@@ -296,7 +303,7 @@ namespace Endpoint
 				hRequest = NULL;
 
 			// Use WinHttpOpen to obtain a session handle.
-			hSession = WinHttpOpen(L"privacyidea-cp",
+			hSession = WinHttpOpen(L"test-cp",
 				WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 				WINHTTP_NO_PROXY_NAME,
 				WINHTTP_NO_PROXY_BYPASS, 0);

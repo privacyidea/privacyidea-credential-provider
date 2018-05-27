@@ -68,7 +68,7 @@ HRESULT FieldDescriptorCoAllocCopy(
 }
 
 //
-// Coppies rcpfd into the buffer pointed to by pcpfd. The caller is responsible for
+// Copies rcpfd into the buffer pointed to by pcpfd. The caller is responsible for
 // allocating pcpfd. This function uses CoTaskMemAlloc to allocate memory for 
 // pcpfd->pszLabel.
 //

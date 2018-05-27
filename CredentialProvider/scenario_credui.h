@@ -43,7 +43,7 @@ static const FIELD_INITIALIZOR s_rgScenarioCredUiFieldInitializors[] =
 	{ FIT_VALUE_OR_LOCKED_TEXT, L"" },
 	{ FIT_VALUE, L"" },
 	{ FIT_VALUE, L"" },
-	{ FIT_VALUE_OR_LOGIN_TEXT, L"" },
+	{ FIT_VALUE_OR_OTP_TEXT, L"" },
 	{ FIT_VALUE, L"Submit" },
 };
 

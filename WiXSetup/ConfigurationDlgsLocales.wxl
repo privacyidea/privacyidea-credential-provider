@@ -34,8 +34,7 @@ Note: Leave it empty to keep the default message ("privacyIDEA Logon").
   
   <!-- Configuration 2/2 -->
   <String Id="UserConfigurationInfo">
-The following settings are for advanced configurations.
-You should keep the default values here.
+The following settings are optional texts and icons to customize the login.
   </String>
   <String Id="V1BitmapPathInfo">
 The path to a custom 128x128px 24-bit Bitmap (*.bmp) to show on the logon tile.
