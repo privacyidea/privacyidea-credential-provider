@@ -22,9 +22,11 @@ to deploy the credential provider on many desktops in your network.
 The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
 
-**login_text**
 
-Specify the text, that is displayed underneath the credential provider logo.
+Connection Settings
+~~~~~~~~~~~~~~~~~~~
+
+These settings define the connection to the privacyIDEA server.
 
 **server_url**
 
@@ -39,6 +41,12 @@ Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors ori
 
 Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors originating from an unknown CA.
 
+Login behaviour
+~~~~~~~~~~~~~~~
+
+Using these settings you can specify the behaviour of the privacyIDEA Credential Provider. The credential provider
+can ask for the username, the password and the otp value in one step or in two steps.
+
 **two_step_hide_otp**
 
 Set to ``1`` if the privacyIDEA Credential Provider should ask for the user's OTP in a second step. In the first step the user will only be asked for the password.
@@ -46,6 +54,27 @@ Set to ``1`` if the privacyIDEA Credential Provider should ask for the user's OT
 **two_step_send_password**
 
 Set to ``1`` if the privacyIDEA Credential Provider should send the user's password to the privacyIDEA Authentication Service.
+
+
+Customization of the Look and Feel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also change the look and feel of the privacyIDEA Credential Provider.
+
+
+**login_text**
+
+Specify the text, that is displayed underneath the credential provider logo.
+
+**otp_text**
+
+Speficy the text, that is displayed in the OTP input field. Usually this is "One-Time Password", but you can
+change it to any other value you like.
+
+**hide_username**
+
+Set to ``1`` if you want the privacyIDEA Credential Provider to hide the username when the desktop is locked.
+Instead only the contents of the *login_text* settings will be displayed.
 
 **v1_bitmap_path**
 

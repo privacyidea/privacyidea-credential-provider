@@ -51,7 +51,7 @@ copyright = u'2015 LastSquirrel IT. 2018, NetKnights GmbH.'
 # built documents.
 #
 # The short X.Y version.
-version = '2.1'
+version = '2.2'
 # The full version, including alpha/beta/rc tags.
 release = version
 
