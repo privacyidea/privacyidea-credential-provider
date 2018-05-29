@@ -289,9 +289,10 @@ namespace Endpoint
 			std::string response;
 
 #ifdef _DEBUG
-			DebugPrintLn("WinHttp sending to :");
-
+			DebugPrintLn("WinHttp sending to:");
 			DebugPrintLn(sdomain.c_str());
+			DebugPrintLn("post_data:");
+			DebugPrintLn(data);
 #endif
 
 			DWORD dwSize = 0;
@@ -303,7 +304,7 @@ namespace Endpoint
 				hRequest = NULL;
 
 			// Use WinHttpOpen to obtain a session handle.
-			hSession = WinHttpOpen(L"test-cp",
+			hSession = WinHttpOpen(L"privacyidea-cp",
 				WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 				WINHTTP_NO_PROXY_NAME,
 				WINHTTP_NO_PROXY_BYPASS, 0);

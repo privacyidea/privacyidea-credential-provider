@@ -272,7 +272,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 	// Verify dwIndex is a valid field.
 	if ((dwIndex < General::Fields::GetCurrentNumFields()) && ppcpfd)
 	{
-		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario][dwIndex], ppcpfd);
+		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario][dwIndex], ppcpfd, Configuration::Get()->otp_text);
 	}
 	else
 	{
