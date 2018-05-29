@@ -20,14 +20,18 @@
 #include "helpers.h"
 #include <intsafe.h>
 #include <wincred.h>
+#include <string>
+
 
 // 
 // Copies the field descriptor pointed to by rcpfd into a buffer allocated 
 // using CoTaskMemAlloc. Returns that buffer in ppcpfd.
 // 
+#pragma warning(disable : 4996) // use mbstowcs_s to enable this again
 HRESULT FieldDescriptorCoAllocCopy(
     __in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& rcpfd,
-    __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd
+    __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd,
+	__in char* otp_text
     )
 {
     HRESULT hr;
@@ -39,10 +43,19 @@ HRESULT FieldDescriptorCoAllocCopy(
         pcpfd->dwFieldID = rcpfd.dwFieldID;
         pcpfd->cpft = rcpfd.cpft;
 
-        if (rcpfd.pszLabel)
-        {
-            hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
-        }
+		std::wstring label(rcpfd.pszLabel);
+		// check if the field is the OTP Field, if so replace text with OTP text from config, if there is
+		if (label.compare(L"One-Time Password") == 0 && otp_text && rcpfd.pszLabel) {
+			wchar_t wtext[65];
+			mbstowcs(wtext, otp_text, strlen(otp_text) + 1); //Plus null
+			LPWSTR ptr = wtext;
+			hr = SHStrDupW(ptr, &pcpfd->pszLabel);
+		}
+		else if (rcpfd.pszLabel)
+		{
+			hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
+
+		}
         else
         {
             pcpfd->pszLabel = NULL;
@@ -68,7 +81,7 @@ HRESULT FieldDescriptorCoAllocCopy(
 }
 
 //
-// Coppies rcpfd into the buffer pointed to by pcpfd. The caller is responsible for
+// Copies rcpfd into the buffer pointed to by pcpfd. The caller is responsible for
 // allocating pcpfd. This function uses CoTaskMemAlloc to allocate memory for 
 // pcpfd->pszLabel.
 //
@@ -77,16 +90,17 @@ HRESULT FieldDescriptorCopy(
     __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* pcpfd
     )
 {
+	
     HRESULT hr;
     CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR cpfd;
 
     cpfd.dwFieldID = rcpfd.dwFieldID;
     cpfd.cpft = rcpfd.cpft;
-
-    if (rcpfd.pszLabel)
+	
+	if (rcpfd.pszLabel)
     {
         hr = SHStrDupW(rcpfd.pszLabel, &cpfd.pszLabel);
-    }
+	}
     else
     {
         cpfd.pszLabel = NULL;

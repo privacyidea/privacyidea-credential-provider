@@ -241,6 +241,31 @@ namespace Endpoint
 
 	namespace Concrete
 	{
+		HRESULT replaceSubstring(std::string& str, const std::string& from, const std::string& to) {
+			size_t start_pos = str.find(from);
+			if (start_pos == std::string::npos)
+				return E_FAIL;
+			str.replace(start_pos, from.length(), to);
+			return S_OK;
+		}
+
+		// return the path from the config entry e.g. /foo/bar/validate/check
+		std::string getURL(std::string str) {
+			std::string res;
+			size_t pos = str.find("/", 0);
+			if (pos != std::string::npos) {
+				res = str.substr(pos, str.length() - 1);
+				if (res.back() == '/') {
+					res.erase(res.length() - 1);
+				}
+				return res + ENDPOINT_VALIDATE_CHECK;
+			}
+			else {// no path found in URL, return validate/check
+				return ENDPOINT_VALIDATE_CHECK;
+			}
+
+			
+		}
 
 		std::wstring get_utf16(const std::string &str, int codepage)
 		{
@@ -264,9 +289,10 @@ namespace Endpoint
 			std::string response;
 
 #ifdef _DEBUG
-			DebugPrintLn("WinHttp sending to :");
-			std::wstring full_path = sdomain + surl;
+			DebugPrintLn("WinHttp sending to:");
 			DebugPrintLn(sdomain.c_str());
+			DebugPrintLn("post_data:");
+			DebugPrintLn(data);
 #endif
 
 			DWORD dwSize = 0;
@@ -340,18 +366,17 @@ namespace Endpoint
 					data_len, 0);
 
 			if (!bResults) {
-				DebugPrintLn("WinHttpSendRequest failed - handle error");
+				DebugPrintLn("WinHttpSendRequest failed with error");
 				result = GetLastError();
 
 				DebugPrintLn(result);
-				DebugPrintLn(ERROR_WINHTTP_SECURE_FAILURE);
-
-				return ENDPOINT_ERROR_CERT_ERROR;
+				//DebugPrintLn(ERROR_WINHTTP_SECURE_FAILURE);
 
 				if (result == ERROR_WINHTTP_SECURE_FAILURE) {
 					DebugPrintLn("WinHttp Error: Cert Error");
 					return ENDPOINT_ERROR_CERT_ERROR;
 				}
+				return ENDPOINT_ERROR_CERT_ERROR;
 			}
 
 			// End the request.
@@ -428,9 +453,16 @@ namespace Endpoint
 
 			DebugPrintLn(__FUNCTION__);
 
-			std::string domain(Configuration::Get()->server_url);	 //domain from registry
-			std::string url(ENDPOINT_VALIDATE_CHECK);				// /validate/check
+			std::string domain(Configuration::Get()->server_url);	 // server url from registry
 			std::string data(post_data);							// post_data already contains the payload for the request
+
+			// check if the URL contains https:// and remove it if neccessary
+			HRESULT hr = replaceSubstring(domain, "https://", "");
+			if (SUCCEEDED(hr)) {
+				//DebugPrintLn("https:// was found in the url and replaced");
+			}
+			// check if there is a path in the url to /validate/check
+			std::string url = getURL(domain);
 
 			result = SendPOSTRequest(domain, url, data, buffer);
 

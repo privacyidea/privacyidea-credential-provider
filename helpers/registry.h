@@ -19,29 +19,26 @@ enum CONF_VALUE
 {
 	CONF_SERVER_URL = 0,
 	CONF_LOGIN_TEXT = 1,
+	CONF_OTP_TEXT = 2,
 
-	/*CONF_SSL_VERIFY_HOSTNAME = 2,
-	CONF_SSL_VERIFY_SIGNATURE = 3,
-*/
-	CONF_V1_BITMAP_PATH = 2,
-	CONF_V2_BITMAP_PATH = 3,
+	CONF_V1_BITMAP_PATH = 3,
+	CONF_V2_BITMAP_PATH = 4,
 	
-	CONF_TWO_STEP_HIDE_OTP = 4,
-	CONF_TWO_STEP_SEND_PASSWORD = 5,
+	CONF_TWO_STEP_HIDE_OTP = 5,
+	CONF_TWO_STEP_SEND_PASSWORD = 6,
 
-	CONF_SSL_IGNORE_UNKNOWN_CA = 6,
-	CONF_SSL_IGNORE_INVALID_CN = 7,
+	CONF_SSL_IGNORE_UNKNOWN_CA = 7,
+	CONF_SSL_IGNORE_INVALID_CN = 8,
 
-	CONF_NUM_VALUES = 8,
+	CONF_HIDE_USERNAME = 9,
+	CONF_NUM_VALUES = 10,
 };
 
 static const LPCSTR s_CONF_VALUES[] =
 {
 	"server_url",
 	"login_text",
-
-	//"ssl_verify_hostname",
-	//"ssl_verify_signature",
+	"otp_text",
 
 	"v1_bitmap_path",
 	"v2_bitmap_path",
@@ -51,6 +48,8 @@ static const LPCSTR s_CONF_VALUES[] =
 
 	"ssl_ignore_unknown_ca",
 	"ssl_ignore_invalid_cn",
+
+	"hide_username",
 };
 
 DWORD readRegistryValueString(__in LPCSTR value, __in LPCSTR key, __in int buffer_size, __deref_out_opt char* data);

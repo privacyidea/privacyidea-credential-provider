@@ -13,7 +13,7 @@
 namespace Configuration
 {
 	#define CONFIG_DEFAULT_LOGIN_TEXT ENDPOINT_NAME" Login"
-
+	#define CONFIG_DEFAULT_OTP_TEXT "One-Time Password"
 	#define CONFIG_DEFAULT_TIMEOUT_IN_SECS 60
 	
 	#define CONFIG_SSL_IGNORE_UNKNOWN_CA_TRUE 1
@@ -28,9 +28,7 @@ namespace Configuration
 	{
 		char server_url[1024];
 		char login_text[64];
-
-		/*int ssl_verify_hostname;
-		int ssl_verify_signature;*/
+		char otp_text[64];
 
 		char v1_bitmap_path[1024];
 		char v2_bitmap_path[1024];
@@ -40,6 +38,8 @@ namespace Configuration
 
 		int ssl_ignore_unknown_ca;
 		int ssl_ignore_invalid_cn;
+
+		int hide_username;
 	};
 
 	CONFIGURATION*& Get();

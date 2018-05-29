@@ -78,7 +78,6 @@ namespace Endpoint
 
 	static ENDPOINT_STATUS STATUS = NOT_READY;
 	static HRESULT LAST_ERROR_CODE = ENDPOINT_AUTH_FAIL;
-	static bool cert_fail = false;
 
 	//static struct ENDPOINT_PACK *_epPck;
 
