@@ -92,7 +92,9 @@ namespace Endpoint
 		case (int)ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER:
 			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong username or password?");
 			break;
-
+		case (int)ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION: 
+			wcscpy_s(error, ARRAYSIZE(error), L"Insufficient subscription. The user count exceeds your subscription. ");
+			break;
 		case (int)ENDPOINT_ERROR_PARSE_ERROR:
 		case (int)ENDPOINT_ERROR_NO_RESULT:
 			wcscpy_s(error, ARRAYSIZE(error), L"Error reading service response.");
@@ -264,7 +266,7 @@ namespace Endpoint
 				return ENDPOINT_VALIDATE_CHECK;
 			}
 
-			
+
 		}
 
 		std::wstring get_utf16(const std::string &str, int codepage)
@@ -496,8 +498,6 @@ namespace Endpoint
 			);
 
 			result = SendRequestToServer(buffer, relativePath, (int)strlen(relativePath), post_data);
-			//DebugPrintLn("result in SendValidateCheckRequestOTP");
-			//DebugPrintLn(result);
 			return result;
 		}
 
@@ -573,7 +573,6 @@ namespace Endpoint
 				}
 				else
 				{
-
 					// No Member "value" or "value" = false
 					result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
 				}
@@ -582,6 +581,20 @@ namespace Endpoint
 			{
 				// No Member "status" or "status" = false
 				result = ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
+				
+				// Check if error is present
+				if (!json_result.HasMember("error")) {
+					return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
+				}
+
+				// Check for error code
+				rapidjson::Value& json_error = json_result["error"];
+				rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
+
+				if (json_error_code->value.GetInt() == -500) {
+					result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
+				}
+
 			}
 
 			return result;
