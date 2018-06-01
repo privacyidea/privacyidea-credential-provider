@@ -98,6 +98,10 @@
     <Property Id="HIDE_USERNAME">
       <RegistrySearch Id="SearchHideUsername"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_username"           Win64="$(var.Win64)" Type="raw" />
     </Property>
+
+    <Property Id="HIDE_DOMAINNAME">
+      <RegistrySearch Id="SearchHideDomainname"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_domainname"           Win64="$(var.Win64)" Type="raw" />
+    </Property>
     
     <!-- Disabled:
     <Property Id="TIMEOUT">
@@ -221,6 +225,7 @@
             <RegistryValue Name='ssl_ignore_invalid_cn' Type='string' Value='[SSL_IGNORE_INVALID_CN]' />
 
             <RegistryValue Name='hide_username' Type='string' Value='[HIDE_USERNAME]' />
+            <RegistryValue Name='hide_domainname' Type='string' Value='[HIDE_DOMAINNAME]' />
             <!-- Disabled:
             <RegistryValue Name='timeout'               Type='integer' Value='[TIMEOUT]' />
             -->
