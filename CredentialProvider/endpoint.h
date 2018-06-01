@@ -122,6 +122,8 @@ namespace Endpoint
 		#define ENDPOINT_INFO_CHECKING_RESPONSE				((long)0x00000003)
 		#define ENDPOINT_ERROR_CERT_ERROR_MSG				((long)0x00000004)
 
+		#define ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR		(int)-500
+
 		// Define our struct for accepting Winhttp output
 		struct BufferStruct
 		{

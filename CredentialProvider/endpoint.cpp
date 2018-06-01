@@ -591,7 +591,7 @@ namespace Endpoint
 				rapidjson::Value& json_error = json_result["error"];
 				rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
 
-				if (json_error_code->value.GetInt() == -500) {
+				if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR) {
 					result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
 				}
 
