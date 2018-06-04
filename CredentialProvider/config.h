@@ -14,13 +14,6 @@ namespace Configuration
 {
 	#define CONFIG_DEFAULT_LOGIN_TEXT ENDPOINT_NAME" Login"
 	#define CONFIG_DEFAULT_OTP_TEXT "One-Time Password"
-	#define CONFIG_DEFAULT_TIMEOUT_IN_SECS 60
-	
-	#define CONFIG_SSL_IGNORE_UNKNOWN_CA_TRUE 1
-	#define CONFIG_SSL_IGNORE_UNKNOWN_CA_FALSE 0
-
-	#define CONFIG_SSL_IGNORE_INVALID_CN_TRUE 1
-	#define CONFIG_SSL_IGNORE_INVALID_CN_FALSE 0
 
 	/////////////////// BASE
 
@@ -40,6 +33,7 @@ namespace Configuration
 		int ssl_ignore_invalid_cn;
 
 		int hide_username;
+		int hide_domainname;
 	};
 
 	CONFIGURATION*& Get();

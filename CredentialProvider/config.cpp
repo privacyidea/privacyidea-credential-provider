@@ -108,7 +108,19 @@ void Read()
 	{
 		conf->hide_username = buffer[0] - 0x30;
 	}
-	
+
+	// HIDE DOMAIN NAME
+	if (readRegistryValueString(CONF_HIDE_DOMAINNAME, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->hide_domainname = 0; // if NULL
+	else
+	{
+		conf->hide_domainname = buffer[0] - 0x30;
+	}
+
+	// check if both hides are 1
+	if (conf->hide_domainname && conf->hide_username)
+		conf->hide_domainname = 0;
+
 	// END
 }
 

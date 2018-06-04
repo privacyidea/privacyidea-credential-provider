@@ -391,6 +391,7 @@ namespace General
 		{
 			HRESULT hr = E_INVALIDARG;
 			int hide_username = Configuration::Get()->hide_username; // hide user and domain
+			int hide_domainname = Configuration::Get()->hide_domainname; // hide domain only
 			switch (initializor.type)
 			{
 			case FIT_VALUE:
@@ -408,7 +409,7 @@ namespace General
 				break;
 			case FIT_USERNAME_AND_DOMAIN:
 				DebugPrintLn("...FIT_USERNAME_AND_DOMAIN");
-				if (NOT_EMPTY(Data::Credential::Get()->user_name) && NOT_EMPTY(Data::Credential::Get()->domain_name) && !hide_username)
+				if (NOT_EMPTY(Data::Credential::Get()->user_name) && NOT_EMPTY(Data::Credential::Get()->domain_name) && !hide_username && !hide_domainname)
 				{
 					INIT_ZERO_WCHAR(username_domainname, 129);
 
@@ -418,7 +419,7 @@ namespace General
 
 					hr = SHStrDupW(username_domainname, &rgFieldStrings[field_index]);
 				}
-				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_username)
+				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname)
 					hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				else
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
@@ -453,7 +454,7 @@ namespace General
 			case FIT_VALUE_OR_LOCKED_TEXT:
 				DebugPrintLn("...FIT_VALUE_OR_LOCKED_TEXT");
 				//if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(WORKSTATION_LOCKED))
-				if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_username)
+				if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_username && !hide_domainname)
 				{
 					DebugPrintLn("......Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION");
 					//hr = SHStrDupW(WORKSTATION_LOCKED, &rgFieldStrings[field_index]);
@@ -468,6 +469,9 @@ namespace General
 						hr = SHStrDupW(username_domainname, &rgFieldStrings[field_index]);
 					}
 					else if (NOT_EMPTY(Data::Credential::Get()->user_name))
+						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+				}
+				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname && !hide_username) {
 						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
 				else if (hide_username) {
