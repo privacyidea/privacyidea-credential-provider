@@ -147,9 +147,6 @@ namespace Endpoint
 		case ENDPOINT_INFO_CHECKING_RESPONSE:
 			wcscpy_s(msg, ARRAYSIZE(msg), L"Checking response...");
 			break;
-		case ENDPOINT_ERROR_CERT_ERROR_MSG:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"An Error occured while verifying the servers certificate!");
-			break;
 		default:
 			break;
 		}
