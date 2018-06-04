@@ -472,7 +472,7 @@ namespace General
 						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
 				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname && !hide_username) {
-					hr = hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
 				else if (hide_username) {
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);

@@ -41,11 +41,11 @@
           <Text>Only one of these options can be used</Text>
         </Control>
         
-        <Control Id="HideUserName" Type="CheckBox" X="45" Y="190" Width="220" Height="17" Property="HIDE_USERNAME" CheckBoxValue="1" Text="Hide the username when logging in.">
+        <Control Id="HideUserName" Type="CheckBox" X="45" Y="190" Width="220" Height="17" Property="HIDE_USERNAME" CheckBoxValue="1" Text="Hide the username and domain when logging in.">
           <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_USERNAME</Publish>
         </Control>
 
-        <Control Id="HideDomainName" Type="CheckBox" X="45" Y="205" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide the domain when logging in.">
+        <Control Id="HideDomainName" Type="CheckBox" X="45" Y="205" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain when logging in.">
           <Publish Property="HIDE_USERNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
         </Control>
       
