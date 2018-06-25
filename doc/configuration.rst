@@ -32,6 +32,7 @@ These settings define the connection to the privacyIDEA server.
 
 The base URL of the privacyIDEA Authentication Service. Usually this is
 *https://yourserver/privacyidea* without any additional path information.
+NOTE: https:// can be left out since the privacyIDEA Credential Provider always attempts to use secure connection.
 
 **ssl_ignore_invalid_cn**
 
@@ -71,9 +72,13 @@ Specify the text, that is displayed underneath the credential provider logo.
 Speficy the text, that is displayed in the OTP input field. Usually this is "One-Time Password", but you can
 change it to any other value you like.
 
-**hide_username**
+**hide_domainname**
 
-Set to ``1`` if you want the privacyIDEA Credential Provider to hide the username when the desktop is locked.
+Set to ``1`` if you want the privacyIDEA Credential Provider to hide only the domain name when the desktop is locked.
+
+**hide_fullname**
+
+Set to ``1`` if you want the privacyIDEA Credential Provider to hide the user and domain name when the desktop is locked.
 Instead only the contents of the *login_text* settings will be displayed.
 
 **v1_bitmap_path**
@@ -82,3 +87,11 @@ The complete path and filename of a bitmap image. This is a customized
 login image. The image must be a version 3 Windows BMP file with a resolution
 of 128x128 pixels.
 
+
+Log file
+~~~~~~~~
+
+**release_log**
+
+Set to ``1`` if you want the privacyIDEA Credential Provider to write a logfile in the release version. The log only contains errors and is located at C:\\privacyIDEAReleaseLogFile.txt
+The log file of the debug version contains more detailed information and is located at C:\\privacyIDEADebugLogFile.txt

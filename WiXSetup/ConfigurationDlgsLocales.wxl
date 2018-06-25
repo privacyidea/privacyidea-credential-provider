@@ -21,9 +21,9 @@
 <WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization">
   <!-- Configuration 1/2 -->
   <String Id="ServerUrlInfo">
-This is the privacyIDEA service URL.
-
-Example: http://privacyidea.example.com/service_root/
+This is the privacyIDEA service URL. The protocol can be left out.
+The privacyIDEA Credential Provider always uses secure connection.
+Example: privacyidea.example.com/service_root/
   </String>
   <String Id="LoginTextInfo">
 This is the welcome-message to be displayed in the Windows login page.

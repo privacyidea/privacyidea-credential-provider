@@ -32,8 +32,10 @@ namespace Configuration
 		int ssl_ignore_unknown_ca;
 		int ssl_ignore_invalid_cn;
 
-		int hide_username;
+		int hide_fullname;
 		int hide_domainname;
+
+		int release_log;
 	};
 
 	CONFIGURATION*& Get();

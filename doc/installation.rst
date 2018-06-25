@@ -46,8 +46,7 @@ Authentication Server. The credential provider and the server communicate via
 the REST API ``POST /validate/check``.
 
 .. note:: You only need to specify the base URL of the authentication server.
-   In most cases you only need to enter the URL like *https://yourserver/*.
-
+   In most cases you only need to enter the URL like *https://yourserver/*. https:// can be left out since the privacyIDEA Credential Provider always attempts to use secure connection.
 .. figure:: install_images/install2.png
 
    :width: 500px

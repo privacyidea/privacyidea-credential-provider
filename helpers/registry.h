@@ -30,9 +30,10 @@ enum CONF_VALUE
 	CONF_SSL_IGNORE_UNKNOWN_CA = 7,
 	CONF_SSL_IGNORE_INVALID_CN = 8,
 
-	CONF_HIDE_USERNAME = 9,
+	CONF_HIDE_FULLNAME = 9,
 	CONF_HIDE_DOMAINNAME = 10,
-	CONF_NUM_VALUES = 11,
+	CONF_RELEASE_LOG = 11,
+	CONF_NUM_VALUES = 12,
 };
 
 static const LPCSTR s_CONF_VALUES[] =
@@ -50,8 +51,10 @@ static const LPCSTR s_CONF_VALUES[] =
 	"ssl_ignore_unknown_ca",
 	"ssl_ignore_invalid_cn",
 
-	"hide_username",
-	"hide_domainname"
+	"hide_fullname",
+	"hide_domainname",
+
+	"release_log"
 };
 
 DWORD readRegistryValueString(__in LPCSTR value, __in LPCSTR key, __in int buffer_size, __deref_out_opt char* data);

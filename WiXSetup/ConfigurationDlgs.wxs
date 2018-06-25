@@ -38,14 +38,14 @@
         <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="155" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
 
         <Control Id="HideUserOrDomain" Type="Text" X="45" Y="175" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Only one of these options can be used</Text>
+          <Text>Hide when the desktop is locked:</Text>
         </Control>
         
-        <Control Id="HideUserName" Type="CheckBox" X="45" Y="190" Width="220" Height="17" Property="HIDE_USERNAME" CheckBoxValue="1" Text="Hide the username and domain when the desktop is locked.">
-          <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_USERNAME</Publish>
+        <Control Id="HideFullName" Type="CheckBox" X="45" Y="190" Width="220" Height="17" Property="HIDE_FULLNAME" CheckBoxValue="1" Text="Hide the username and domain.">
+          <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_FULLNAME</Publish>
         </Control>
 
-        <Control Id="HideDomainName" Type="CheckBox" X="45" Y="205" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain when the desktop is locked.">
+        <Control Id="HideDomainName" Type="CheckBox" X="45" Y="205" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
           <Publish Property="HIDE_USERNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
         </Control>
       
@@ -88,7 +88,7 @@
         <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
           <Publish Event="SpawnDialog" Value="V1BitmapPathInfoDlg">1</Publish>
         </Control>
-        
+                
         <Control Id="LoginTextLabel" Type="Text" X="45" Y="120" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
         <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
         <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="131" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
@@ -98,7 +98,8 @@
         <Control Id="OTPTextLabel" Type="Text" X="45" Y="152" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
         <Control Id="OTPTextEdit" Type="Edit" X="45" Y="164" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
 
-
+        <Control Id="ReleaseVersionLog" Type="CheckBox" X="45" Y="185" Width="220" Height="17" Property="RELEASE_LOG" CheckBoxValue="1" Text="Create logfile" />
+        
         <!-- Bottom Controls -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
           <Publish Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
