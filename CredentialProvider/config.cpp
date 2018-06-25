@@ -102,11 +102,11 @@ void Read()
 	}
 
 	// HIDE USERNAME
-	if (readRegistryValueString(CONF_HIDE_USERNAME, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
-		conf->hide_username = 0; // if NULL
+	if (readRegistryValueString(CONF_HIDE_FULLNAME, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->hide_fullname = 0; // if NULL
 	else
 	{
-		conf->hide_username = buffer[0] - 0x30;
+		conf->hide_fullname = buffer[0] - 0x30;
 	}
 
 	// HIDE DOMAIN NAME
@@ -118,9 +118,17 @@ void Read()
 	}
 
 	// check if both hides are 1
-	if (conf->hide_domainname && conf->hide_username)
+	if (conf->hide_domainname && conf->hide_fullname)
 		conf->hide_domainname = 0;
-
+	
+	// RELEASE LOG
+	if (readRegistryValueString(CONF_RELEASE_LOG, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->release_log = 0; // if NULL
+	else
+	{
+		conf->release_log = buffer[0] - 0x30;
+	}
+	
 	// END
 }
 

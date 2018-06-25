@@ -92,7 +92,7 @@ namespace Endpoint
 		case (int)ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER:
 			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong username or password?");
 			break;
-		case (int)ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION: 
+		case (int)ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION:
 			wcscpy_s(error, ARRAYSIZE(error), L"Insufficient subscription. The user count exceeds your subscription. ");
 			break;
 		case (int)ENDPOINT_ERROR_PARSE_ERROR:
@@ -181,11 +181,9 @@ namespace Endpoint
 
 		if (firstStep) {
 			LAST_ERROR_CODE = Concrete::SendValidateCheckRequestLDAP(output);
-			//DebugPrintLn("SENDrequestLDAP");
 		}
 		else {
 			LAST_ERROR_CODE = Concrete::SendValidateCheckRequestOTP(output);
-			//DebugPrintLn("SENDrequestOTP");
 		}
 
 		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_RESPONSE_OK) // Request successful
@@ -262,8 +260,6 @@ namespace Endpoint
 			else {// no path found in URL, return validate/check
 				return ENDPOINT_VALIDATE_CHECK;
 			}
-
-
 		}
 
 		std::wstring get_utf16(const std::string &str, int codepage)
@@ -290,8 +286,8 @@ namespace Endpoint
 #ifdef _DEBUG
 			DebugPrintLn("WinHttp sending to:");
 			DebugPrintLn(sdomain.c_str());
-			DebugPrintLn("post_data:");
-			DebugPrintLn(data);
+			//DebugPrintLn("post_data:");
+			//DebugPrintLn(data);			// !!! this shows the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;
@@ -313,12 +309,28 @@ namespace Endpoint
 				hConnect = WinHttpConnect(hSession, sdomain.c_str(),
 					INTERNET_DEFAULT_HTTPS_PORT, 0);
 			}
+			else {
+				DebugPrintLn("WinHttpOpen failure:");
+				DebugPrintLn(GetLastError());
+				if (Configuration::Get()->release_log) {
+					writeToLog("WinHttpOpen failure:");
+					writeToLog(GetLastError());
+				}
+			}
 			// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 			if (hConnect) {
 				hRequest = WinHttpOpenRequest(hConnect, L"POST", surl.c_str(),
 					NULL, WINHTTP_NO_REFERER,
 					WINHTTP_DEFAULT_ACCEPT_TYPES,
 					WINHTTP_FLAG_SECURE);
+			}
+			else {
+				DebugPrintLn("WinHttpOpenRequest failure:");
+				DebugPrintLn(GetLastError());
+				if (Configuration::Get()->release_log) {
+					writeToLog("WinHttpOpenRequest failure:");
+					writeToLog(GetLastError());
+				}
 			}
 
 			// Set Option Security Flags to start TLS
@@ -328,7 +340,16 @@ namespace Endpoint
 				WINHTTP_OPTION_SECURITY_FLAGS,
 				&dwReqOpts,
 				sizeof(DWORD))) {
-				DebugPrintLn("WinHttp TLS flag set");
+
+			}
+			else {
+				DebugPrintLn("WinHttpOptions security flag could not be set:");
+				DebugPrintLn(GetLastError());
+				if (Configuration::Get()->release_log) {
+					writeToLog("WinHttpOptions security flag could not be set:");
+					writeToLog(GetLastError());
+				}
+
 			}
 
 			/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
@@ -345,11 +366,19 @@ namespace Endpoint
 			}
 
 			if (Configuration::Get()->ssl_ignore_unknown_ca || Configuration::Get()->ssl_ignore_invalid_cn) {
-				WinHttpSetOption(hRequest,
-					WINHTTP_OPTION_SECURITY_FLAGS,
-					&dwSSLFlags,
-					sizeof(DWORD));
-				DebugPrintLn("WinHttp flags set to ignore SSL errors");
+				if (WinHttpSetOption(hRequest,
+					WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
+					DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
+				}
+				else {
+					DebugPrintLn("WinHttpOption flags could not be set:");
+					DebugPrintLn(GetLastError());
+					if (Configuration::Get()->release_log) {
+						writeToLog("WinHttpOption flags could not be set:");
+						writeToLog(GetLastError());
+					}
+				}
+
 			}
 			///////////////////////////////////////////////////////////////////////////////
 
@@ -365,15 +394,10 @@ namespace Endpoint
 					data_len, 0);
 
 			if (!bResults) {
-				DebugPrintLn("WinHttpSendRequest failed with error");
-				result = GetLastError();
-
-				DebugPrintLn(result);
-				//DebugPrintLn(ERROR_WINHTTP_SECURE_FAILURE);
-
-				if (result == ERROR_WINHTTP_SECURE_FAILURE) {
-					DebugPrintLn("WinHttp Error: Cert Error");
-					return ENDPOINT_ERROR_CERT_ERROR;
+				DebugPrintLn("WinHttpSendRequest failure:");
+				if (Configuration::Get()->release_log) {
+					writeToLog("WinHttpSendRequest failure:");
+					writeToLog(GetLastError());
 				}
 				return ENDPOINT_ERROR_CERT_ERROR;
 			}
@@ -393,8 +417,10 @@ namespace Endpoint
 						DebugPrintLn("WinHttpQueryDataAvailable Error:");
 						DebugPrintLn(GetLastError());
 						result = E_FAIL;
-						//printf("Error %u in WinHttpQueryDataAvailable.\n",
-						//	GetLastError());
+						if (Configuration::Get()->release_log) {
+							writeToLog("WinHttpQueryDataAvailable error:");
+							writeToLog(GetLastError());
+						}
 					}
 
 					// Allocate space for the buffer.
@@ -402,7 +428,9 @@ namespace Endpoint
 					if (!pszOutBuffer)
 					{
 						DebugPrintLn("WinHttpReadData out of memory");
-						//printf("Out of memory\n");
+						if (Configuration::Get()->release_log) {
+							writeToLog("WinHttpReadData out of memory");
+						}
 						result = E_FAIL;
 						dwSize = 0;
 					}
@@ -415,6 +443,10 @@ namespace Endpoint
 							dwSize, &dwDownloaded)) {
 							DebugPrintLn("WinHttpReadData Error:");
 							DebugPrintLn(GetLastError());
+							if (Configuration::Get()->release_log) {
+								writeToLog("WinHttpReadData Error:");
+								writeToLog(GetLastError());
+							}
 							result = E_FAIL;
 						}
 						else
@@ -429,6 +461,10 @@ namespace Endpoint
 			if (!bResults) {
 				DebugPrintLn("WinHttp Result Error:");
 				DebugPrintLn(GetLastError());
+				if (Configuration::Get()->release_log) {
+					writeToLog("WinHttp Result Error:");
+					writeToLog(GetLastError());
+				}
 				result = E_FAIL;
 				//printf("Error %d has occurred.\n", GetLastError());
 			}
@@ -457,9 +493,13 @@ namespace Endpoint
 
 			// check if the URL contains https:// and remove it if neccessary
 			HRESULT hr = replaceSubstring(domain, "https://", "");
-			if (SUCCEEDED(hr)) {
-				//DebugPrintLn("https:// was found in the url and replaced");
+			if (!SUCCEEDED(hr)) {
+				// does not really matter
+				/*if (Configuration::Get()->release_log) {
+					writeToLog("There was an error while extracting the server url. replaceSubstring: E_FAIL");
+				}*/
 			}
+
 			// check if there is a path in the url to /validate/check
 			std::string url = getURL(domain);
 
@@ -468,6 +508,7 @@ namespace Endpoint
 			if (SUCCEEDED(result)) {
 				result = ENDPOINT_SUCCESS_RESPONSE_OK;
 			}
+			else if (Configuration::Get()->release_log) { writeToLog("Post request could not be sent. ENDPOINT_ERROR_HTTP_ERROR"); }
 
 			return result;
 		}
@@ -534,8 +575,12 @@ namespace Endpoint
 
 			HRESULT result = E_FAIL;
 
-			if (json == NULL)
+			if (json == NULL) {
+				if (Configuration::Get()->release_log) {
+					writeToLog("JSON response was null: ENDPOINT_ERROR_JSON_NULL");
+				}
 				return ENDPOINT_ERROR_JSON_NULL;
+			}
 
 			// 1. Parse a JSON string into DOM.
 			rapidjson::Document json_document;
@@ -547,13 +592,17 @@ namespace Endpoint
 				DebugPrintLn(static_cast<unsigned int>(json_document.GetErrorOffset()));
 				DebugPrintLn("Parse error description:");
 				DebugPrintLn(GetParseError_En(json_document.GetParseError()));
-
+				if (Configuration::Get()->release_log) { writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR"); }
 				return ENDPOINT_ERROR_PARSE_ERROR;
 			}
 
 			// 2. Get result-object
-			if (!json_document.HasMember("result"))
+			if (!json_document.HasMember("result")) {
+				if (Configuration::Get()->release_log) {
+					writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
+				}
 				return ENDPOINT_ERROR_NO_RESULT;
+			}
 
 			rapidjson::Value& json_result = json_document["result"];
 
@@ -571,6 +620,10 @@ namespace Endpoint
 				else
 				{
 					// No Member "value" or "value" = false
+					// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
+					if (Configuration::Get()->release_log && !Configuration::Get()->two_step_send_password) {
+						writeToLog("Response has no member 'value': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
+					}
 					result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
 				}
 			}
@@ -578,9 +631,12 @@ namespace Endpoint
 			{
 				// No Member "status" or "status" = false
 				result = ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
-				
+
 				// Check if error is present
 				if (!json_result.HasMember("error")) {
+					if (Configuration::Get()->release_log) {
+						writeToLog("Response has no member 'error': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
+					}
 					return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
 				}
 
@@ -589,11 +645,12 @@ namespace Endpoint
 				rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
 
 				if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR) {
+					if (Configuration::Get()->release_log) {
+						writeToLog("Insufficient subscription error: ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION");
+					}
 					result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
 				}
-
 			}
-
 			return result;
 		}
 

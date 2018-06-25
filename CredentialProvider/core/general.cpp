@@ -261,7 +261,7 @@ namespace General
 			HRESULT hr = S_OK;
 			hr = Helpers::SetScenarioBasedFieldStates(self, pCPCE, scenario);
 			
-			int hide_username = Configuration::Get()->hide_username;
+			int hide_fullname = Configuration::Get()->hide_fullname;
 			
 			// Set text fields separately
 			int largeTextFieldId = 0, smallTextFieldId = 0;
@@ -274,14 +274,14 @@ namespace General
 				pCPCE->SetFieldString(self, largeTextFieldId, large_text);
 			}
 
-			if (small_text && !hide_username)
+			if (small_text && !hide_fullname)
 			{
 				DebugPrintLn("Small Text:");
 				DebugPrintLn(small_text);
 				pCPCE->SetFieldString(self, smallTextFieldId, small_text);
 				//pCPCE->SetFieldState(self, smallTextFieldId, CPFS_DISPLAY_IN_SELECTED_TILE);
 			}
-			else if (hide_username) {
+			else if (hide_fullname) {
 				DebugPrintLn("Small Text: hide username");
 				DebugPrintLn(small_text);
 				pCPCE->SetFieldString(self, smallTextFieldId, L"");
@@ -390,7 +390,7 @@ namespace General
 		HRESULT InitializeField(LPWSTR *rgFieldStrings, const FIELD_INITIALIZOR initializor, DWORD field_index)
 		{
 			HRESULT hr = E_INVALIDARG;
-			int hide_username = Configuration::Get()->hide_username; // hide user and domain
+			int hide_fullname = Configuration::Get()->hide_fullname; // hide user and domain
 			int hide_domainname = Configuration::Get()->hide_domainname; // hide domain only
 			switch (initializor.type)
 			{
@@ -401,7 +401,7 @@ namespace General
 				break;
 			case FIT_USERNAME:
 				DebugPrintLn("...FIT_USERNAME");
-				if (NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_username)
+				if (NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_fullname)
 					hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				else
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
@@ -409,7 +409,7 @@ namespace General
 				break;
 			case FIT_USERNAME_AND_DOMAIN:
 				DebugPrintLn("...FIT_USERNAME_AND_DOMAIN");
-				if (NOT_EMPTY(Data::Credential::Get()->user_name) && NOT_EMPTY(Data::Credential::Get()->domain_name) && !hide_username && !hide_domainname)
+				if (NOT_EMPTY(Data::Credential::Get()->user_name) && NOT_EMPTY(Data::Credential::Get()->domain_name) && !hide_fullname && !hide_domainname)
 				{
 					INIT_ZERO_WCHAR(username_domainname, 129);
 
@@ -443,7 +443,7 @@ namespace General
 					//DebugPrintLn(value);
 					hr = SHStrDupW(value, &rgFieldStrings[field_index]);
 				}
-				else if (hide_username) {
+				else if (hide_fullname) {
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 				}
 				else {
@@ -454,7 +454,7 @@ namespace General
 			case FIT_VALUE_OR_LOCKED_TEXT:
 				DebugPrintLn("...FIT_VALUE_OR_LOCKED_TEXT");
 				//if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(WORKSTATION_LOCKED))
-				if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_username && !hide_domainname)
+				if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_fullname && !hide_domainname)
 				{
 					DebugPrintLn("......Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION");
 					//hr = SHStrDupW(WORKSTATION_LOCKED, &rgFieldStrings[field_index]);
@@ -471,10 +471,10 @@ namespace General
 					else if (NOT_EMPTY(Data::Credential::Get()->user_name))
 						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
-				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname && !hide_username) {
+				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname && !hide_fullname) {
 						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
-				else if (hide_username) {
+				else if (hide_fullname) {
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 				}
 				else

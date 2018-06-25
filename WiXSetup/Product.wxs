@@ -102,6 +102,10 @@
     <Property Id="HIDE_DOMAINNAME">
       <RegistrySearch Id="SearchHideDomainname"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_domainname"           Win64="$(var.Win64)" Type="raw" />
     </Property>
+
+    <Property Id="RELEASE_LOG">
+      <RegistrySearch Id="SearchProdLog"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="release_log"           Win64="$(var.Win64)" Type="raw" />
+    </Property>
     
     <!-- Disabled:
     <Property Id="TIMEOUT">
@@ -224,8 +228,10 @@
             <RegistryValue Name='ssl_ignore_unknown_ca' Type='string' Value='[SSL_IGNORE_UNKNOWN_CA]' />
             <RegistryValue Name='ssl_ignore_invalid_cn' Type='string' Value='[SSL_IGNORE_INVALID_CN]' />
 
-            <RegistryValue Name='hide_username' Type='string' Value='[HIDE_USERNAME]' />
+            <RegistryValue Name='hide_fullname' Type='string' Value='[HIDE_FULLNAME]' />
             <RegistryValue Name='hide_domainname' Type='string' Value='[HIDE_DOMAINNAME]' />
+            <RegistryValue Name='release_log'            Type='string'  Value='[RELEASE_LOG]'           />
+            
             <!-- Disabled:
             <RegistryValue Name='timeout'               Type='integer' Value='[TIMEOUT]' />
             -->
