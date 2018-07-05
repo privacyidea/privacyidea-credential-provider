@@ -177,7 +177,7 @@ namespace Endpoint
 		output->buffer = NULL;
 		output->size = 0;
 
-		bool firstStep = Configuration::Get()->two_step_send_password && EMPTY(Get()->otpPass);
+		bool firstStep = Configuration::Get()->two_step_send_password && EMPTY(Get()->otpPass) || Configuration::Get()->two_step_hide_otp && EMPTY(Get()->otpPass);
 
 		if (firstStep) {
 			LAST_ERROR_CODE = Concrete::SendValidateCheckRequestLDAP(output);
