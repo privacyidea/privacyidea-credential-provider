@@ -46,7 +46,7 @@
         </Control>
 
         <Control Id="HideDomainName" Type="CheckBox" X="45" Y="205" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
-          <Publish Property="HIDE_USERNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
+          <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
         </Control>
       
         
