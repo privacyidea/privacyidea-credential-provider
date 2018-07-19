@@ -45,8 +45,8 @@ In the next step, you can configure the communication to the privacyIDEA
 Authentication Server. The credential provider and the server communicate via
 the REST API ``POST /validate/check``.
 
-.. note:: You only need to specify the base URL of the authentication server.
-   In most cases you only need to enter the URL like *https://yourserver/*. https:// can be left out since the privacyIDEA Credential Provider always attempts to use secure connection.
+.. note:: You only need to specify the hostname of the authentication server.
+   In most cases you only need to enter the hostname like *yourserver.example.com*. Additionally the path can be specified if there is. Something like */path/to/pi*.
 .. figure:: install_images/install2.png
 
    :width: 500px

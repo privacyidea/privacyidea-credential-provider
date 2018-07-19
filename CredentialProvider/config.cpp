@@ -14,7 +14,7 @@ void Default()
 {
 	struct CONFIGURATION*& conf = Get();
 
-	ZERO(conf->server_url);
+	ZERO(conf->hostname);
 	ZERO(conf->login_text);
 	ZERO(conf->otp_text);
 	ZERO(conf->v1_bitmap_path);
@@ -59,7 +59,10 @@ void Read()
 	char buffer[2];
 
 	// Read config
-	readRegistryValueString(CONF_SERVER_URL, sizeof(conf->server_url), conf->server_url);
+	readRegistryValueString(CONF_HOSTNAME, sizeof(conf->hostname), conf->hostname);
+
+	if (readRegistryValueString(CONF_PATH, sizeof(conf->path), conf->path) <= 1) // 1 = size of a char NULL-terminator in byte
+		strcpy_s(conf->path, sizeof(conf->path), CONFIG_DEFAULT_EMPTY_PATH);
 
 	if (readRegistryValueString(CONF_LOGIN_TEXT, sizeof(conf->login_text), conf->login_text) <= 1) // 1 = size of a char NULL-terminator in byte
 		strcpy_s(conf->login_text, sizeof(conf->login_text), CONFIG_DEFAULT_LOGIN_TEXT);
@@ -70,6 +73,14 @@ void Read()
 	readRegistryValueString(CONF_V1_BITMAP_PATH, sizeof(conf->v1_bitmap_path), conf->v1_bitmap_path);
 	readRegistryValueString(CONF_V2_BITMAP_PATH, sizeof(conf->v2_bitmap_path), conf->v2_bitmap_path);
 	
+	// Check for custom port
+	if (readRegistryValueString(CONF_CUSTOM_PORT, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->custom_port = 0; // if NULL
+	else
+	{
+		conf->custom_port = buffer[0] - 0x30;
+	}
+
 	// HIDE TWO STEP OTP
 	if (readRegistryValueString(CONF_TWO_STEP_HIDE_OTP, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
 		conf->two_step_hide_otp = 0; // if NULL

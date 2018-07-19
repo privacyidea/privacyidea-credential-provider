@@ -27,12 +27,18 @@ Connection Settings
 ~~~~~~~~~~~~~~~~~~~
 
 These settings define the connection to the privacyIDEA server.
+The connection is established via https by default, like indicated in the installer.
 
-**server_url**
+**hostname**
 
-The base URL of the privacyIDEA Authentication Service. Usually this is
-*https://yourserver/privacyidea* without any additional path information.
-NOTE: https:// can be left out since the privacyIDEA Credential Provider always attempts to use secure connection.
+The hostname of the privacyIDEA Authentication Service. That usually is something
+like  *yourserver.example.com* without any additional path information.
+
+**path**
+
+Optional. 
+The path to the privacyIDEA Authentication Service if there is.
+E.g. */path/to/pi*
 
 **ssl_ignore_invalid_cn**
 
@@ -41,6 +47,10 @@ Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors ori
 **ssl_ignore_unknown_ca**
 
 Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors originating from an unknown CA.
+
+**custom_port**
+This entry is not there by default. You can add it to declare a custom port. The value has to be of type *REG_SZ* with the name *custom_port*.
+NOTE: By default the port is the default https port, which is 443.
 
 Login behaviour
 ~~~~~~~~~~~~~~~

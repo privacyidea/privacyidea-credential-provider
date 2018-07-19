@@ -63,10 +63,14 @@
 
     <!-- Get values from registry if available. (What if unattended/silent install?)-->
 
-    <Property Id="SERVER_URL">
-      <RegistrySearch Id="SearchServerUrl"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="server_url"               Win64="$(var.Win64)" Type="raw"/>
+    <Property Id="HOSTNAME" Value = "hostname">
+      <RegistrySearch Id="SearchHostname"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hostname"               Win64="$(var.Win64)" Type="raw"/>
     </Property>
-    
+
+    <Property Id="PATH" Value = "/path/to/pi">
+      <RegistrySearch Id="SearchPath"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="path"               Win64="$(var.Win64)" Type="raw"/>
+    </Property>
+
     <Property Id="LOGIN_TEXT">
       <RegistrySearch Id="SearchLoginText"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="login_text"               Win64="$(var.Win64)" Type="raw" />
     </Property>
@@ -216,7 +220,8 @@
 
           <!-- Configuration values (from dialogs/registry/unattended) -->
           <RegistryKey Root='HKLM' Key='SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)' ForceCreateOnInstall='yes'>
-            <RegistryValue Name='server_url'            Type='string'  Value='[SERVER_URL]'           />
+            <RegistryValue Name='hostname'            Type='string'  Value='[HOSTNAME]'           />
+            <RegistryValue Name='path'            Type='string'  Value='[PATH]'           />
             <RegistryValue Name='login_text'            Type='string'  Value='[LOGIN_TEXT]'           />
             <RegistryValue Name='otp_text'            Type='string'  Value='[OTP_TEXT]'           />
             

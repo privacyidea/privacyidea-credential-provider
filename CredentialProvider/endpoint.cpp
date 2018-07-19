@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include <string>
+#include <regex>
 
 #pragma comment(lib,"winhttp.lib")
 
@@ -246,6 +246,26 @@ namespace Endpoint
 			return S_OK;
 		}
 
+		// check if there is a path, if it starts with slash and append /validate/check
+		std::string checkPath(std::string path) {
+			std::string tmp = path;
+
+			std::string compare("/path/to/pi");	// this is the default from the installer, check it here so the hint stays in the registry
+			if (tmp == compare) {
+				// path is "empty" so we return only /validate/check
+				return ENDPOINT_VALIDATE_CHECK;
+			}
+
+			std::string slash("/");
+			if (strncmp(path.c_str(), slash.c_str(), slash.size()) != 0) {
+				// path does not start with /, so we prepend it
+				return slash + tmp + ENDPOINT_VALIDATE_CHECK;
+			}
+
+			// path contains a valid path
+			return tmp + ENDPOINT_VALIDATE_CHECK;
+		}
+
 		// return the path from the config entry e.g. /foo/bar/validate/check
 		std::string getURL(std::string str) {
 			std::string res;
@@ -260,6 +280,40 @@ namespace Endpoint
 			else {// no path found in URL, return validate/check
 				return ENDPOINT_VALIDATE_CHECK;
 			}
+		}
+
+		HRESULT splitURL(__in std::string url, __out struct SplitURLResult *&result) {
+			DebugPrintLn(__FUNCTION__);
+			unsigned counter = 0;
+			//RFC 3986
+			std::regex url_regex(
+				R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)",
+				std::regex::extended
+			);
+			std::smatch url_match_result;
+
+			DebugPrintLn("Checking:");
+			DebugPrintLn(url.c_str());
+
+			if (std::regex_match(url, url_match_result, url_regex)) {
+				for (const auto& res : url_match_result) {
+					if (counter == 4) {
+						std::string tmp = std::string(res);
+						result->hostname = tmp;
+					}
+					if (counter == 5) {
+						std::string tmp = std::string(res);
+						result->path = tmp;
+					}
+					counter++;
+				}
+			}
+
+			DebugPrintLn("hostname:");
+			DebugPrintLn(result->hostname.c_str());
+			DebugPrintLn("path:");
+			DebugPrintLn(result->path.c_str());
+			return S_OK;
 		}
 
 		std::wstring get_utf16(const std::string &str, int codepage)
@@ -279,15 +333,16 @@ namespace Endpoint
 			LPSTR  data = const_cast<char *>(dat.c_str());;
 			DWORD data_len = strlen(data);
 
-			std::wstring sdomain = get_utf16(domain, CP_UTF8);
-			std::wstring surl = get_utf16(url, CP_UTF8);
+			std::wstring hostname = get_utf16(domain, CP_UTF8);
+			std::wstring path = get_utf16(url, CP_UTF8);
 			std::string response;
 
 #ifdef _DEBUG
 			DebugPrintLn("WinHttp sending to:");
-			DebugPrintLn(sdomain.c_str());
-			//DebugPrintLn("post_data:");
-			//DebugPrintLn(data);			// !!! this shows the windows password in cleartext !!! 
+			DebugPrintLn(hostname.c_str());
+			DebugPrintLn(path.c_str());
+			DebugPrintLn("post_data:");
+			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;
@@ -306,8 +361,15 @@ namespace Endpoint
 
 			// Specify an HTTP server.
 			if (hSession) {
-				hConnect = WinHttpConnect(hSession, sdomain.c_str(),
-					INTERNET_DEFAULT_HTTPS_PORT, 0);
+				// check if custom port is set
+				if (Configuration::Get()->custom_port != 0) {
+					hConnect = WinHttpConnect(hSession, hostname.c_str(),
+						Configuration::Get()->custom_port, 0);
+				}
+				else {
+					hConnect = WinHttpConnect(hSession, hostname.c_str(),
+						INTERNET_DEFAULT_HTTPS_PORT, 0);
+				}
 			}
 			else {
 				DebugPrintLn("WinHttpOpen failure:");
@@ -319,7 +381,7 @@ namespace Endpoint
 			}
 			// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 			if (hConnect) {
-				hRequest = WinHttpOpenRequest(hConnect, L"POST", surl.c_str(),
+				hRequest = WinHttpOpenRequest(hConnect, L"POST", path.c_str(),
 					NULL, WINHTTP_NO_REFERER,
 					WINHTTP_DEFAULT_ACCEPT_TYPES,
 					WINHTTP_FLAG_SECURE);
@@ -481,29 +543,41 @@ namespace Endpoint
 
 		HRESULT SendRequestToServer(struct BufferStruct *&buffer, char *relativePath, int relativePathSize, char *post_data)
 		{
-			UNREFERENCED_PARAMETER(relativePath);
+			UNREFERENCED_PARAMETER(relativePath);	// this parameter can be eliminated 
 			UNREFERENCED_PARAMETER(relativePathSize);
 
 			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
 
 			DebugPrintLn(__FUNCTION__);
 
-			std::string domain(Configuration::Get()->server_url);	 // server url from registry
-			std::string data(post_data);							// post_data already contains the payload for the request
+			std::string hostname(Configuration::Get()->hostname);	// hostname from registry
+			std::string data(post_data);							// post_data already contains the payload correctly encoded
+			std::string path(Configuration::Get()->path);			// path from registry
 
-			// check if the URL contains https:// and remove it if neccessary
-			HRESULT hr = replaceSubstring(domain, "https://", "");
-			if (!SUCCEEDED(hr)) {
-				// does not really matter
-				/*if (Configuration::Get()->release_log) {
-					writeToLog("There was an error while extracting the server url. replaceSubstring: E_FAIL");
-				}*/
+			path = checkPath(path);
+
+			/*struct Concrete::SplitURLResult *splitUrlResult = (struct Concrete::SplitURLResult *) malloc(sizeof(struct Concrete::SplitURLResult));
+			result = splitURL(url, splitUrlResult);
+			if (FAILED(result)) {
+				DebugPrintLn("Parsing URL failed");
+				writeToLog("Parsing URL failed");
 			}
+			*/
+			/*
+		// check if the URL contains https:// and remove it if neccessary
+		HRESULT hr = replaceSubstring(domain, "https://", "");
+		if (!SUCCEEDED(hr)) {
+				// does not really matter
+		if (Configuration::Get()->release_log) {
+				writeToLog("There was an error while extracting the server url. replaceSubstring:");
+			}
+		}
 
-			// check if there is a path in the url to /validate/check
-			std::string url = getURL(domain);
+		// check if there is a path in the url to /validate/check
+		std::string url = getURL(domain);
+		*/
 
-			result = SendPOSTRequest(domain, url, data, buffer);
+			result = SendPOSTRequest(hostname, path, data, buffer);
 
 			if (SUCCEEDED(result)) {
 				result = ENDPOINT_SUCCESS_RESPONSE_OK;
