@@ -17,7 +17,7 @@
 
 enum CONF_VALUE
 {
-	CONF_SERVER_URL = 0,
+	CONF_HOSTNAME = 0,
 	CONF_LOGIN_TEXT = 1,
 	CONF_OTP_TEXT = 2,
 
@@ -33,12 +33,14 @@ enum CONF_VALUE
 	CONF_HIDE_FULLNAME = 9,
 	CONF_HIDE_DOMAINNAME = 10,
 	CONF_RELEASE_LOG = 11,
-	CONF_NUM_VALUES = 12,
+	CONF_PATH = 12,
+	CONF_CUSTOM_PORT = 13,
+	CONF_NUM_VALUES = 14,
 };
 
 static const LPCSTR s_CONF_VALUES[] =
 {
-	"server_url",
+	"hostname",
 	"login_text",
 	"otp_text",
 
@@ -54,7 +56,9 @@ static const LPCSTR s_CONF_VALUES[] =
 	"hide_fullname",
 	"hide_domainname",
 
-	"release_log"
+	"release_log",
+	"path",
+	"custom_port"
 };
 
 DWORD readRegistryValueString(__in LPCSTR value, __in LPCSTR key, __in int buffer_size, __deref_out_opt char* data);

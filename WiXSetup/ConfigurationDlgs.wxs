@@ -18,24 +18,31 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 -->
+
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
     <UI> <!-- PAGE 1-->
       <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-        <!-- Text inputs (url, opt texts)-->
-        <Control Id="ServerUrlLabel" Type="Text" X="45" Y="53" Width="220" Height="15" TabSkip="no" Text="&amp;Server URL: (mandatory)" />
-        <Control Id="ServerUrlEdit" Type="Edit" X="45" Y="65" Width="220" Height="18" Property="SERVER_URL" Text="{1024}" />
+        <!-- Text inputs (hostname, path, opt texts)
+        
+        <Control Id="ServerUrlLabel" Type="Text" X="45" Y="53" Width="220" Height="15" TabSkip="no" Text="hostname=privacyidea.example.com   path=/path/to/pi" />-->
+       
+        <Control Id="HttpsLabel" Type="Text" X="45" Y="58" Width="220" Height="15" TabSkip="no" Text="https://" />
+        <Control Id="HostnameEdit" Type="Edit" X="75" Y="55" Width="115" Height="18" Property="HOSTNAME" />
+        <Control Id="PathEdit" Type="Edit" X="195" Y="55" Width="90" Height="18" Property="PATH" /> 
+        <Control Id="PathOptLabel" Type="Text" X="290" Y="58" Width="220" Height="15" TabSkip="no" Text="(optional)" />
+        <!--   
         <Control Id="ServerUrlInfo" Type="PushButton" X="270" Y="64" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
           <Publish Event="SpawnDialog" Value="ServerUrlInfoDlg">1</Publish>
         </Control>
-
+        -->
         
         <!-- Checkboxes -->
-        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="95" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
-        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="115" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
+        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="80" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
+        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="100" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
         
-        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="135" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
-        <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="155" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
+        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="120" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
+        <Control Id="TwoStepSendPassword" Type="CheckBox" X="45" Y="140" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." />
 
         <Control Id="HideUserOrDomain" Type="Text" X="45" Y="175" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
           <Text>Hide when the desktop is locked:</Text>
@@ -55,8 +62,8 @@
           <Publish Event="NewDialog" Value="CustomizeDlg">1</Publish>
         </Control>
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-          <Publish Event="NewDialog" Value="UserConfigurationDlg">SERVER_URL</Publish>
-          <Publish Event="SpawnDialog" Value="NoServerURLMessageDlg">NOT SERVER_URL</Publish>
+          <Publish Event="NewDialog" Value="UserConfigurationDlg">HOSTNAME</Publish>
+          <Publish Event="SpawnDialog" Value="NoServerURLMessageDlg">HOSTNAME="hostname"</Publish>
         </Control>
 
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
@@ -65,7 +72,7 @@
 
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
         <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Setup server URL and properties.</Text>
+          <Text>Setup hostname, path and properties.</Text>
         </Control>
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
@@ -140,7 +147,8 @@
         </Control>
         <Control Id="Text" Type="Text" X="48" Y="15" Width="194" Height="30" TabSkip="no">
           <Text>
-            Please specify at least a server URL.
+            Please specify at least a hostname! 
+            The path is optional.
           </Text>
         </Control>
       </Dialog>

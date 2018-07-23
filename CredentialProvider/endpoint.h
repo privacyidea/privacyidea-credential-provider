@@ -27,6 +27,7 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/error/en.h"
 
+#include <string>
 #include <time.h>
 
 #include "rapidjson/stringbuffer.h"
@@ -127,6 +128,12 @@ namespace Endpoint
 		struct BufferStruct
 		{
 			char * buffer;
+			size_t size;
+		};
+
+		struct SplitURLResult {
+			std::string hostname;
+			std::string path;
 			size_t size;
 		};
 

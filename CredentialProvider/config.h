@@ -14,12 +14,13 @@ namespace Configuration
 {
 	#define CONFIG_DEFAULT_LOGIN_TEXT ENDPOINT_NAME" Login"
 	#define CONFIG_DEFAULT_OTP_TEXT "One-Time Password"
+	#define CONFIG_DEFAULT_EMPTY_PATH ""
 
 	/////////////////// BASE
 
 	struct CONFIGURATION
 	{
-		char server_url[1024];
+		char hostname[1024];
 		char login_text[64];
 		char otp_text[64];
 
@@ -36,6 +37,8 @@ namespace Configuration
 		int hide_domainname;
 
 		int release_log;
+		char path[1024];
+		int custom_port;
 	};
 
 	CONFIGURATION*& Get();

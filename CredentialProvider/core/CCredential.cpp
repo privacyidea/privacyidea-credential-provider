@@ -122,8 +122,8 @@ HRESULT CCredential::Initialize(
 	//for (DWORD i = 0; SUCCEEDED(hr) && i < ARRAYSIZE(_rgCredProvFieldDescriptors); i++)
 	for (DWORD i = 0; SUCCEEDED(hr) && i < General::Fields::GetCurrentNumFields(); i++)
 	{
-		DebugPrintLn("Copy field #:");
-		DebugPrintLn(i + 1);
+		//DebugPrintLn("Copy field #:");
+		//DebugPrintLn(i + 1);
 
 		_rgFieldStatePairs[i] = rgfsp[i];
 		hr = FieldDescriptorCopy(rgcpfd[i], &_rgCredProvFieldDescriptors[i]);
@@ -696,12 +696,18 @@ HRESULT CCredential::ReportResult(
 	DebugPrintLn(__FUNCTION__);
 	DebugPrintLn(ntsStatus);
 	DebugPrintLn(ntsSubstatus);
-	UNREFERENCED_PARAMETER(ntsStatus);
-	UNREFERENCED_PARAMETER(ntsSubstatus);
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
-	Data::Credential::Get()->passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE);
+	Data::Credential::Get()->passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
+	
+	if (Data::Credential::Get()->passwordMustChange) {
+		DebugPrintLn("PASSWORD MUST CHANGE");
+		//Hook::CredentialHooks::CheckPasswordChanging(this,)
+		Data::Provider::Get()->usage_scenario = CPUS_CHANGE_PASSWORD;
+		//Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
+		return S_OK;
+	}
 	if (ntsStatus == STATUS_LOGON_FAILURE) {
 		Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
 	}

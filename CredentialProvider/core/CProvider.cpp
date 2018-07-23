@@ -81,13 +81,13 @@ HRESULT CProvider::SetUsageScenario(
 
 	Data::Provider::Get()->credPackFlags = dwFlags;
 	Data::Provider::Get()->usage_scenario = cpus;
-
+	
 	// Decide which scenarios to support here. Returning E_NOTIMPL simply tells the caller
 	// that we're not designed for that scenario.
 	switch (Data::Provider::Get()->usage_scenario)
 	{
 	case CPUS_LOGON:
-	//case CPUS_CHANGE_PASSWORD:
+	case CPUS_CHANGE_PASSWORD:
 	case CPUS_UNLOCK_WORKSTATION:
 	case CPUS_CREDUI:
 
@@ -95,7 +95,7 @@ HRESULT CProvider::SetUsageScenario(
 		break;
 
 	//case CPUS_CREDUI: // Though, we are prepared
-	case CPUS_CHANGE_PASSWORD:
+	//case CPUS_CHANGE_PASSWORD:
 	case CPUS_PLAP:
 	case CPUS_INVALID:
 		hr = E_NOTIMPL;
