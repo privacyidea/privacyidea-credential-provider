@@ -449,7 +449,8 @@ namespace Hook
 		HRESULT CheckPasswordChanging(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, BOOL *&pbAutoLogon)
 		{
 			DebugPrintLn(__FUNCTION__);
-
+			UNREFERENCED_PARAMETER(pSelf);
+			UNREFERENCED_PARAMETER(pCredProvCredentialEvents);
 			if (Data::Credential::Get()->passwordMustChange)
 			{
 				DebugPrintLn("CheckPasswordChanging TRUE");

@@ -157,6 +157,6 @@ private: ////////////// VARS
 
 #endif
 
-INT_PTR PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 HRESULT copyNewVals(wchar_t* val);
