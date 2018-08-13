@@ -28,14 +28,14 @@ namespace Data
 
 			ZERO(data->ldap_pass_new_1);
 			ZERO(data->ldap_pass_new_2);
-
+			
 			data->use_offline_pass = false;
 		}
 
 		void Init()
 		{
 			struct GUI*& data = Get();
-
+			
 			if (data == NULL)
 				data = (struct GUI*) malloc(sizeof(struct GUI));
 

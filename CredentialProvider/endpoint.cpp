@@ -238,20 +238,12 @@ namespace Endpoint
 
 	namespace Concrete
 	{
-		HRESULT replaceSubstring(std::string& str, const std::string& from, const std::string& to) {
-			size_t start_pos = str.find(from);
-			if (start_pos == std::string::npos)
-				return E_FAIL;
-			str.replace(start_pos, from.length(), to);
-			return S_OK;
-		}
-
 		// check if there is a path, if it starts with slash and append /validate/check
 		std::string checkPath(std::string path) {
 			std::string tmp = path;
 
 			std::string compare("/path/to/pi");	// this is the default from the installer, check it here so the hint stays in the registry
-			if (tmp == compare) {
+			if (tmp == compare || tmp.empty()) {
 				// path is "empty" so we return only /validate/check
 				return ENDPOINT_VALIDATE_CHECK;
 			}
@@ -264,56 +256,6 @@ namespace Endpoint
 
 			// path contains a valid path
 			return tmp + ENDPOINT_VALIDATE_CHECK;
-		}
-
-		// return the path from the config entry e.g. /foo/bar/validate/check
-		std::string getURL(std::string str) {
-			std::string res;
-			size_t pos = str.find("/", 0);
-			if (pos != std::string::npos) {
-				res = str.substr(pos, str.length() - 1);
-				if (res.back() == '/') {
-					res.erase(res.length() - 1);
-				}
-				return res + ENDPOINT_VALIDATE_CHECK;
-			}
-			else {// no path found in URL, return validate/check
-				return ENDPOINT_VALIDATE_CHECK;
-			}
-		}
-
-		HRESULT splitURL(__in std::string url, __out struct SplitURLResult *&result) {
-			DebugPrintLn(__FUNCTION__);
-			unsigned counter = 0;
-			//RFC 3986
-			std::regex url_regex(
-				R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)",
-				std::regex::extended
-			);
-			std::smatch url_match_result;
-
-			DebugPrintLn("Checking:");
-			DebugPrintLn(url.c_str());
-
-			if (std::regex_match(url, url_match_result, url_regex)) {
-				for (const auto& res : url_match_result) {
-					if (counter == 4) {
-						std::string tmp = std::string(res);
-						result->hostname = tmp;
-					}
-					if (counter == 5) {
-						std::string tmp = std::string(res);
-						result->path = tmp;
-					}
-					counter++;
-				}
-			}
-
-			DebugPrintLn("hostname:");
-			DebugPrintLn(result->hostname.c_str());
-			DebugPrintLn("path:");
-			DebugPrintLn(result->path.c_str());
-			return S_OK;
 		}
 
 		std::wstring get_utf16(const std::string &str, int codepage)
@@ -341,8 +283,8 @@ namespace Endpoint
 			DebugPrintLn("WinHttp sending to:");
 			DebugPrintLn(hostname.c_str());
 			DebugPrintLn(path.c_str());
-			DebugPrintLn("post_data:");
-			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			//DebugPrintLn("post_data:");
+			//DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;
@@ -377,6 +319,9 @@ namespace Endpoint
 				if (Configuration::Get()->release_log) {
 					writeToLog("WinHttpOpen failure:");
 					writeToLog(GetLastError());
+					writeToLog("Trying to send to:");
+					writeToLog(hostname.c_str());
+					writeToLog(path.c_str());
 				}
 			}
 			// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
@@ -392,9 +337,12 @@ namespace Endpoint
 				if (Configuration::Get()->release_log) {
 					writeToLog("WinHttpOpenRequest failure:");
 					writeToLog(GetLastError());
+					writeToLog("Trying to send to:");
+					writeToLog(hostname.c_str());
+					writeToLog(path.c_str());
 				}
 			}
-
+			
 			// Set Option Security Flags to start TLS
 			DWORD dwReqOpts = 0;
 			if (WinHttpSetOption(
@@ -460,6 +408,9 @@ namespace Endpoint
 				if (Configuration::Get()->release_log) {
 					writeToLog("WinHttpSendRequest failure:");
 					writeToLog(GetLastError());
+					writeToLog("Trying to send to:");
+					writeToLog(hostname.c_str());
+					writeToLog(path.c_str());
 				}
 				return ENDPOINT_ERROR_CERT_ERROR;
 			}
@@ -556,27 +507,6 @@ namespace Endpoint
 
 			path = checkPath(path);
 
-			/*struct Concrete::SplitURLResult *splitUrlResult = (struct Concrete::SplitURLResult *) malloc(sizeof(struct Concrete::SplitURLResult));
-			result = splitURL(url, splitUrlResult);
-			if (FAILED(result)) {
-				DebugPrintLn("Parsing URL failed");
-				writeToLog("Parsing URL failed");
-			}
-			*/
-			/*
-		// check if the URL contains https:// and remove it if neccessary
-		HRESULT hr = replaceSubstring(domain, "https://", "");
-		if (!SUCCEEDED(hr)) {
-				// does not really matter
-		if (Configuration::Get()->release_log) {
-				writeToLog("There was an error while extracting the server url. replaceSubstring:");
-			}
-		}
-
-		// check if there is a path in the url to /validate/check
-		std::string url = getURL(domain);
-		*/
-
 			result = SendPOSTRequest(hostname, path, data, buffer);
 
 			if (SUCCEEDED(result)) {
@@ -666,7 +596,11 @@ namespace Endpoint
 				DebugPrintLn(static_cast<unsigned int>(json_document.GetErrorOffset()));
 				DebugPrintLn("Parse error description:");
 				DebugPrintLn(GetParseError_En(json_document.GetParseError()));
-				if (Configuration::Get()->release_log) { writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR"); }
+				if (Configuration::Get()->release_log) { 
+					writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR");
+					writeToLog("Plaintext response:");
+					writeToLog(json);
+				}
 				return ENDPOINT_ERROR_PARSE_ERROR;
 			}
 
@@ -674,6 +608,8 @@ namespace Endpoint
 			if (!json_document.HasMember("result")) {
 				if (Configuration::Get()->release_log) {
 					writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
+					writeToLog("Plaintext response:");
+					writeToLog(json);
 				}
 				return ENDPOINT_ERROR_NO_RESULT;
 			}
@@ -697,6 +633,8 @@ namespace Endpoint
 					// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
 					if (Configuration::Get()->release_log && !Configuration::Get()->two_step_send_password) {
 						writeToLog("Response has no member 'value': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
+						writeToLog("Plaintext response:");
+						writeToLog(json);
 					}
 					result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
 				}
@@ -710,6 +648,8 @@ namespace Endpoint
 				if (!json_result.HasMember("error")) {
 					if (Configuration::Get()->release_log) {
 						writeToLog("Response has no member 'error': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
+						writeToLog("Plaintext response:");
+						writeToLog(json);
 					}
 					return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
 				}
@@ -721,6 +661,8 @@ namespace Endpoint
 				if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR) {
 					if (Configuration::Get()->release_log) {
 						writeToLog("Insufficient subscription error: ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION");
+						writeToLog("Plaintext response:");
+						writeToLog(json);
 					}
 					result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
 				}

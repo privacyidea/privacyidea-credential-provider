@@ -22,12 +22,12 @@
 // CProvider ////////////////////////////////////////////////////////
 
 CProvider::CProvider() :
-_cRef(1),
-_pkiulSetSerialization(NULL),
-_pccCredential(NULL),
-//_dwNumCreds(0),
-_bAutoSubmitSetSerializationCred(false),
-_dwSetSerializationCred(CREDENTIAL_PROVIDER_NO_DEFAULT)
+	_cRef(1),
+	_pkiulSetSerialization(NULL),
+	_pccCredential(NULL),
+	//_dwNumCreds(0),
+	_bAutoSubmitSetSerializationCred(false),
+	_dwSetSerializationCred(CREDENTIAL_PROVIDER_NO_DEFAULT)
 {
 	DllAddRef();
 
@@ -73,7 +73,7 @@ void CProvider::_CleanupSetSerialization()
 HRESULT CProvider::SetUsageScenario(
 	__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 	__in DWORD dwFlags
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -81,21 +81,21 @@ HRESULT CProvider::SetUsageScenario(
 
 	Data::Provider::Get()->credPackFlags = dwFlags;
 	Data::Provider::Get()->usage_scenario = cpus;
-	
+
 	// Decide which scenarios to support here. Returning E_NOTIMPL simply tells the caller
 	// that we're not designed for that scenario.
 	switch (Data::Provider::Get()->usage_scenario)
 	{
 	case CPUS_LOGON:
-	case CPUS_CHANGE_PASSWORD:
+		//case CPUS_CHANGE_PASSWORD:
 	case CPUS_UNLOCK_WORKSTATION:
 	case CPUS_CREDUI:
 
 		hr = S_OK;
 		break;
 
-	//case CPUS_CREDUI: // Though, we are prepared
-	//case CPUS_CHANGE_PASSWORD:
+		//case CPUS_CREDUI: // Though, we are prepared
+	case CPUS_CHANGE_PASSWORD:
 	case CPUS_PLAP:
 	case CPUS_INVALID:
 		hr = E_NOTIMPL;
@@ -126,7 +126,7 @@ HRESULT CProvider::SetUsageScenario(
 // pieces of this function.  For information on that, please see the credUI sample.
 HRESULT CProvider::SetSerialization(
 	__in const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 	//GetSystemMetrics(SM_REMOTESESSION);
@@ -135,7 +135,7 @@ HRESULT CProvider::SetSerialization(
 	// retrieve authPackage		
 	ULONG authPackage = NULL;
 	result = RetrieveNegotiateAuthPackage(&authPackage);
-	
+
 	if (!SUCCEEDED(result))
 	{
 		DebugPrintLn("Failed to retrieve authPackage");
@@ -145,7 +145,7 @@ HRESULT CProvider::SetSerialization(
 	if (Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
 	{
 		DebugPrintLn("CPUS_CREDUI");
-			
+
 		if (((Data::Provider::Get()->credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (Data::Provider::Get()->credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY)) && authPackage != pcpcs->ulAuthenticationPackage)
 		{
 			DebugPrintLn("authPackage invalid");
@@ -195,7 +195,7 @@ HRESULT CProvider::SetSerialization(
 
 				_pkiulSetSerialization = (KERB_INTERACTIVE_UNLOCK_LOGON *)nativeSerialization;
 
-				result = S_OK;                                                                                     								
+				result = S_OK;
 			}
 		}
 	}
@@ -210,7 +210,7 @@ HRESULT CProvider::SetSerialization(
 HRESULT CProvider::Advise(
 	__in ICredentialProviderEvents* pcpe,
 	__in UINT_PTR upAdviseContext
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -251,7 +251,7 @@ HRESULT CProvider::UnAdvise()
 // using the field descriptors.
 HRESULT CProvider::GetFieldDescriptorCount(
 	__out DWORD* pdwCount
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -264,7 +264,7 @@ HRESULT CProvider::GetFieldDescriptorCount(
 HRESULT CProvider::GetFieldDescriptorAt(
 	__in DWORD dwIndex,
 	__deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd
-	)
+)
 {
 	//DebugPrintLn(__FUNCTION__);
 
@@ -295,9 +295,9 @@ HRESULT CProvider::GetFieldDescriptorAt(
 // for authentication without showing any further UI.
 HRESULT CProvider::GetCredentialCount(
 	__out DWORD* pdwCount,
-	__out_range(<, *pdwCount) DWORD* pdwDefault,
+	__out_range(< , *pdwCount) DWORD* pdwDefault,
 	__out BOOL* pbAutoLogonWithDefault
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -324,7 +324,7 @@ HRESULT CProvider::GetCredentialCount(
 HRESULT CProvider::GetCredentialAt(
 	__in DWORD dwIndex,
 	__deref_out ICredentialProviderCredential** ppcpc
-	)
+)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -394,8 +394,6 @@ HRESULT CProvider::GetCredentialAt(
 		DebugPrintLn("Initializing CCredential");
 
 		_pccCredential = new CCredential();
-
-		//hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario], s_rgCredProvBaseFieldStatePairsFor[Data::Provider::Get()->usage_scenario], serializedUser, serializedDomain, serializedPass);
 		hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario], General::Fields::GetFieldStatePairFor(Data::Provider::Get()->usage_scenario), serializedUser, serializedDomain, serializedPass);
 	}
 	else

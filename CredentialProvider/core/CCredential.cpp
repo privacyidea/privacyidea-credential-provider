@@ -124,7 +124,6 @@ HRESULT CCredential::Initialize(
 	{
 		//DebugPrintLn("Copy field #:");
 		//DebugPrintLn(i + 1);
-
 		_rgFieldStatePairs[i] = rgfsp[i];
 		hr = FieldDescriptorCopy(rgcpfd[i], &_rgCredProvFieldDescriptors[i]);
 
@@ -190,6 +189,202 @@ HRESULT CCredential::UnAdvise()
 	return S_OK;
 }
 
+// Callback for the DialogBox
+INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	wchar_t lpszUsername[64];
+	wchar_t lpszPassword_old[64];
+	wchar_t lpszPassword_new[64];
+	wchar_t lpszPassword_new_rep[64];
+	WORD cchPassword_new, cchPassword_new_rep, cchPassword_old, cchUsername;
+
+	switch (message)
+	{
+	case WM_INITDIALOG: {
+		//DebugPrintLn(GetUserDefaultUILanguage());
+		
+		// Get the bitmap to display on top of the dialog (same as the logo of the normal tile)
+		static HBITMAP hbmp;
+		// Check if custom bitmap was set and load that
+		if (NOT_EMPTY(Configuration::Get()->v1_bitmap_path))
+		{
+			DWORD dwAttrib = GetFileAttributesA(Configuration::Get()->v1_bitmap_path);
+			if (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+			{
+				hbmp = (HBITMAP)LoadImageA(NULL, Configuration::Get()->v1_bitmap_path, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+				if (hbmp == NULL)
+				{
+					DebugPrintLn(GetLastError());
+				}
+			}
+		}else {
+			// Load the default otherwise
+			hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
+		}
+		// Send the bitmap to the picture control
+		SendDlgItemMessage(hDlg, IDC_PICTURE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hbmp);
+
+
+		// Languagecode for German(Germany) is 1031
+		if (GetUserDefaultUILanguage() == 1031) {
+			// Set hints for inputs
+			SendDlgItemMessage(hDlg, IDC_EDIT_USERNAME, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Benutzer");
+			SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"altes Passwort");
+			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"neues Passwort");
+			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"neues Passwort wiederholen");
+			SetWindowText(hDlg, L"Passwort ändern");
+		}
+		else {
+			// Set hints for inputs
+			SendDlgItemMessage(hDlg, IDC_EDIT_USERNAME, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Username");
+			SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Old Password");
+			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"New Password");
+			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Retype New Password");
+			SetWindowText(hDlg, L"Change Password");
+		}
+		// Set focus to old password edit
+		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, WM_SETFOCUS, 0, 0);
+		// Prefill the username & old password //TODO data of old password is missing here
+		SetDlgItemText(hDlg, IDC_EDIT_USERNAME, Data::Gui::Get()->user_name);
+		//SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
+
+		// Set password character to " * "
+		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETPASSWORDCHAR, (WPARAM) '*', (LPARAM)0);
+		SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_SETPASSWORDCHAR, (WPARAM) '*', (LPARAM)0);
+		SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_SETPASSWORDCHAR, (WPARAM) '*', (LPARAM)0);
+
+		// Set the default push button to "Cancel." 
+		SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDCANCEL, (LPARAM)0);
+
+		// Center the window
+		RECT rc, rcDlg, rcOwner;
+		HWND hwndOwner;
+		hwndOwner = GetDesktopWindow();
+
+		GetWindowRect(hwndOwner, &rcOwner);
+		GetWindowRect(hDlg, &rcDlg);
+		CopyRect(&rc, &rcOwner);
+
+		// Offset the owner and dialog box rectangles so that right and bottom values represent the width and height, and then offset the owner again 
+		// to discard space taken up by the dialog box. 
+		OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
+		OffsetRect(&rc, -rc.left, -rc.top);
+		OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
+
+		// The new position is the sum of half the remaining space and the owner's original position. 
+		SetWindowPos(hDlg,
+			HWND_TOP,
+			rcOwner.left + (rc.right / 2),
+			rcOwner.top + (rc.bottom / 2),
+			0, 0,          // Ignores size arguments. 
+			SWP_NOSIZE);
+
+		return TRUE;
+	}
+	case WM_COMMAND: {
+		// Set the default push button to "OK" when the user enters text. 
+		if (HIWORD(wParam) == EN_CHANGE &&
+			LOWORD(wParam) == IDC_EDIT_NEW_PW)
+		{
+			SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDOK, (LPARAM)0);
+		}
+		switch (wParam)
+		{
+		case IDOK: {	// User pressed OK - evaluate the inputs
+
+			// Get number of characters for each input
+			cchUsername = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_USERNAME, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			cchPassword_old = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			cchPassword_new = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			cchPassword_new_rep = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+
+			if (cchPassword_new >= 64 || cchPassword_new_rep >= 64 || cchPassword_old >= 64)
+			{
+				if (GetUserDefaultUILanguage() == 1031) {
+					MessageBox(hDlg, L"Passwort zu lang.", L"Fehler", MB_OK);
+				}
+				else {
+					MessageBox(hDlg, L"Password too long.", L"Error", MB_OK);
+				}
+				return FALSE;
+			}
+			else if (cchPassword_new == 0 || cchPassword_new_rep == 0 || cchPassword_old == 0 || cchUsername == 0)
+			{
+				if (GetUserDefaultUILanguage() == 1031) {
+					MessageBox(hDlg, L"Bitte füllen Sie alle Felder aus.", L"Fehler", MB_OK);
+				}
+				else {
+					MessageBox(hDlg, L"Please fill the form entirely.", L"Error", MB_OK);
+				}
+				return FALSE;
+			}
+
+			// Put the number of characters into first word of buffer. 
+			*((LPWORD)lpszUsername) = cchUsername;
+			*((LPWORD)lpszPassword_old) = cchPassword_old;
+			*((LPWORD)lpszPassword_new) = cchPassword_new;
+			*((LPWORD)lpszPassword_new_rep) = cchPassword_new_rep;
+
+			// Get the characters from line 0 (wparam) into buffer lparam
+			SendDlgItemMessage(hDlg, IDC_EDIT_USERNAME, EM_GETLINE, (WPARAM)0, (LPARAM)lpszUsername);
+			SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword_old);
+			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword_new);
+			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword_new_rep);
+
+			// Null-terminate each string. 
+			lpszUsername[cchUsername] = 0;
+			lpszPassword_old[cchPassword_old] = 0;
+			lpszPassword_new[cchPassword_new] = 0;
+			lpszPassword_new_rep[cchPassword_new_rep] = 0;
+
+			// Compare new passwords
+			if (wcscmp(lpszPassword_new, lpszPassword_new_rep) != 0) {
+				if (GetUserDefaultUILanguage() == 1031) {
+					MessageBox(hDlg, L"Neue Passwörter stimmen nicht überein!", L"Fehler", MB_OK);
+				}
+				else {
+					MessageBox(hDlg, L"New Passwords do not match!", L"Error", MB_OK);
+				}
+				return FALSE;
+			}
+			// copy new password to password for auto-login
+			if(Data::Gui::Get()->ldap_pass || lpszPassword_old)
+				wcscpy_s(Data::Gui::Get()->ldap_pass, lpszPassword_old);
+			copyNewVals(lpszPassword_new);
+
+			// pcpgsr and pcpcs are set in GetSerialization
+			HRESULT	hr = General::Logon::KerberosChangePassword(Hook::Serialization::Get()->pcpgsr, Hook::Serialization::Get()->pcpcs, lpszUsername, lpszPassword_old, lpszPassword_new, NULL);
+
+			if (SUCCEEDED(hr))
+				Hook::Serialization::ChangePasswordSuccessfull();
+			else
+				Hook::Serialization::ChangePasswordFailed();
+
+			EndDialog(hDlg, TRUE);
+			return TRUE;
+		}
+		case IDCANCEL: {
+			EndDialog(hDlg, TRUE);
+			// TODO what if canceled?
+			return TRUE;
+		}
+
+		}
+		return 0;
+	}
+	}
+	return FALSE;
+	UNREFERENCED_PARAMETER(lParam);
+}
+
+HRESULT copyNewVals(wchar_t* val) {
+	if (!val)
+		return E_FAIL;
+
+	wcscpy_s(Data::Gui::Get()->ldap_pass, val);
+	return S_OK;
+}
+
 // LogonUI calls this function when our tile is selected (zoomed).
 // If you simply want fields to show/hide based on the selected state,
 // there's no need to do anything here - you can set that up in the 
@@ -199,19 +394,26 @@ HRESULT CCredential::UnAdvise()
 HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 {
 	DebugPrintLn(__FUNCTION__);
-
 	*pbAutoLogon = FALSE;
+	HRESULT hr = S_OK;
 
-	HRESULT hr = E_FAIL; // fail state, if following hook fails...
+	hr = E_FAIL; // fail state, if following hook fails...
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), CleanUpAndReturn);
 
-	hr = E_ABORT; // fail state, if following hook fails...
-	HOOK_CHECK_CRITICAL(Hook::CredentialHooks::CheckPasswordChanging(this, _pCredProvCredentialEvents, pbAutoLogon), CleanUpAndReturn);
+	// hr = E_ABORT; // fail state, if following hook fails...
+	// this is useless, only to switch Credential->passwordChanged? Duplicate of ChangePasswordSuccessful functionality
+	// HOOK_CHECK_CRITICAL(Hook::CredentialHooks::CheckPasswordChanging(this, _pCredProvCredentialEvents, pbAutoLogon), CleanUpAndReturn);
 
 	hr = E_FAIL; // fail state, if following hook fails...
 	HOOK_CHECK_CRITICAL(Hook::CredentialHooks::CheckEndpointObserver(pbAutoLogon), CleanUpAndReturn);
 
 	hr = S_OK; // success state
+
+	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
+	// if passwordChanged, we want to auto-login
+	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) {
+		*pbAutoLogon = true;
+	}
 
 CleanUpAndReturn:
 	Hook::Serialization::EndpointDeinitialization();
@@ -395,8 +597,7 @@ HRESULT CCredential::GetComboBoxValueCount(
 HRESULT CCredential::GetComboBoxValueAt(
 	__in DWORD dwFieldID,
 	__in DWORD dwItem,
-	__deref_out PWSTR* ppwszItem
-)
+	__deref_out PWSTR* ppwszItem)
 {
 	DebugPrintLn(__FUNCTION__);
 
@@ -500,6 +701,7 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 	UNREFERENCED_PARAMETER(dwFieldID);
 	return E_NOTIMPL;
 }
+
 //------ end of methods for controls we don't have in our tile ----//
 
 // Collect the username and password into a serialized credential for the correct usage scenario 
@@ -534,6 +736,37 @@ HRESULT CCredential::GetSerialization(
 	Hook::Serialization::Get()->num_field_strings = General::Fields::GetCurrentNumFields();
 	/////
 
+	/// new
+	if (Data::Credential::Get()->passwordMustChange)
+	{
+		// open dialog for old/new password
+		HWND hwndOwner = nullptr;
+		HRESULT res;
+		if (_pCredProvCredentialEvents) {
+			res = _pCredProvCredentialEvents->OnCreatingWindow(&hwndOwner);
+		}
+
+		if (SUCCEEDED(res)) {
+			::DialogBox(HINST_THISDLL,					// application instance
+				MAKEINTRESOURCE(IDD_DIALOG1),			// dialog box resource
+				hwndOwner,								// owner window
+				PasswordChangeProc						// dialog box window procedure
+			);
+			Data::General::Get()->bypassEndpoint = true;
+			Data::General::Get()->bypassDataDeinitialization = true;
+			Data::General::Get()->bypassDataInitialization = true;
+			goto CleanUpAndReturn;
+		}
+
+	}
+
+	if (Data::Credential::Get()->passwordChanged) {
+		Data::General::Get()->bypassEndpoint = true;
+		Data::General::Get()->bypassDataDeinitialization = true;
+		Data::General::Get()->bypassDataInitialization = true;
+	}
+	///
+
 	if (Data::Credential::Get()->endpointStatus == E_NOT_SET)
 	{
 		HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), CleanUpAndReturn);
@@ -562,10 +795,11 @@ HRESULT CCredential::GetSerialization(
 	//*/
 
 	// Password changed
+	/*
 	if (Data::Provider::Get()->usage_scenario == CPUS_CHANGE_PASSWORD || Data::Credential::Get()->passwordMustChange)
 	{
 		if (StrCmp(Data::Gui::Get()->ldap_pass_new_1, Data::Gui::Get()->ldap_pass_new_2) == 0)
-			hr = General::Logon::KerberosChangePassword(pcpgsr, pcpcs, Data::Gui::Get()->user_name, Data::Gui::Get()->ldap_pass, Data::Gui::Get()->ldap_pass_new_1, Data::Gui::Get()->domain_name);
+			hr = General::Logon::KerberosChangePassword(pcpgsr, pcpcs, Data::Gui::Get()->user_name, Data::Gui::Get()->ldap_pass, Data::Gui::Get()->ldap_pass_new_1, Data::Credential::Get()->domain_name);
 		else
 			hr = E_NOT_VALID_STATE;
 
@@ -576,10 +810,11 @@ HRESULT CCredential::GetSerialization(
 
 		retVal = S_FALSE;
 		goto CleanUpAndReturn;
-	}
+	}*/
 
 	if (SUCCEEDED(Data::Credential::Get()->endpointStatus) || Data::General::Get()->bypassEndpoint == true)
 	{
+		// LOG IN
 		HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointCallSuccessfull(), CleanUpAndReturn);
 
 		if (Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
@@ -589,6 +824,7 @@ HRESULT CCredential::GetSerialization(
 
 		if (SUCCEEDED(hr))
 		{
+			if (Data::Credential::Get()->passwordChanged) { Data::Credential::Get()->passwordChanged = false; }
 			HOOK_CHECK_CRITICAL(Hook::Serialization::KerberosCallSuccessfull(), CleanUpAndReturn);
 		}
 		else
@@ -601,6 +837,7 @@ HRESULT CCredential::GetSerialization(
 	}
 	else if (Data::Credential::Get()->endpointStatus == ENDPOINT_AUTH_CONTINUE)
 	{
+		// 2 STEP CONTINUE etc
 		HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointCallContinue(), CleanUpAndReturn);
 	}
 	else
@@ -622,6 +859,7 @@ HRESULT CCredential::GetSerialization(
 	}
 
 	goto CleanUpAndReturn;
+
 CleanUpAndReturn:
 	Hook::Serialization::DataDeinitialization();
 	Hook::Serialization::EndpointDeinitialization();
@@ -639,7 +877,6 @@ CleanUpAndReturn:
 HRESULT CCredential::Connect(__in IQueryContinueWithStatus *pqcws)
 {
 	DebugPrintLn(__FUNCTION__);
-
 	Data::Credential::Get()->pqcws = pqcws;
 
 	/////
@@ -700,13 +937,28 @@ HRESULT CCredential::ReportResult(
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
 	Data::Credential::Get()->passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
-	
+
 	if (Data::Credential::Get()->passwordMustChange) {
 		DebugPrintLn("PASSWORD MUST CHANGE");
+		//if(Data::Gui::Get()->ldap_pass_new_1)
+		//	DebugPrintLn(Data::Gui::Get()->ldap_pass_new_1);
+
+
+		//Data::General::Get()->bypassDataInitialization = true;
+		//Data::General::Get()->bypassEndpoint = true;
+		//Data::General::Get()->bypassDataDeinitialization = true;
 		//Hook::CredentialHooks::CheckPasswordChanging(this,)
-		Data::Provider::Get()->usage_scenario = CPUS_CHANGE_PASSWORD;
+		//Data::Provider::Get()->usage_scenario = CPUS_CHANGE_PASSWORD;
+
+		//this->_rgCredProvFieldDescriptors = s_rgScenarioChangePasswordCredProvFieldDescriptors;
+		//this._rgFieldStatePairs = s_rgScenarioChangePasswordFieldStatePairs;
+		//this->_rgFieldStrings = s_rgScenarioChangePasswordFieldInitializors;
+
+		//HRESULT res;
 		//Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
-		return S_OK;
+		//res = Initialize(s_rgCredProvFieldDescriptorsFor[CPUS_CHANGE_PASSWORD], General::Fields::GetFieldStatePairFor(CPUS_CHANGE_PASSWORD), Data::Credential::Get()->user_name, Data::Credential::Get()->domain_name, L"");
+
+		return E_NOTIMPL;
 	}
 	if (ntsStatus == STATUS_LOGON_FAILURE) {
 		Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);

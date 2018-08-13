@@ -8,7 +8,7 @@
 #include "helper.h"
 
 namespace Data
-{
+{	
 	namespace Gui
 	{
 		struct GUI
@@ -56,7 +56,7 @@ namespace Data
 			PWSTR user_name;
 			PWSTR domain_name;
 			PWSTR password;
-
+			
 			IQueryContinueWithStatus* pqcws = NULL;
 			bool userCanceled = false;
 			HRESULT endpointStatus = E_FAIL;
