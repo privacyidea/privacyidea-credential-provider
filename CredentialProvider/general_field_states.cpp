@@ -13,7 +13,6 @@ namespace General
 				)
 			{
 				HRESULT hr = S_OK;
-
 				switch (scenario)
 				{
 				case SCENARIO_LOGON_BASE:
@@ -76,8 +75,6 @@ namespace General
 
 		const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus)
 		{
-			
-
 			//// CONCRETE
 			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
 			{

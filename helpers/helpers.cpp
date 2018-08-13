@@ -54,7 +54,6 @@ HRESULT FieldDescriptorCoAllocCopy(
 		else if (rcpfd.pszLabel)
 		{
 			hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
-
 		}
         else
         {

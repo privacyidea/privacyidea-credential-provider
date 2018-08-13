@@ -13,7 +13,7 @@ namespace General
 			__in PWSTR username,
 			__in PWSTR password,
 			__in PWSTR domain
-			)
+		)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -92,7 +92,7 @@ namespace General
 			__in PWSTR password_old,
 			__in PWSTR password_new,
 			__in PWSTR domain
-			)
+		)
 		{
 			KERB_CHANGEPASSWORD_REQUEST kcpr;
 			ZeroMemory(&kcpr, sizeof(kcpr));
@@ -103,7 +103,7 @@ namespace General
 			DWORD cch = ARRAYSIZE(wsz);
 			BOOL  bGetCompName = true;
 
-			if (EMPTY(domain))
+			if (!EMPTY(domain))
 				wcscpy_s(wsz, ARRAYSIZE(wsz), domain);
 			else
 				bGetCompName = GetComputerNameW(wsz, &cch);
@@ -155,7 +155,7 @@ namespace General
 			__in PWSTR username,
 			__in PWSTR password,
 			__in PWSTR domain
-			)
+		)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -234,7 +234,7 @@ namespace General
 			__in ICredentialProviderCredentialEvents* pCPCE,
 			__in_opt PWSTR large_text,
 			__in_opt PWSTR small_text
-			)
+		)
 		{
 			SetScenario(self, pCPCE, SCENARIO_NO_CHANGE, large_text, small_text);
 		}
@@ -243,7 +243,7 @@ namespace General
 			__in ICredentialProviderCredential* self,
 			__in ICredentialProviderCredentialEvents* pCPCE,
 			__in SCENARIO scenario
-			)
+		)
 		{
 			SetScenario(self, pCPCE, scenario, NULL, NULL);
 		}
@@ -254,30 +254,21 @@ namespace General
 			__in SCENARIO scenario,
 			__in_opt PWSTR large_text,
 			__in_opt PWSTR small_text
-			)
+		)
 		{
 			DebugPrintLn(__FUNCTION__);
 
 			HRESULT hr = S_OK;
-			if (Data::Credential::Get()->passwordMustChange) {
-				hr = Helpers::SetScenarioBasedFieldStates(self, pCPCE, SCENARIO_CHANGE_PASSWORD);
-				DebugPrintLn("SetScenarioBasedFieldStates CHANGE_PASSWORD");
-			}
-			else {
-				hr = Helpers::SetScenarioBasedFieldStates(self, pCPCE, scenario);
-			}
+			hr = Helpers::SetScenarioBasedFieldStates(self, pCPCE, scenario);
 			
+
 			int hide_fullname = Configuration::Get()->hide_fullname;
-			
+
 			// Set text fields separately
 			int largeTextFieldId = 0, smallTextFieldId = 0;
-			if (Data::Credential::Get()->passwordMustChange) {
-				hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, CPUS_CHANGE_PASSWORD);
-			}
-			else {
-				hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Data::Provider::Get()->usage_scenario);
-			}
-
+			
+			hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Data::Provider::Get()->usage_scenario);
+			
 			if (large_text)
 			{
 				DebugPrintLn("Large Text:");
@@ -309,7 +300,7 @@ namespace General
 			__in ICredentialProviderCredential* self,
 			__in ICredentialProviderCredentialEvents* pCPCE,
 			__in const FIELD_STATE_PAIR* pFSP
-			) {
+		) {
 			DebugPrintLn(__FUNCTION__);
 
 			HRESULT hr = S_OK;
@@ -388,8 +379,9 @@ namespace General
 					break;
 				}
 				*/
-
+				
 				numFields = s_rgCredProvNumFieldsFor[Data::Provider::Get()->usage_scenario];
+				
 			}
 
 			//DebugPrintLn(numFields);
@@ -397,7 +389,7 @@ namespace General
 			return numFields;
 		}
 
-		#pragma warning( disable : 4456 )
+#pragma warning( disable : 4456 )
 		HRESULT InitializeField(LPWSTR *rgFieldStrings, const FIELD_INITIALIZOR initializor, DWORD field_index)
 		{
 			HRESULT hr = E_INVALIDARG;
@@ -449,7 +441,7 @@ namespace General
 				{
 					//DebugPrintLn("......Configuration::Get()->login_text");
 					wchar_t value[sizeof(Configuration::Get()->login_text)];
-					
+
 					Helper::CharToWideChar(Configuration::Get()->login_text, sizeof(Configuration::Get()->login_text), value);
 					//DebugPrintLn(value);
 					hr = SHStrDupW(value, &rgFieldStrings[field_index]);
@@ -483,14 +475,14 @@ namespace General
 						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
 				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname && !hide_fullname) {
-						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+					hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
 				}
 				else if (hide_fullname) {
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 				}
 				else
 					hr = SHStrDupW(value, &rgFieldStrings[field_index]);
-				DebugPrintLn(rgFieldStrings[field_index]);
+				//DebugPrintLn(rgFieldStrings[field_index]);
 				break;
 			case FIT_NONE:
 				//DebugPrintLn("...FIT_NONE");

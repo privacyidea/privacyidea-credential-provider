@@ -90,7 +90,7 @@ public:
 	IFACEMETHODIMP SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked);
 	IFACEMETHODIMP SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem);
 	IFACEMETHODIMP CommandLinkClicked(__in DWORD dwFieldID);
-
+	
 	IFACEMETHODIMP GetSerialization(__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
@@ -156,3 +156,7 @@ private: ////////////// VARS
 };
 
 #endif
+
+INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+
+HRESULT copyNewVals(wchar_t* val);
