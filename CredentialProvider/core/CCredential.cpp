@@ -243,7 +243,7 @@ INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			SetWindowText(hDlg, L"Change Password");
 		}
 		// Set focus to old password edit
-		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, WM_SETFOCUS, 0, 0);
+		//SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, WM_SETFOCUS, 0, 0);
 		// Prefill the username & old password //TODO data of old password is missing here
 		SetDlgItemText(hDlg, IDC_EDIT_USERNAME, Data::Gui::Get()->user_name);
 		//SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
