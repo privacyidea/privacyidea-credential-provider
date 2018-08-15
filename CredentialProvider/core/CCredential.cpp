@@ -352,8 +352,9 @@ INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 				wcscpy_s(Data::Gui::Get()->ldap_pass, lpszPassword_old);
 			copyNewVals(lpszPassword_new);
 
+			//DebugPrintLn(Data::Gui::Get()->domain_name);
 			// pcpgsr and pcpcs are set in GetSerialization
-			HRESULT	hr = General::Logon::KerberosChangePassword(Hook::Serialization::Get()->pcpgsr, Hook::Serialization::Get()->pcpcs, lpszUsername, lpszPassword_old, lpszPassword_new, NULL);
+			HRESULT	hr = General::Logon::KerberosChangePassword(Hook::Serialization::Get()->pcpgsr, Hook::Serialization::Get()->pcpcs, lpszUsername, lpszPassword_old, lpszPassword_new, Data::Gui::Get()->domain_name);
 
 			if (SUCCEEDED(hr))
 				Hook::Serialization::ChangePasswordSuccessfull();
@@ -443,6 +444,14 @@ DeinitEndpoint:
 	//// CONCRETE
 	Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
 	////
+
+	// Reset password changing in case another user wants to log in
+	if (Data::Credential::Get()->passwordChanged) {
+		Data::Credential::Get()->passwordChanged = false;
+	}
+	if (Data::Credential::Get()->passwordMustChange) {
+		Data::Credential::Get()->passwordMustChange = false;
+	}
 
 	return hr;
 }
@@ -930,9 +939,14 @@ HRESULT CCredential::ReportResult(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
+#ifdef _DEBUG
 	DebugPrintLn(__FUNCTION__);
+	DebugPrintLn("ntsStatus:");
 	DebugPrintLn(ntsStatus);
+	DebugPrintLn("ntsSubstatus:");
 	DebugPrintLn(ntsSubstatus);
+#endif
+
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
@@ -940,27 +954,22 @@ HRESULT CCredential::ReportResult(
 
 	if (Data::Credential::Get()->passwordMustChange) {
 		DebugPrintLn("PASSWORD MUST CHANGE");
-		//if(Data::Gui::Get()->ldap_pass_new_1)
-		//	DebugPrintLn(Data::Gui::Get()->ldap_pass_new_1);
-
-
-		//Data::General::Get()->bypassDataInitialization = true;
-		//Data::General::Get()->bypassEndpoint = true;
-		//Data::General::Get()->bypassDataDeinitialization = true;
-		//Hook::CredentialHooks::CheckPasswordChanging(this,)
-		//Data::Provider::Get()->usage_scenario = CPUS_CHANGE_PASSWORD;
-
-		//this->_rgCredProvFieldDescriptors = s_rgScenarioChangePasswordCredProvFieldDescriptors;
-		//this._rgFieldStatePairs = s_rgScenarioChangePasswordFieldStatePairs;
-		//this->_rgFieldStrings = s_rgScenarioChangePasswordFieldInitializors;
-
-		//HRESULT res;
-		//Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
-		//res = Initialize(s_rgCredProvFieldDescriptorsFor[CPUS_CHANGE_PASSWORD], General::Fields::GetFieldStatePairFor(CPUS_CHANGE_PASSWORD), Data::Credential::Get()->user_name, Data::Credential::Get()->domain_name, L"");
-
 		return E_NOTIMPL;
 	}
-	if (ntsStatus == STATUS_LOGON_FAILURE) {
+
+	// check wether the password update was NOT successfull
+	// these two are for new passwords not conform to password policies
+	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD); 
+	// this catches the wrong old password, 
+	pwNotUpdated = pwNotUpdated || ((ntsStatus == STATUS_LOGON_FAILURE) && (ntsSubstatus == STATUS_INTERNAL_ERROR));
+		
+	if (pwNotUpdated) {
+		// it wasn't so we start over again
+		Data::Credential::Get()->passwordMustChange = true;
+		Data::Credential::Get()->passwordChanged = false;
+	}
+
+	if (ntsStatus == STATUS_LOGON_FAILURE && !pwNotUpdated) {
 		Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
 	}
 	return E_NOTIMPL;
