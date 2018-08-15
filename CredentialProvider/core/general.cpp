@@ -172,14 +172,16 @@ namespace General
 					DWORD size = 0;
 					BYTE* rawbits = NULL;
 
-					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0, domainUsername, password, rawbits, &size))
+					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0, 
+						domainUsername, password, rawbits, &size))
 					{
 						// We received the necessary size, let's allocate some rawbits
 						if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 						{
 							rawbits = (BYTE *)HeapAlloc(GetProcessHeap(), 0, size);
 
-							if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0, domainUsername, password, rawbits, &size))
+							if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
+								domainUsername, password, rawbits, &size))
 							{
 								HeapFree(GetProcessHeap(), 0, rawbits);
 								HeapFree(GetProcessHeap(), 0, domainUsername);
@@ -319,7 +321,8 @@ namespace General
 			return hr;
 		}
 
-		HRESULT Clear(wchar_t* (&field_strings)[MAX_NUM_FIELDS], CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[MAX_NUM_FIELDS], ICredentialProviderCredential* pcpc, ICredentialProviderCredentialEvents* pcpce, char clear)
+		HRESULT Clear(wchar_t* (&field_strings)[MAX_NUM_FIELDS], CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[MAX_NUM_FIELDS],
+						ICredentialProviderCredential* pcpc, ICredentialProviderCredentialEvents* pcpce, char clear)
 		{
 			DebugPrintLn(__FUNCTION__);
 

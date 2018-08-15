@@ -104,10 +104,10 @@ namespace Endpoint
 			wcscpy_s(error, ARRAYSIZE(error), L"There was an error with the servers certificate.");
 			break;
 
-			/*case (int)ENDPOINT_CUSTOM_MESSAGE:
-				wcscpy_s(error, ARRAYSIZE(error), Get()->custom_message);
-				break;
-				*/
+		/*case (int)ENDPOINT_CUSTOM_MESSAGE:
+			wcscpy_s(error, ARRAYSIZE(error), Get()->custom_message);
+			break;
+		*/
 		default:
 			break;
 		}
@@ -172,8 +172,8 @@ namespace Endpoint
 
 		// Do WebAPI call
 		ShowInfoMessage(ENDPOINT_INFO_CALLING_ENDPOINT);
-
-		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct)); // Create an instance of out BufferStruct to accept LCs output
+		// Create an instance of our BufferStruct to accept HttpRequest response
+		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct)); 
 		output->buffer = NULL;
 		output->size = 0;
 
