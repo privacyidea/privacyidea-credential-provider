@@ -117,8 +117,6 @@ HRESULT CCredential::Initialize(
 	// !!!!!!!!!!!!!!!!!!!!
 	// !!!!!!!!!!!!!!!!!!!!
 
-	//_rgCredProvFieldDescriptors = (CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR*)malloc(sizeof(CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR) * General::Fields::GetCurrentNumFields());
-
 	//for (DWORD i = 0; SUCCEEDED(hr) && i < ARRAYSIZE(_rgCredProvFieldDescriptors); i++)
 	for (DWORD i = 0; SUCCEEDED(hr) && i < General::Fields::GetCurrentNumFields(); i++)
 	{
@@ -202,7 +200,7 @@ INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 	{
 	case WM_INITDIALOG: {
 		//DebugPrintLn(GetUserDefaultUILanguage());
-		
+
 		// Get the bitmap to display on top of the dialog (same as the logo of the normal tile)
 		static HBITMAP hbmp;
 		// Check if custom bitmap was set and load that
@@ -217,7 +215,8 @@ INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 					DebugPrintLn(GetLastError());
 				}
 			}
-		}else {
+		}
+		else {
 			// Load the default otherwise
 			hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
 		}
@@ -265,8 +264,8 @@ INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		GetWindowRect(hDlg, &rcDlg);
 		CopyRect(&rc, &rcOwner);
 
-		// Offset the owner and dialog box rectangles so that right and bottom values represent the width and height, and then offset the owner again 
-		// to discard space taken up by the dialog box. 
+		// Offset the owner and dialog box rectangles so that right and bottom values represent the width and height
+		// then offset the owner again to discard space taken up by the dialog box. 
 		OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
 		OffsetRect(&rc, -rc.left, -rc.top);
 		OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
@@ -348,24 +347,36 @@ INT_PTR CALLBACK PasswordChangeProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 				return FALSE;
 			}
 			// copy new password to password for auto-login
-			if(Data::Gui::Get()->ldap_pass || lpszPassword_old)
+			if (Data::Gui::Get()->ldap_pass || lpszPassword_old)
 				wcscpy_s(Data::Gui::Get()->ldap_pass, lpszPassword_old);
 			copyNewVals(lpszPassword_new);
 
+			//DebugPrintLn(Data::Gui::Get()->domain_name);
 			// pcpgsr and pcpcs are set in GetSerialization
-			HRESULT	hr = General::Logon::KerberosChangePassword(Hook::Serialization::Get()->pcpgsr, Hook::Serialization::Get()->pcpcs, lpszUsername, lpszPassword_old, lpszPassword_new, NULL);
+			HRESULT	hr = General::Logon::KerberosChangePassword(Hook::Serialization::Get()->pcpgsr, Hook::Serialization::Get()->pcpcs, lpszUsername,
+																lpszPassword_old, lpszPassword_new, Data::Gui::Get()->domain_name);
 
 			if (SUCCEEDED(hr))
 				Hook::Serialization::ChangePasswordSuccessfull();
 			else
 				Hook::Serialization::ChangePasswordFailed();
+			
+			// setup for autologin after changing password
+			Data::General::Get()->bypassEndpoint = true;
+			Data::General::Get()->bypassDataDeinitialization = true;
+			Data::General::Get()->bypassDataInitialization = true;
 
 			EndDialog(hDlg, TRUE);
 			return TRUE;
 		}
 		case IDCANCEL: {
+			// TODO what if canceled? -> reset everything
+			Data::Credential::Get()->passwordMustChange = false;
+			Data::Credential::Get()->passwordChanged = false;
+			Data::General::Get()->bypassDataDeinitialization = false;
+			Data::General::Get()->bypassEndpoint = false;
+			Data::General::Get()->bypassDataInitialization = false;
 			EndDialog(hDlg, TRUE);
-			// TODO what if canceled?
 			return TRUE;
 		}
 
@@ -443,6 +454,14 @@ DeinitEndpoint:
 	//// CONCRETE
 	Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
 	////
+
+	// Reset password changing in case another user wants to log in
+	if (Data::Credential::Get()->passwordChanged) {
+		Data::Credential::Get()->passwordChanged = false;
+	}
+	if (Data::Credential::Get()->passwordMustChange) {
+		Data::Credential::Get()->passwordMustChange = false;
+	}
 
 	return hr;
 }
@@ -752,9 +771,7 @@ HRESULT CCredential::GetSerialization(
 				hwndOwner,								// owner window
 				PasswordChangeProc						// dialog box window procedure
 			);
-			Data::General::Get()->bypassEndpoint = true;
-			Data::General::Get()->bypassDataDeinitialization = true;
-			Data::General::Get()->bypassDataInitialization = true;
+			
 			goto CleanUpAndReturn;
 		}
 
@@ -818,9 +835,11 @@ HRESULT CCredential::GetSerialization(
 		HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointCallSuccessfull(), CleanUpAndReturn);
 
 		if (Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
-			hr = General::Logon::CredPackAuthentication(pcpgsr, pcpcs, Data::Provider::Get()->usage_scenario, Data::Gui::Get()->user_name, Data::Gui::Get()->ldap_pass, Data::Gui::Get()->domain_name);
+			hr = General::Logon::CredPackAuthentication(pcpgsr, pcpcs, Data::Provider::Get()->usage_scenario, Data::Gui::Get()->user_name, 
+														Data::Gui::Get()->ldap_pass, Data::Gui::Get()->domain_name);
 		else
-			hr = General::Logon::KerberosLogon(pcpgsr, pcpcs, Data::Provider::Get()->usage_scenario, Data::Gui::Get()->user_name, Data::Gui::Get()->ldap_pass, Data::Gui::Get()->domain_name);
+			hr = General::Logon::KerberosLogon(pcpgsr, pcpcs, Data::Provider::Get()->usage_scenario, Data::Gui::Get()->user_name,
+												Data::Gui::Get()->ldap_pass, Data::Gui::Get()->domain_name);
 
 		if (SUCCEEDED(hr))
 		{
@@ -930,9 +949,14 @@ HRESULT CCredential::ReportResult(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
+#ifdef _DEBUG
 	DebugPrintLn(__FUNCTION__);
+	DebugPrintLn("ntsStatus:");
 	DebugPrintLn(ntsStatus);
+	DebugPrintLn("ntsSubstatus:");
 	DebugPrintLn(ntsSubstatus);
+#endif
+
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
@@ -940,27 +964,22 @@ HRESULT CCredential::ReportResult(
 
 	if (Data::Credential::Get()->passwordMustChange) {
 		DebugPrintLn("PASSWORD MUST CHANGE");
-		//if(Data::Gui::Get()->ldap_pass_new_1)
-		//	DebugPrintLn(Data::Gui::Get()->ldap_pass_new_1);
-
-
-		//Data::General::Get()->bypassDataInitialization = true;
-		//Data::General::Get()->bypassEndpoint = true;
-		//Data::General::Get()->bypassDataDeinitialization = true;
-		//Hook::CredentialHooks::CheckPasswordChanging(this,)
-		//Data::Provider::Get()->usage_scenario = CPUS_CHANGE_PASSWORD;
-
-		//this->_rgCredProvFieldDescriptors = s_rgScenarioChangePasswordCredProvFieldDescriptors;
-		//this._rgFieldStatePairs = s_rgScenarioChangePasswordFieldStatePairs;
-		//this->_rgFieldStrings = s_rgScenarioChangePasswordFieldInitializors;
-
-		//HRESULT res;
-		//Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
-		//res = Initialize(s_rgCredProvFieldDescriptorsFor[CPUS_CHANGE_PASSWORD], General::Fields::GetFieldStatePairFor(CPUS_CHANGE_PASSWORD), Data::Credential::Get()->user_name, Data::Credential::Get()->domain_name, L"");
-
 		return E_NOTIMPL;
 	}
-	if (ntsStatus == STATUS_LOGON_FAILURE) {
+
+	// check wether the password update was NOT successfull
+	// these two are for new passwords not conform to password policies
+	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD);
+	// this catches the wrong old password, 
+	pwNotUpdated = pwNotUpdated || ((ntsStatus == STATUS_LOGON_FAILURE) && (ntsSubstatus == STATUS_INTERNAL_ERROR));
+
+	if (pwNotUpdated) {
+		// it wasn't so we start over again
+		Data::Credential::Get()->passwordMustChange = true;
+		Data::Credential::Get()->passwordChanged = false;
+	}
+
+	if (ntsStatus == STATUS_LOGON_FAILURE && !pwNotUpdated) {
 		Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
 	}
 	return E_NOTIMPL;

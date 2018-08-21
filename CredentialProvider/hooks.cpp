@@ -141,7 +141,8 @@ namespace Hook
 					if (EMPTY(Data::Gui::Get()->domain_name) && NOT_EMPTY(Data::Credential::Get()->domain_name))
 					{
 						DebugPrintLn("Loading domainname from external credential, because not provided in GUI");
-						wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name); // user's choice has always precedence
+						// user's choice has always precedence
+						wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
 					}
 				}
 
@@ -187,7 +188,8 @@ namespace Hook
 				if (EMPTY(Data::Gui::Get()->domain_name) && NOT_EMPTY(Data::Credential::Get()->domain_name))
 				{
 					DebugPrintLn("Loading domainname from external credential, because not provided in GUI");
-					wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name); // user's choice has always precedence
+					// user's choice has always precedence
+					wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name); 
 				}
 				//}
 
@@ -325,7 +327,8 @@ namespace Hook
 
 			if (big)
 			{
-				swprintf_s(instruction_message, sizeof(instruction_message) / sizeof(wchar_t), L"The endpoint requires further interaction on your side. Code: %X\n\n%s", Endpoint::GetLastErrorCode(), endpoint_instruction_msg);
+				swprintf_s(instruction_message, sizeof(instruction_message) / sizeof(wchar_t), L"The endpoint requires further interaction on your side. Code: %X\n\n%s",
+							Endpoint::GetLastErrorCode(), endpoint_instruction_msg);
 				SHStrDupW(instruction_message, Hook::Serialization::Get()->status_text);
 
 				*Hook::Serialization::Get()->status_icon = CPSI_SUCCESS;
@@ -336,7 +339,8 @@ namespace Hook
 				//Data::General::Get()->startEndpointObserver = true;
 				Data::General::Get()->clearFields = false;
 				/////
-				General::Fields::SetScenario(Hook::Serialization::Get()->pCredProvCredential, Hook::Serialization::Get()->pCredProvCredentialEvents, General::Fields::SCENARIO_SECOND_STEP, NULL, endpoint_instruction_msg);
+				General::Fields::SetScenario(Hook::Serialization::Get()->pCredProvCredential, Hook::Serialization::Get()->pCredProvCredentialEvents,
+											 General::Fields::SCENARIO_SECOND_STEP, NULL, endpoint_instruction_msg);
 			}
 
 			return S_OK;
@@ -593,7 +597,8 @@ namespace Hook
 			return hr;
 		}
 
-		HRESULT SetComboBoxSelectedValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, DWORD dwFieldID, DWORD dwSelectedItem, DWORD &dwSelectedItemBuffer)
+		HRESULT SetComboBoxSelectedValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents,
+										 DWORD dwFieldID, DWORD dwSelectedItem, DWORD &dwSelectedItemBuffer)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -612,7 +617,8 @@ namespace Hook
 			return hr;
 		}
 
-		HRESULT GetCheckboxValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, wchar_t **rgFieldStrings, DWORD dwFieldID, BOOL *&pbChecked, PWSTR *&ppwszLabel)
+		HRESULT GetCheckboxValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, wchar_t **rgFieldStrings,
+								 DWORD dwFieldID, BOOL *&pbChecked, PWSTR *&ppwszLabel)
 		{
 			DebugPrintLn(__FUNCTION__);
 

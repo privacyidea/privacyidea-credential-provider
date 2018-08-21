@@ -146,7 +146,8 @@ HRESULT CProvider::SetSerialization(
 	{
 		DebugPrintLn("CPUS_CREDUI");
 
-		if (((Data::Provider::Get()->credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (Data::Provider::Get()->credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY)) && authPackage != pcpcs->ulAuthenticationPackage)
+		if (((Data::Provider::Get()->credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (Data::Provider::Get()->credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY))
+				&& authPackage != pcpcs->ulAuthenticationPackage)
 		{
 			DebugPrintLn("authPackage invalid");
 			return E_INVALIDARG;
@@ -273,7 +274,8 @@ HRESULT CProvider::GetFieldDescriptorAt(
 	// Verify dwIndex is a valid field.
 	if ((dwIndex < General::Fields::GetCurrentNumFields()) && ppcpfd)
 	{
-		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario][dwIndex], ppcpfd, Configuration::Get()->otp_text);
+		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario][dwIndex],
+										ppcpfd, Configuration::Get()->otp_text);
 	}
 	else
 	{
@@ -394,7 +396,9 @@ HRESULT CProvider::GetCredentialAt(
 		DebugPrintLn("Initializing CCredential");
 
 		_pccCredential = new CCredential();
-		hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario], General::Fields::GetFieldStatePairFor(Data::Provider::Get()->usage_scenario), serializedUser, serializedDomain, serializedPass);
+		hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario], 
+										General::Fields::GetFieldStatePairFor(Data::Provider::Get()->usage_scenario), serializedUser, 
+										serializedDomain, serializedPass);
 	}
 	else
 	{
