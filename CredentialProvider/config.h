@@ -39,6 +39,8 @@ namespace Configuration
 		int release_log;
 		char path[1024];
 		int custom_port;
+
+		int two_step_send_empty_password;
 	};
 
 	CONFIGURATION*& Get();

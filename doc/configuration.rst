@@ -38,7 +38,9 @@ like  *yourserver.example.com* without any additional path information.
 
 Optional. 
 The path to the privacyIDEA Authentication Service if there is.
-E.g. */path/to/pi*
+E.g. */test/path/pi*
+
+NOTE: The entry */path/to/pi* is a placeholder. If it is read by the Credential Provider, it is treated as an empty entry.
 
 **ssl_ignore_invalid_cn**
 
@@ -50,6 +52,7 @@ Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors ori
 
 **custom_port**
 This entry is not there by default. You can add it to declare a custom port. The value has to be of type *REG_SZ* with the name *custom_port*.
+
 NOTE: By default the port is the default https port, which is 443.
 
 Login behaviour
@@ -66,6 +69,11 @@ Set to ``1`` if the privacyIDEA Credential Provider should ask for the user's OT
 
 Set to ``1`` if the privacyIDEA Credential Provider should send the user's password to the privacyIDEA Authentication Service.
 
+**two_step_send_empty_password**
+
+Set to ``1`` if the privacyIDEA Credential Provider should send an empty password to the privacyIDEA Authentication Service.
+
+NOTE: If both **two_step_send_password** and **two_step_send_empty_password** are set to ``1``, the privacyIDEA Credential Provider will send an empty password to the privacyIDEA Authentication Service.
 
 Customization of the Look and Feel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

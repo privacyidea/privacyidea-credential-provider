@@ -1,27 +1,47 @@
 #include "helper.h"
 #include <chrono>
+#include <ctime>
 
 namespace Helper
 {
 	namespace Debug
 	{
+		void PrintBase(char *file, char *code) 
+		{
+			// Format: [Time] [file:line]  message
+			time_t rawtime;
+			struct tm * timeinfo;
+			char buffer[80];
+			time(&rawtime);
+			timeinfo = localtime(&rawtime);
+			strftime(buffer, sizeof(buffer), "%d-%m-%Y %I:%M:%S", timeinfo);
+
+			OutputDebugStringA("[");
+			WriteLogFile("[");
+			OutputDebugStringA(buffer);
+			WriteLogFile(buffer);
+			OutputDebugStringA("] [");
+			WriteLogFile("] [");
+			OutputDebugStringA(file);
+			WriteLogFile(file);
+			OutputDebugStringA(":");
+			WriteLogFile(":");
+			OutputDebugStringA(code);
+			WriteLogFile(code);
+			OutputDebugStringA("]  ");
+			WriteLogFile("]  ");
+		}
+
 		void PrintLn(const char *message, char *file, int line)
 		{
 			char code[1024];
 			sprintf_s(code, sizeof(code), "%d", line);
 
+			PrintBase(file, code);
 			OutputDebugStringA(message);
 			WriteLogFile(message);
-			OutputDebugStringA(" [at line ");
-			WriteLogFile(" [at line ");
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" in '");
-			WriteLogFile(" in '");
-			OutputDebugStringA(file);
-			WriteLogFile(file);
-			OutputDebugStringA("']\n");
-			WriteLogFile("']\n");
+			OutputDebugStringA("\n");
+			WriteLogFile("\n");
 		}
 
 		void PrintLn(const wchar_t *message, char *file, int line)
@@ -29,60 +49,62 @@ namespace Helper
 			char code[1024];
 			sprintf_s(code, sizeof(code), "%d", line);
 
+			PrintBase(file, code);
 			OutputDebugStringW(message);
 			WriteLogFile(message);
-			OutputDebugStringA(" [at line ");
-			WriteLogFile(" [at line ");
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" in '");
-			WriteLogFile(" in '");
-			OutputDebugStringA(file);
-			WriteLogFile(file);
-			OutputDebugStringA("']\n");
-			WriteLogFile("']\n");
+			OutputDebugStringA("\n");
+			WriteLogFile("\n");
 		}
 
 		void PrintLn(int integer, char *file, int line)
 		{
 			char code[1024];
-			sprintf_s(code, sizeof(code), "Integer: %d (%X)", integer, integer);
-
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" [at line ");
-			WriteLogFile(" [at line ");
-
 			sprintf_s(code, sizeof(code), "%d", line);
-
+			PrintBase(file, code);
+			
+			sprintf_s(code, sizeof(code), "Integer: %d (%X)", integer, integer);
 			OutputDebugStringA(code);
 			WriteLogFile(code);
-			OutputDebugStringA(" in '");
-			WriteLogFile(" in '");
-			OutputDebugStringA(file);
-			WriteLogFile(file);
-			OutputDebugStringA("']\n");
-			WriteLogFile("']\n");
+			OutputDebugStringA("\n");
+			WriteLogFile("\n");
 		}
 
 		void WriteLogFile(const char* szString)
 		{
 			FILE* pFile;
+#ifdef _DEBUG
 			if (fopen_s(&pFile, LOGFILE_NAME, "a") == 0)
 			{
 				fprintf(pFile, "%s", szString);
 				fclose(pFile);
 			}
+#endif
+#ifndef _DEBUG
+			if (fopen_s(&pFile, PROD_LOGFILE_NAME, "a") == 0)
+			{
+				fprintf(pFile, "%s", szString);
+				fclose(pFile);
+			}
+#endif
 		}
 
 		void WriteLogFile(const wchar_t* szString)
 		{
 			FILE* pFile;
+#ifdef _DEBUG
 			if (fopen_s(&pFile, LOGFILE_NAME, "a") == 0)
 			{
 				fwprintf(pFile, L"%s", szString);
 				fclose(pFile);
 			}
+#endif
+#ifndef _DEBUG
+			if (fopen_s(&pFile, PROD_LOGFILE_NAME, "a") == 0)
+			{
+				fwprintf(pFile, L"%s", szString);
+				fclose(pFile);
+			}
+#endif
 		}
 	}
 
@@ -93,105 +115,6 @@ namespace Helper
 		if (Data::Provider::Get()->_pcpe != NULL)
 		{
 			Data::Provider::Get()->_pcpe->CredentialsChanged(Data::Provider::Get()->_upAdviseContext);
-		}
-	}
-
-	namespace Release {
-
-		void writeToEventLog(const char *message, char *file, int line)
-		{
-			std::chrono::system_clock::time_point p = std::chrono::system_clock::now();
-			time_t t = std::chrono::system_clock::to_time_t(p);
-			char str[26];
-			ctime_s(str, sizeof str, &t);
-		
-			char code[1024];
-			sprintf_s(code, sizeof(code), "%d", line);
-
-			OutputDebugStringA(message);
-			WriteLogFile(message);
-			OutputDebugStringA(" [at line ");
-			WriteLogFile(" [at line ");
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" in '");
-			WriteLogFile(" in '");
-			OutputDebugStringA(file);
-			WriteLogFile(file);
-			OutputDebugStringA("']  ");
-			WriteLogFile("'] ");
-			OutputDebugStringA(str);
-			WriteLogFile(str);
-		}
-
-		void writeToEventLog(const wchar_t *message, char *file, int line)
-		{
-			std::chrono::system_clock::time_point p = std::chrono::system_clock::now();
-			time_t t = std::chrono::system_clock::to_time_t(p);
-			char str[26];
-			ctime_s(str, sizeof str, &t);
-
-			char code[1024];
-			sprintf_s(code, sizeof(code), "%d", line);
-			auto time = std::chrono::system_clock::now();
-
-			OutputDebugStringW(message);
-			WriteLogFile(message);
-			OutputDebugStringA(" [at line ");
-			WriteLogFile(" [at line ");
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" in '");
-			WriteLogFile(" in '");
-			OutputDebugStringA(file);
-			WriteLogFile(file);
-			OutputDebugStringA("']  ");
-			WriteLogFile("']  ");
-			OutputDebugStringA(str);
-			WriteLogFile(str);
-
-		}
-
-		void writeToEventLog(int integer, char *file, int line)
-		{
-			char code[1024];
-			sprintf_s(code, sizeof(code), "Integer: %d (%X)", integer, integer);
-
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" [at line ");
-			WriteLogFile(" [at line ");
-
-			sprintf_s(code, sizeof(code), "%d", line);
-
-			OutputDebugStringA(code);
-			WriteLogFile(code);
-			OutputDebugStringA(" in '");
-			WriteLogFile(" in '");
-			OutputDebugStringA(file);
-			WriteLogFile(file);
-			OutputDebugStringA("']\n");
-			WriteLogFile("']\n");
-		}
-
-		void WriteLogFile(const char* szString)
-		{
-			FILE* pFile;
-			if (fopen_s(&pFile, PROD_LOGFILE_NAME, "a") == 0)
-			{
-				fprintf(pFile, "%s", szString);
-				fclose(pFile);
-			}
-		}
-
-		void WriteLogFile(const wchar_t* szString)
-		{
-			FILE* pFile;
-			if (fopen_s(&pFile, PROD_LOGFILE_NAME, "a") == 0)
-			{
-				fwprintf(pFile, L"%s", szString);
-				fclose(pFile);
-			}
 		}
 	}
 

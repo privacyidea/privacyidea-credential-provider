@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include <regex>
 
 #pragma comment(lib,"winhttp.lib")
 
@@ -100,14 +99,14 @@ namespace Endpoint
 			wcscpy_s(error, ARRAYSIZE(error), L"Error reading service response.");
 			break;
 			// WinHttp Errors
-		case (int)ENDPOINT_ERROR_CERT_ERROR:
-			wcscpy_s(error, ARRAYSIZE(error), L"There was an error with the servers certificate.");
+		case (int)ENDPOINT_ERROR_CONNECT_ERROR:
+			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while trying to connect to the server. Please check your configuration.");
 			break;
 
-		/*case (int)ENDPOINT_CUSTOM_MESSAGE:
-			wcscpy_s(error, ARRAYSIZE(error), Get()->custom_message);
-			break;
-		*/
+			/*case (int)ENDPOINT_CUSTOM_MESSAGE:
+				wcscpy_s(error, ARRAYSIZE(error), Get()->custom_message);
+				break;
+			*/
 		default:
 			break;
 		}
@@ -142,7 +141,7 @@ namespace Endpoint
 			wcscpy_s(msg, ARRAYSIZE(msg), L"Please wait...");
 			break;
 		case ENDPOINT_INFO_CALLING_ENDPOINT:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"Calling endpoint...");
+			wcscpy_s(msg, ARRAYSIZE(msg), L"Communicating with 2FA server...");
 			break;
 		case ENDPOINT_INFO_CHECKING_RESPONSE:
 			wcscpy_s(msg, ARRAYSIZE(msg), L"Checking response...");
@@ -167,27 +166,49 @@ namespace Endpoint
 
 	HRESULT Call()
 	{
-		DebugPrintLn(__FUNCTION__);
 		HRESULT result = ENDPOINT_AUTH_FAIL;
 
 		// Do WebAPI call
 		ShowInfoMessage(ENDPOINT_INFO_CALLING_ENDPOINT);
 		// Create an instance of our BufferStruct to accept HttpRequest response
-		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct)); 
+		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct));
 		output->buffer = NULL;
 		output->size = 0;
 
-		bool firstStep = Configuration::Get()->two_step_send_password && EMPTY(Get()->otpPass) || Configuration::Get()->two_step_hide_otp && EMPTY(Get()->otpPass);
+		struct ENDPOINT *epPack = Get();
 
-		if (firstStep) {
-			LAST_ERROR_CODE = Concrete::SendValidateCheckRequestLDAP(output);
-		}
-		else {
-			LAST_ERROR_CODE = Concrete::SendValidateCheckRequestOTP(output);
-		}
+		// && EMPTY(Get()->otpPass) makes the bools possibly only true in the first step. 
+		// After the OTP filled the epPck these are always false indicating the "real" auth request
+		bool sendEmptyPWFirst = Configuration::Get()->two_step_send_empty_password && EMPTY(Get()->otpPass);
+		bool sendDomainPWFirst = Configuration::Get()->two_step_send_password && EMPTY(Get()->otpPass);
+		bool hideOTP = Configuration::Get()->two_step_hide_otp && EMPTY(Get()->otpPass);
 
-		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_RESPONSE_OK) // Request successful
+		/////////// FIRST STEP ///////////
+		if (hideOTP && sendDomainPWFirst)
 		{
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, epPack->ldapPass);
+		}
+		else if (hideOTP && sendEmptyPWFirst)
+		{
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, L"");
+		}
+		else if (hideOTP && !sendEmptyPWFirst && !sendDomainPWFirst)
+		{
+			DebugPrintLn("Enter OTP in second step, no request sent yet");
+			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
+			result = ENDPOINT_AUTH_CONTINUE;
+			STATUS = NOT_FINISHED;
+		}
+		////////////////////////////////////////////
+		/////////// SECOND STEP	with OTP ///////////
+		else
+		{
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, epPack->otpPass);
+		}
+		////////////////////////////////////////////
+
+		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_RESPONSE_OK)
+		{	// Request successful
 			ShowInfoMessage(ENDPOINT_INFO_CHECKING_RESPONSE);
 			// Parse and check JSON response
 			char* json = output->buffer;
@@ -195,19 +216,6 @@ namespace Endpoint
 		}
 
 		ShowInfoMessage(ENDPOINT_INFO_PLEASE_WAIT);
-
-		// Clean up
-		if (output)
-		{
-			if (output->buffer)
-			{
-				free(output->buffer);
-				output->buffer = NULL;
-				output->size = 0;
-			}
-			free(output);
-			output = NULL;
-		}
 
 		// TRANSLATE HRESULT TO BASE DEFINITIONS
 		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_VALUE_TRUE)
@@ -218,17 +226,20 @@ namespace Endpoint
 		}
 		else
 		{
-			if (firstStep) {
+			if (hideOTP || sendEmptyPWFirst || sendDomainPWFirst)
+			{	// we were in the first step so we want to continue
 				DebugPrintLn("Second step of verification required :)");
 				LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
 				result = ENDPOINT_AUTH_CONTINUE;
 				STATUS = NOT_FINISHED;
 			}
-			else {
+			else
+			{
 				DebugPrintLn("Verification failed :(");
 				STATUS = NOT_FINISHED; // let him try again
 			}
 		}
+
 		return result;
 	}
 
@@ -238,8 +249,8 @@ namespace Endpoint
 
 	namespace Concrete
 	{
-		// check if there is a path, if it starts with slash and append /validate/check
 		std::string checkPath(std::string path) {
+			// check if there is a path, if it starts with slash and append /validate/check
 			std::string tmp = path;
 
 			std::string compare("/path/to/pi");	// this is the default from the installer, check it here so the hint stays in the registry
@@ -283,8 +294,8 @@ namespace Endpoint
 			DebugPrintLn("WinHttp sending to:");
 			DebugPrintLn(hostname.c_str());
 			DebugPrintLn(path.c_str());
-			//DebugPrintLn("post_data:");
-			//DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			DebugPrintLn("post_data:");
+			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;
@@ -342,7 +353,7 @@ namespace Endpoint
 					writeToLog(path.c_str());
 				}
 			}
-			
+
 			// Set Option Security Flags to start TLS
 			DWORD dwReqOpts = 0;
 			if (WinHttpSetOption(
@@ -378,7 +389,7 @@ namespace Endpoint
 			if (Configuration::Get()->ssl_ignore_unknown_ca || Configuration::Get()->ssl_ignore_invalid_cn) {
 				if (WinHttpSetOption(hRequest,
 					WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
-					DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
+					//DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
 				}
 				else {
 					DebugPrintLn("WinHttpOption flags could not be set:");
@@ -412,7 +423,7 @@ namespace Endpoint
 					writeToLog(hostname.c_str());
 					writeToLog(path.c_str());
 				}
-				return ENDPOINT_ERROR_CERT_ERROR;
+				return ENDPOINT_ERROR_CONNECT_ERROR;
 			}
 
 			// End the request.
@@ -492,15 +503,25 @@ namespace Endpoint
 			return result;
 		}
 
-		HRESULT SendRequestToServer(struct BufferStruct *&buffer, char *relativePath, int relativePathSize, char *post_data)
+		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass)
 		{
-			UNREFERENCED_PARAMETER(relativePath);	// this parameter can be eliminated 
-			UNREFERENCED_PARAMETER(relativePathSize);
-
-			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
-
 			DebugPrintLn(__FUNCTION__);
 
+			// Pack the data for post request
+			INIT_ZERO_CHAR(post_data, 4096);
+			INIT_ZERO_CHAR(username, 64);
+			INIT_ZERO_CHAR(passToSend, 64);
+			struct ENDPOINT *epPack = Get();
+			Helper::WideCharToChar(epPack->username, sizeof(username) / sizeof(char), username);
+			Helper::WideCharToChar(pass, sizeof(passToSend) / sizeof(char), passToSend);
+			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
+				"pass=%s&user=%s",
+				passToSend,
+				username
+			);
+
+			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
+			// Get hostname and path
 			std::string hostname(Configuration::Get()->hostname);	// hostname from registry
 			std::string data(post_data);							// post_data already contains the payload correctly encoded
 			std::string path(Configuration::Get()->path);			// path from registry
@@ -513,59 +534,6 @@ namespace Endpoint
 				result = ENDPOINT_SUCCESS_RESPONSE_OK;
 			}
 			else if (Configuration::Get()->release_log) { writeToLog("Post request could not be sent. ENDPOINT_ERROR_HTTP_ERROR"); }
-
-			return result;
-		}
-
-		HRESULT SendValidateCheckRequestOTP(struct BufferStruct *&buffer)
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			char *relativePath = ENDPOINT_VALIDATE_CHECK;
-
-			HRESULT result = E_FAIL;
-
-			INIT_ZERO_CHAR(post_data, 4096);
-			INIT_ZERO_CHAR(username, 64);
-			INIT_ZERO_CHAR(otpPass, 64);
-			struct ENDPOINT *epPack = Get();
-
-			Helper::WideCharToChar(epPack->username, sizeof(username) / sizeof(char), username);
-			Helper::WideCharToChar(epPack->otpPass, sizeof(otpPass) / sizeof(char), otpPass);
-
-			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
-				"pass=%s&user=%s",
-				otpPass,
-				username
-			);
-
-			result = SendRequestToServer(buffer, relativePath, (int)strlen(relativePath), post_data);
-			return result;
-		}
-
-		HRESULT SendValidateCheckRequestLDAP(struct BufferStruct *&buffer)
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			char *relativePath = ENDPOINT_VALIDATE_CHECK;
-
-			HRESULT result = E_FAIL;
-
-			INIT_ZERO_CHAR(post_data, 4096);
-			INIT_ZERO_CHAR(username, 64);
-			INIT_ZERO_CHAR(ldapPass, 64);
-			struct ENDPOINT *epPack = Get();
-
-			Helper::WideCharToChar(epPack->username, sizeof(username) / sizeof(char), username);
-			Helper::WideCharToChar(epPack->ldapPass, sizeof(ldapPass) / sizeof(char), ldapPass);
-
-			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
-				"pass=%s&user=%s",
-				ldapPass,
-				username
-			);
-
-			result = SendRequestToServer(buffer, relativePath, (int)strlen(relativePath), post_data);
 
 			return result;
 		}
@@ -596,7 +564,7 @@ namespace Endpoint
 				DebugPrintLn(static_cast<unsigned int>(json_document.GetErrorOffset()));
 				DebugPrintLn("Parse error description:");
 				DebugPrintLn(GetParseError_En(json_document.GetParseError()));
-				if (Configuration::Get()->release_log) { 
+				if (Configuration::Get()->release_log) {
 					writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR");
 					writeToLog("Plaintext response:");
 					writeToLog(json);

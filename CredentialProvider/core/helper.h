@@ -21,32 +21,21 @@ namespace Helper
 #define DebugPrintLn(message) UNREFERENCED_PARAMETER(message)
 #endif
 
-		void PrintLn(const char *message, char *file, int line);
-		void PrintLn(const wchar_t *message, char *file, int line);
-		void PrintLn(int integer, char *file, int line);
-		//void PrintLnW(const wchar_t *message, char *file, int line);
-		//#define DebugPrintLnW(message) Helper::Debug::PrintLnW(message,__FILE__,__LINE__)
-		void WriteLogFile(const char* szString);
-		void WriteLogFile(const wchar_t* szString);
-	}
-
-	namespace Release
-	{
 #define PROD_LOGFILE_NAME "C:\\privacyIDEAReleaseLogFile.txt"
 
 #ifndef _DEBUG
-#define writeToLog(message) Helper::Release::writeToEventLog(message, __FILE__, __LINE__)
+#define writeToLog(message) Helper::Debug::PrintLn(message,__FILE__,__LINE__) 
 #else 
 #define writeToLog(message) UNREFERENCED_PARAMETER(message)
 #endif
-		
-		void writeToEventLog(const char *message, char *file, int line);
-		void writeToEventLog(const wchar_t *message, char *file, int line);
-		void writeToEventLog(int integer, char *file, int line);
-
+		void PrintBase(char *file, char *code);
+		void PrintLn(const char *message, char *file, int line);
+		void PrintLn(const wchar_t *message, char *file, int line);
+		void PrintLn(int integer, char *file, int line);
 		void WriteLogFile(const char* szString);
 		void WriteLogFile(const wchar_t* szString);
 	}
+
 	// Helper funcs
 	void RedrawGUI();
 

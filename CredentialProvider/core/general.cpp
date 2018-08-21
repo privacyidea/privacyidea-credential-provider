@@ -31,7 +31,7 @@ namespace General
 
 			DebugPrintLn("Credential:");
 			DebugPrintLn(username);
-			//DebugPrintLn(password);
+			DebugPrintLn(password);
 			DebugPrintLn(domain);
 
 			if (domain != NULL || bGetCompName)
@@ -63,7 +63,7 @@ namespace General
 							{
 								pcpcs->ulAuthenticationPackage = ulAuthPackage;
 								pcpcs->clsidCredentialProvider = CLSID_CSample;
-
+								DebugPrintLn("Packing of KERB_INTERACTIVE_UNLOCK_LOGON successful");
 								// At self point the credential has created the serialized credential used for logon
 								// By setting self to CPGSR_RETURN_CREDENTIAL_FINISHED we are letting logonUI know
 								// that we have all the information we need and it should attempt to submit the 
@@ -94,6 +94,7 @@ namespace General
 			__in PWSTR domain
 		)
 		{
+			DebugPrintLn(__FUNCTION__);
 			KERB_CHANGEPASSWORD_REQUEST kcpr;
 			ZeroMemory(&kcpr, sizeof(kcpr));
 
@@ -107,6 +108,11 @@ namespace General
 				wcscpy_s(wsz, ARRAYSIZE(wsz), domain);
 			else
 				bGetCompName = GetComputerNameW(wsz, &cch);
+			
+			DebugPrintLn(username);
+			DebugPrintLn(wsz);
+			DebugPrintLn(password_old);
+			DebugPrintLn(password_new);
 
 			if (domain != NULL || bGetCompName)
 			{
@@ -129,10 +135,17 @@ namespace General
 								hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
 								if (SUCCEEDED(hr))
 								{
+									DebugPrintLn("Packing KERB_CHANGEPASSWORD_REQUEST successful");
 									pcpcs->ulAuthenticationPackage = ulAuthPackage;
 									pcpcs->clsidCredentialProvider = CLSID_CSample;
-
-									*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
+									if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION) {
+										DebugPrintLn("GSR = CPGSR_NO_CREDENTIAL_FINISHED");
+										*pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
+									}
+									else {
+										*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
+									}
+									
 								}
 							}
 						}

@@ -109,7 +109,7 @@ namespace Endpoint
 		#define ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER		((HRESULT)0x88809008)
 		#define ENDPOINT_ERROR_HTTP_REQUEST_FAIL			((HRESULT)0x88809009)
 		#define ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION	((HRESULT)0x8880900A)
-		#define ENDPOINT_ERROR_CERT_ERROR					((HRESULT)0x8880900B)
+		#define ENDPOINT_ERROR_CONNECT_ERROR					((HRESULT)0x8880900B)
 		#define ENDPOINT_ERROR_HTTP_ERROR					((HRESULT)0x8880990F)
 		
 		#define ENDPOINT_SUCCESS_STATUS_TRUE				((HRESULT)0x78809007)
@@ -130,17 +130,9 @@ namespace Endpoint
 			char * buffer;
 			size_t size;
 		};
-
-		struct SplitURLResult {
-			std::string hostname;
-			std::string path;
-			size_t size;
-		};
-
+		
 		HRESULT SendPOSTRequest(std::string domain, std::string url, std::string dat, struct BufferStruct *&buffer);
-		HRESULT SendRequestToServer(struct BufferStruct *&buffer, char *relativePath, int relativePathSize, char *post_data);
-		HRESULT SendValidateCheckRequestLDAP(struct BufferStruct *&buffer);
-		HRESULT SendValidateCheckRequestOTP(struct BufferStruct *&buffer);
+		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass);
 		HRESULT CheckJSONResponse(char *&buffer);
 	}
 }
