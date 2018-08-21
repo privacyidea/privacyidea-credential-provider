@@ -50,6 +50,9 @@
       Privileged
     </Condition>
 
+    <Icon Id="icon.ico" SourceFile="C:\Users\Nils\Desktop\privacyidea-credentialprovider-git2\icon.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="icon.ico" />
+    
     <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='DISK #1' />
     <Property Id='DiskPrompt' Value="$(var.ProductName) Setup [1]" />
 
@@ -89,6 +92,10 @@
 
     <Property Id="TWO_STEP_SEND_PASSWORD">
       <RegistrySearch Id="SearchTwoStepSendPassword"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_password"           Win64="$(var.Win64)" Type="raw" />
+    </Property>
+
+    <Property Id="TWO_STEP_EMPTY_SEND_PASSWORD">
+      <RegistrySearch Id="SearchTwoStepSendEmptyPassword"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_empty_password"           Win64="$(var.Win64)" Type="raw" />
     </Property>
     
     <Property Id="SSL_IGNORE_UNKNOWN_CA">
@@ -229,6 +236,7 @@
             
             <RegistryValue Name='two_step_hide_otp' Type ='string' Value='[TWO_STEP_HIDE_OTP]' />
             <RegistryValue Name='two_step_send_password' Type='string' Value='[TWO_STEP_SEND_PASSWORD]' />
+            <RegistryValue Name='two_step_send_empty_password' Type='string' Value='[TWO_STEP_SEND_EMPTY_PASSWORD]' />
             
             <RegistryValue Name='ssl_ignore_unknown_ca' Type='string' Value='[SSL_IGNORE_UNKNOWN_CA]' />
             <RegistryValue Name='ssl_ignore_invalid_cn' Type='string' Value='[SSL_IGNORE_INVALID_CN]' />

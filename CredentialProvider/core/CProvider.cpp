@@ -18,6 +18,7 @@
 
 #include <credentialprovider.h>
 #include "CProvider.h"
+#include "version.h"
 
 // CProvider ////////////////////////////////////////////////////////
 
@@ -106,6 +107,7 @@ HRESULT CProvider::SetUsageScenario(
 	}
 
 	DebugPrintLn(Data::Provider::Get()->usage_scenario);
+	DebugPrintLn("CSample_CreateInstance Result:");
 	DebugPrintLn(hr);
 
 	return hr;
@@ -390,6 +392,8 @@ HRESULT CProvider::GetCredentialAt(
 				{
 					serializedDomain = NULL;
 				}
+				DebugPrintLn("Found domain:");
+				DebugPrintLn(serializedDomain);
 			}
 		}
 
@@ -453,7 +457,8 @@ HRESULT CProvider::GetCredentialAt(
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
 	DebugPrintLn(__FUNCTION__);
-
+	DebugPrintLn("--- CP Version: ---");
+	DebugPrintLn(VER_FILE_VERSION_STR);
 	HRESULT hr;
 
 	CProvider* pProvider = new CProvider();
@@ -467,7 +472,7 @@ HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 	{
 		hr = E_OUTOFMEMORY;
 	}
-
+	DebugPrintLn("CSample_CreateInstance Result:");
 	DebugPrintLn(hr);
 
 	return hr;

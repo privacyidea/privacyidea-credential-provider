@@ -15,6 +15,7 @@ void Default()
 	struct CONFIGURATION*& conf = Get();
 
 	ZERO(conf->hostname);
+	ZERO(conf->path);
 	ZERO(conf->login_text);
 	ZERO(conf->otp_text);
 	ZERO(conf->v1_bitmap_path);
@@ -23,6 +24,16 @@ void Default()
 	// DEFAULT IS SAFE MODE, NO ERRORS WILL BE IGNORED 
 	conf->ssl_ignore_unknown_ca = 0;
 	conf->ssl_ignore_invalid_cn = 0;
+
+	conf->custom_port = 0;
+	conf->hide_domainname = 0;
+	conf->hide_fullname = 0;
+
+	conf->two_step_hide_otp = 0;
+	conf->two_step_send_empty_password = 0;
+	conf->two_step_send_password = 0;
+
+	conf->release_log = 0;
 }
 
 void Init()
@@ -89,13 +100,22 @@ void Read()
 		conf->two_step_hide_otp = buffer[0] - 0x30;
 	}
 
-	// SEND PASSWORD TWO STEP
+	// SEND DOMAIN PASSWORD TWO STEP
 	if (readRegistryValueString(CONF_TWO_STEP_SEND_PASSWORD, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
 		conf->two_step_send_password = 0; // if NULL
 	else
 	{
 		conf->two_step_send_password = buffer[0] - 0x30;
 	}
+
+	// SEND EMPTY PASSWORD TWO STEP
+	if (readRegistryValueString(CONF_TWO_STEP_SEND_EMPTY_PASSWORD, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->two_step_send_empty_password = 0; // if NULL
+	else
+	{
+		conf->two_step_send_empty_password = buffer[0] - 0x30;
+	}
+
 	// SSL IGNORE UNKNOWN CA
 	if (readRegistryValueString(CONF_SSL_IGNORE_UNKNOWN_CA, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
 		conf->ssl_ignore_unknown_ca = 0; // if NULL
@@ -128,10 +148,6 @@ void Read()
 		conf->hide_domainname = buffer[0] - 0x30;
 	}
 
-	// check if both hides are 1
-	if (conf->hide_domainname && conf->hide_fullname)
-		conf->hide_domainname = 0;
-	
 	// RELEASE LOG
 	if (readRegistryValueString(CONF_RELEASE_LOG, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
 		conf->release_log = 0; // if NULL
@@ -139,8 +155,33 @@ void Read()
 	{
 		conf->release_log = buffer[0] - 0x30;
 	}
-	
-	// END
+	////////////// READ END //////////////
+
+	// check if both hides are 1. If so, set to hide full name
+	if (conf->hide_domainname && conf->hide_fullname)
+		conf->hide_domainname = 0;
+
+	// check if both sending passwords are 1. If so, set to send empty password
+	if (conf->two_step_send_empty_password && conf->two_step_send_password)
+		conf->two_step_send_password = 0;
+
+#ifdef _DEBUG
+	// Log the current config
+	DebugPrintLn("CONFIG LOADED SUCCESSFULLY:");
+	DebugPrintLn("Hostname:"); DebugPrintLn(conf->hostname);
+	DebugPrintLn("Path:"); DebugPrintLn(conf->path);
+	DebugPrintLn("Custom port:"); DebugPrintLn(conf->custom_port);
+	DebugPrintLn("Login text:"); DebugPrintLn(conf->login_text);
+	DebugPrintLn("OTP text:");	DebugPrintLn(conf->otp_text);
+	DebugPrintLn("Hide only domain:"); DebugPrintLn(conf->hide_domainname);
+	DebugPrintLn("Hide full name:"); DebugPrintLn(conf->hide_fullname);
+	DebugPrintLn("SSL ignore invalid CN:");	DebugPrintLn(conf->ssl_ignore_invalid_cn);
+	DebugPrintLn("SSL ignore unknown CA:");	DebugPrintLn(conf->ssl_ignore_unknown_ca);
+	DebugPrintLn("2Step hide OTP:"); DebugPrintLn(conf->two_step_hide_otp);
+	DebugPrintLn("2Step send domain PW"); DebugPrintLn(conf->two_step_send_password);
+	DebugPrintLn("2Step send empty PW"); DebugPrintLn(conf->two_step_send_empty_password);
+	DebugPrintLn("ReleaseVersion Log:"); DebugPrintLn(conf->release_log);
+#endif
 }
 
 DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size)

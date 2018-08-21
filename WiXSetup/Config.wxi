@@ -21,7 +21,7 @@
 <Include>
   <!-- <?define Version = "0.2.1023" ?> -->
   <!-- Getting version from CredentialProvider set in versioning\version.h -->
-  <?define Version = "!(bind.FileVersion.CredentialProvider)" ?>
+  <?define Version = "!(bind.fileVersion.CredentialProvider)" ?>
 
   <?define EndpointName = "PrivacyIDEA" ?>
   <?define ProviderRegistryGUID = "7BAF541E-F8E0-4EDF-B69A-BD2771139E8E" ?>
