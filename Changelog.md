@@ -3,7 +3,7 @@
 ### Features
  * Optionally send an empty password or the domain password to the privacyIDEA server.
    (As intended in version 2.0)
- * This is only possible if the request for the OTP is made in a second step.
+   This is only possible if the request for the OTP is made in a second step.
 
 ### Enhancements
  * Added icon to display in installed software list
