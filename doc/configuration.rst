@@ -11,9 +11,8 @@ the verification of the authentication server certificate.
 Registry Settings
 -----------------
 
-You can configure the privacyIDEA Credential Provider only by modifying
-the corresponding registry keys. You can use administrative templates
-to deploy the credential provider on many desktops in your network.
+If you want to change the configuration after the installation, you can only do this by editing the registry keys.
+You can use administrative templates to deploy the credential provider on many desktops in your network.
 
 The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.

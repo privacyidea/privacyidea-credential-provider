@@ -90,7 +90,7 @@ namespace Endpoint
 			wcscpy_s(error, ARRAYSIZE(error), L"Service could not handle request.");
 			break;
 		case (int)ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER:
-			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong username, password or OTP.");
+			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong credentials.");
 			break;
 		case (int)ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION:
 			wcscpy_s(error, ARRAYSIZE(error), L"Insufficient subscription. The user count exceeds your subscription. ");

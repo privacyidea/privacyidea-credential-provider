@@ -67,7 +67,7 @@ void CProvider::_CleanupSetSerialization()
 	}
 }
 
-// #enario is the provider's cue that it's going to be asked for tiles
+// SetUsageScenario is the provider's cue that it's going to be asked for tiles
 // in a subsequent call.  
 //
 // This sample only handles the logon and unlock scenarios as those are the most common.

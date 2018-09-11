@@ -413,8 +413,8 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
 		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
-		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"To change your password sign out and in again.");
-		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"Go back until you are asked to sign in.");
+		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"Go back until you are asked to sign in.");
+		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"To change your password sign out and in again.");
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
 	}
