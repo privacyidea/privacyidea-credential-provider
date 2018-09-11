@@ -76,6 +76,10 @@ HRESULT CProvider::SetUsageScenario(
 	__in DWORD dwFlags
 )
 {
+	
+#ifdef _DEBUG
+	Configuration::PrintConfig();
+#endif
 	DebugPrintLn(__FUNCTION__);
 
 	HRESULT hr = E_INVALIDARG;
@@ -457,8 +461,6 @@ HRESULT CProvider::GetCredentialAt(
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
 	DebugPrintLn(__FUNCTION__);
-	DebugPrintLn("--- CP Version: ---");
-	DebugPrintLn(VER_FILE_VERSION_STR);
 	HRESULT hr;
 
 	CProvider* pProvider = new CProvider();

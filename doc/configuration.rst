@@ -8,16 +8,11 @@ configured all necessary settings, but it can be interesting to change
 settings later. Like changing the available credential providers or changing
 the verification of the authentication server certificate.
 
-To change these settings, go to the Windows control panel and "change" the
-privacyIDEA Credential Provider. You will run through the same configuration
-dialogs like during :ref:`installation`.
-
 Registry Settings
 -----------------
 
-You can configure the privacyIDEA Credential Provider directly by modifying
-the corresponding registry keys. You can use administrative templates
-to deploy the credential provider on many desktops in your network.
+If you want to change the configuration after the installation, you can only do this by editing the registry keys.
+You can use administrative templates to deploy the credential provider on many desktops in your network.
 
 The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
@@ -51,6 +46,7 @@ Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors ori
 Set to ``1`` if the privacyIDEA Credential Provider should ignore SSL errors originating from an unknown CA.
 
 **custom_port**
+
 This entry is not there by default. You can add it to declare a custom port. The value has to be of type *REG_SZ* with the name *custom_port*.
 
 NOTE: By default the port is the default https port, which is 443.
@@ -111,5 +107,6 @@ Log file
 
 **release_log**
 
-Set to ``1`` if you want the privacyIDEA Credential Provider to write a logfile in the release version. The log only contains errors and is located at C:\\privacyIDEAReleaseLogFile.txt
+Set to ``1`` if you want the privacyIDEA Credential Provider to write a logfile in the release version. The log only contains errors and is located at C:\\privacyIDEAReleaseLogFile.txt.
+
 The log file of the debug version contains more detailed information and is located at C:\\privacyIDEADebugLogFile.txt

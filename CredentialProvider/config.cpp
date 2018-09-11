@@ -164,26 +164,28 @@ void Read()
 	// check if both sending passwords are 1. If so, set to send empty password
 	if (conf->two_step_send_empty_password && conf->two_step_send_password)
 		conf->two_step_send_password = 0;
-
-#ifdef _DEBUG
-	// Log the current config
-	DebugPrintLn("CONFIG LOADED SUCCESSFULLY:");
-	DebugPrintLn("Hostname:"); DebugPrintLn(conf->hostname);
-	DebugPrintLn("Path:"); DebugPrintLn(conf->path);
-	DebugPrintLn("Custom port:"); DebugPrintLn(conf->custom_port);
-	DebugPrintLn("Login text:"); DebugPrintLn(conf->login_text);
-	DebugPrintLn("OTP text:");	DebugPrintLn(conf->otp_text);
-	DebugPrintLn("Hide only domain:"); DebugPrintLn(conf->hide_domainname);
-	DebugPrintLn("Hide full name:"); DebugPrintLn(conf->hide_fullname);
-	DebugPrintLn("SSL ignore invalid CN:");	DebugPrintLn(conf->ssl_ignore_invalid_cn);
-	DebugPrintLn("SSL ignore unknown CA:");	DebugPrintLn(conf->ssl_ignore_unknown_ca);
-	DebugPrintLn("2Step hide OTP:"); DebugPrintLn(conf->two_step_hide_otp);
-	DebugPrintLn("2Step send domain PW"); DebugPrintLn(conf->two_step_send_password);
-	DebugPrintLn("2Step send empty PW"); DebugPrintLn(conf->two_step_send_empty_password);
-	DebugPrintLn("ReleaseVersion Log:"); DebugPrintLn(conf->release_log);
-#endif
 }
 
+void PrintConfig() {
+	// Log the current config
+	DebugPrintLn("--- CP Version ---");
+	DebugPrintLn(VER_FILE_VERSION_STR);
+	
+	DebugPrintLn("CONFIG LOADED SUCCESSFULLY:");
+	DebugPrintLn("Hostname:"); DebugPrintLn(Get()->hostname);
+	DebugPrintLn("Path:"); DebugPrintLn(Get()->path);
+	DebugPrintLn("Custom port:"); DebugPrintLn(Get()->custom_port);
+	DebugPrintLn("Login text:"); DebugPrintLn(Get()->login_text);
+	DebugPrintLn("OTP text:");	DebugPrintLn(Get()->otp_text);
+	DebugPrintLn("Hide only domain:"); DebugPrintLn(Get()->hide_domainname);
+	DebugPrintLn("Hide full name:"); DebugPrintLn(Get()->hide_fullname);
+	DebugPrintLn("SSL ignore invalid CN:");	DebugPrintLn(Get()->ssl_ignore_invalid_cn);
+	DebugPrintLn("SSL ignore unknown CA:");	DebugPrintLn(Get()->ssl_ignore_unknown_ca);
+	DebugPrintLn("2Step hide OTP:"); DebugPrintLn(Get()->two_step_hide_otp);
+	DebugPrintLn("2Step send domain PW"); DebugPrintLn(Get()->two_step_send_password);
+	DebugPrintLn("2Step send empty PW"); DebugPrintLn(Get()->two_step_send_empty_password);
+	DebugPrintLn("ReleaseVersion Log:"); DebugPrintLn(Get()->release_log);
+}
 DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size)
 {
 	DebugPrintLn(__FUNCTION__);

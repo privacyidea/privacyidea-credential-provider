@@ -31,7 +31,7 @@ namespace General
 
 			DebugPrintLn("Credential:");
 			DebugPrintLn(username);
-			DebugPrintLn(password);
+			//DebugPrintLn(password);
 			DebugPrintLn(domain);
 
 			if (domain != NULL || bGetCompName)
@@ -63,7 +63,7 @@ namespace General
 							{
 								pcpcs->ulAuthenticationPackage = ulAuthPackage;
 								pcpcs->clsidCredentialProvider = CLSID_CSample;
-								DebugPrintLn("Packing of KERB_INTERACTIVE_UNLOCK_LOGON successful");
+								//DebugPrintLn("Packing of KERB_INTERACTIVE_UNLOCK_LOGON successful");
 								// At self point the credential has created the serialized credential used for logon
 								// By setting self to CPGSR_RETURN_CREDENTIAL_FINISHED we are letting logonUI know
 								// that we have all the information we need and it should attempt to submit the 
@@ -108,11 +108,11 @@ namespace General
 				wcscpy_s(wsz, ARRAYSIZE(wsz), domain);
 			else
 				bGetCompName = GetComputerNameW(wsz, &cch);
-			
+
 			DebugPrintLn(username);
 			DebugPrintLn(wsz);
-			DebugPrintLn(password_old);
-			DebugPrintLn(password_new);
+			//DebugPrintLn(password_old);
+			//DebugPrintLn(password_new);
 
 			if (domain != NULL || bGetCompName)
 			{
@@ -135,17 +135,10 @@ namespace General
 								hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
 								if (SUCCEEDED(hr))
 								{
-									DebugPrintLn("Packing KERB_CHANGEPASSWORD_REQUEST successful");
+									//DebugPrintLn("Packing KERB_CHANGEPASSWORD_REQUEST successful");
 									pcpcs->ulAuthenticationPackage = ulAuthPackage;
 									pcpcs->clsidCredentialProvider = CLSID_CSample;
-									if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION) {
-										DebugPrintLn("GSR = CPGSR_NO_CREDENTIAL_FINISHED");
-										*pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
-									}
-									else {
-										*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
-									}
-									
+									*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
 								}
 							}
 						}
@@ -185,7 +178,7 @@ namespace General
 					DWORD size = 0;
 					BYTE* rawbits = NULL;
 
-					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0, 
+					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
 						domainUsername, password, rawbits, &size))
 					{
 						// We received the necessary size, let's allocate some rawbits
@@ -275,16 +268,21 @@ namespace General
 
 			HRESULT hr = S_OK;
 			hr = Helpers::SetScenarioBasedFieldStates(self, pCPCE, scenario);
-			
+
 
 			int hide_fullname = Configuration::Get()->hide_fullname;
 
 			// Set text fields separately
 			int largeTextFieldId = 0, smallTextFieldId = 0;
-			
+
 			hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Data::Provider::Get()->usage_scenario);
+			bool isChangePw = Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && Data::Credential::Get()->passwordMustChange;
 			
-			if (large_text)
+			if (isChangePw && large_text) {
+				DebugPrintLn("Set large text for password change (go back)");
+				pCPCE->SetFieldString(self, largeTextFieldId, L"Go back to change your password");
+			}
+			else if (large_text && !isChangePw)
 			{
 				DebugPrintLn("Large Text:");
 				DebugPrintLn(large_text);
@@ -335,7 +333,7 @@ namespace General
 		}
 
 		HRESULT Clear(wchar_t* (&field_strings)[MAX_NUM_FIELDS], CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[MAX_NUM_FIELDS],
-						ICredentialProviderCredential* pcpc, ICredentialProviderCredentialEvents* pcpce, char clear)
+			ICredentialProviderCredential* pcpc, ICredentialProviderCredentialEvents* pcpce, char clear)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -395,9 +393,9 @@ namespace General
 					break;
 				}
 				*/
-				
+
 				numFields = s_rgCredProvNumFieldsFor[Data::Provider::Get()->usage_scenario];
-				
+
 			}
 
 			//DebugPrintLn(numFields);

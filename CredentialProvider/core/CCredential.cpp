@@ -199,7 +199,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 	switch (message)
 	{
 	case WM_INITDIALOG: {
-		DebugPrintLn("Init CHANGE PASSWORD DIALOG - START");
+		DebugPrintLn("Init change password dialog - START");
 
 		// Get the bitmap to display on top of the dialog (same as the logo of the normal tile)
 		static HBITMAP hbmp;
@@ -250,7 +250,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		std::wstring tmp_domain = std::wstring(Data::Gui::Get()->domain_name);
 		domainWithUser.append(tmp_domain).append(L"\\").append(tmp_user);
 		SetDlgItemText(hDlg, IDC_EDIT_USERNAME, domainWithUser.c_str());
-		//SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
+		SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
 
 		// Set password character to " * "
 		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETPASSWORDCHAR, (WPARAM) '*', (LPARAM)0);
@@ -282,7 +282,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			rcOwner.top + (rc.bottom / 2),
 			0, 0,          // Ignores size arguments. 
 			SWP_NOSIZE);
-		DebugPrintLn("Init CHANGE PASSWORD DIALOG - END");
+		DebugPrintLn("Init change password dialog - END");
 		return TRUE;
 	}
 	case WM_COMMAND: {
@@ -295,7 +295,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		switch (wParam)
 		{
 		case IDOK: {	// User pressed OK - evaluate the inputs
-			DebugPrintLn("Evaluate CHANGE PASSWORD DIALOG - START");
+			DebugPrintLn("Evaluate change password dialog - START");
 			// Get number of characters for each input
 			cchPassword_old = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
 			cchPassword_new = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
@@ -352,7 +352,6 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 				wcscpy_s(Data::Gui::Get()->ldap_pass, lpszPassword_old);
 			copyNewVals(lpszPassword_new);
 
-			//DebugPrintLn(Data::Gui::Get()->domain_name);
 			// pcpgsr and pcpcs are set in GetSerialization
 			HRESULT	hr = General::Logon::KerberosChangePassword(Hook::Serialization::Get()->pcpgsr, Hook::Serialization::Get()->pcpcs, Data::Gui::Get()->user_name,
 				lpszPassword_old, lpszPassword_new, Data::Gui::Get()->domain_name);
@@ -372,13 +371,13 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		}
 		case IDCANCEL: {
 			// Dialog canceled, reset everything
-			DebugPrintLn("Exit CHANGE PASSWORD DIALOG - CANCELED");
+			DebugPrintLn("Exit change password dialog - CANCELED");
 			Data::Credential::Get()->passwordMustChange = false;
 			Data::Credential::Get()->passwordChanged = false;
 			Data::General::Get()->bypassDataDeinitialization = false;
 			Data::General::Get()->bypassEndpoint = false;
 			Data::General::Get()->bypassDataInitialization = false;
-			DebugPrintLn("Exit CHANGE PASSWORD DIALOG - Data::General RESET ");
+			DebugPrintLn("Exit change password dialog - Data::General RESET ");
 			EndDialog(hDlg, TRUE);
 			return TRUE;
 		}
@@ -410,26 +409,35 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	DebugPrintLn(__FUNCTION__);
 	*pbAutoLogon = FALSE;
 	HRESULT hr = S_OK;
+	if (Data::Credential::Get()->passwordMustChange && Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
+	{
+		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
+		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
+		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"Go back until you are asked to sign in.");
+		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"To change your password sign out and in again.");
+		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
+	}
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
 	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) {
-		*pbAutoLogon = true;
-		DebugPrintLn("Password change mode - AutoLogon true");
+		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON) {
+			*pbAutoLogon = true;
+			DebugPrintLn("Password change mode LOGON - AutoLogon true");
+		}
+		else {
+			DebugPrintLn("Password change mode UNLOCK - AutoLogon false");
+		}
 		goto CleanUpAndReturn;
 	}
 
 	hr = E_FAIL; // fail state, if following hook fails...
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), CleanUpAndReturn);
 
-	// hr = E_ABORT; // fail state, if following hook fails...
-	// this is useless, only to switch Credential->passwordChanged? Duplicate of ChangePasswordSuccessful functionality
-	// HOOK_CHECK_CRITICAL(Hook::CredentialHooks::CheckPasswordChanging(this, _pCredProvCredentialEvents, pbAutoLogon), CleanUpAndReturn);
-
 	hr = E_FAIL; // fail state, if following hook fails...
 	HOOK_CHECK_CRITICAL(Hook::CredentialHooks::CheckEndpointObserver(pbAutoLogon), CleanUpAndReturn);
 	hr = S_OK; // success state
-	DebugPrintLn("AutoLogon:");
 CleanUpAndReturn:
 	Hook::Serialization::EndpointDeinitialization();
 	DebugPrintLn("CCredential::SetSelected - END");
@@ -464,7 +472,8 @@ DeinitEndpoint:
 	if (Data::Credential::Get()->passwordChanged) {
 		Data::Credential::Get()->passwordChanged = false;
 	}
-	if (Data::Credential::Get()->passwordMustChange) {
+	// If its UNLOCK_WORKSTATION we keep this status to keep the info to sign out first
+	if (Data::Credential::Get()->passwordMustChange && !Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION) {
 		Data::Credential::Get()->passwordMustChange = false;
 	}
 
@@ -770,24 +779,27 @@ HRESULT CCredential::GetSerialization(
 		}
 		if (SUCCEEDED(res))
 		{
-			DebugPrintLn("OPEN PASSWORD CHANGE DIALOG");
-			::DialogBox(HINST_THISDLL,					// application instance
-				MAKEINTRESOURCE(IDD_DIALOG1),			// dialog box resource
-				hwndOwner,								// owner window
-				ChangePasswordProc						// dialog box window procedure
-			);
-			goto CleanUpAndReturn;
+			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
+			{//It's password change on Logon we can handle that
+				DebugPrintLn("Passwordchange with CPUS_LOGON - open Dialog");
+				::DialogBox(HINST_THISDLL,					// application instance
+					MAKEINTRESOURCE(IDD_DIALOG1),			// dialog box resource
+					hwndOwner,								// owner window
+					ChangePasswordProc						// dialog box window procedure
+				);
+				goto CleanUpAndReturn;
+			}
 		}
 		else
 		{
-			DebugPrintLn("OPEN PASSWORD CHANGE DIALOG FAILED: Handle to owner windows missing");
-			if (Configuration::Get()->release_log) { writeToLog("OPEN PASSWORD CHANGE DIALOG FAILED: Handle to owner windows missing"); }
+			DebugPrintLn("Opening password change dialog failed: Handle to owner window is missing");
+			if (Configuration::Get()->release_log) { writeToLog("Opening password change dialog failed: Handle to owner window is missing"); }
 		}
 	}
 
 	if (Data::Credential::Get()->passwordChanged)
 	{
-		DebugPrintLn("PASSWORD CHANGE SUCCESS - set Data::General for autologon");
+		DebugPrintLn("Password change success- Set Data::General for autologon");
 		Data::General::Get()->bypassEndpoint = true;
 		Data::General::Get()->bypassDataDeinitialization = true;
 		Data::General::Get()->bypassDataInitialization = true;
@@ -879,7 +891,6 @@ CleanUpAndReturn:
 		Data::General::Get()->clearFields = true; // it's a one-timer...
 
 	Hook::Serialization::BeforeReturn();
-	DebugPrintLn("GetSerializationResponse:");
 	if (pcpgsr) {
 		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { DebugPrintLn("CPGSR_NO_CREDENTIAL_FINISHED"); }
 		if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { DebugPrintLn("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
@@ -887,13 +898,8 @@ CleanUpAndReturn:
 		if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrintLn("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
 	}
 	else { DebugPrintLn("pcpgsr is a nullpointer!"); }
-
-	/*DebugPrintLn("Credential Serialization:");
-	if (pcpcs) {
-		if(pcpcs->rgbSerialization)
-	}else{ DebugPrintLn("pcpcs is a nullpointer!"); }*/
-
 	DebugPrintLn("CCredential::GetSerialization - END");
+
 	return retVal;
 }
 
@@ -967,7 +973,8 @@ HRESULT CCredential::ReportResult(
 	Data::Credential::Get()->passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
 
 	if (Data::Credential::Get()->passwordMustChange) {
-		DebugPrintLn("STATUS: PASSWORD MUST CHANGE");
+		DebugPrintLn("Status: Password must change");
+		
 		return E_NOTIMPL;
 	}
 
@@ -975,13 +982,13 @@ HRESULT CCredential::ReportResult(
 	// these two are for new passwords not conform to password policies
 	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD);
 	if (pwNotUpdated) {
-		DebugPrintLn("STATUS: PASSWORD UPDATE FAILED - NOT CONFORM TO POLICIES");
+		DebugPrintLn("Status: Password update failed: Not conform to policies");
 	}
 	// this catches the wrong old password, 
 	pwNotUpdated = pwNotUpdated || ((ntsStatus == STATUS_LOGON_FAILURE) && (ntsSubstatus == STATUS_INTERNAL_ERROR));
 
 	if (pwNotUpdated) {
-		// it wasn't so we start over again
+		// it wasn't updated so we start over again
 		Data::Credential::Get()->passwordMustChange = true;
 		Data::Credential::Get()->passwordChanged = false;
 	}
