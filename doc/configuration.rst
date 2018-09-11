@@ -8,14 +8,10 @@ configured all necessary settings, but it can be interesting to change
 settings later. Like changing the available credential providers or changing
 the verification of the authentication server certificate.
 
-To change these settings, go to the Windows control panel and "change" the
-privacyIDEA Credential Provider. You will run through the same configuration
-dialogs like during :ref:`installation`.
-
 Registry Settings
 -----------------
 
-You can configure the privacyIDEA Credential Provider directly by modifying
+You can configure the privacyIDEA Credential Provider only by modifying
 the corresponding registry keys. You can use administrative templates
 to deploy the credential provider on many desktops in your network.
 
