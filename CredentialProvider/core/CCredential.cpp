@@ -409,6 +409,15 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	DebugPrintLn(__FUNCTION__);
 	*pbAutoLogon = FALSE;
 	HRESULT hr = S_OK;
+	if (Data::Credential::Get()->passwordMustChange && Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
+	{
+		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
+		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
+		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"To change your password sign out and in again.");
+		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"Go back until you are asked to sign in.");
+		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
+	}
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
@@ -463,7 +472,8 @@ DeinitEndpoint:
 	if (Data::Credential::Get()->passwordChanged) {
 		Data::Credential::Get()->passwordChanged = false;
 	}
-	if (Data::Credential::Get()->passwordMustChange) {
+	// If its UNLOCK_WORKSTATION we keep this status to keep the info to sign out first
+	if (Data::Credential::Get()->passwordMustChange && !Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION) {
 		Data::Credential::Get()->passwordMustChange = false;
 	}
 
@@ -964,14 +974,7 @@ HRESULT CCredential::ReportResult(
 
 	if (Data::Credential::Get()->passwordMustChange) {
 		DebugPrintLn("Status: Password must change");
-		if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
-		{
-			DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
-			_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"To change your password sign out and in again.");
-			_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"Go back until you are asked to sign in.");
-			_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
-			_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
-		}
+		
 		return E_NOTIMPL;
 	}
 

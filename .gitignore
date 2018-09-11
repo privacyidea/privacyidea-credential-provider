@@ -26,3 +26,4 @@ doc/_build/
 /lib/openssl/*
 !/lib/openssl/#version
 Thumbs.db
+.vs/*
