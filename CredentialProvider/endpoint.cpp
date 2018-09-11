@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <string.h>
 
 #pragma comment(lib,"winhttp.lib")
 
@@ -89,20 +90,25 @@ namespace Endpoint
 			wcscpy_s(error, ARRAYSIZE(error), L"Service could not handle request.");
 			break;
 		case (int)ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER:
-			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong username or password?");
+			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong username, password or OTP.");
 			break;
 		case (int)ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION:
 			wcscpy_s(error, ARRAYSIZE(error), L"Insufficient subscription. The user count exceeds your subscription. ");
 			break;
 		case (int)ENDPOINT_ERROR_PARSE_ERROR:
 		case (int)ENDPOINT_ERROR_NO_RESULT:
-			wcscpy_s(error, ARRAYSIZE(error), L"Error reading service response.");
+			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while parsing the server's response");
 			break;
 			// WinHttp Errors
 		case (int)ENDPOINT_ERROR_CONNECT_ERROR:
-			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while trying to connect to the server. Please check your configuration.");
+			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while connecting to the server. Please check your configuration.");
 			break;
-
+		case (int)ENDPOINT_ERROR_SETUP_ERROR:
+			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while setting up the connection to the server. Please check your configuration.");
+			break;
+		case (int)ENDPOINT_ERROR_RESPONSE_ERROR:
+			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while processing the server's response.");
+			break;
 			/*case (int)ENDPOINT_CUSTOM_MESSAGE:
 				wcscpy_s(error, ARRAYSIZE(error), Get()->custom_message);
 				break;
@@ -284,7 +290,7 @@ namespace Endpoint
 
 			//Extra
 			LPSTR  data = const_cast<char *>(dat.c_str());;
-			DWORD data_len = strlen(data);
+			DWORD data_len = strnlen_s(data,4096);
 
 			std::wstring hostname = get_utf16(domain, CP_UTF8);
 			std::wstring path = get_utf16(url, CP_UTF8);
@@ -295,7 +301,7 @@ namespace Endpoint
 			DebugPrintLn(hostname.c_str());
 			DebugPrintLn(path.c_str());
 			DebugPrintLn("post_data:");
-			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			//DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;
@@ -334,6 +340,7 @@ namespace Endpoint
 					writeToLog(hostname.c_str());
 					writeToLog(path.c_str());
 				}
+				return ENDPOINT_ERROR_SETUP_ERROR;
 			}
 			// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 			if (hConnect) {
@@ -352,6 +359,7 @@ namespace Endpoint
 					writeToLog(hostname.c_str());
 					writeToLog(path.c_str());
 				}
+				return ENDPOINT_ERROR_SETUP_ERROR;
 			}
 
 			// Set Option Security Flags to start TLS
@@ -370,7 +378,7 @@ namespace Endpoint
 					writeToLog("WinHttpOptions security flag could not be set:");
 					writeToLog(GetLastError());
 				}
-
+				return ENDPOINT_ERROR_SETUP_ERROR;
 			}
 
 			/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
@@ -398,8 +406,8 @@ namespace Endpoint
 						writeToLog("WinHttpOption flags could not be set:");
 						writeToLog(GetLastError());
 					}
+					return ENDPOINT_ERROR_SETUP_ERROR;
 				}
-
 			}
 			///////////////////////////////////////////////////////////////////////////////
 
@@ -416,6 +424,7 @@ namespace Endpoint
 
 			if (!bResults) {
 				DebugPrintLn("WinHttpSendRequest failure:");
+				DebugPrintLn(GetLastError());
 				if (Configuration::Get()->release_log) {
 					writeToLog("WinHttpSendRequest failure:");
 					writeToLog(GetLastError());
@@ -440,11 +449,11 @@ namespace Endpoint
 					if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
 						DebugPrintLn("WinHttpQueryDataAvailable Error:");
 						DebugPrintLn(GetLastError());
-						result = E_FAIL;
 						if (Configuration::Get()->release_log) {
 							writeToLog("WinHttpQueryDataAvailable error:");
 							writeToLog(GetLastError());
 						}
+						result = ENDPOINT_ERROR_RESPONSE_ERROR;
 					}
 
 					// Allocate space for the buffer.
@@ -455,7 +464,7 @@ namespace Endpoint
 						if (Configuration::Get()->release_log) {
 							writeToLog("WinHttpReadData out of memory");
 						}
-						result = E_FAIL;
+						result = ENDPOINT_ERROR_RESPONSE_ERROR;
 						dwSize = 0;
 					}
 					else
@@ -471,7 +480,7 @@ namespace Endpoint
 								writeToLog("WinHttpReadData Error:");
 								writeToLog(GetLastError());
 							}
-							result = E_FAIL;
+							result = ENDPOINT_ERROR_RESPONSE_ERROR;
 						}
 						else
 							//printf("%s", pszOutBuffer);
@@ -489,7 +498,7 @@ namespace Endpoint
 					writeToLog("WinHttp Result Error:");
 					writeToLog(GetLastError());
 				}
-				result = E_FAIL;
+				result = ENDPOINT_ERROR_RESPONSE_ERROR;
 				//printf("Error %d has occurred.\n", GetLastError());
 			}
 			// Close any open handles.
@@ -530,11 +539,10 @@ namespace Endpoint
 
 			result = SendPOSTRequest(hostname, path, data, buffer);
 
-			if (SUCCEEDED(result)) {
+			if (result == 0) {
 				result = ENDPOINT_SUCCESS_RESPONSE_OK;
 			}
-			else if (Configuration::Get()->release_log) { writeToLog("Post request could not be sent. ENDPOINT_ERROR_HTTP_ERROR"); }
-
+			
 			return result;
 		}
 

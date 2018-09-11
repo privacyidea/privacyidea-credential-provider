@@ -22,6 +22,7 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
     <UI> <!-- PAGE 1-->
+      <TextStyle Id="Tahoma_Bold" FaceName="Tahoma" Size="8" Bold="yes"/>
       <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
         <!-- Text inputs (hostname, path, opt texts)
         
@@ -49,7 +50,7 @@
           <Publish Property="TWO_STEP_SEND_EMPTY_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_PASSWORD</Publish>
         </Control>
         
-        <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="60" Y="152" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send an empty password to privacyIDEA." >
+        <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="60" Y="152" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send empty password to privacyIDEA." >
           <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
           <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
           <Publish Property="TWO_STEP_SEND_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_EMPTY_PASSWORD</Publish>
@@ -66,7 +67,8 @@
         <Control Id="HideDomainName" Type="CheckBox" X="45" Y="202" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
           <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
         </Control>
-      
+        
+        <Control Id="ChangeSettingsLabel" Type="Text" X="45" Y="222" Width="220" Height="15" TabSkip="no" Text="{\Tahoma_Bold} These settings can be changed in the registry." />
         
         <!-- Bottom Controls -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">

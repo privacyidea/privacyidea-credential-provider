@@ -51,6 +51,7 @@ namespace Configuration
 	////////////////// SPECIFIC
 
 	void Read();
+	void PrintConfig();
 	DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size);
 	DWORD SaveValueInteger(CONF_VALUE conf_value, int value);
 }
