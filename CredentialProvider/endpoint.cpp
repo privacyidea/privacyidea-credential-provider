@@ -233,7 +233,7 @@ namespace Endpoint
 		else
 		{
 			if (hideOTP || sendEmptyPWFirst || sendDomainPWFirst)
-			{	// we were in the first step so we want to continue
+			{	// we are in the first step so we want to continue
 				DebugPrintLn("Second step of verification required :)");
 				LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
 				result = ENDPOINT_AUTH_CONTINUE;
@@ -301,7 +301,7 @@ namespace Endpoint
 			DebugPrintLn(hostname.c_str());
 			DebugPrintLn(path.c_str());
 			DebugPrintLn("post_data:");
-			//DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;
@@ -523,6 +523,7 @@ namespace Endpoint
 			struct ENDPOINT *epPack = Get();
 			Helper::WideCharToChar(epPack->username, sizeof(username) / sizeof(char), username);
 			Helper::WideCharToChar(pass, sizeof(passToSend) / sizeof(char), passToSend);
+			
 			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
 				"pass=%s&user=%s",
 				passToSend,
@@ -534,6 +535,12 @@ namespace Endpoint
 			std::string hostname(Configuration::Get()->hostname);	// hostname from registry
 			std::string data(post_data);							// post_data already contains the payload correctly encoded
 			std::string path(Configuration::Get()->path);			// path from registry
+			std::string tx_id(Data::Credential::Get()->tx_id);
+			if (!tx_id.empty()) {
+				DebugPrintLn("TX_ID found. Appending it to the post_data.");
+				data.append("&transaction_id=");
+				data.append(Data::Credential::Get()->tx_id);
+			}
 
 			path = checkPath(path);
 
@@ -580,8 +587,38 @@ namespace Endpoint
 				return ENDPOINT_ERROR_PARSE_ERROR;
 			}
 
+			// 1.2 Check detail for serial and transaction id
+			if (!json_document.HasMember("detail")) {
+				DebugPrintLn("JSON reponse has no member detail");
+			}
+			else {
+				rapidjson::Value& json_detail = json_document["detail"];
+				if (json_detail.HasMember("serial")) {
+					rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
+					//Data::Credential::Get()->serial = std::string(json_serial->value.GetString());
+					strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
+					DebugPrintLn("serial in response: (response/Data::Credential):");
+					DebugPrintLn(json_serial->value.GetString());
+					DebugPrintLn(Data::Credential::Get()->serial);
+				}
+				else { DebugPrintLn("JSON response has no serial in detail"); }
+				
+				if (json_detail.HasMember("transaction_id"))
+				{
+					rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
+					//Data::Credential::Get()->tx_id = std::string(json_tx_id->value.GetString());
+					strncpy_s(Data::Credential::Get()->tx_id, json_tx_id->value.GetString(), sizeof(Data::Credential::Get()->tx_id));
+					DebugPrintLn("tx_id in response: (response/Data::Credential):");
+					DebugPrintLn(json_tx_id->value.GetString());
+					DebugPrintLn(Data::Credential::Get()->tx_id);
+				}
+				else { DebugPrintLn("JSON response has no tx_id in detail"); }
+			}
+
+
 			// 2. Get result-object
 			if (!json_document.HasMember("result")) {
+				DebugPrintLn("JSON reponse has no member result");
 				if (Configuration::Get()->release_log) {
 					writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
 					writeToLog("Plaintext response:");

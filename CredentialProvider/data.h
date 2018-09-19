@@ -63,6 +63,10 @@ namespace Data
 
 			bool passwordMustChange = false;
 			bool passwordChanged = false;
+
+			// Challenge Response
+			char tx_id[64];
+			char serial[64];
 		};
 
 		CREDENTIAL*& Get();

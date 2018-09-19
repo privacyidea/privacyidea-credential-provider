@@ -276,13 +276,8 @@ namespace General
 			int largeTextFieldId = 0, smallTextFieldId = 0;
 
 			hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Data::Provider::Get()->usage_scenario);
-			bool isChangePw = Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && Data::Credential::Get()->passwordMustChange;
 			
-			if (isChangePw && large_text) {
-				DebugPrintLn("Set large text for password change (go back)");
-				pCPCE->SetFieldString(self, largeTextFieldId, L"Go back to change your password");
-			}
-			else if (large_text && !isChangePw)
+			if (large_text)
 			{
 				DebugPrintLn("Large Text:");
 				DebugPrintLn(large_text);
