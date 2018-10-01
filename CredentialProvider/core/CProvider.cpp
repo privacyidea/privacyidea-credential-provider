@@ -99,7 +99,7 @@ HRESULT CProvider::SetUsageScenario(
 		hr = S_OK;
 		break;
 
-		//case CPUS_CREDUI: // Though, we are prepared
+	//case CPUS_CREDUI: // Though, we are prepared
 	case CPUS_CHANGE_PASSWORD:
 	case CPUS_PLAP:
 	case CPUS_INVALID:

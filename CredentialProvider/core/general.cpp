@@ -164,15 +164,28 @@ namespace General
 		)
 		{
 			DebugPrintLn(__FUNCTION__);
+			DebugPrintLn(username);
+			DebugPrintLn(password);
+			DebugPrintLn(domain);
 
 			PWSTR pwzProtectedPassword;
 			HRESULT hr = ProtectIfNecessaryAndCopyPassword(password, cpus, &pwzProtectedPassword);
+			
+			WCHAR wsz[MAX_SIZE_DOMAIN];
+			DWORD cch = ARRAYSIZE(wsz);
+			BOOL  bGetCompName = false;
+
+			if (EMPTY(domain))
+				bGetCompName = GetComputerNameW(wsz, &cch);
+
+			if (bGetCompName)
+				domain = wsz;
 
 			if (SUCCEEDED(hr))
 			{
 				PWSTR domainUsername = NULL;
 				hr = DomainUsernameStringAlloc(domain, username, &domainUsername);
-
+				DebugPrintLn(domainUsername);
 				if (SUCCEEDED(hr))
 				{
 					DWORD size = 0;

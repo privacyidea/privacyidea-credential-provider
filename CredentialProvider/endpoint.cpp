@@ -172,6 +172,7 @@ namespace Endpoint
 
 	HRESULT Call()
 	{
+		DebugPrintLn(__FUNCTION__);
 		HRESULT result = ENDPOINT_AUTH_FAIL;
 
 		// Do WebAPI call
@@ -301,7 +302,7 @@ namespace Endpoint
 			DebugPrintLn(hostname.c_str());
 			DebugPrintLn(path.c_str());
 			DebugPrintLn("post_data:");
-			//DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 #endif
 
 			DWORD dwSize = 0;

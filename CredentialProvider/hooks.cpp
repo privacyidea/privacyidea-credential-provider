@@ -268,18 +268,31 @@ namespace Hook
 				{
 					DebugPrintLn("Copy username to epPack");
 					wcscpy_s(Endpoint::Get()->username, sizeof(Endpoint::Get()->username) / sizeof(wchar_t), Data::Gui::Get()->user_name);
+					DebugPrintLn(Endpoint::Get()->username);
 				}
+				else {
+					DebugPrintLn("Data::Gui::Get()->username seems empty!");
+				}
+
 
 				if (NOT_EMPTY(Data::Gui::Get()->ldap_pass))
 				{
 					DebugPrintLn("Copy ldapPass to epPack");
 					wcscpy_s(Endpoint::Get()->ldapPass, sizeof(Endpoint::Get()->ldapPass) / sizeof(wchar_t), Data::Gui::Get()->ldap_pass);
+					DebugPrintLn(Endpoint::Get()->ldapPass);
+				}
+				else {
+					DebugPrintLn("Data::Gui::Get()->ldap_pass seems empty!");
 				}
 
 				if (NOT_EMPTY(Data::Gui::Get()->otp_pass))
 				{
 					DebugPrintLn("Copy otpPass to epPack");
 					wcscpy_s(Endpoint::Get()->otpPass, sizeof(Endpoint::Get()->otpPass) / sizeof(wchar_t), Data::Gui::Get()->otp_pass);
+					DebugPrintLn(Endpoint::Get()->otpPass);
+				}
+				else {
+					DebugPrintLn("Data::Gui::Get()->otp_pass seems empty!");
 				}
 			}
 			return S_OK;
