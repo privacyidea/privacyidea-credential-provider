@@ -41,6 +41,7 @@ namespace Configuration
 		int custom_port;
 
 		int two_step_send_empty_password;
+		int log_sensitive;
 	};
 
 	CONFIGURATION*& Get();

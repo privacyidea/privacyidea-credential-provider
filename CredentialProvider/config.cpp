@@ -155,6 +155,14 @@ void Read()
 	{
 		conf->release_log = buffer[0] - 0x30;
 	}
+
+	// SENSITIVE DATA LOGGING (ONLY POSSIBLE IN DEBUG)
+	if (readRegistryValueString(CONF_LOG_SENSITIVE, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->log_sensitive = 0; // if NULL
+	else
+	{
+		conf->log_sensitive = buffer[0] - 0x30;
+	}
 	////////////// READ END //////////////
 
 	// check if both hides are 1. If so, set to hide full name
@@ -184,7 +192,7 @@ void PrintConfig() {
 	DebugPrintLn("2Step hide OTP:"); DebugPrintLn(Get()->two_step_hide_otp);
 	DebugPrintLn("2Step send domain PW"); DebugPrintLn(Get()->two_step_send_password);
 	DebugPrintLn("2Step send empty PW"); DebugPrintLn(Get()->two_step_send_empty_password);
-	DebugPrintLn("ReleaseVersion Log:"); DebugPrintLn(Get()->release_log);
+	DebugPrintLn("Release Version Log:"); DebugPrintLn(Get()->release_log);
 }
 DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size)
 {

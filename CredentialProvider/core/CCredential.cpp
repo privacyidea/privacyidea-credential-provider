@@ -78,15 +78,18 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR password
 )
 {
+#ifdef _DEBUG
 	DebugPrintLn(__FUNCTION__);
 
 	DebugPrintLn("Username from provider:");
 	DebugPrintLn(user_name);
 	DebugPrintLn("Domain from provider:");
 	DebugPrintLn(domain_name);
-	DebugPrintLn("Password from provider:");
-	DebugPrintLn(password);
-
+	if (Configuration::Get()->log_sensitive) {
+		DebugPrintLn("Password from provider:");
+		DebugPrintLn(password);
+	}
+#endif
 	HRESULT hr = S_OK;
 
 	if (NOT_EMPTY(user_name))
