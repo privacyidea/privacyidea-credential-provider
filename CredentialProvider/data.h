@@ -67,6 +67,7 @@ namespace Data
 			// Challenge Response
 			char tx_id[64];
 			char serial[64];
+			char message[64];
 		};
 
 		CREDENTIAL*& Get();

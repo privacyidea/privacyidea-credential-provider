@@ -130,6 +130,7 @@ namespace Data
 
 			ZERO(data->tx_id);
 			ZERO(data->serial);
+			ZERO(data->message);
 		}
 
 		void Init()

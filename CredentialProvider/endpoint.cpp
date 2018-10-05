@@ -613,6 +613,17 @@ namespace Endpoint
 					DebugPrintLn(Data::Credential::Get()->tx_id);
 				}
 				else { DebugPrintLn("JSON response has no tx_id in detail"); }
+
+				// Get the message to display it to the user, limited to 64 at the moment
+				if (json_detail.HasMember("message"))
+				{
+					rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
+					strncpy_s(Data::Credential::Get()->message, json_message->value.GetString(), sizeof(Data::Credential::Get()->message));
+					DebugPrintLn("message in response: (response/Data::Credential):");
+					DebugPrintLn(json_message->value.GetString());
+					DebugPrintLn(Data::Credential::Get()->message);
+				}
+				else { DebugPrintLn("JSON response has message in detail"); }
 			}
 
 
