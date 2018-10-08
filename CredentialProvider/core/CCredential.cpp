@@ -419,15 +419,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
 	}
 
-	// Display the message of a challenge response to the user, if present
-	if (!EMPTY(Data::Credential::Get()->message))
-	{
-		DebugPrintLn("Challenge-Response message found, setting it to smalltext");
-		wchar_t tmp[64];
-		size_t length = strlen(Data::Credential::Get()->message);
-		mbstowcs_s(&length, tmp, Data::Credential::Get()->message, length);
-		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, tmp);
-	}
+	
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
 	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) {

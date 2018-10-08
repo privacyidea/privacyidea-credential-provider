@@ -623,7 +623,7 @@ namespace Endpoint
 					DebugPrintLn(json_message->value.GetString());
 					DebugPrintLn(Data::Credential::Get()->message);
 				}
-				else { DebugPrintLn("JSON response has message in detail"); }
+				else { DebugPrintLn("JSON response has no message in detail"); }
 			}
 
 
