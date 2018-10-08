@@ -61,7 +61,7 @@ static const LPCSTR s_CONF_VALUES[] =
 	"release_log",
 	"path",
 	"custom_port",
-	"two_step_send_empty_password"
+	"two_step_send_empty_password",
 	"log_sensitive"
 };
 

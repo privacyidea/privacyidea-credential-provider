@@ -381,7 +381,7 @@ HRESULT CProvider::GetCredentialAt(
 				}
 			}
 		}
-		else if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
+		else if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
 		{
 			if (serializedDomain == NULL)
 			{
