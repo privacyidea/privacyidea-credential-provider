@@ -1,3 +1,27 @@
+# Version 2.5.0, 2018-10-15
+
+### Features
+ *	Support SMS/Email tokens, which require a transaction id to be appended to the request. This only works when the CP is configured to ask for the OTP in a second step.
+	The message of the challenge is displayed to the user.
+	
+### Enhancements
+ *	Logging of sensitive data can be activiated by a registry key
+ 
+### Fixes
+ *	Fix missing lookup of the domain when using over-the-shoulder-prompting (UAC).
+
+ 
+# Version 2.4.0, 2018-09-13
+
+### Features
+ *	Password change on a locked workstation is not possible. If this occurs, block our tile and guide the user to sign out and in again to
+	complete the password change in the LOGON scenario. (Similar to what Windows does)
+	
+### Enhancements
+
+### Fixes
+
+
 # Version 2.3.3, 2018-08-21
 
 ### Features

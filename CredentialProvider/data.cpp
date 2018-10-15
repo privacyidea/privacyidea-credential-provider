@@ -127,6 +127,10 @@ namespace Data
 
 			data->passwordMustChange = false;
 			data->passwordChanged = false;
+
+			ZERO(data->tx_id);
+			ZERO(data->serial);
+			ZERO(data->message);
 		}
 
 		void Init()

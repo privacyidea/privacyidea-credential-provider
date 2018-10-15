@@ -295,13 +295,8 @@ namespace General
 			int largeTextFieldId = 0, smallTextFieldId = 0;
 
 			hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Data::Provider::Get()->usage_scenario);
-			bool isChangePw = Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && Data::Credential::Get()->passwordMustChange;
 			
-			if (isChangePw && large_text) {
-				DebugPrintLn("Set large text for password change (go back)");
-				pCPCE->SetFieldString(self, largeTextFieldId, L"Go back to change your password");
-			}
-			else if (large_text && !isChangePw)
+			if (large_text)
 			{
 				DebugPrintLn("Large Text:");
 				DebugPrintLn(large_text);
@@ -326,7 +321,19 @@ namespace General
 				pCPCE->SetFieldString(self, smallTextFieldId, L"");
 				pCPCE->SetFieldState(self, smallTextFieldId, CPFS_HIDDEN);
 			}
-		}
+
+			if (!EMPTY(Data::Credential::Get()->message))
+			{
+				DebugPrintLn("Challenge-Response message found, setting it to smalltext:");
+				wchar_t tmp[256];
+				size_t length = strlen(Data::Credential::Get()->message);
+				mbstowcs_s(&length, tmp, Data::Credential::Get()->message, length);
+				DebugPrintLn(tmp);
+				pCPCE->SetFieldString(self, smallTextFieldId, tmp);
+				pCPCE->SetFieldState(self, smallTextFieldId, CPFS_DISPLAY_IN_BOTH);
+			}
+
+}
 
 		HRESULT SetFieldStatePairBatch(
 			__in ICredentialProviderCredential* self,
