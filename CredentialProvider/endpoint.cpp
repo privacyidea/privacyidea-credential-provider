@@ -172,6 +172,7 @@ namespace Endpoint
 
 	HRESULT Call()
 	{
+		DebugPrintLn(__FUNCTION__);
 		HRESULT result = ENDPOINT_AUTH_FAIL;
 
 		// Do WebAPI call
@@ -300,10 +301,11 @@ namespace Endpoint
 			DebugPrintLn("WinHttp sending to:");
 			DebugPrintLn(hostname.c_str());
 			DebugPrintLn(path.c_str());
-			DebugPrintLn("post_data:");
-			DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			if (Configuration::Get()->log_sensitive) {
+				DebugPrintLn("post_data:");
+				DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
+			}
 #endif
-
 			DWORD dwSize = 0;
 			DWORD dwDownloaded = 0;
 			LPSTR pszOutBuffer;

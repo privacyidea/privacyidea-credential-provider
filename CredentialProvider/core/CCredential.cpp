@@ -78,15 +78,18 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR password
 )
 {
+#ifdef _DEBUG
 	DebugPrintLn(__FUNCTION__);
 
 	DebugPrintLn("Username from provider:");
 	DebugPrintLn(user_name);
 	DebugPrintLn("Domain from provider:");
 	DebugPrintLn(domain_name);
-	DebugPrintLn("Password from provider:");
-	DebugPrintLn(password);
-
+	if (Configuration::Get()->log_sensitive) {
+		DebugPrintLn("Password from provider:");
+		DebugPrintLn(password);
+	}
+#endif
 	HRESULT hr = S_OK;
 
 	if (NOT_EMPTY(user_name))
@@ -824,14 +827,6 @@ HRESULT CCredential::GetSerialization(
 		goto CleanUpAndReturn;
 	}
 
-	/* We currently won't support CPUS_CREDUI, but we are well prepared */
-	// Connect() is not called for CPUS_CREDUI, so we need to call the endpoint here
-	if (Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
-	{
-		if (Data::General::Get()->bypassEndpoint == false)
-			Data::Credential::Get()->endpointStatus = Endpoint::Call();
-	}
-
 	if (SUCCEEDED(Data::Credential::Get()->endpointStatus) || Data::General::Get()->bypassEndpoint == true)
 	{
 		// LOG IN
@@ -916,15 +911,15 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus *pqcws)
 	Hook::Serialization::Get()->pCredProvCredentialEvents = _pCredProvCredentialEvents;
 	Hook::Serialization::Get()->field_strings = _rgFieldStrings;
 	Hook::Serialization::Get()->num_field_strings = General::Fields::GetCurrentNumFields();
+	
 	/////
-
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), Exit);
 	HOOK_CHECK_CRITICAL(Hook::Serialization::DataInitialization(), Exit);
 
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadData(), Exit);
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadDebugData(), Exit);
 
-	if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION || Data::Provider::Get()->usage_scenario == CPUS_LOGON)
+	if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION || Data::Provider::Get()->usage_scenario == CPUS_LOGON || Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
 	{
 		if (Data::General::Get()->bypassEndpoint == false)
 			Data::Credential::Get()->endpointStatus = Endpoint::Call();
