@@ -76,12 +76,10 @@ HRESULT CProvider::SetUsageScenario(
 	__in DWORD dwFlags
 )
 {
-	
 #ifdef _DEBUG
+	DebugPrintLn(__FUNCTION__);
 	Configuration::PrintConfig();
 #endif
-	DebugPrintLn(__FUNCTION__);
-
 	HRESULT hr = E_INVALIDARG;
 
 	Data::Provider::Get()->credPackFlags = dwFlags;
@@ -92,14 +90,11 @@ HRESULT CProvider::SetUsageScenario(
 	switch (Data::Provider::Get()->usage_scenario)
 	{
 	case CPUS_LOGON:
-		//case CPUS_CHANGE_PASSWORD:
 	case CPUS_UNLOCK_WORKSTATION:
 	case CPUS_CREDUI:
-
 		hr = S_OK;
 		break;
 
-	//case CPUS_CREDUI: // Though, we are prepared
 	case CPUS_CHANGE_PASSWORD:
 	case CPUS_PLAP:
 	case CPUS_INVALID:

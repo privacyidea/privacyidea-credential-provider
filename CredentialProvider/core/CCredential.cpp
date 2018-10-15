@@ -826,14 +826,6 @@ HRESULT CCredential::GetSerialization(
 		goto CleanUpAndReturn;
 	}
 
-	/* We currently won't support CPUS_CREDUI, but we are well prepared */
-	// Connect() is not called for CPUS_CREDUI, so we need to call the endpoint here
-	/*if (Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
-	{
-		if (Data::General::Get()->bypassEndpoint == false)
-			Data::Credential::Get()->endpointStatus = Endpoint::Call();
-	} */
-
 	if (SUCCEEDED(Data::Credential::Get()->endpointStatus) || Data::General::Get()->bypassEndpoint == true)
 	{
 		// LOG IN
