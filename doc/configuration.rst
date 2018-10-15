@@ -110,3 +110,9 @@ Log file
 Set to ``1`` if you want the privacyIDEA Credential Provider to write a logfile in the release version. The log only contains errors and is located at C:\\privacyIDEAReleaseLogFile.txt.
 
 The log file of the debug version contains more detailed information and is located at C:\\privacyIDEADebugLogFile.txt
+
+**log_sensitive**
+
+In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. By default sensitive data is not logged. 
+To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a logfile.
+NOTE: This only affects the *debug* versions of the privacyIDEA Credential Provider.

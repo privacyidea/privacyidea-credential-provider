@@ -36,7 +36,8 @@ enum CONF_VALUE
 	CONF_PATH = 12,
 	CONF_CUSTOM_PORT = 13,
 	CONF_TWO_STEP_SEND_EMPTY_PASSWORD = 14,
-	CONF_NUM_VALUES = 15,
+	CONF_LOG_SENSITIVE = 15,
+	CONF_NUM_VALUES = 16
 };
 
 static const LPCSTR s_CONF_VALUES[] =
@@ -60,7 +61,8 @@ static const LPCSTR s_CONF_VALUES[] =
 	"release_log",
 	"path",
 	"custom_port",
-	"two_step_send_empty_password"
+	"two_step_send_empty_password",
+	"log_sensitive"
 };
 
 DWORD readRegistryValueString(__in LPCSTR value, __in LPCSTR key, __in int buffer_size, __deref_out_opt char* data);

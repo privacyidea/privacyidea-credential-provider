@@ -28,12 +28,15 @@ namespace General
 
 			if (bGetCompName)
 				domain = wsz;
-
+#ifdef _DEBUG
 			DebugPrintLn("Credential:");
 			DebugPrintLn(username);
-			//DebugPrintLn(password);
+			if (Configuration::Get()->log_sensitive) {
+				DebugPrintLn(password);
+			}
+			
 			DebugPrintLn(domain);
-
+#endif
 			if (domain != NULL || bGetCompName)
 			{
 				PWSTR pwzProtectedPassword;
@@ -163,16 +166,32 @@ namespace General
 			__in PWSTR domain
 		)
 		{
+#ifdef _DEBUG
 			DebugPrintLn(__FUNCTION__);
-
+			DebugPrintLn(username);
+			if (Configuration::Get()->log_sensitive) {
+				DebugPrintLn(password);
+			}
+			DebugPrintLn(domain);
+#endif
 			PWSTR pwzProtectedPassword;
 			HRESULT hr = ProtectIfNecessaryAndCopyPassword(password, cpus, &pwzProtectedPassword);
+			
+			WCHAR wsz[MAX_SIZE_DOMAIN];
+			DWORD cch = ARRAYSIZE(wsz);
+			BOOL  bGetCompName = false;
+
+			if (EMPTY(domain))
+				bGetCompName = GetComputerNameW(wsz, &cch);
+
+			if (bGetCompName)
+				domain = wsz;
 
 			if (SUCCEEDED(hr))
 			{
 				PWSTR domainUsername = NULL;
 				hr = DomainUsernameStringAlloc(domain, username, &domainUsername);
-
+				DebugPrintLn(domainUsername);
 				if (SUCCEEDED(hr))
 				{
 					DWORD size = 0;
