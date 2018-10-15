@@ -537,7 +537,7 @@ namespace Endpoint
 			std::string path(Configuration::Get()->path);			// path from registry
 			std::string tx_id(Data::Credential::Get()->tx_id);
 			if (!tx_id.empty()) {
-				DebugPrintLn("TX_ID found. Appending it to the post_data.");
+				DebugPrintLn("transaction id found. Appending it to the post_data.");
 				data.append("&transaction_id=");
 				data.append(Data::Credential::Get()->tx_id);
 			}
