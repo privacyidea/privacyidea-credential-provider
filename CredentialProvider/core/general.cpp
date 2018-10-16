@@ -322,7 +322,7 @@ namespace General
 				pCPCE->SetFieldState(self, smallTextFieldId, CPFS_HIDDEN);
 			}
 
-			if (!EMPTY(Data::Credential::Get()->message))
+			if (!EMPTY(Data::Credential::Get()->message) && !EMPTY(Data::Credential::Get()->tx_id))
 			{
 				DebugPrintLn("Challenge-Response message found, setting it to smalltext:");
 				wchar_t tmp[256];

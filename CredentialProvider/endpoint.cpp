@@ -595,39 +595,44 @@ namespace Endpoint
 			}
 			else {
 				rapidjson::Value& json_detail = json_document["detail"];
-				if (json_detail.HasMember("serial")) {
-					rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
-					//Data::Credential::Get()->serial = std::string(json_serial->value.GetString());
-					strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
-					DebugPrintLn("serial in response: (response/Data::Credential):");
-					DebugPrintLn(json_serial->value.GetString());
-					DebugPrintLn(Data::Credential::Get()->serial);
+				if (json_detail.IsNull()) {
+					DebugPrintLn("JSON response detail is null");
 				}
-				else { DebugPrintLn("JSON response has no serial in detail"); }
-				
-				if (json_detail.HasMember("transaction_id"))
-				{
-					rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
-					//Data::Credential::Get()->tx_id = std::string(json_tx_id->value.GetString());
-					strncpy_s(Data::Credential::Get()->tx_id, json_tx_id->value.GetString(), sizeof(Data::Credential::Get()->tx_id));
-					DebugPrintLn("tx_id in response: (response/Data::Credential):");
-					DebugPrintLn(json_tx_id->value.GetString());
-					DebugPrintLn(Data::Credential::Get()->tx_id);
-				}
-				else { DebugPrintLn("JSON response has no tx_id in detail"); }
+				else {
 
-				// Get the message to display it to the user, limited to 64 at the moment
-				if (json_detail.HasMember("message"))
-				{
-					rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
-					strncpy_s(Data::Credential::Get()->message, json_message->value.GetString(), sizeof(Data::Credential::Get()->message));
-					DebugPrintLn("message in response: (response/Data::Credential):");
-					DebugPrintLn(json_message->value.GetString());
-					DebugPrintLn(Data::Credential::Get()->message);
+					if (json_detail.HasMember("serial")) {
+						rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
+						//Data::Credential::Get()->serial = std::string(json_serial->value.GetString());
+						strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
+						DebugPrintLn("serial in response: (response/Data::Credential):");
+						DebugPrintLn(json_serial->value.GetString());
+						DebugPrintLn(Data::Credential::Get()->serial);
+					}
+					else { DebugPrintLn("JSON response has no serial in detail"); }
+
+					if (json_detail.HasMember("transaction_id"))
+					{
+						rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
+						//Data::Credential::Get()->tx_id = std::string(json_tx_id->value.GetString());
+						strncpy_s(Data::Credential::Get()->tx_id, json_tx_id->value.GetString(), sizeof(Data::Credential::Get()->tx_id));
+						DebugPrintLn("tx_id in response: (response/Data::Credential):");
+						DebugPrintLn(json_tx_id->value.GetString());
+						DebugPrintLn(Data::Credential::Get()->tx_id);
+					}
+					else { DebugPrintLn("JSON response has no tx_id in detail"); }
+
+					// Get the message to display it to the user, limited to 64 at the moment
+					if (json_detail.HasMember("message"))
+					{
+						rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
+						strncpy_s(Data::Credential::Get()->message, json_message->value.GetString(), sizeof(Data::Credential::Get()->message));
+						DebugPrintLn("message in response: (response/Data::Credential):");
+						DebugPrintLn(json_message->value.GetString());
+						DebugPrintLn(Data::Credential::Get()->message);
+					}
+					else { DebugPrintLn("JSON response has no message in detail"); }
 				}
-				else { DebugPrintLn("JSON response has no message in detail"); }
 			}
-
 
 			// 2. Get result-object
 			if (!json_document.HasMember("result")) {
