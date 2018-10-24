@@ -20,6 +20,7 @@
 
 #include <helpers.h>
 #include "common.h"
+#include "resource.h"
 
 class CCredentialProviderFilter : public ICredentialProviderFilter 
 { 

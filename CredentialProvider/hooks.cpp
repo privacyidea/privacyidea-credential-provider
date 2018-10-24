@@ -412,7 +412,6 @@ namespace Hook
 			if (Data::Credential::Get()->passwordMustChange) {
 				Data::Credential::Get()->passwordChanged = true;
 				Data::General::Get()->clearFields = false;
-			//	Data::General::Get()->bypassDataDeinitialization = false;
 				Data::General::Get()->bypassDataDeinitialization = true;
 				Data::Credential::Get()->passwordMustChange = false;
 			}

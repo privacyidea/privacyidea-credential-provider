@@ -9,7 +9,7 @@
  
 ### Fixes
  *	Fix missing lookup of the domain when using over-the-shoulder-prompting (UAC).
-
+	Note: The credential provider currently does not work on Windows 8/ Server 2012 in the UAC scenario.
  
 # Version 2.4.0, 2018-09-13
 
