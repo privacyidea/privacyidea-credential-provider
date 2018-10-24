@@ -32,18 +32,7 @@
              Manufacturer="$(var.Publisher)"
              Description="$(var.ProductName) $(var.Version) Setup" />
 
-    <!-- Up- and downgrade 
-    <Property Id="PREVIOUSVERSIONSINSTALLED" Secure="yes" />
-    <Upgrade Id="cc1e3a9f-e37e-4ca9-bb97-28c711acb4ed">
-    <UpgradeVersion Property="PREVIOUSVERSIONINSTALLED" Minimum="1.0.0.0" Maximum="9.9.9.9"
-          IncludeMinimum="no" IncludeMaximum="no" MigrateFeatures="yes" />
-    <UpgradeVersion Property="NEWERVERSIONINSTALLED" Minimum="$(var.Version)" Maximum="99.0.0.0"
-          IncludeMinimum="no" IncludeMaximum="yes" />
-    </Upgrade>-->
-
     <MajorUpgrade AllowDowngrades="no" AllowSameVersionUpgrades="yes" MigrateFeatures="yes" DowngradeErrorMessage="A newer version is already installed!" />
-    
-    <!-- END Up- and downgrade -->
     
     <Property Id="ARPURLINFOABOUT" Value="$(var.AppURLInfoAbout)" />
     <!--
@@ -64,11 +53,9 @@
       <Custom Action='IsPrivileged' Before='AppSearch'>
         Not Privileged
       </Custom>
-    <!--  <Custom Action="PreventDowngrading" After="FindRelatedProducts">NEWERVERSIONINSTALLED&lt;&gt;"" AND NOT Installed</Custom>
-      <RemoveExistingProducts After="InstallFinalize"></RemoveExistingProducts>-->
     </InstallExecuteSequence>
    
-     <!-- Icons etc -->
+    <!-- Icons etc -->
     <Icon Id="icon.ico" SourceFile="C:\Users\Nils\Desktop\privacyidea-credentialprovider-git2\icon.ico"/>
     <Property Id="ARPPRODUCTICON" Value="icon.ico" />
     
@@ -84,7 +71,6 @@
     <!-- END Preconditions and pre-setups -->
 
     <!-- Get values from registry if available. (What if unattended/silent install?)-->
-
     <Property Id="HOSTNAME" Value = "hostname">
       <RegistrySearch Id="SearchHostname"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hostname"               Win64="$(var.Win64)" Type="raw"/>
     </Property>

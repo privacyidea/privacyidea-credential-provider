@@ -415,12 +415,11 @@ namespace Endpoint
 
 			// Define for POST to be recognized
 			LPCWSTR additionalHeaders = L"Content-Type: application/x-www-form-urlencoded\r\n";
-			//DWORD headersLength = -1;
 
 			// Send a request.
 			if (hRequest)
 				bResults = WinHttpSendRequest(hRequest,
-					additionalHeaders, -1,
+					additionalHeaders, (DWORD) -1,
 					(LPVOID)data, data_len,
 					data_len, 0);
 
@@ -621,7 +620,7 @@ namespace Endpoint
 					}
 					else { DebugPrintLn("JSON response has no tx_id in detail"); }
 
-					// Get the message to display it to the user, limited to 64 at the moment
+					// Get the message to display it to the user, limited to 256 bytes at the moment
 					if (json_detail.HasMember("message"))
 					{
 						rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
