@@ -253,7 +253,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		std::wstring tmp_domain = std::wstring(Data::Gui::Get()->domain_name);
 		domainWithUser.append(tmp_domain).append(L"\\").append(tmp_user);
 		SetDlgItemText(hDlg, IDC_EDIT_USERNAME, domainWithUser.c_str());
-		SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
+		//SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
 
 		// Set password character to " * "
 		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETPASSWORDCHAR, (WPARAM) '*', (LPARAM)0);
@@ -382,6 +382,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			Data::General::Get()->bypassDataInitialization = false;
 			DebugPrintLn("Exit change password dialog - Data::General RESET ");
 			EndDialog(hDlg, TRUE);
+			Hook::CredentialHooks::ResetScenario(Hook::Serialization::Get()->pCredProvCredential, Hook::Serialization::Get()->pCredProvCredentialEvents);
 			return TRUE;
 		}
 
@@ -412,7 +413,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	DebugPrintLn(__FUNCTION__);
 	*pbAutoLogon = FALSE;
 	HRESULT hr = S_OK;
-	if (Data::Credential::Get()->passwordMustChange && Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
+	if (Data::Credential::Get()->passwordMustChange && Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && Configuration::Get()->win_ver_major != 10)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
 		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
@@ -421,12 +422,11 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
 	}
-
 	
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
 	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) {
-		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON) {
+		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get()->win_ver_major == 10) {
 			*pbAutoLogon = true;
 			DebugPrintLn("Password change mode LOGON - AutoLogon true");
 		}
@@ -477,7 +477,7 @@ DeinitEndpoint:
 		Data::Credential::Get()->passwordChanged = false;
 	}
 	// If its UNLOCK_WORKSTATION we keep this status to keep the info to sign out first
-	if (Data::Credential::Get()->passwordMustChange && !Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION) {
+	if (Data::Credential::Get()->passwordMustChange && (Data::Provider::Get()->usage_scenario != CPUS_UNLOCK_WORKSTATION)) {
 		Data::Credential::Get()->passwordMustChange = false;
 	}
 
@@ -783,7 +783,7 @@ HRESULT CCredential::GetSerialization(
 		}
 		if (SUCCEEDED(res))
 		{
-			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
+			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get()->win_ver_major == 10)
 			{//It's password change on Logon we can handle that
 				DebugPrintLn("Passwordchange with CPUS_LOGON - open Dialog");
 				::DialogBox(HINST_THISDLL,					// application instance

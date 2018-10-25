@@ -42,6 +42,9 @@ namespace Configuration
 
 		int two_step_send_empty_password;
 		int log_sensitive;
+
+		int win_ver_major;
+		int win_ver_minor;
 	};
 
 	CONFIGURATION*& Get();

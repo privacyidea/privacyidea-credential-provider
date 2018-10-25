@@ -10,10 +10,10 @@ namespace Helper
 		{
 			// Format: [Time] [file:line]  message
 			time_t rawtime;
-			struct tm * timeinfo;
+			struct tm * timeinfo = (tm*)CoTaskMemAlloc(sizeof(tm));
 			char buffer[80];
 			time(&rawtime);
-			timeinfo = localtime(&rawtime);
+			localtime_s(timeinfo, &rawtime);
 			strftime(buffer, sizeof(buffer), "%d-%m-%Y %I:%M:%S", timeinfo);
 
 			OutputDebugStringA("[");

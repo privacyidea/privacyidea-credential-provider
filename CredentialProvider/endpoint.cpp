@@ -415,12 +415,11 @@ namespace Endpoint
 
 			// Define for POST to be recognized
 			LPCWSTR additionalHeaders = L"Content-Type: application/x-www-form-urlencoded\r\n";
-			//DWORD headersLength = -1;
 
 			// Send a request.
 			if (hRequest)
 				bResults = WinHttpSendRequest(hRequest,
-					additionalHeaders, -1,
+					additionalHeaders, (DWORD) -1,
 					(LPVOID)data, data_len,
 					data_len, 0);
 
@@ -604,9 +603,6 @@ namespace Endpoint
 						rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
 						//Data::Credential::Get()->serial = std::string(json_serial->value.GetString());
 						strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
-						DebugPrintLn("serial in response: (response/Data::Credential):");
-						DebugPrintLn(json_serial->value.GetString());
-						DebugPrintLn(Data::Credential::Get()->serial);
 					}
 					else { DebugPrintLn("JSON response has no serial in detail"); }
 
@@ -621,14 +617,11 @@ namespace Endpoint
 					}
 					else { DebugPrintLn("JSON response has no tx_id in detail"); }
 
-					// Get the message to display it to the user, limited to 64 at the moment
+					// Get the message to display it to the user, limited to 256 bytes at the moment
 					if (json_detail.HasMember("message"))
 					{
 						rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
 						strncpy_s(Data::Credential::Get()->message, json_message->value.GetString(), sizeof(Data::Credential::Get()->message));
-						DebugPrintLn("message in response: (response/Data::Credential):");
-						DebugPrintLn(json_message->value.GetString());
-						DebugPrintLn(Data::Credential::Get()->message);
 					}
 					else { DebugPrintLn("JSON response has no message in detail"); }
 				}

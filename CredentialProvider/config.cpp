@@ -34,6 +34,9 @@ void Default()
 	conf->two_step_send_password = 0;
 
 	conf->release_log = 0;
+
+	conf->win_ver_major = 0;
+	conf->win_ver_minor = 0;
 }
 
 void Init()
@@ -172,13 +175,22 @@ void Read()
 	// check if both sending passwords are 1. If so, set to send empty password
 	if (conf->two_step_send_empty_password && conf->two_step_send_password)
 		conf->two_step_send_password = 0;
+
+	// Read and save the windows version
+	OSVERSIONINFOEX info;
+	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
+	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	GetVersionEx((LPOSVERSIONINFO)&info);
+	conf->win_ver_major = info.dwMajorVersion;
+	conf->win_ver_minor = info.dwMinorVersion;
 }
 
 void PrintConfig() {
 	// Log the current config
 	DebugPrintLn("--- CP Version ---");
 	DebugPrintLn(VER_FILE_VERSION_STR);
-	
+	DebugPrintLn("Windows Version Major:"); DebugPrintLn(Get()->win_ver_major);
+	DebugPrintLn("Minor:"); DebugPrintLn(Get()->win_ver_minor);
 	DebugPrintLn("CONFIG LOADED SUCCESSFULLY:");
 	DebugPrintLn("Hostname:"); DebugPrintLn(Get()->hostname);
 	DebugPrintLn("Path:"); DebugPrintLn(Get()->path);

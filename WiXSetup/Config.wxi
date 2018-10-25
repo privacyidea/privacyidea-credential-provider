@@ -37,12 +37,12 @@
   <?define SimpleProductName = "$(var.EndpointName)-CP" ?>
   
   <?if $(var.Platform) = x64 ?>
-    <?define ProductName = "$(var.BaseProductName) (64 bit)" ?>
+    <?define ProductName = "$(var.BaseProductName) $(var.Version) (64 bit)" ?>
     <?define Win64 = "yes" ?>
     <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
     <?define PlatformSystemFolder = "System64Folder" ?>
   <?else ?>
-    <?define ProductName = "$(var.BaseProductName)" ?>
+    <?define ProductName = "$(var.BaseProductName) $(var.Version)" ?>
     <?define Win64 = "no" ?>
     <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
     <?define PlatformSystemFolder = "SystemFolder" ?>
