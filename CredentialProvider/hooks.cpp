@@ -162,24 +162,7 @@ namespace Hook
 
 				break;
 			case CPUS_CREDUI:
-				/*
-				if (NOT_EMPTY(Data::Credential::Get()->user_name))
-				{
-					DebugPrintLn("Loading username from external credential");
-
-					wcscpy_s(Data::Gui::Get()->user_name, sizeof(Data::Gui::Get()->user_name) / sizeof(wchar_t), Data::Credential::Get()->user_name);
-
-					if (NOT_EMPTY(Data::Credential::Get()->domain_name))
-					{
-						DebugPrintLn("Loading domainname from external credential");
-						wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
-					}
-				}
-				else
-				{
-				*/
 				DebugPrintLn("Loading username/domainname from GUI");
-
 				Helper::SeparateUserAndDomainName(Serialization::Get()->field_strings[CFI_OTP_USERNAME],
 					Data::Gui::Get()->user_name, sizeof(Data::Gui::Get()->user_name) / sizeof(wchar_t),
 					Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t)
@@ -189,21 +172,13 @@ namespace Hook
 				{
 					DebugPrintLn("Loading domainname from external credential, because not provided in GUI");
 					// user's choice has always precedence
-					wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name); 
+					wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
 				}
-				//}
-
-				if (NOT_EMPTY(Data::Credential::Get()->password))
-				{
-					DebugPrintLn("Loading password from external credential");
-					wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Data::Credential::Get()->password);
-				}
-				else
-				{
-					if (EMPTY(Data::Gui::Get()->ldap_pass)) {
-						DebugPrintLn("Loading password from GUI");
-						wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[CFI_OTP_LDAP_PASS]);
-					}
+				
+				DebugPrintLn("Loading password from GUI");
+				wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[CFI_OTP_LDAP_PASS]);
+				if (Configuration::Get()->log_sensitive) {
+					DebugPrintLn(Data::Gui::Get()->ldap_pass);
 				}
 
 				DebugPrintLn("Loading OTP from GUI");

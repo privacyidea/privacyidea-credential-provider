@@ -91,7 +91,13 @@ HRESULT CProvider::SetUsageScenario(
 	{
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
+		hr = S_OK;
+		break;
 	case CPUS_CREDUI:
+		// turn off two step in case of CredUI
+		Configuration::Get()->two_step_hide_otp = 0;
+		Configuration::Get()->two_step_send_empty_password = 0;
+		Configuration::Get()->two_step_send_password = 0;
 		hr = S_OK;
 		break;
 
@@ -113,7 +119,7 @@ HRESULT CProvider::SetUsageScenario(
 }
 
 // SetSerialization takes the kind of buffer that you would normally return to LogonUI for
-// an authentication attempt.  It's the opposite of ICredentialProviderCredential::GetSerialization.
+// an authentication attempt. It's the opposite of ICredentialProviderCredential::GetSerialization.
 // GetSerialization is implement by a credential and serializes that credential.  Instead,
 // SetSerialization takes the serialization and uses it to create a credential.
 //
@@ -132,8 +138,6 @@ HRESULT CProvider::SetSerialization(
 	DebugPrintLn(__FUNCTION__);
 	//GetSystemMetrics(SM_REMOTESESSION);
 	HRESULT result = E_NOTIMPL;
-	//pcpcs->ulAuthenticationPackage
-	// retrieve authPackage		
 	ULONG authPackage = NULL;
 	result = RetrieveNegotiateAuthPackage(&authPackage);
 

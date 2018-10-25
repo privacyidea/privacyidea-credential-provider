@@ -603,9 +603,6 @@ namespace Endpoint
 						rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
 						//Data::Credential::Get()->serial = std::string(json_serial->value.GetString());
 						strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
-						DebugPrintLn("serial in response: (response/Data::Credential):");
-						DebugPrintLn(json_serial->value.GetString());
-						DebugPrintLn(Data::Credential::Get()->serial);
 					}
 					else { DebugPrintLn("JSON response has no serial in detail"); }
 
@@ -625,9 +622,6 @@ namespace Endpoint
 					{
 						rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
 						strncpy_s(Data::Credential::Get()->message, json_message->value.GetString(), sizeof(Data::Credential::Get()->message));
-						DebugPrintLn("message in response: (response/Data::Credential):");
-						DebugPrintLn(json_message->value.GetString());
-						DebugPrintLn(Data::Credential::Get()->message);
 					}
 					else { DebugPrintLn("JSON response has no message in detail"); }
 				}

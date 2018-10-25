@@ -422,7 +422,6 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
 	}
-
 	
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
