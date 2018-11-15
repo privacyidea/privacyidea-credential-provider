@@ -51,6 +51,7 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
     { 
         case CPUS_LOGON: 
 		case CPUS_UNLOCK_WORKSTATION:
+		case CPUS_CREDUI:
 			for (DWORD i = 0; i < cProviders; i++) 
             { 
 				if ( i < dwFlags )
@@ -63,7 +64,7 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
             }
             return S_OK; 
 			break;         
-        case CPUS_CREDUI: 
+         
         case CPUS_CHANGE_PASSWORD: 
             return E_NOTIMPL; 
         default: 
