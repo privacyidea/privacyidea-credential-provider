@@ -311,7 +311,11 @@ HRESULT CProvider::GetCredentialCount(
 	HRESULT hr = S_OK;
 
 	*pdwCount = 1; //_dwNumCreds;
-	*pdwDefault = 0; //CREDENTIAL_PROVIDER_NO_DEFAULT;
+	*pdwDefault = 0; // this means we want to be the default
+
+	if (Configuration::Get()->no_default) {
+		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
+	}
 	*pbAutoLogonWithDefault = FALSE;
 
 	// if serialized creds are available, try using them to logon
