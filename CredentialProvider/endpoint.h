@@ -64,6 +64,9 @@ namespace Endpoint
 	#define ENDPOINT_INSTRUCTION_MSG_SIZE 150
 	#define ENDPOINT_INFO_MSG_SIZE 150
 
+#define MAX_BUFFER_SIZE_PASSWORD 2048
+#define MAX_BUFFER_SIZE_NAMES 256
+
 	// TODO: dynamic data structure
 	// !!! Match to concrete endpoint for project
 	struct ENDPOINT
@@ -72,8 +75,8 @@ namespace Endpoint
 
 		//////
 
-		wchar_t username[64];
-		wchar_t ldapPass[64];
+		wchar_t username[MAX_BUFFER_SIZE_NAMES];
+		wchar_t ldapPass[MAX_BUFFER_SIZE_PASSWORD];
 		wchar_t otpPass[64];
 	};
 

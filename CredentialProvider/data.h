@@ -7,6 +7,9 @@
 #include "common.h"
 #include "helper.h"
 
+#define MAX_BUFFER_SIZE_PASSWORD 2048
+#define MAX_BUFFER_SIZE_NAMES 256
+
 namespace Data
 {	
 	namespace Gui
@@ -14,17 +17,17 @@ namespace Data
 		struct GUI
 		{
 			// General:
-			wchar_t user_name[64];
-			wchar_t domain_name[64];
-			wchar_t ldap_pass[64];
+			wchar_t user_name[MAX_BUFFER_SIZE_NAMES];
+			wchar_t domain_name[MAX_BUFFER_SIZE_NAMES];
+			wchar_t ldap_pass[MAX_BUFFER_SIZE_PASSWORD];
 
 			// LogonUnlock:
-			wchar_t otp_pass[64];
+			wchar_t otp_pass[MAX_BUFFER_SIZE_NAMES];
 			bool use_offline_pass;
 
 			// ChangePassword:
-			wchar_t ldap_pass_new_1[64];
-			wchar_t ldap_pass_new_2[64];
+			wchar_t ldap_pass_new_1[MAX_BUFFER_SIZE_PASSWORD];
+			wchar_t ldap_pass_new_2[MAX_BUFFER_SIZE_PASSWORD];
 		};
 
 		GUI*& Get();
