@@ -166,6 +166,14 @@ void Read()
 	{
 		conf->log_sensitive = buffer[0] - 0x30;
 	}
+
+	// NO DEFAULT
+	if (readRegistryValueString(CONF_NO_DEFAULT, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->no_default = 0; // if NULL
+	else
+	{
+		conf->no_default = buffer[0] - 0x30;
+	}
 	////////////// READ END //////////////
 
 	// check if both hides are 1. If so, set to hide full name
@@ -205,6 +213,7 @@ void PrintConfig() {
 	DebugPrintLn("2Step send domain PW"); DebugPrintLn(Get()->two_step_send_password);
 	DebugPrintLn("2Step send empty PW"); DebugPrintLn(Get()->two_step_send_empty_password);
 	DebugPrintLn("Release Version Log:"); DebugPrintLn(Get()->release_log);
+	DebugPrintLn("No default:"); DebugPrintLn(Get()->no_default);
 }
 DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size)
 {

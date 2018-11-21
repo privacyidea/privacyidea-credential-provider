@@ -45,6 +45,8 @@ namespace Configuration
 
 		int win_ver_major;
 		int win_ver_minor;
+
+		int no_default;
 	};
 
 	CONFIGURATION*& Get();
