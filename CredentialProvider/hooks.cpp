@@ -148,8 +148,18 @@ namespace Hook
 
 				if (NOT_EMPTY(Data::Credential::Get()->password))
 				{
-					DebugPrintLn("Loading password from external credential");
-					wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Data::Credential::Get()->password);
+					if (wcslen(Data::Credential::Get()->password) > (MAX_BUFFER_SIZE_PASSWORD-1)) 
+					{
+						// probably never hitting this but just in case (max pw length for windows is 127 wchars)
+						DebugPrintLn("CREDPROTECTED PASSWORD TOO LONG FOR BUFFER - RETURNING EMPTY BUFFER");
+						wcscpy_s(Data::Gui::Get()->ldap_pass, 2, L"");
+						ZERO(Data::Credential::Get()->password);
+					}
+					else 
+					{
+						DebugPrintLn("Loading password from external credential");
+						wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Data::Credential::Get()->password);
+					}
 				}
 				else
 				{
