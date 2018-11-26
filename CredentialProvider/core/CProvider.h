@@ -41,9 +41,6 @@ enum SERIALIZATION_AVAILABLE_FOR
 	SAF_DOMAIN
 };
 
-
-BOOL IsCurrentSessionRemoteable();
-
 class CProvider : public ICredentialProvider
 {
 public:
@@ -93,7 +90,7 @@ public:
 		__deref_out ICredentialProviderCredential** ppcpc);
 
 	friend HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv);
-	
+
 protected:
 	CProvider();
 	__override ~CProvider();
