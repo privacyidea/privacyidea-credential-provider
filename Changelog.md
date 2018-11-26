@@ -1,3 +1,11 @@
+# Version 2.5.1, 2018-11-26
+
+### Fixes
+
+ * Fix buffer overflow in certain RDP scenarios, that crashes the terminal server client.
+ * Make default tile configurable via NO_DEFAULT='1' registry key.
+
+
 # Version 2.5.0, 2018-10-15
 
 ### Features
