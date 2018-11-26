@@ -101,6 +101,10 @@ The complete path and filename of a bitmap image. This is a customized
 login image. The image must be a version 3 Windows BMP file with a resolution
 of 128x128 pixels.
 
+**no_default**
+
+Add this registry entry and set it ``1`` to not have the privacyIDEA Credential Provider selected by default when logging in.
+
 
 Log file
 ~~~~~~~~
