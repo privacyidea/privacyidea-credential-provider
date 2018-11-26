@@ -78,6 +78,7 @@ HRESULT CProvider::SetUsageScenario(
 {
 #ifdef _DEBUG
 	DebugPrintLn(__FUNCTION__);
+	DebugPrintLn(cpus);
 	Configuration::PrintConfig();
 #endif
 	HRESULT hr = E_INVALIDARG;
@@ -91,6 +92,14 @@ HRESULT CProvider::SetUsageScenario(
 	{
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
+		if (IsCurrentSessionRemoteable()) {
+			// if current session is remote, we need to get the OTP before the auth to pi, so we turn 2step on anyway
+			Configuration::Get()->two_step_hide_otp = 1;
+			Configuration::Get()->two_step_send_empty_password = 0;
+			Configuration::Get()->two_step_send_password = 0;
+			DebugPrintLn("remote session detected - turning on 2step on the server.");
+		}
+
 		hr = S_OK;
 		break;
 	case CPUS_CREDUI:
@@ -111,11 +120,76 @@ HRESULT CProvider::SetUsageScenario(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrintLn(Data::Provider::Get()->usage_scenario);
 	DebugPrintLn("CSample_CreateInstance Result:");
 	DebugPrintLn(hr);
 
 	return hr;
+}
+
+#define TERMINAL_SERVER_KEY _T("SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\")
+#define GLASS_SESSION_ID    _T("GlassSessionId")
+
+BOOL IsCurrentSessionRemoteable()
+{
+	BOOL fIsRemoteable = FALSE;
+	DebugPrintLn("check for remote session...");
+	if (GetSystemMetrics(SM_REMOTESESSION))
+	{
+		fIsRemoteable = TRUE;
+	}
+	else
+	{
+		HKEY hRegKey = NULL;
+		LONG lResult;
+
+		lResult = RegOpenKeyEx(
+			HKEY_LOCAL_MACHINE,
+			TERMINAL_SERVER_KEY,
+			0, // ulOptions
+			KEY_READ,
+			&hRegKey
+		);
+
+		if (lResult == ERROR_SUCCESS)
+		{
+			DWORD dwGlassSessionId;
+			DWORD cbGlassSessionId = sizeof(dwGlassSessionId);
+			DWORD dwType;
+
+			lResult = RegQueryValueEx(
+				hRegKey,
+				GLASS_SESSION_ID,
+				NULL, // lpReserved
+				&dwType,
+				(BYTE*)&dwGlassSessionId,
+				&cbGlassSessionId
+			);
+
+			if (lResult == ERROR_SUCCESS)
+			{
+				DWORD dwCurrentSessionId;
+
+				if (ProcessIdToSessionId(GetCurrentProcessId(), &dwCurrentSessionId))
+				{
+					fIsRemoteable = (dwCurrentSessionId != dwGlassSessionId);
+				}
+			}
+		}
+
+		if (hRegKey)
+		{
+			RegCloseKey(hRegKey);
+		}
+	}
+	if (fIsRemoteable)
+	{
+		DebugPrintLn("... returning - is remote session!");
+	}
+	else
+	{
+		DebugPrintLn("... returning - is not remote session!");
+	}
+	return fIsRemoteable;
 }
 
 // SetSerialization takes the kind of buffer that you would normally return to LogonUI for
@@ -136,7 +210,6 @@ HRESULT CProvider::SetSerialization(
 )
 {
 	DebugPrintLn(__FUNCTION__);
-	//GetSystemMetrics(SM_REMOTESESSION);
 	HRESULT result = E_NOTIMPL;
 	ULONG authPackage = NULL;
 	result = RetrieveNegotiateAuthPackage(&authPackage);
@@ -205,7 +278,6 @@ HRESULT CProvider::SetSerialization(
 			}
 		}
 	}
-	DebugPrintLn(Data::Provider::Get()->usage_scenario);
 	DebugPrintLn(result);
 
 	return result;
