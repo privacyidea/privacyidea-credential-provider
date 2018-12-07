@@ -1,4 +1,5 @@
 #include "config.h"
+#include "githash.h"
 
 namespace Configuration
 {
@@ -197,6 +198,7 @@ void PrintConfig() {
 	// Log the current config
 	DebugPrintLn("--- CP Version ---");
 	DebugPrintLn(VER_FILE_VERSION_STR);
+	DebugPrintLn(GIT_HASH);
 	DebugPrintLn("Windows Version Major:"); DebugPrintLn(Get()->win_ver_major);
 	DebugPrintLn("Minor:"); DebugPrintLn(Get()->win_ver_minor);
 	DebugPrintLn("CONFIG LOADED SUCCESSFULLY:");
@@ -215,6 +217,7 @@ void PrintConfig() {
 	DebugPrintLn("Release Version Log:"); DebugPrintLn(Get()->release_log);
 	DebugPrintLn("No default:"); DebugPrintLn(Get()->no_default);
 }
+
 DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size)
 {
 	DebugPrintLn(__FUNCTION__);

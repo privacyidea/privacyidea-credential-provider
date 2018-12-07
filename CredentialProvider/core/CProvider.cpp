@@ -247,6 +247,7 @@ HRESULT CProvider::SetSerialization(
 			{
 				BYTE * nativeSerialization = NULL;
 				DWORD nativeSerializationSize = 0;
+				DebugPrintLn("Serialization found from remote");
 
 				if (Data::Provider::Get()->credPackFlags == CPUS_CREDUI && (Data::Provider::Get()->credPackFlags & CREDUIWIN_PACK_32_WOW))
 				{
