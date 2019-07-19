@@ -136,6 +136,8 @@ namespace Endpoint
 			size_t size;
 		};
 		
+		//std::string receivedResponse;
+
 		HRESULT SendPOSTRequest(std::string domain, std::string url, std::string dat, struct BufferStruct *&buffer);
 		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass);
 		HRESULT CheckJSONResponse(char *&buffer);

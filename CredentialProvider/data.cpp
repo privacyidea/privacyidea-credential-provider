@@ -204,6 +204,8 @@ namespace Data
 				free(data);
 				data = NULL;
 			}
+
+			//remove(LOGFILE_NAME);
 		}
 	} // Namespace General
 

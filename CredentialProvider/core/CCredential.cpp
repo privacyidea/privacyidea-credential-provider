@@ -425,16 +425,21 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
-	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) {
-		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get()->win_ver_major == 10) {
+	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) 
+	{
+		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get()->win_ver_major == 10) 
+		{
 			*pbAutoLogon = true;
 			DebugPrintLn("Password change mode LOGON - AutoLogon true");
 		}
-		else {
+		else 
+		{
 			DebugPrintLn("Password change mode UNLOCK - AutoLogon false");
 		}
 		goto CleanUpAndReturn;
 	}
+
+	//if ()
 
 	hr = E_FAIL; // fail state, if following hook fails...
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), CleanUpAndReturn);
@@ -896,6 +901,8 @@ CleanUpAndReturn:
 	else { DebugPrintLn("pcpgsr is a nullpointer!"); }
 	DebugPrintLn("CCredential::GetSerialization - END");
 
+
+
 	return retVal;
 }
 
@@ -917,7 +924,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus *pqcws)
 	HOOK_CHECK_CRITICAL(Hook::Serialization::DataInitialization(), Exit);
 
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadData(), Exit);
-	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadDebugData(), Exit);
+	//HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadDebugData(), Exit);
 
 	if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION || Data::Provider::Get()->usage_scenario == CPUS_LOGON || Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
 	{
@@ -935,7 +942,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus *pqcws)
 
 Exit:
 	Data::Credential::Get()->pqcws = NULL;
-
+	//delete Data::Credential::Get()->pqcws;
+	DebugPrintLn("Connect - END");
 	return S_OK; // always S_OK
 }
 

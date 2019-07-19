@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
+#include <thread>
 
 #pragma comment(lib,"winhttp.lib")
 
@@ -47,6 +48,8 @@ namespace Endpoint
 			STATUS = READY;
 			epPck->protectMe = false;
 		}
+
+		//Concrete::receivedResponse = "";
 
 		Default();
 	}
@@ -182,7 +185,7 @@ namespace Endpoint
 		output->buffer = NULL;
 		output->size = 0;
 
-		struct ENDPOINT *epPack = Get();
+		//struct ENDPOINT *epPack = Get();
 
 		// && EMPTY(Get()->otpPass) makes the bools possibly only true in the first step. 
 		// After the OTP filled the epPck these are always false indicating the "real" auth request
@@ -193,7 +196,7 @@ namespace Endpoint
 		/////////// FIRST STEP ///////////
 		if (hideOTP && sendDomainPWFirst)
 		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, epPack->ldapPass);
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, Get()->ldapPass);
 		}
 		else if (hideOTP && sendEmptyPWFirst)
 		{
@@ -203,14 +206,21 @@ namespace Endpoint
 		{
 			DebugPrintLn("Enter OTP in second step, no request sent yet");
 			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
+			STATUS = NOT_FINISHED;
+			/*free(output);
+			return ENDPOINT_AUTH_CONTINUE; */
+
 			result = ENDPOINT_AUTH_CONTINUE;
 			STATUS = NOT_FINISHED;
+			//Concrete::PrepareAndSendRequest(output, L"");
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(2s);
 		}
 		////////////////////////////////////////////
 		/////////// SECOND STEP	with OTP ///////////
 		else
 		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, epPack->otpPass);
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, Get()->otpPass);
 		}
 		////////////////////////////////////////////
 
@@ -218,11 +228,14 @@ namespace Endpoint
 		{	// Request successful
 			ShowInfoMessage(ENDPOINT_INFO_CHECKING_RESPONSE);
 			// Parse and check JSON response
-			char* json = output->buffer;
-			LAST_ERROR_CODE = Concrete::CheckJSONResponse(json);
+			if (output->buffer != NULL)
+			{
+				char* json = output->buffer;
+				LAST_ERROR_CODE = Concrete::CheckJSONResponse(json);
+			}
 		}
 
-		ShowInfoMessage(ENDPOINT_INFO_PLEASE_WAIT);
+		//ShowInfoMessage(ENDPOINT_INFO_PLEASE_WAIT);
 
 		// TRANSLATE HRESULT TO BASE DEFINITIONS
 		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_VALUE_TRUE)
@@ -246,7 +259,7 @@ namespace Endpoint
 				STATUS = NOT_FINISHED; // let him try again
 			}
 		}
-
+		free(output);
 		return result;
 	}
 
@@ -290,8 +303,8 @@ namespace Endpoint
 			HRESULT result = S_OK;
 
 			//Extra
-			LPSTR  data = const_cast<char *>(dat.c_str());;
-			DWORD data_len = strnlen_s(data,4096);
+			LPSTR data = const_cast<char *>(dat.c_str());;
+			DWORD data_len = strnlen_s(data, 4096);
 
 			std::wstring hostname = get_utf16(domain, CP_UTF8);
 			std::wstring path = get_utf16(url, CP_UTF8);
@@ -419,7 +432,7 @@ namespace Endpoint
 			// Send a request.
 			if (hRequest)
 				bResults = WinHttpSendRequest(hRequest,
-					additionalHeaders, (DWORD) -1,
+					additionalHeaders, (DWORD)-1,
 					(LPVOID)data, data_len,
 					data_len, 0);
 
@@ -524,7 +537,7 @@ namespace Endpoint
 			struct ENDPOINT *epPack = Get();
 			Helper::WideCharToChar(epPack->username, sizeof(username) / sizeof(char), username);
 			Helper::WideCharToChar(pass, sizeof(passToSend) / sizeof(char), passToSend);
-			
+
 			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
 				"pass=%s&user=%s",
 				passToSend,
@@ -544,13 +557,13 @@ namespace Endpoint
 			}
 
 			path = checkPath(path);
-
+			//result = 0;
 			result = SendPOSTRequest(hostname, path, data, buffer);
 
 			if (result == 0) {
 				result = ENDPOINT_SUCCESS_RESPONSE_OK;
 			}
-			
+
 			return result;
 		}
 

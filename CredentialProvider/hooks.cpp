@@ -463,14 +463,15 @@ namespace Hook
 				Data::General::Get()->bypassDataInitialization = true; // we dont want to initialize the kiul with the old password
 				*pbAutoLogon = TRUE;
 			}
-
+			*pbAutoLogon = FALSE;
 			return S_OK;
 		}
 
 		HRESULT CheckEndpointObserver(BOOL *&pbAutoLogon)
 		{
+			//UNREFERENCED_PARAMETER(pbAutoLogon);
 			DebugPrintLn(__FUNCTION__);
-
+			*pbAutoLogon = FALSE;
 			if (EndpointObserver::Thread::GetStatus() == EndpointObserver::Thread::STATUS::FINISHED)
 			{
 				DebugPrintLn("Observer FINISHED");
@@ -483,7 +484,7 @@ namespace Hook
 					Data::General::Get()->bypassEndpoint = true;
 					Data::General::Get()->bypassDataInitialization = true;
 
-					*pbAutoLogon = true;
+					//*pbAutoLogon = TRUE;
 				}
 				else
 				{
