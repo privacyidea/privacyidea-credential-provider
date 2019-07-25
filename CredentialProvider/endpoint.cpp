@@ -207,14 +207,14 @@ namespace Endpoint
 			DebugPrintLn("Enter OTP in second step, no request sent yet");
 			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
 			STATUS = NOT_FINISHED;
-			/*free(output);
-			return ENDPOINT_AUTH_CONTINUE; */
-
 			result = ENDPOINT_AUTH_CONTINUE;
 			STATUS = NOT_FINISHED;
-			//Concrete::PrepareAndSendRequest(output, L"");
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(2s);
+			if (Configuration::Get()->hide_otp_sleep_s > 0) {
+				using namespace std::chrono_literals;
+				const std::chrono::seconds s(Configuration::Get()->hide_otp_sleep_s);
+				std::this_thread::sleep_for(s);
+				//std::this_thread::sleep_for(2s);
+			}
 		}
 		////////////////////////////////////////////
 		/////////// SECOND STEP	with OTP ///////////

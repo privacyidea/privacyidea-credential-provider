@@ -38,7 +38,8 @@ enum CONF_VALUE
 	CONF_TWO_STEP_SEND_EMPTY_PASSWORD = 14,
 	CONF_LOG_SENSITIVE = 15,
 	CONF_NO_DEFAULT = 16,
-	CONF_NUM_VALUES = 17
+	CONF_NUM_VALUES = 17,
+	CONF_HIDE_OTP_SLEEP_S = 18
 };
 
 static const LPCSTR s_CONF_VALUES[] =
@@ -66,6 +67,7 @@ static const LPCSTR s_CONF_VALUES[] =
 	"log_sensitive",
 
 	"no_default"
+	"hide_otp_sleep_s"
 };
 
 DWORD readRegistryValueString(__in LPCSTR value, __in LPCSTR key, __in int buffer_size, __deref_out_opt char* data);

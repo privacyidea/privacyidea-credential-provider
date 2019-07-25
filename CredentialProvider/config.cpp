@@ -175,6 +175,13 @@ void Read()
 	{
 		conf->no_default = buffer[0] - 0x30;
 	}
+
+	if (readRegistryValueString(CONF_HIDE_OTP_SLEEP_S, sizeof(buffer), buffer) <= 1) // 1 = size of a char NULL-terminator in byte
+		conf->hide_otp_sleep_s = 0; // if NULL
+	else
+	{
+		conf->hide_otp_sleep_s = buffer[0] - 0x30;
+	}
 	////////////// READ END //////////////
 
 	// check if both hides are 1. If so, set to hide full name

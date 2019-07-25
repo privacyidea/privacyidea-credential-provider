@@ -47,6 +47,7 @@ namespace Configuration
 		int win_ver_minor;
 
 		int no_default;
+		int hide_otp_sleep_s;
 	};
 
 	CONFIGURATION*& Get();
