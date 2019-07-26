@@ -38,36 +38,38 @@ enum CONF_VALUE
 	CONF_TWO_STEP_SEND_EMPTY_PASSWORD = 14,
 	CONF_LOG_SENSITIVE = 15,
 	CONF_NO_DEFAULT = 16,
-	CONF_NUM_VALUES = 17,
-	CONF_HIDE_OTP_SLEEP_S = 18
+	CONF_HIDE_OTP_SLEEP_S = 17,	
+
+
+	CONF_NUM_VALUES = 18 // LAST
 };
 
 static const LPCSTR s_CONF_VALUES[] =
 {
-	"hostname",
-	"login_text",
-	"otp_text",
+	"hostname", //0
+	"login_text", // 1 
+	"otp_text", // 2
 
-	"v1_bitmap_path",
-	"v2_bitmap_path",
+	"v1_bitmap_path", // 3
+	"v2_bitmap_path", // 4
 
-	"two_step_hide_otp",
-	"two_step_send_password",
+	"two_step_hide_otp", // 5 
+	"two_step_send_password", // 6
 
-	"ssl_ignore_unknown_ca",
-	"ssl_ignore_invalid_cn",
+	"ssl_ignore_unknown_ca", // 7
+	"ssl_ignore_invalid_cn", // 8
 
-	"hide_fullname",
-	"hide_domainname",
+	"hide_fullname", // 9
+	"hide_domainname", // 10
 
-	"release_log",
-	"path",
-	"custom_port",
-	"two_step_send_empty_password",
-	"log_sensitive",
+	"release_log", // 11
+	"path", // 12
+	"custom_port", // 13
+	"two_step_send_empty_password", // 14
+	"log_sensitive", // 15
 
-	"no_default"
-	"hide_otp_sleep_s"
+	"no_default" // 16
+	"sleep" // 17
 };
 
 DWORD readRegistryValueString(__in LPCSTR value, __in LPCSTR key, __in int buffer_size, __deref_out_opt char* data);

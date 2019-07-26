@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string.h>
 #include <thread>
+#include <atlutil.h>
 
 #pragma comment(lib,"winhttp.lib")
 
@@ -141,9 +142,14 @@ namespace Endpoint
 		//}
 	}
 
-	void GetInfoMessage(wchar_t(&msg)[ENDPOINT_INFO_MSG_SIZE], long msg_code)
+	void ShowInfoMessage(long msg_code)
 	{
 		DebugPrintLn(__FUNCTION__);
+
+		if (Data::Credential::Get()->pqcws == NULL)
+			return;
+
+		wchar_t msg[ENDPOINT_INFO_MSG_SIZE];
 
 		switch (msg_code) {
 		case ENDPOINT_INFO_PLEASE_WAIT:
@@ -155,35 +161,40 @@ namespace Endpoint
 		case ENDPOINT_INFO_CHECKING_RESPONSE:
 			wcscpy_s(msg, ARRAYSIZE(msg), L"Checking response...");
 			break;
+		case ENDPOINT_INFO_PROCESSING:
+			wcscpy_s(msg, ARRAYSIZE(msg), L"Processing...");
+			break;
 		default:
 			break;
 		}
-	}
-
-	void ShowInfoMessage(long msg_code)
-	{
-		DebugPrintLn(__FUNCTION__);
-
-		if (Data::Credential::Get()->pqcws == NULL)
-			return;
-
-		wchar_t msg[ENDPOINT_INFO_MSG_SIZE];
-		GetInfoMessage(msg, msg_code);
 
 		Data::Credential::Get()->pqcws->SetStatusMessage(msg);
+	}
+	
+	string ToEscapingURI(string in) {
+		DWORD len = in.size();
+		DWORD maxLen = (len * 3);
+		DWORD *pdwMaxLen = &maxLen;
+		DWORD *pdwLen = &len;
+		LPSTR out = (char*)malloc(sizeof(char) * maxLen);
+		LPCSTR input = in.c_str();
+		HRESULT res = AtlEscapeUrl(input, out, pdwLen, maxLen, (DWORD)NULL);
+
+		if (SUCCEEDED(res)) {
+			string ret(out);
+			free(out);
+			return ret;
+		}
+		else {
+			DebugPrintLn("AtlEscapeUrl Failure");
+			return "";
+		}
 	}
 
 	HRESULT Call()
 	{
 		DebugPrintLn(__FUNCTION__);
 		HRESULT result = ENDPOINT_AUTH_FAIL;
-
-		// Do WebAPI call
-		ShowInfoMessage(ENDPOINT_INFO_CALLING_ENDPOINT);
-		// Create an instance of our BufferStruct to accept HttpRequest response
-		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct));
-		output->buffer = NULL;
-		output->size = 0;
 
 		//struct ENDPOINT *epPack = Get();
 
@@ -194,27 +205,37 @@ namespace Endpoint
 		bool hideOTP = Configuration::Get()->two_step_hide_otp && EMPTY(Get()->otpPass);
 
 		/////////// FIRST STEP ///////////
-		if (hideOTP && sendDomainPWFirst)
+		if (hideOTP && !sendEmptyPWFirst && !sendDomainPWFirst)
 		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, Get()->ldapPass);
-		}
-		else if (hideOTP && sendEmptyPWFirst)
-		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, L"");
-		}
-		else if (hideOTP && !sendEmptyPWFirst && !sendDomainPWFirst)
-		{
+			// NO ENDPOINT CALL
+			ShowInfoMessage(ENDPOINT_INFO_PROCESSING);
 			DebugPrintLn("Enter OTP in second step, no request sent yet");
 			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
 			STATUS = NOT_FINISHED;
-			result = ENDPOINT_AUTH_CONTINUE;
-			STATUS = NOT_FINISHED;
+			//writeToLog(Configuration::Get()->hide_otp_sleep_s);
+			DebugPrintLn(Configuration::Get()->hide_otp_sleep_s);
 			if (Configuration::Get()->hide_otp_sleep_s > 0) {
 				using namespace std::chrono_literals;
-				const std::chrono::seconds s(Configuration::Get()->hide_otp_sleep_s);
-				std::this_thread::sleep_for(s);
-				//std::this_thread::sleep_for(2s);
+				std::this_thread::sleep_for(std::chrono::seconds(Configuration::Get()->hide_otp_sleep_s));
 			}
+			return ENDPOINT_AUTH_CONTINUE;
+		}
+
+		// ENDPOINT CALL
+		ShowInfoMessage(ENDPOINT_INFO_CALLING_ENDPOINT);
+
+		// Create an instance of our BufferStruct to accept the response
+		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct));
+		output->buffer = NULL;
+		output->size = 0;
+
+		if (hideOTP && sendEmptyPWFirst)
+		{
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, L"");
+		}
+		else if (hideOTP && sendDomainPWFirst)
+		{
+			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, Get()->ldapPass);
 		}
 		////////////////////////////////////////////
 		/////////// SECOND STEP	with OTP ///////////
@@ -317,7 +338,7 @@ namespace Endpoint
 			if (Configuration::Get()->log_sensitive) {
 				DebugPrintLn("post_data:");
 				DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
-			}
+		}
 #endif
 			DWORD dwSize = 0;
 			DWORD dwDownloaded = 0;
@@ -349,11 +370,11 @@ namespace Endpoint
 				DebugPrintLn("WinHttpOpen failure:");
 				DebugPrintLn(GetLastError());
 				if (Configuration::Get()->release_log) {
-					writeToLog("WinHttpOpen failure:");
-					writeToLog(GetLastError());
-					writeToLog("Trying to send to:");
-					writeToLog(hostname.c_str());
-					writeToLog(path.c_str());
+					//writeToLog("WinHttpOpen failure:");
+					//writeToLog(GetLastError());
+					//writeToLog("Trying to send to:");
+					//writeToLog(hostname.c_str());
+					//writeToLog(path.c_str());
 				}
 				return ENDPOINT_ERROR_SETUP_ERROR;
 			}
@@ -368,11 +389,11 @@ namespace Endpoint
 				DebugPrintLn("WinHttpOpenRequest failure:");
 				DebugPrintLn(GetLastError());
 				if (Configuration::Get()->release_log) {
-					writeToLog("WinHttpOpenRequest failure:");
-					writeToLog(GetLastError());
-					writeToLog("Trying to send to:");
-					writeToLog(hostname.c_str());
-					writeToLog(path.c_str());
+					//writeToLog("WinHttpOpenRequest failure:");
+					//writeToLog(GetLastError());
+					//writeToLog("Trying to send to:");
+					//writeToLog(hostname.c_str());
+					//writeToLog(path.c_str());
 				}
 				return ENDPOINT_ERROR_SETUP_ERROR;
 			}
@@ -390,8 +411,8 @@ namespace Endpoint
 				DebugPrintLn("WinHttpOptions security flag could not be set:");
 				DebugPrintLn(GetLastError());
 				if (Configuration::Get()->release_log) {
-					writeToLog("WinHttpOptions security flag could not be set:");
-					writeToLog(GetLastError());
+					//writeToLog("WinHttpOptions security flag could not be set:");
+					//writeToLog(GetLastError());
 				}
 				return ENDPOINT_ERROR_SETUP_ERROR;
 			}
@@ -418,8 +439,8 @@ namespace Endpoint
 					DebugPrintLn("WinHttpOption flags could not be set:");
 					DebugPrintLn(GetLastError());
 					if (Configuration::Get()->release_log) {
-						writeToLog("WinHttpOption flags could not be set:");
-						writeToLog(GetLastError());
+						//writeToLog("WinHttpOption flags could not be set:");
+						//writeToLog(GetLastError());
 					}
 					return ENDPOINT_ERROR_SETUP_ERROR;
 				}
@@ -440,11 +461,11 @@ namespace Endpoint
 				DebugPrintLn("WinHttpSendRequest failure:");
 				DebugPrintLn(GetLastError());
 				if (Configuration::Get()->release_log) {
-					writeToLog("WinHttpSendRequest failure:");
-					writeToLog(GetLastError());
-					writeToLog("Trying to send to:");
-					writeToLog(hostname.c_str());
-					writeToLog(path.c_str());
+					//writeToLog("WinHttpSendRequest failure:");
+					//writeToLog(GetLastError());
+					//writeToLog("Trying to send to:");
+					//writeToLog(hostname.c_str());
+					//writeToLog(path.c_str());
 				}
 				return ENDPOINT_ERROR_CONNECT_ERROR;
 			}
@@ -464,8 +485,8 @@ namespace Endpoint
 						DebugPrintLn("WinHttpQueryDataAvailable Error:");
 						DebugPrintLn(GetLastError());
 						if (Configuration::Get()->release_log) {
-							writeToLog("WinHttpQueryDataAvailable error:");
-							writeToLog(GetLastError());
+							//writeToLog("WinHttpQueryDataAvailable error:");
+							//writeToLog(GetLastError());
 						}
 						result = ENDPOINT_ERROR_RESPONSE_ERROR;
 					}
@@ -476,7 +497,7 @@ namespace Endpoint
 					{
 						DebugPrintLn("WinHttpReadData out of memory");
 						if (Configuration::Get()->release_log) {
-							writeToLog("WinHttpReadData out of memory");
+							//writeToLog("WinHttpReadData out of memory");
 						}
 						result = ENDPOINT_ERROR_RESPONSE_ERROR;
 						dwSize = 0;
@@ -491,8 +512,8 @@ namespace Endpoint
 							DebugPrintLn("WinHttpReadData Error:");
 							DebugPrintLn(GetLastError());
 							if (Configuration::Get()->release_log) {
-								writeToLog("WinHttpReadData Error:");
-								writeToLog(GetLastError());
+								//writeToLog("WinHttpReadData Error:");
+								//writeToLog(GetLastError());
 							}
 							result = ENDPOINT_ERROR_RESPONSE_ERROR;
 						}
@@ -509,8 +530,8 @@ namespace Endpoint
 				DebugPrintLn("WinHttp Result Error:");
 				DebugPrintLn(GetLastError());
 				if (Configuration::Get()->release_log) {
-					writeToLog("WinHttp Result Error:");
-					writeToLog(GetLastError());
+					//writeToLog("WinHttp Result Error:");
+					//writeToLog(GetLastError());
 				}
 				result = ENDPOINT_ERROR_RESPONSE_ERROR;
 				//printf("Error %d has occurred.\n", GetLastError());
@@ -524,24 +545,26 @@ namespace Endpoint
 			buffer->buffer = _strdup(response.c_str());
 
 			return result;
-		}
+	}
 
 		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass)
 		{
 			DebugPrintLn(__FUNCTION__);
 
-			// Pack the data for post request
 			INIT_ZERO_CHAR(post_data, 4096);
-			INIT_ZERO_CHAR(username, 64);
-			INIT_ZERO_CHAR(passToSend, 64);
-			struct ENDPOINT *epPack = Get();
-			Helper::WideCharToChar(epPack->username, sizeof(username) / sizeof(char), username);
-			Helper::WideCharToChar(pass, sizeof(passToSend) / sizeof(char), passToSend);
+
+			// Pack the data for post request
+			string szPass = Helper::ws2s(wstring(pass));
+			string szUser = Helper::ws2s(wstring(Get()->username));
+			
+			// Encode as escaping uri
+			string szPassEncoded = ToEscapingURI(szPass);
+			string szUserEncoded = ToEscapingURI(szUser);
 
 			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
 				"pass=%s&user=%s",
-				passToSend,
-				username
+				szPassEncoded.c_str(),
+				szUserEncoded.c_str()
 			);
 
 			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
@@ -553,7 +576,10 @@ namespace Endpoint
 			if (!tx_id.empty()) {
 				DebugPrintLn("transaction id found. Appending it to the post_data.");
 				data.append("&transaction_id=");
-				data.append(Data::Credential::Get()->tx_id);
+
+				// Encode escaping uri
+				string szTxIDEncoded = ToEscapingURI(string(Data::Credential::Get()->tx_id));
+				data.append(szTxIDEncoded);
 			}
 
 			path = checkPath(path);
@@ -578,7 +604,7 @@ namespace Endpoint
 
 			if (json == NULL) {
 				if (Configuration::Get()->release_log) {
-					writeToLog("JSON response was null: ENDPOINT_ERROR_JSON_NULL");
+					//writeToLog("JSON response was null: ENDPOINT_ERROR_JSON_NULL");
 				}
 				return ENDPOINT_ERROR_JSON_NULL;
 			}
@@ -594,9 +620,9 @@ namespace Endpoint
 				DebugPrintLn("Parse error description:");
 				DebugPrintLn(GetParseError_En(json_document.GetParseError()));
 				if (Configuration::Get()->release_log) {
-					writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR");
-					writeToLog("Plaintext response:");
-					writeToLog(json);
+					//writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR");
+					//writeToLog("Plaintext response:");
+					//writeToLog(json);
 				}
 				return ENDPOINT_ERROR_PARSE_ERROR;
 			}
@@ -644,9 +670,9 @@ namespace Endpoint
 			if (!json_document.HasMember("result")) {
 				DebugPrintLn("JSON reponse has no member result");
 				if (Configuration::Get()->release_log) {
-					writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
-					writeToLog("Plaintext response:");
-					writeToLog(json);
+					//writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
+					//writeToLog("Plaintext response:");
+					//writeToLog(json);
 				}
 				return ENDPOINT_ERROR_NO_RESULT;
 			}
@@ -669,9 +695,9 @@ namespace Endpoint
 					// No Member "value" or "value" = false
 					// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
 					if (Configuration::Get()->release_log && !Configuration::Get()->two_step_send_password) {
-						writeToLog("Response has no member 'value': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
-						writeToLog("Plaintext response:");
-						writeToLog(json);
+						//writeToLog("Response has no member 'value': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
+						//writeToLog("Plaintext response:");
+						//writeToLog(json);
 					}
 					result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
 				}
@@ -684,9 +710,9 @@ namespace Endpoint
 				// Check if error is present
 				if (!json_result.HasMember("error")) {
 					if (Configuration::Get()->release_log) {
-						writeToLog("Response has no member 'error': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
-						writeToLog("Plaintext response:");
-						writeToLog(json);
+						//writeToLog("Response has no member 'error': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
+						//writeToLog("Plaintext response:");
+						//writeToLog(json);
 					}
 					return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
 				}
@@ -697,9 +723,9 @@ namespace Endpoint
 
 				if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR) {
 					if (Configuration::Get()->release_log) {
-						writeToLog("Insufficient subscription error: ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION");
-						writeToLog("Plaintext response:");
-						writeToLog(json);
+						//writeToLog("Insufficient subscription error: ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION");
+						//writeToLog("Plaintext response:");
+						//writeToLog(json);
 					}
 					result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
 				}
@@ -707,6 +733,6 @@ namespace Endpoint
 			return result;
 		}
 
-	} // Namespace Concrete
+} // Namespace Concrete
 
 } // Namespace Endpoint
