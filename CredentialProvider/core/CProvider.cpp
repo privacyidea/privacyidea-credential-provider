@@ -406,14 +406,7 @@ HRESULT CProvider::GetCredentialCount(
 		}
 	}
 
-	DebugPrintLn(hr);
-	if (pbAutoLogonWithDefault) {
-		writeToLog("AutoLogonDefault TRUE");
-	}
-	else {
-		writeToLog("AutoLogonDefault FALSE");
-	}
-	
+	DebugPrintLn(hr);	
 	return hr;
 }
 

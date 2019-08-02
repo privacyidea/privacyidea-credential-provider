@@ -802,7 +802,10 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			DebugPrintLn("Opening password change dialog failed: Handle to owner window is missing");
-			if (Configuration::Get()->release_log) { writeToLog("Opening password change dialog failed: Handle to owner window is missing"); }
+			if (Configuration::Get()->release_log)
+			{ 
+				//writeToLog("Opening password change dialog failed: Handle to owner window is missing"); 
+			}
 		}
 	}
 
@@ -820,7 +823,6 @@ HRESULT CCredential::GetSerialization(
 		HOOK_CHECK_CRITICAL(Hook::Serialization::DataInitialization(), CleanUpAndReturn);
 
 		HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadData(), CleanUpAndReturn);
-		HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadDebugData(), CleanUpAndReturn);
 	}
 
 	// Logon cancelled
@@ -901,8 +903,6 @@ CleanUpAndReturn:
 	else { DebugPrintLn("pcpgsr is a nullpointer!"); }
 	DebugPrintLn("CCredential::GetSerialization - END");
 
-
-
 	return retVal;
 }
 
@@ -922,9 +922,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus *pqcws)
 	/////
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), Exit);
 	HOOK_CHECK_CRITICAL(Hook::Serialization::DataInitialization(), Exit);
-
 	HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadData(), Exit);
-	//HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadDebugData(), Exit);
 
 	if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION || Data::Provider::Get()->usage_scenario == CPUS_LOGON || Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
 	{
@@ -978,7 +976,6 @@ HRESULT CCredential::ReportResult(
 
 	if (Data::Credential::Get()->passwordMustChange) {
 		DebugPrintLn("Status: Password must change");
-		
 		return E_NOTIMPL;
 	}
 

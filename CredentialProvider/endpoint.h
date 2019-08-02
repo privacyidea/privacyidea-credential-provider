@@ -29,7 +29,13 @@
 
 #include <string>
 #include <time.h>
-
+#include <Windows.h>
+#include <winhttp.h>
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <thread>
+#include <atlutil.h>
 #include "rapidjson/stringbuffer.h"
 
 //#include <iostream>
@@ -37,6 +43,8 @@
 /////////////////////////
 /////////////////////// BASE ENDPOINT DECLARATIONS
 /////////////////////////
+
+using namespace std;
 
 namespace Endpoint
 {

@@ -41,7 +41,6 @@ namespace Hook
 
 		HRESULT EndpointInitialization();
 		HRESULT DataInitialization();
-		HRESULT EndpointLoadDebugData();
 		HRESULT EndpointLoadData();
 		HRESULT EndpointCallCancelled();
 		HRESULT EndpointCallSuccessfull();

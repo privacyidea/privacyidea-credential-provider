@@ -70,6 +70,14 @@ Set to ``1`` if the privacyIDEA Credential Provider should send the user's passw
 Set to ``1`` if the privacyIDEA Credential Provider should send an empty password to the privacyIDEA Authentication Service.
 
 NOTE: If both **two_step_send_password** and **two_step_send_empty_password** are set to ``1``, the privacyIDEA Credential Provider will send an empty password to the privacyIDEA Authentication Service.
+NOTE: Sending the windows or an empty password can be used to trigger token types like SMS or Email.
+
+Recommended setup for remote desktop scenarios
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In scenarios where the privacyIDEA Credential Provider shall be used for RDP connections, it is recommended to install the privacyIDEA Credential Provider only on the RDP target together with the Filter.
+It is also recommended to use the *two_step_hide_otp* setting to skip entering the windows password a second time.
+
 
 Customization of the Look and Feel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,12 +1,5 @@
 #include "endpoint.h"
-#include <Windows.h>
-#include <winhttp.h>
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <string.h>
-#include <thread>
-#include <atlutil.h>
+
 
 #pragma comment(lib,"winhttp.lib")
 
@@ -170,11 +163,10 @@ namespace Endpoint
 
 		Data::Credential::Get()->pqcws->SetStatusMessage(msg);
 	}
-	
+
 	string ToEscapingURI(string in) {
 		DWORD len = in.size();
 		DWORD maxLen = (len * 3);
-		DWORD *pdwMaxLen = &maxLen;
 		DWORD *pdwLen = &len;
 		LPSTR out = (char*)malloc(sizeof(char) * maxLen);
 		LPCSTR input = in.c_str();
@@ -187,6 +179,7 @@ namespace Endpoint
 		}
 		else {
 			DebugPrintLn("AtlEscapeUrl Failure");
+			free(out);
 			return "";
 		}
 	}
@@ -195,8 +188,6 @@ namespace Endpoint
 	{
 		DebugPrintLn(__FUNCTION__);
 		HRESULT result = ENDPOINT_AUTH_FAIL;
-
-		//struct ENDPOINT *epPack = Get();
 
 		// && EMPTY(Get()->otpPass) makes the bools possibly only true in the first step. 
 		// After the OTP filled the epPck these are always false indicating the "real" auth request
@@ -212,7 +203,6 @@ namespace Endpoint
 			DebugPrintLn("Enter OTP in second step, no request sent yet");
 			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
 			STATUS = NOT_FINISHED;
-			//writeToLog(Configuration::Get()->hide_otp_sleep_s);
 			DebugPrintLn(Configuration::Get()->hide_otp_sleep_s);
 			if (Configuration::Get()->hide_otp_sleep_s > 0) {
 				using namespace std::chrono_literals;
@@ -324,7 +314,7 @@ namespace Endpoint
 			HRESULT result = S_OK;
 
 			//Extra
-			LPSTR data = const_cast<char *>(dat.c_str());;
+			LPSTR data = const_cast<char *>(dat.c_str());
 			DWORD data_len = strnlen_s(data, 4096);
 
 			std::wstring hostname = get_utf16(domain, CP_UTF8);
@@ -338,7 +328,7 @@ namespace Endpoint
 			if (Configuration::Get()->log_sensitive) {
 				DebugPrintLn("post_data:");
 				DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
-		}
+			}
 #endif
 			DWORD dwSize = 0;
 			DWORD dwDownloaded = 0;
@@ -405,7 +395,6 @@ namespace Endpoint
 				WINHTTP_OPTION_SECURITY_FLAGS,
 				&dwReqOpts,
 				sizeof(DWORD))) {
-
 			}
 			else {
 				DebugPrintLn("WinHttpOptions security flag could not be set:");
@@ -545,7 +534,7 @@ namespace Endpoint
 			buffer->buffer = _strdup(response.c_str());
 
 			return result;
-	}
+		}
 
 		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass)
 		{
@@ -556,7 +545,7 @@ namespace Endpoint
 			// Pack the data for post request
 			string szPass = Helper::ws2s(wstring(pass));
 			string szUser = Helper::ws2s(wstring(Get()->username));
-			
+
 			// Encode as escaping uri
 			string szPassEncoded = ToEscapingURI(szPass);
 			string szUserEncoded = ToEscapingURI(szUser);
@@ -583,7 +572,6 @@ namespace Endpoint
 			}
 
 			path = checkPath(path);
-			//result = 0;
 			result = SendPOSTRequest(hostname, path, data, buffer);
 
 			if (result == 0) {
@@ -733,6 +721,6 @@ namespace Endpoint
 			return result;
 		}
 
-} // Namespace Concrete
+	} // Namespace Concrete
 
 } // Namespace Endpoint
