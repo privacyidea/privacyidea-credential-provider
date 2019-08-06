@@ -1,3 +1,9 @@
+# Version 2.5.2, 2019-08-02
+
+## Fixes
+ * Fix for clients experiencing a freeze when using only hide_otp configuration.
+ * URL encoding of parameters which are sent to the server.
+
 # Version 2.5.1, 2018-11-26
 
 ### Fixes
