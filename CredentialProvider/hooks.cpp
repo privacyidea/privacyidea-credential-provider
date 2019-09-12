@@ -187,7 +187,7 @@ namespace Hook
 				
 				DebugPrintLn("Loading password from GUI");
 				wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[CFI_OTP_LDAP_PASS]);
-				if (Configuration::Get()->log_sensitive) {
+				if (Configuration::Get().logSensitive) {
 					DebugPrintLn(Data::Gui::Get()->ldap_pass);
 				}
 
@@ -485,7 +485,7 @@ namespace Hook
 
 			if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
 			{
-				if (Configuration::Get()->two_step_hide_otp) {
+				if (Configuration::Get().twoStepHideOTP) {
 					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_UNLOCK_TWO_STEP, NULL, WORKSTATION_LOCKED);
 				}
 				else {
@@ -495,7 +495,7 @@ namespace Hook
 			}
 			else if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
 			{
-				if (Configuration::Get()->two_step_hide_otp) {
+				if (Configuration::Get().twoStepHideOTP) {
 					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_LOGON_TWO_STEP);
 				}
 				else {
@@ -628,19 +628,19 @@ namespace Hook
 			if ((LUFI_OTP_LOGO == dwFieldID) && phbmp)
 			{
 				HBITMAP hbmp = NULL;
+				LPCSTR lpszBitmapPath = Helper::ws2s(Configuration::Get().bitmapPath).c_str();
+				DebugPrintLn(lpszBitmapPath);
 
-				DebugPrintLn(Configuration::Get()->v1_bitmap_path);
-
-				if (NOT_EMPTY(Configuration::Get()->v1_bitmap_path))
+				if (NOT_EMPTY(lpszBitmapPath))
 				{
-					DWORD dwAttrib = GetFileAttributesA(Configuration::Get()->v1_bitmap_path);
+					DWORD dwAttrib = GetFileAttributesA(lpszBitmapPath);
 
 					DebugPrintLn(dwAttrib);
 
 					if (dwAttrib != INVALID_FILE_ATTRIBUTES
 						&& !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
 					{
-						hbmp = (HBITMAP)LoadImageA(NULL, Configuration::Get()->v1_bitmap_path, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+						hbmp = (HBITMAP)LoadImageA(NULL, lpszBitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
 						if (hbmp == NULL)
 						{

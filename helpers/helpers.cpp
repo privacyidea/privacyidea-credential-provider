@@ -21,17 +21,15 @@
 #include <intsafe.h>
 #include <wincred.h>
 #include <string>
-
+#include "..//CredentialProvider/Configuration.h"
 
 // 
 // Copies the field descriptor pointed to by rcpfd into a buffer allocated 
 // using CoTaskMemAlloc. Returns that buffer in ppcpfd.
 // 
-#pragma warning(disable : 4996) // use mbstowcs_s to enable this again
 HRESULT FieldDescriptorCoAllocCopy(
     __in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& rcpfd,
-    __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd,
-	__in char* otp_text
+    __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd
     )
 {
     HRESULT hr;
@@ -45,11 +43,16 @@ HRESULT FieldDescriptorCoAllocCopy(
 
 		std::wstring label(rcpfd.pszLabel);
 		// check if the field is the OTP Field, if so replace text with OTP text from config, if there is
-		if (label.compare(L"One-Time Password") == 0 && otp_text && rcpfd.pszLabel) {
-			wchar_t wtext[65];
-			mbstowcs(wtext, otp_text, strlen(otp_text) + 1); //Plus null
-			LPWSTR ptr = wtext;
-			hr = SHStrDupW(ptr, &pcpfd->pszLabel);
+		if (label.compare(L"One-Time Password") == 0) 
+		{
+			std::wstring otpText(Configuration::Get().otpText);
+			if (otpText.empty()) {
+				hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
+			}
+			else
+			{
+				hr = SHStrDupW(otpText.c_str(), &pcpfd->pszLabel);
+			}
 		}
 		else if (rcpfd.pszLabel)
 		{

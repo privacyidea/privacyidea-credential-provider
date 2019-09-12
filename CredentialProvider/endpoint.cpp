@@ -1,7 +1,8 @@
 #include "endpoint.h"
 
-
 #pragma comment(lib,"winhttp.lib")
+
+using namespace std;
 
 namespace Endpoint
 {
@@ -12,7 +13,7 @@ namespace Endpoint
 
 	ENDPOINT*& Get()
 	{
-		static struct ENDPOINT *epPck = NULL;
+		static struct ENDPOINT* epPck = NULL;
 
 		return epPck;
 	}
@@ -116,7 +117,7 @@ namespace Endpoint
 		//}
 	}
 
-	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool *&big)
+	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool*& big)
 	{
 		DebugPrintLn(__FUNCTION__);
 
@@ -167,7 +168,7 @@ namespace Endpoint
 	string ToEscapingURI(string in) {
 		DWORD len = in.size();
 		DWORD maxLen = (len * 3);
-		DWORD *pdwLen = &len;
+		DWORD* pdwLen = &len;
 		LPSTR out = (char*)malloc(sizeof(char) * maxLen);
 		LPCSTR input = in.c_str();
 		HRESULT res = AtlEscapeUrl(input, out, pdwLen, maxLen, (DWORD)NULL);
@@ -191,9 +192,9 @@ namespace Endpoint
 
 		// && EMPTY(Get()->otpPass) makes the bools possibly only true in the first step. 
 		// After the OTP filled the epPck these are always false indicating the "real" auth request
-		bool sendEmptyPWFirst = Configuration::Get()->two_step_send_empty_password && EMPTY(Get()->otpPass);
-		bool sendDomainPWFirst = Configuration::Get()->two_step_send_password && EMPTY(Get()->otpPass);
-		bool hideOTP = Configuration::Get()->two_step_hide_otp && EMPTY(Get()->otpPass);
+		bool sendEmptyPWFirst = Configuration::Get().twoStepSendEmptyPassword && EMPTY(Get()->otpPass);
+		bool sendDomainPWFirst = Configuration::Get().twoStepSendPassword && EMPTY(Get()->otpPass);
+		bool hideOTP = Configuration::Get().twoStepHideOTP && EMPTY(Get()->otpPass);
 
 		/////////// FIRST STEP ///////////
 		if (hideOTP && !sendEmptyPWFirst && !sendDomainPWFirst)
@@ -203,10 +204,10 @@ namespace Endpoint
 			DebugPrintLn("Enter OTP in second step, no request sent yet");
 			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
 			STATUS = NOT_FINISHED;
-			DebugPrintLn(Configuration::Get()->hide_otp_sleep_s);
-			if (Configuration::Get()->hide_otp_sleep_s > 0) {
+			DebugPrintLn(Configuration::Get().hide_otp_sleep_s);
+			if (Configuration::Get().hide_otp_sleep_s > 0) {
 				using namespace std::chrono_literals;
-				std::this_thread::sleep_for(std::chrono::seconds(Configuration::Get()->hide_otp_sleep_s));
+				std::this_thread::sleep_for(std::chrono::seconds(Configuration::Get().hide_otp_sleep_s));
 			}
 			return ENDPOINT_AUTH_CONTINUE;
 		}
@@ -215,7 +216,7 @@ namespace Endpoint
 		ShowInfoMessage(ENDPOINT_INFO_CALLING_ENDPOINT);
 
 		// Create an instance of our BufferStruct to accept the response
-		struct Concrete::BufferStruct *output = (struct Concrete::BufferStruct *) malloc(sizeof(struct Concrete::BufferStruct));
+		struct Concrete::BufferStruct* output = (struct Concrete::BufferStruct*) malloc(sizeof(struct Concrete::BufferStruct));
 		output->buffer = NULL;
 		output->size = 0;
 
@@ -280,17 +281,17 @@ namespace Endpoint
 
 	namespace Concrete
 	{
-		std::string checkPath(std::string path) {
+		string checkPath(string path) {
 			// check if there is a path, if it starts with slash and append /validate/check
-			std::string tmp = path;
+			string tmp = path;
 
-			std::string compare("/path/to/pi");	// this is the default from the installer, check it here so the hint stays in the registry
+			string compare("/path/to/pi");	// this is the default from the installer, check it here so the hint stays in the registry
 			if (tmp == compare || tmp.empty()) {
 				// path is "empty" so we return only /validate/check
 				return ENDPOINT_VALIDATE_CHECK;
 			}
 
-			std::string slash("/");
+			string slash("/");
 			if (strncmp(path.c_str(), slash.c_str(), slash.size()) != 0) {
 				// path does not start with /, so we prepend it
 				return slash + tmp + ENDPOINT_VALIDATE_CHECK;
@@ -300,7 +301,7 @@ namespace Endpoint
 			return tmp + ENDPOINT_VALIDATE_CHECK;
 		}
 
-		std::wstring get_utf16(const std::string &str, int codepage)
+		std::wstring get_utf16(const string& str, int codepage)
 		{
 			if (str.empty()) return std::wstring();
 			int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
@@ -309,23 +310,69 @@ namespace Endpoint
 			return res;
 		}
 
-		HRESULT SendPOSTRequest(std::string domain, std::string url, std::string dat, struct BufferStruct *&buffer)
+		HRESULT PrepareAndSendRequest(struct BufferStruct*& buffer, wchar_t* pass)
+		{
+			DebugPrintLn(__FUNCTION__);
+
+			INIT_ZERO_CHAR(post_data, 4096);
+
+			// Pack the data for post request
+			string szPass = Helper::ws2s(wstring(pass));
+			string szUser = Helper::ws2s(wstring(Get()->username));
+
+			// Encode as escaping uri
+			string szPassEncoded = ToEscapingURI(szPass);
+			string szUserEncoded = ToEscapingURI(szUser);
+
+			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
+				"pass=%s&user=%s",
+				szPassEncoded.c_str(),
+				szUserEncoded.c_str()
+			);
+
+			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
+			// Get hostname and path
+			//string hostname(Configuration::Get().hostname);
+			string data(post_data);	// post_data already contains the payload correctly encoded
+			string path(Helper::ws2s(Configuration::Get().path));
+			string tx_id(Data::Credential::Get()->tx_id);
+
+			if (!tx_id.empty()) {
+				DebugPrintLn("transaction id found. Appending it to the post_data.");
+				data.append("&transaction_id=");
+
+				// Encode escaping uri
+				string szTxIDEncoded = ToEscapingURI(string(Data::Credential::Get()->tx_id));
+				data.append(szTxIDEncoded);
+			}
+
+			path = checkPath(path);
+			result = SendPOSTRequest(/*hostname,*/ path, data, buffer);
+
+			if (result == 0) {
+				result = ENDPOINT_SUCCESS_RESPONSE_OK;
+			}
+
+			return result;
+		}
+
+
+		HRESULT SendPOSTRequest(/*string domain, */string path, string dat, struct BufferStruct*& buffer)
 		{
 			HRESULT result = S_OK;
 
 			//Extra
-			LPSTR data = const_cast<char *>(dat.c_str());
-			DWORD data_len = strnlen_s(data, 4096);
+			LPSTR data = const_cast<char*>(dat.c_str());
+			const DWORD data_len = strnlen_s(data, 4096);
 
-			std::wstring hostname = get_utf16(domain, CP_UTF8);
-			std::wstring path = get_utf16(url, CP_UTF8);
-			std::string response;
+			//std::wstring hostname = get_utf16(domain, CP_UTF8);
+			std::wstring wpath = get_utf16(path, CP_UTF8); 
+			string response;
 
 #ifdef _DEBUG
-			DebugPrintLn("WinHttp sending to:");
-			DebugPrintLn(hostname.c_str());
-			DebugPrintLn(path.c_str());
-			if (Configuration::Get()->log_sensitive) {
+			wstring msg = L"WinHttp sending to: " + Configuration::Get().hostname + wpath;
+			DebugPrintLn(msg.c_str());
+			if (Configuration::Get().logSensitive) {
 				DebugPrintLn("post_data:");
 				DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
 			}
@@ -347,19 +394,19 @@ namespace Endpoint
 			// Specify an HTTP server.
 			if (hSession) {
 				// check if custom port is set
-				if (Configuration::Get()->custom_port != 0) {
-					hConnect = WinHttpConnect(hSession, hostname.c_str(),
-						Configuration::Get()->custom_port, 0);
+				if (Configuration::Get().customPort != 0) {
+					hConnect = WinHttpConnect(hSession, Configuration::Get().hostname.c_str(),
+						Configuration::Get().customPort, 0);
 				}
 				else {
-					hConnect = WinHttpConnect(hSession, hostname.c_str(),
+					hConnect = WinHttpConnect(hSession, Configuration::Get().hostname.c_str(),
 						INTERNET_DEFAULT_HTTPS_PORT, 0);
 				}
 			}
 			else {
 				DebugPrintLn("WinHttpOpen failure:");
 				DebugPrintLn(GetLastError());
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("WinHttpOpen failure:");
 					//writeToLog(GetLastError());
 					//writeToLog("Trying to send to:");
@@ -370,7 +417,7 @@ namespace Endpoint
 			}
 			// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 			if (hConnect) {
-				hRequest = WinHttpOpenRequest(hConnect, L"POST", path.c_str(),
+				hRequest = WinHttpOpenRequest(hConnect, L"POST", wpath.c_str(),
 					NULL, WINHTTP_NO_REFERER,
 					WINHTTP_DEFAULT_ACCEPT_TYPES,
 					WINHTTP_FLAG_SECURE);
@@ -378,7 +425,7 @@ namespace Endpoint
 			else {
 				DebugPrintLn("WinHttpOpenRequest failure:");
 				DebugPrintLn(GetLastError());
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("WinHttpOpenRequest failure:");
 					//writeToLog(GetLastError());
 					//writeToLog("Trying to send to:");
@@ -399,7 +446,7 @@ namespace Endpoint
 			else {
 				DebugPrintLn("WinHttpOptions security flag could not be set:");
 				DebugPrintLn(GetLastError());
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("WinHttpOptions security flag could not be set:");
 					//writeToLog(GetLastError());
 				}
@@ -409,17 +456,17 @@ namespace Endpoint
 			/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
 			DWORD dwSSLFlags = 0;
 
-			if (Configuration::Get()->ssl_ignore_unknown_ca) {
+			if (Configuration::Get().sslIgnoreCA) {
 				dwSSLFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA;
 				DebugPrintLn("SSL ignore unknown CA flag set");
 			}
 
-			if (Configuration::Get()->ssl_ignore_invalid_cn) {
+			if (Configuration::Get().sslIgnoreCN) {
 				dwSSLFlags = dwSSLFlags | SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
 				DebugPrintLn("SSL ignore invalid CN flag set");
 			}
 
-			if (Configuration::Get()->ssl_ignore_unknown_ca || Configuration::Get()->ssl_ignore_invalid_cn) {
+			if (Configuration::Get().sslIgnoreCA || Configuration::Get().sslIgnoreCN) {
 				if (WinHttpSetOption(hRequest,
 					WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
 					//DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
@@ -427,7 +474,7 @@ namespace Endpoint
 				else {
 					DebugPrintLn("WinHttpOption flags could not be set:");
 					DebugPrintLn(GetLastError());
-					if (Configuration::Get()->release_log) {
+					if (Configuration::Get().releaseLog) {
 						//writeToLog("WinHttpOption flags could not be set:");
 						//writeToLog(GetLastError());
 					}
@@ -449,7 +496,7 @@ namespace Endpoint
 			if (!bResults) {
 				DebugPrintLn("WinHttpSendRequest failure:");
 				DebugPrintLn(GetLastError());
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("WinHttpSendRequest failure:");
 					//writeToLog(GetLastError());
 					//writeToLog("Trying to send to:");
@@ -473,7 +520,7 @@ namespace Endpoint
 					if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
 						DebugPrintLn("WinHttpQueryDataAvailable Error:");
 						DebugPrintLn(GetLastError());
-						if (Configuration::Get()->release_log) {
+						if (Configuration::Get().releaseLog) {
 							//writeToLog("WinHttpQueryDataAvailable error:");
 							//writeToLog(GetLastError());
 						}
@@ -485,7 +532,7 @@ namespace Endpoint
 					if (!pszOutBuffer)
 					{
 						DebugPrintLn("WinHttpReadData out of memory");
-						if (Configuration::Get()->release_log) {
+						if (Configuration::Get().releaseLog) {
 							//writeToLog("WinHttpReadData out of memory");
 						}
 						result = ENDPOINT_ERROR_RESPONSE_ERROR;
@@ -500,7 +547,7 @@ namespace Endpoint
 							dwSize, &dwDownloaded)) {
 							DebugPrintLn("WinHttpReadData Error:");
 							DebugPrintLn(GetLastError());
-							if (Configuration::Get()->release_log) {
+							if (Configuration::Get().releaseLog) {
 								//writeToLog("WinHttpReadData Error:");
 								//writeToLog(GetLastError());
 							}
@@ -508,7 +555,7 @@ namespace Endpoint
 						}
 						else
 							//printf("%s", pszOutBuffer);
-							response = response + std::string(pszOutBuffer);
+							response = response + string(pszOutBuffer);
 						// Free the memory allocated to the buffer.
 						delete[] pszOutBuffer;
 					}
@@ -518,7 +565,7 @@ namespace Endpoint
 			if (!bResults) {
 				DebugPrintLn("WinHttp Result Error:");
 				DebugPrintLn(GetLastError());
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("WinHttp Result Error:");
 					//writeToLog(GetLastError());
 				}
@@ -536,52 +583,7 @@ namespace Endpoint
 			return result;
 		}
 
-		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass)
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			INIT_ZERO_CHAR(post_data, 4096);
-
-			// Pack the data for post request
-			string szPass = Helper::ws2s(wstring(pass));
-			string szUser = Helper::ws2s(wstring(Get()->username));
-
-			// Encode as escaping uri
-			string szPassEncoded = ToEscapingURI(szPass);
-			string szUserEncoded = ToEscapingURI(szUser);
-
-			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
-				"pass=%s&user=%s",
-				szPassEncoded.c_str(),
-				szUserEncoded.c_str()
-			);
-
-			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
-			// Get hostname and path
-			std::string hostname(Configuration::Get()->hostname);	// hostname from registry
-			std::string data(post_data);							// post_data already contains the payload correctly encoded
-			std::string path(Configuration::Get()->path);			// path from registry
-			std::string tx_id(Data::Credential::Get()->tx_id);
-			if (!tx_id.empty()) {
-				DebugPrintLn("transaction id found. Appending it to the post_data.");
-				data.append("&transaction_id=");
-
-				// Encode escaping uri
-				string szTxIDEncoded = ToEscapingURI(string(Data::Credential::Get()->tx_id));
-				data.append(szTxIDEncoded);
-			}
-
-			path = checkPath(path);
-			result = SendPOSTRequest(hostname, path, data, buffer);
-
-			if (result == 0) {
-				result = ENDPOINT_SUCCESS_RESPONSE_OK;
-			}
-
-			return result;
-		}
-
-		HRESULT CheckJSONResponse(char *&json)
+		HRESULT CheckJSONResponse(char*& json)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -591,7 +593,7 @@ namespace Endpoint
 			HRESULT result = E_FAIL;
 
 			if (json == NULL) {
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("JSON response was null: ENDPOINT_ERROR_JSON_NULL");
 				}
 				return ENDPOINT_ERROR_JSON_NULL;
@@ -607,7 +609,7 @@ namespace Endpoint
 				DebugPrintLn(static_cast<unsigned int>(json_document.GetErrorOffset()));
 				DebugPrintLn("Parse error description:");
 				DebugPrintLn(GetParseError_En(json_document.GetParseError()));
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR");
 					//writeToLog("Plaintext response:");
 					//writeToLog(json);
@@ -628,7 +630,7 @@ namespace Endpoint
 
 					if (json_detail.HasMember("serial")) {
 						rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
-						//Data::Credential::Get()->serial = std::string(json_serial->value.GetString());
+						//Data::Credential::Get()->serial = string(json_serial->value.GetString());
 						strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
 					}
 					else { DebugPrintLn("JSON response has no serial in detail"); }
@@ -636,7 +638,7 @@ namespace Endpoint
 					if (json_detail.HasMember("transaction_id"))
 					{
 						rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
-						//Data::Credential::Get()->tx_id = std::string(json_tx_id->value.GetString());
+						//Data::Credential::Get()->tx_id = string(json_tx_id->value.GetString());
 						strncpy_s(Data::Credential::Get()->tx_id, json_tx_id->value.GetString(), sizeof(Data::Credential::Get()->tx_id));
 						DebugPrintLn("tx_id in response: (response/Data::Credential):");
 						DebugPrintLn(json_tx_id->value.GetString());
@@ -657,7 +659,7 @@ namespace Endpoint
 			// 2. Get result-object
 			if (!json_document.HasMember("result")) {
 				DebugPrintLn("JSON reponse has no member result");
-				if (Configuration::Get()->release_log) {
+				if (Configuration::Get().releaseLog) {
 					//writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
 					//writeToLog("Plaintext response:");
 					//writeToLog(json);
@@ -682,7 +684,7 @@ namespace Endpoint
 				{
 					// No Member "value" or "value" = false
 					// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
-					if (Configuration::Get()->release_log && !Configuration::Get()->two_step_send_password) {
+					if (Configuration::Get().releaseLog && !Configuration::Get().twoStepSendPassword) {
 						//writeToLog("Response has no member 'value': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
 						//writeToLog("Plaintext response:");
 						//writeToLog(json);
@@ -697,7 +699,7 @@ namespace Endpoint
 
 				// Check if error is present
 				if (!json_result.HasMember("error")) {
-					if (Configuration::Get()->release_log) {
+					if (Configuration::Get().releaseLog) {
 						//writeToLog("Response has no member 'error': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
 						//writeToLog("Plaintext response:");
 						//writeToLog(json);
@@ -710,7 +712,7 @@ namespace Endpoint
 				rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
 
 				if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR) {
-					if (Configuration::Get()->release_log) {
+					if (Configuration::Get().releaseLog) {
 						//writeToLog("Insufficient subscription error: ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION");
 						//writeToLog("Plaintext response:");
 						//writeToLog(json);

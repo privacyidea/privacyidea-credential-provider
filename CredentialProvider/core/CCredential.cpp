@@ -52,7 +52,7 @@ CCredential::~CCredential()
 	// END
 	// Make sure runtime is clean (see ctor "Initialize config variables")
 	// Use SecureZeroMemory for confidential information
-	Configuration::Deinit();
+	//Configuration::Deinit();
 
 	// END
 	// Endpoint deinit
@@ -85,7 +85,7 @@ HRESULT CCredential::Initialize(
 	DebugPrintLn(user_name);
 	DebugPrintLn("Domain from provider:");
 	DebugPrintLn(domain_name);
-	if (Configuration::Get()->log_sensitive) {
+	if (Configuration::Get().logSensitive) {
 		DebugPrintLn("Password from provider:");
 		DebugPrintLn(password);
 	}
@@ -207,12 +207,13 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		// Get the bitmap to display on top of the dialog (same as the logo of the normal tile)
 		static HBITMAP hbmp;
 		// Check if custom bitmap was set and load that
-		if (NOT_EMPTY(Configuration::Get()->v1_bitmap_path))
+		std::string szBitmapPath = Helper::ws2s(Configuration::Get().bitmapPath);
+		if (!szBitmapPath.empty())
 		{
-			DWORD dwAttrib = GetFileAttributesA(Configuration::Get()->v1_bitmap_path);
+			DWORD dwAttrib = GetFileAttributesA(szBitmapPath.c_str());
 			if (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				hbmp = (HBITMAP)LoadImageA(NULL, Configuration::Get()->v1_bitmap_path, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+				hbmp = (HBITMAP)LoadImageA(NULL, szBitmapPath.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 				if (hbmp == NULL)
 				{
 					DebugPrintLn("Loading custom tile image for dialog failed:");
@@ -413,7 +414,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	DebugPrintLn(__FUNCTION__);
 	*pbAutoLogon = FALSE;
 	HRESULT hr = S_OK;
-	if (Data::Credential::Get()->passwordMustChange && Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && Configuration::Get()->win_ver_major != 10)
+	if (Data::Credential::Get()->passwordMustChange && Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && Configuration::Get().winVerMajor != 10)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
 		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
@@ -427,7 +428,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	// if passwordChanged, we want to auto-login
 	if (Data::Credential::Get()->passwordMustChange || Data::Credential::Get()->passwordChanged) 
 	{
-		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get()->win_ver_major == 10) 
+		if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get().winVerMajor == 10) 
 		{
 			*pbAutoLogon = true;
 			DebugPrintLn("Password change mode LOGON - AutoLogon true");
@@ -788,7 +789,7 @@ HRESULT CCredential::GetSerialization(
 		}
 		if (SUCCEEDED(res))
 		{
-			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get()->win_ver_major == 10)
+			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON || Configuration::Get().winVerMajor == 10)
 			{//It's password change on Logon we can handle that
 				DebugPrintLn("Passwordchange with CPUS_LOGON - open Dialog");
 				::DialogBox(HINST_THISDLL,					// application instance
@@ -802,7 +803,7 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			DebugPrintLn("Opening password change dialog failed: Handle to owner window is missing");
-			if (Configuration::Get()->release_log)
+			if (Configuration::Get().releaseLog)
 			{ 
 				//writeToLog("Opening password change dialog failed: Handle to owner window is missing"); 
 			}

@@ -25,7 +25,6 @@
 #include "Dll.h"
 #include "common.h"
 
-#include "config.h"
 #include "hooks.h"
 #include "general.h"
 #include "data.h"

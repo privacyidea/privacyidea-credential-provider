@@ -9,7 +9,6 @@
 /////////////////////////
 
 #include "common.h"
-#include "config.h"
 #include "CCredential.h"
 
 /////////////////////////
@@ -26,6 +25,7 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/error/en.h"
+#include "Configuration.h"
 
 #include <string>
 #include <time.h>
@@ -44,33 +44,31 @@
 /////////////////////// BASE ENDPOINT DECLARATIONS
 /////////////////////////
 
-using namespace std;
-
 namespace Endpoint
 {
-	#define ENDPOINT_TIMEOUT_SECS	90
+#define ENDPOINT_TIMEOUT_SECS	90
 
-	#define ENDPOINT_AUTH_OK		((HRESULT)0x78809001)
-	#define ENDPOINT_AUTH_FAIL		((HRESULT)0x88809001)
-	#define ENDPOINT_AUTH_CONTINUE	((HRESULT)0x88809002)
+#define ENDPOINT_AUTH_OK		((HRESULT)0x78809001)
+#define ENDPOINT_AUTH_FAIL		((HRESULT)0x88809001)
+#define ENDPOINT_AUTH_CONTINUE	((HRESULT)0x88809002)
 
-	#define ENDPOINT_VALIDATE_CHECK	"/validate/check"
+#define ENDPOINT_VALIDATE_CHECK	"/validate/check"
 
-	enum ENDPOINT_STATUS 
+	enum ENDPOINT_STATUS
 	{
-		NOT_READY		= 0,
-		READY			= 1,
-		FINISHED		= 2,
-		NOT_FINISHED	= 3,
-		WAITING			= 4,
-		DATA_READY		= 5,
-		SYNC_DATA		= 6,
-		SHUTDOWN		= 7,
+		NOT_READY = 0,
+		READY = 1,
+		FINISHED = 2,
+		NOT_FINISHED = 3,
+		WAITING = 4,
+		DATA_READY = 5,
+		SYNC_DATA = 6,
+		SHUTDOWN = 7,
 	};
 
-	#define ENDPOINT_ERROR_MSG_SIZE 150
-	#define ENDPOINT_INSTRUCTION_MSG_SIZE 150
-	#define ENDPOINT_INFO_MSG_SIZE 150
+#define ENDPOINT_ERROR_MSG_SIZE 150
+#define ENDPOINT_INSTRUCTION_MSG_SIZE 150
+#define ENDPOINT_INFO_MSG_SIZE 150
 
 #define MAX_BUFFER_SIZE_PASSWORD 2048
 #define MAX_BUFFER_SIZE_NAMES 256
@@ -99,9 +97,9 @@ namespace Endpoint
 	void Deinit();
 	HRESULT GetLastErrorCode();
 	ENDPOINT_STATUS GetStatus();
-	void GetLastErrorDescription(wchar_t (&error)[ENDPOINT_ERROR_MSG_SIZE]);
-	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool *&big);
-	
+	void GetLastErrorDescription(wchar_t(&error)[ENDPOINT_ERROR_MSG_SIZE]);
+	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool*& big);
+
 	void ShowInfoMessage(long msg_code);
 	HRESULT Call();
 	/////////////////////////
@@ -110,45 +108,43 @@ namespace Endpoint
 
 	namespace Concrete
 	{
-		#define ENDPOINT_SUCCESS_DEBUG_OK					((HRESULT)0x78809AAA)
+#define ENDPOINT_SUCCESS_DEBUG_OK					((HRESULT)0x78809AAA)
 
-		#define ENDPOINT_ERROR_JSON_NULL					((HRESULT)0x88809004)
-		#define ENDPOINT_ERROR_PARSE_ERROR					((HRESULT)0x88809005)
-		#define ENDPOINT_ERROR_NO_RESULT					((HRESULT)0x88809006)
-		#define ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER	((HRESULT)0x88809007)
-		#define ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER		((HRESULT)0x88809008)
-		#define ENDPOINT_ERROR_HTTP_REQUEST_FAIL			((HRESULT)0x88809009)
-		#define ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION	((HRESULT)0x8880900A)
-		#define ENDPOINT_ERROR_CONNECT_ERROR				((HRESULT)0x8880900B)
-		#define ENDPOINT_ERROR_SETUP_ERROR					((HRESULT)0x8880900C)
-		#define ENDPOINT_ERROR_RESPONSE_ERROR				((HRESULT)0x8880900D)
-		#define ENDPOINT_ERROR_HTTP_ERROR					((HRESULT)0x8880990F)
-		
-		#define ENDPOINT_SUCCESS_STATUS_TRUE				((HRESULT)0x78809007)
-		#define ENDPOINT_SUCCESS_VALUE_TRUE					((HRESULT)0x78809008)
-		#define ENDPOINT_SUCCESS_HTTP_REQUEST_OK			((HRESULT)0x78809009)
-		#define ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE	((HRESULT)0x7880900A)
-		#define ENDPOINT_SUCCESS_RESPONSE_OK				((HRESULT)0x7880900C)
+#define ENDPOINT_ERROR_JSON_NULL					((HRESULT)0x88809004)
+#define ENDPOINT_ERROR_PARSE_ERROR					((HRESULT)0x88809005)
+#define ENDPOINT_ERROR_NO_RESULT					((HRESULT)0x88809006)
+#define ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER	((HRESULT)0x88809007)
+#define ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER		((HRESULT)0x88809008)
+#define ENDPOINT_ERROR_HTTP_REQUEST_FAIL			((HRESULT)0x88809009)
+#define ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION	((HRESULT)0x8880900A)
+#define ENDPOINT_ERROR_CONNECT_ERROR				((HRESULT)0x8880900B)
+#define ENDPOINT_ERROR_SETUP_ERROR					((HRESULT)0x8880900C)
+#define ENDPOINT_ERROR_RESPONSE_ERROR				((HRESULT)0x8880900D)
+#define ENDPOINT_ERROR_HTTP_ERROR					((HRESULT)0x8880990F)
 
-		#define ENDPOINT_INFO_PLEASE_WAIT					((long)0x00000001)
-		#define ENDPOINT_INFO_CALLING_ENDPOINT				((long)0x00000002)
-		#define ENDPOINT_INFO_CHECKING_RESPONSE				((long)0x00000003)
-		#define ENDPOINT_INFO_PROCESSING					((long)0x00000004)
+#define ENDPOINT_SUCCESS_STATUS_TRUE				((HRESULT)0x78809007)
+#define ENDPOINT_SUCCESS_VALUE_TRUE					((HRESULT)0x78809008)
+#define ENDPOINT_SUCCESS_HTTP_REQUEST_OK			((HRESULT)0x78809009)
+#define ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE	((HRESULT)0x7880900A)
+#define ENDPOINT_SUCCESS_RESPONSE_OK				((HRESULT)0x7880900C)
 
-		#define ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR		(int)101
+#define ENDPOINT_INFO_PLEASE_WAIT					((long)0x00000001)
+#define ENDPOINT_INFO_CALLING_ENDPOINT				((long)0x00000002)
+#define ENDPOINT_INFO_CHECKING_RESPONSE				((long)0x00000003)
+#define ENDPOINT_INFO_PROCESSING					((long)0x00000004)
 
-		// Define our struct for accepting Winhttp output
+#define ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR		(int)101
+
+		// Define our struct for accepting http output
 		struct BufferStruct
 		{
-			char * buffer;
+			char* buffer;
 			size_t size;
 		};
-		
-		//std::string receivedResponse;
 
-		HRESULT SendPOSTRequest(std::string domain, std::string url, std::string dat, struct BufferStruct *&buffer);
-		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass);
-		HRESULT CheckJSONResponse(char *&buffer);
+		HRESULT SendPOSTRequest(/*std::string domain, */ std::string path, std::string dat, struct BufferStruct*& buffer);
+		HRESULT PrepareAndSendRequest(struct BufferStruct*& buffer, wchar_t* pass);
+		HRESULT CheckJSONResponse(char*& buffer);
 	}
 }
 #endif

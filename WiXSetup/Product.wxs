@@ -56,7 +56,7 @@
     </InstallExecuteSequence>
    
     <!-- Icons etc -->
-    <Icon Id="icon.ico" SourceFile="C:\Users\Nils\Desktop\privacyidea-credentialprovider-git2\icon.ico"/>
+    <Icon Id="icon.ico" SourceFile="$(var.SolutionDir)icon.ico"/>
     <Property Id="ARPPRODUCTICON" Value="icon.ico" />
     
     <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='DISK #1' />

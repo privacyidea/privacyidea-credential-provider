@@ -1,5 +1,5 @@
 #include "general_field_states.h"
-
+#include "Configuration.h"
 namespace General
 {
 	namespace Fields
@@ -78,14 +78,14 @@ namespace General
 			//// CONCRETE
 			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
 			{
-				if (Configuration::Get()->two_step_hide_otp) {
+				if (Configuration::Get().twoStepHideOTP) {
 					return s_rgScenarioLogonUnlockFieldStatePairsTwoStep;
 				}
 				return s_rgScenarioLogonUnlockFieldStatePairs;
 			}
 			else if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
 			{
-				if (Configuration::Get()->two_step_hide_otp) {
+				if (Configuration::Get().twoStepHideOTP) {
 					return s_rgScenarioLogonUnlockFieldStatePairsUnlockTwoStep;
 				}
 				return s_rgScenarioLogonUnlockFieldStatePairsUnlock;

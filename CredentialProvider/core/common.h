@@ -21,7 +21,6 @@
 #pragma once
 
 #include "guid.h"
-#include "lang.h"
 #include "resource.h"
 
 #define MAX_NUM_FIELDS 10

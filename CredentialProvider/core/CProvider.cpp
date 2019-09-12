@@ -33,8 +33,10 @@ CProvider::CProvider() :
 	DllAddRef();
 
 	// Initialize config
-	Configuration::Init();
-	Configuration::Read();
+	Configuration::Get();
+
+	//Configuration::Init();
+	//Configuration::Read();
 
 	Data::Provider::Init();
 }
@@ -104,9 +106,9 @@ HRESULT CProvider::SetUsageScenario(
 		break;
 	case CPUS_CREDUI:
 		// turn off two step in case of CredUI
-		Configuration::Get()->two_step_hide_otp = 0;
-		Configuration::Get()->two_step_send_empty_password = 0;
-		Configuration::Get()->two_step_send_password = 0;
+		Configuration::Get().twoStepHideOTP = 0;
+		Configuration::Get().twoStepSendEmptyPassword = 0;
+		Configuration::Get().twoStepSendPassword = 0;
 		hr = S_OK;
 		break;
 
@@ -161,7 +163,7 @@ BOOL IsCurrentSessionRemoteable()
 				GLASS_SESSION_ID,
 				NULL, // lpReserved
 				&dwType,
-				(BYTE*)&dwGlassSessionId,
+				(BYTE*)& dwGlassSessionId,
 				&cbGlassSessionId
 			);
 
@@ -245,7 +247,7 @@ HRESULT CProvider::SetSerialization(
 		{
 			if (pkil->Logon.UserName.Length && pkil->Logon.UserName.Buffer)
 			{
-				BYTE * nativeSerialization = NULL;
+				BYTE* nativeSerialization = NULL;
 				DWORD nativeSerializationSize = 0;
 				DebugPrintLn("Serialization found from remote");
 
@@ -268,12 +270,12 @@ HRESULT CProvider::SetSerialization(
 					CopyMemory(nativeSerialization, pcpcs->rgbSerialization, pcpcs->cbSerialization);
 				}
 
-				KerbInteractiveUnlockLogonUnpackInPlace((KERB_INTERACTIVE_UNLOCK_LOGON *)nativeSerialization, nativeSerializationSize);
+				KerbInteractiveUnlockLogonUnpackInPlace((KERB_INTERACTIVE_UNLOCK_LOGON*)nativeSerialization, nativeSerializationSize);
 
 				if (_pkiulSetSerialization)
 					LocalFree(_pkiulSetSerialization);
 
-				_pkiulSetSerialization = (KERB_INTERACTIVE_UNLOCK_LOGON *)nativeSerialization;
+				_pkiulSetSerialization = (KERB_INTERACTIVE_UNLOCK_LOGON*)nativeSerialization;
 
 				result = S_OK;
 			}
@@ -353,7 +355,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 	if ((dwIndex < General::Fields::GetCurrentNumFields()) && ppcpfd)
 	{
 		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario][dwIndex],
-			ppcpfd, Configuration::Get()->otp_text);
+			ppcpfd);
 	}
 	else
 	{
@@ -386,7 +388,7 @@ HRESULT CProvider::GetCredentialCount(
 	*pdwCount = 1; //_dwNumCreds;
 	*pdwDefault = 0; // this means we want to be the default
 	*pbAutoLogonWithDefault = FALSE;
-	if (Configuration::Get()->no_default) 
+	if (Configuration::Get().noDefault)
 	{
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
 	}
@@ -396,7 +398,7 @@ HRESULT CProvider::GetCredentialCount(
 	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
 	{
 		*pdwDefault = 0;
-		if (IsCurrentSessionRemoteable() && !Configuration::Get()->two_step_hide_otp)
+		if (IsCurrentSessionRemoteable() && !Configuration::Get().twoStepHideOTP)
 		{
 			*pbAutoLogonWithDefault = FALSE;
 		}
@@ -406,7 +408,7 @@ HRESULT CProvider::GetCredentialCount(
 		}
 	}
 
-	DebugPrintLn(hr);	
+	DebugPrintLn(hr);
 	return hr;
 }
 
@@ -521,12 +523,12 @@ HRESULT CProvider::GetCredentialAt(
 		if (Data::Provider::Get()->usage_scenario == CPUS_CREDUI)
 		{
 			DebugPrintLn("CredUI: returning an IID_ICredentialProviderCredential");
-			hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void **>(ppcpc));
+			hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
 		}
 		else
 		{
 			DebugPrintLn("Non-CredUI: returning an IID_IConnectableCredentialProviderCredential");
-			hr = _pccCredential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void **>(ppcpc));
+			hr = _pccCredential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
 			//hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void **>(ppcpc));
 		}
 	}
@@ -563,7 +565,7 @@ HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 	return hr;
 }
 
-void CProvider::_GetSerializedCredentials(PWSTR *username, PWSTR *password, PWSTR *domain)
+void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWSTR* domain)
 {
 	DebugPrintLn(__FUNCTION__);
 

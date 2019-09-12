@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include "data.h"
-#include "config.h"
 
 #include "general_field_states.h"
 
