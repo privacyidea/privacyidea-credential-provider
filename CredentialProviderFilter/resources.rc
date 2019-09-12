@@ -8,7 +8,7 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
-#include "C:\\Users\\Nils\\Desktop\\privacyidea-credentialprovider-git2\\versioning\\version.h"
+#include "C:\\Users\\Nils\\Desktop\\cp\\versioning\\version.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS

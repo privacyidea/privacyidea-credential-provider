@@ -8,26 +8,27 @@
 #include "data.h"
 #include <stdio.h>
 #include <tchar.h>
+#include <chrono>
+#include <ctime>
+#include <string>
+#include <codecvt>
+#include <locale>
 
 namespace Helper
 {
 	namespace Debug
 	{
+#define PROD_LOGFILE_NAME "C:\\privacyIDEAReleaseLogFile.txt"
 #define LOGFILE_NAME "C:\\privacyIDEADebugLogFile.txt"
 
 #ifdef _DEBUG
 #define DebugPrintLn(message) Helper::Debug::PrintLn(message,__FILE__,__LINE__) 
+//#define //writeToLog(message) UNREFERENCED_PARAMETER(message)
 #else
 #define DebugPrintLn(message) UNREFERENCED_PARAMETER(message)
+//#define //writeToLog(message) Helper::Debug::PrintLn(message,__FILE__,__LINE__) 
 #endif
 
-#define PROD_LOGFILE_NAME "C:\\privacyIDEAReleaseLogFile.txt"
-
-#ifndef _DEBUG
-#define writeToLog(message) Helper::Debug::PrintLn(message,__FILE__,__LINE__) 
-#else 
-#define writeToLog(message) UNREFERENCED_PARAMETER(message)
-#endif
 		void PrintBase(char *file, char *code);
 		void PrintLn(const char *message, char *file, int line);
 		void PrintLn(const wchar_t *message, char *file, int line);
@@ -38,6 +39,9 @@ namespace Helper
 
 	// Helper funcs
 	void RedrawGUI();
+
+	std::wstring s2ws(const std::string& str);
+	std::string ws2s(const std::wstring& wstr);
 
 	void SeparateUserAndDomainName(
 		__in wchar_t *domain_slash_username,

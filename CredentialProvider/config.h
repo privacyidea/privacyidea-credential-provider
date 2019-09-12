@@ -10,6 +10,10 @@
 
 #include "../versioning/version.h"
 
+#include <string>
+
+using namespace std;
+
 namespace Configuration
 {
 	#define CONFIG_DEFAULT_LOGIN_TEXT ENDPOINT_NAME" Login"
@@ -47,6 +51,7 @@ namespace Configuration
 		int win_ver_minor;
 
 		int no_default;
+		int hide_otp_sleep_s;
 	};
 
 	CONFIGURATION*& Get();
@@ -55,7 +60,7 @@ namespace Configuration
 	void Deinit();
 
 	////////////////// SPECIFIC
-
+	wstring getRegistry(wstring name);
 	void Read();
 	void PrintConfig();
 	DWORD SaveValueString(CONF_VALUE conf_value, char* value, int size);

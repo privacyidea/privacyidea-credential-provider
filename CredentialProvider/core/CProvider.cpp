@@ -92,13 +92,13 @@ HRESULT CProvider::SetUsageScenario(
 	{
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
-		if (IsCurrentSessionRemoteable()) {
+		/*if (IsCurrentSessionRemoteable()) {
 			// if current session is remote, we need to get the OTP before the auth to pi, so we turn 2step on anyway
 			Configuration::Get()->two_step_hide_otp = 1;
 			Configuration::Get()->two_step_send_empty_password = 0;
 			Configuration::Get()->two_step_send_password = 0;
 			DebugPrintLn("remote session detected - turning on 2step on the server.");
-		}
+		}*/
 
 		hr = S_OK;
 		break;
@@ -225,7 +225,7 @@ HRESULT CProvider::SetSerialization(
 		DebugPrintLn("CPUS_CREDUI");
 
 		if (((Data::Provider::Get()->credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (Data::Provider::Get()->credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY))
-				&& authPackage != pcpcs->ulAuthenticationPackage)
+			&& authPackage != pcpcs->ulAuthenticationPackage)
 		{
 			DebugPrintLn("authPackage invalid");
 			return E_INVALIDARG;
@@ -247,6 +247,7 @@ HRESULT CProvider::SetSerialization(
 			{
 				BYTE * nativeSerialization = NULL;
 				DWORD nativeSerializationSize = 0;
+				DebugPrintLn("Serialization found from remote");
 
 				if (Data::Provider::Get()->credPackFlags == CPUS_CREDUI && (Data::Provider::Get()->credPackFlags & CREDUIWIN_PACK_32_WOW))
 				{
@@ -352,7 +353,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 	if ((dwIndex < General::Fields::GetCurrentNumFields()) && ppcpfd)
 	{
 		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario][dwIndex],
-										ppcpfd, Configuration::Get()->otp_text);
+			ppcpfd, Configuration::Get()->otp_text);
 	}
 	else
 	{
@@ -384,21 +385,28 @@ HRESULT CProvider::GetCredentialCount(
 
 	*pdwCount = 1; //_dwNumCreds;
 	*pdwDefault = 0; // this means we want to be the default
-
-	if (Configuration::Get()->no_default) {
+	*pbAutoLogonWithDefault = FALSE;
+	if (Configuration::Get()->no_default) 
+	{
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
 	}
-	*pbAutoLogonWithDefault = FALSE;
+
 
 	// if serialized creds are available, try using them to logon
 	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
 	{
 		*pdwDefault = 0;
-		*pbAutoLogonWithDefault = TRUE;
+		if (IsCurrentSessionRemoteable() && !Configuration::Get()->two_step_hide_otp)
+		{
+			*pbAutoLogonWithDefault = FALSE;
+		}
+		else
+		{
+			*pbAutoLogonWithDefault = TRUE;
+		}
 	}
 
-	DebugPrintLn(hr);
-
+	DebugPrintLn(hr);	
 	return hr;
 }
 
@@ -479,9 +487,9 @@ HRESULT CProvider::GetCredentialAt(
 		DebugPrintLn("Initializing CCredential");
 
 		_pccCredential = new CCredential();
-		hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario], 
-										General::Fields::GetFieldStatePairFor(Data::Provider::Get()->usage_scenario), serializedUser, 
-										serializedDomain, serializedPass);
+		hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[Data::Provider::Get()->usage_scenario],
+			General::Fields::GetFieldStatePairFor(Data::Provider::Get()->usage_scenario), serializedUser,
+			serializedDomain, serializedPass);
 	}
 	else
 	{

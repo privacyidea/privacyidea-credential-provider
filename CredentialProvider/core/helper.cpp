@@ -1,6 +1,4 @@
 #include "helper.h"
-#include <chrono>
-#include <ctime>
 
 namespace Helper
 {
@@ -78,8 +76,7 @@ namespace Helper
 				fprintf(pFile, "%s", szString);
 				fclose(pFile);
 			}
-#endif
-#ifndef _DEBUG
+#else
 			if (fopen_s(&pFile, PROD_LOGFILE_NAME, "a") == 0)
 			{
 				fprintf(pFile, "%s", szString);
@@ -97,8 +94,7 @@ namespace Helper
 				fwprintf(pFile, L"%s", szString);
 				fclose(pFile);
 			}
-#endif
-#ifndef _DEBUG
+#else
 			if (fopen_s(&pFile, PROD_LOGFILE_NAME, "a") == 0)
 			{
 				fwprintf(pFile, L"%s", szString);
@@ -106,6 +102,22 @@ namespace Helper
 			}
 #endif
 		}
+	}
+
+	std::wstring s2ws(const std::string& str)
+	{
+		using convert_typeX = std::codecvt_utf8<wchar_t>;
+		std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+		return converterX.from_bytes(str);
+	}
+
+	std::string ws2s(const std::wstring& wstr)
+	{
+		using convert_typeX = std::codecvt_utf8<wchar_t>;
+		std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+		return converterX.to_bytes(wstr);
 	}
 
 	void RedrawGUI()

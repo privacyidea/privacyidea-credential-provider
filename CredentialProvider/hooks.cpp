@@ -222,29 +222,6 @@ namespace Hook
 			return S_OK;
 		}
 
-		HRESULT EndpointLoadDebugData()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-#ifndef _DEBUG
-			return S_FALSE;
-#endif
-
-			////
-			return S_FALSE;
-			////
-
-			OutputDebugStringA("DEBUG: Loading (failing) demo user data John:123456 ..."); OutputDebugStringA("\n");
-
-			wcscpy_s(Endpoint::Get()->username, sizeof(Endpoint::Get()->username) / sizeof(wchar_t), L"John");
-			wcscpy_s(Endpoint::Get()->otpPass, sizeof(Endpoint::Get()->otpPass) / sizeof(wchar_t), L"123456"); // will fail
-			wcscpy_s(Endpoint::Get()->ldapPass, sizeof(Endpoint::Get()->ldapPass) / sizeof(wchar_t), L"test"); // will fail
-
-			OutputDebugStringA("DEBUG: ... END"); OutputDebugStringA("\n");
-
-			return S_OK;
-		}
-
 		HRESULT EndpointLoadData()
 		{
 			DebugPrintLn(__FUNCTION__);
@@ -463,14 +440,15 @@ namespace Hook
 				Data::General::Get()->bypassDataInitialization = true; // we dont want to initialize the kiul with the old password
 				*pbAutoLogon = TRUE;
 			}
-
+			*pbAutoLogon = FALSE;
 			return S_OK;
 		}
 
 		HRESULT CheckEndpointObserver(BOOL *&pbAutoLogon)
 		{
+			//UNREFERENCED_PARAMETER(pbAutoLogon);
 			DebugPrintLn(__FUNCTION__);
-
+			*pbAutoLogon = FALSE;
 			if (EndpointObserver::Thread::GetStatus() == EndpointObserver::Thread::STATUS::FINISHED)
 			{
 				DebugPrintLn("Observer FINISHED");
@@ -483,7 +461,7 @@ namespace Hook
 					Data::General::Get()->bypassEndpoint = true;
 					Data::General::Get()->bypassDataInitialization = true;
 
-					*pbAutoLogon = true;
+					//*pbAutoLogon = TRUE;
 				}
 				else
 				{

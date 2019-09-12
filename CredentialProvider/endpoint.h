@@ -29,7 +29,13 @@
 
 #include <string>
 #include <time.h>
-
+#include <Windows.h>
+#include <winhttp.h>
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <thread>
+#include <atlutil.h>
 #include "rapidjson/stringbuffer.h"
 
 //#include <iostream>
@@ -37,6 +43,8 @@
 /////////////////////////
 /////////////////////// BASE ENDPOINT DECLARATIONS
 /////////////////////////
+
+using namespace std;
 
 namespace Endpoint
 {
@@ -93,10 +101,9 @@ namespace Endpoint
 	ENDPOINT_STATUS GetStatus();
 	void GetLastErrorDescription(wchar_t (&error)[ENDPOINT_ERROR_MSG_SIZE]);
 	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool *&big);
-	void GetInfoMessage(wchar_t(&msg)[ENDPOINT_INFO_MSG_SIZE], long msg_code);
+	
 	void ShowInfoMessage(long msg_code);
 	HRESULT Call();
-
 	/////////////////////////
 	/////////////////////// CONCRETE ENDPOINT DECLARATIONS
 	/////////////////////////
@@ -126,6 +133,7 @@ namespace Endpoint
 		#define ENDPOINT_INFO_PLEASE_WAIT					((long)0x00000001)
 		#define ENDPOINT_INFO_CALLING_ENDPOINT				((long)0x00000002)
 		#define ENDPOINT_INFO_CHECKING_RESPONSE				((long)0x00000003)
+		#define ENDPOINT_INFO_PROCESSING					((long)0x00000004)
 
 		#define ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR		(int)101
 
@@ -136,6 +144,8 @@ namespace Endpoint
 			size_t size;
 		};
 		
+		//std::string receivedResponse;
+
 		HRESULT SendPOSTRequest(std::string domain, std::string url, std::string dat, struct BufferStruct *&buffer);
 		HRESULT PrepareAndSendRequest(struct BufferStruct *&buffer, wchar_t *pass);
 		HRESULT CheckJSONResponse(char *&buffer);
