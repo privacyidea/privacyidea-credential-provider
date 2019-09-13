@@ -1,5 +1,6 @@
 #include "hooks.h"
 #include <Lmcons.h>
+#include "Logger.h"
 
 namespace Hook
 {

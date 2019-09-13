@@ -1,4 +1,5 @@
 #include "endpoint.h"
+#include "Logger.h"
 
 #pragma comment(lib,"winhttp.lib")
 

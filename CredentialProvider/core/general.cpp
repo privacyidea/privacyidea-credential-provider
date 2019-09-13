@@ -1,5 +1,6 @@
 #include "general.h"
 #include "Configuration.h"
+#include "Logger.h"
 
 using namespace std;
 

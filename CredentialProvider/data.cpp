@@ -1,4 +1,5 @@
 #include "data.h"
+#include "Logger.h"
 
 namespace Data
 {

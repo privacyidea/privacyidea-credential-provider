@@ -12,7 +12,7 @@ public:
 		return instance;
 	}
 
-	static void PrintConfig();
+	void PrintConfig();
 
 	std::wstring hostname;
 	std::wstring path;

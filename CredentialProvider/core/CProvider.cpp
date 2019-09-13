@@ -19,6 +19,7 @@
 #include <credentialprovider.h>
 #include "CProvider.h"
 #include "version.h"
+#include "Logger.h"
 
 // CProvider ////////////////////////////////////////////////////////
 
@@ -81,7 +82,7 @@ HRESULT CProvider::SetUsageScenario(
 #ifdef _DEBUG
 	DebugPrintLn(__FUNCTION__);
 	DebugPrintLn(cpus);
-	Configuration::PrintConfig();
+	Configuration::Get().PrintConfig();
 #endif
 	HRESULT hr = E_INVALIDARG;
 

@@ -16,27 +16,6 @@
 
 namespace Helper
 {
-	namespace Debug
-	{
-#define PROD_LOGFILE_NAME "C:\\privacyIDEAReleaseLogFile.txt"
-#define LOGFILE_NAME "C:\\privacyIDEADebugLogFile.txt"
-
-#ifdef _DEBUG
-#define DebugPrintLn(message) Helper::Debug::PrintLn(message,__FILE__,__LINE__) 
-//#define //writeToLog(message) UNREFERENCED_PARAMETER(message)
-#else
-#define DebugPrintLn(message) UNREFERENCED_PARAMETER(message)
-//#define //writeToLog(message) Helper::Debug::PrintLn(message,__FILE__,__LINE__) 
-#endif
-
-		void PrintBase(char *file, char *code);
-		void PrintLn(const char *message, char *file, int line);
-		void PrintLn(const wchar_t *message, char *file, int line);
-		void PrintLn(int integer, char *file, int line);
-		void WriteLogFile(const char* szString);
-		void WriteLogFile(const wchar_t* szString);
-	}
-
 	// Helper funcs
 	void RedrawGUI();
 

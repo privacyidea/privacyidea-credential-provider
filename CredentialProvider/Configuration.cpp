@@ -1,12 +1,12 @@
 #include "Configuration.h"
-#include "../versioning/version.h"
+#include "version.h"
+#include "Logger.h"
 #include "../CredentialProvider/core/helper.h"
 #include <Windows.h>
 #include <tchar.h>
 #include <iostream>
 
 using namespace std;
-auto &config = Configuration::Get();
 
 Configuration::Configuration()
 {
@@ -38,13 +38,13 @@ void Configuration::loadConfig() {
 	if (this->hideDomainName && this->hideFullName) {
 		this->hideDomainName = false;
 	}
-	
+
 	// Get the Windows Version 
 	// TODO: Use RtlGetVersion
 	OSVERSIONINFOEX info;
 	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
 	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	GetVersionEx((LPOSVERSIONINFO)&info);
+	GetVersionEx((LPOSVERSIONINFO)& info);
 
 	this->winVerMajor = info.dwMajorVersion;
 	this->winVerMinor = info.dwMinorVersion;
@@ -81,7 +81,7 @@ wstring Configuration::getRegistry(wstring name)
 		name.c_str(),
 		NULL,
 		&dwType,
-		(LPBYTE)&szValue,
+		(LPBYTE)& szValue,
 		&dwValue);
 	if (dwRet != ERROR_SUCCESS)
 	{
@@ -106,38 +106,38 @@ void Configuration::PrintConfig()
 	string version(VER_FILE_VERSION_STR);
 	wstring tmp = L"Credential Provider Version: " + Helper::s2ws(version);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Windows Version: " + to_wstring(config.winVerMajor) + L"." + to_wstring(config.winVerMinor)
-		+ L"." + to_wstring(config.winBuildNr);
+	tmp = L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
+		+ L"." + to_wstring(winBuildNr);
 	DebugPrintLn(tmp.c_str());
 	DebugPrintLn("----- Configuration -----");
-	tmp = L"Hostname: " + config.hostname;
+	tmp = L"Hostname: " + hostname;
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Path: " + config.path;
+	tmp = L"Path: " + path;
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Custom port:" + to_wstring(config.customPort);
+	tmp = L"Custom port:" + to_wstring(customPort);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Login text: " + config.loginText;
+	tmp = L"Login text: " + loginText;
 	DebugPrintLn(tmp.c_str());
-	tmp = L"OTP field text: " + config.otpText;
+	tmp = L"OTP field text: " + otpText;
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Hide domain only: " + b2ws(config.hideDomainName);
+	tmp = L"Hide domain only: " + b2ws(hideDomainName);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Hide full name: " + b2ws(config.hideFullName);
+	tmp = L"Hide full name: " + b2ws(hideFullName);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(config.sslIgnoreCN);
+	tmp = L"SSL ignore invalid CN: " + b2ws(sslIgnoreCN);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(config.sslIgnoreCN);
+	tmp = L"SSL ignore invalid CN: " + b2ws(sslIgnoreCN);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"2step hide OTP: " + b2ws(config.twoStepHideOTP);
-	DebugPrintLn(tmp.c_str()); 
-	tmp = L"2step send empty PW: " + b2ws(config.twoStepSendEmptyPassword);
+	tmp = L"2step hide OTP: " + b2ws(twoStepHideOTP);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"2step send domain PW: " + b2ws(config.twoStepSendPassword);
+	tmp = L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Release Log: " + b2ws(config.releaseLog);
+	tmp = L"2step send domain PW: " + b2ws(twoStepSendPassword);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"No default: " + b2ws(config.noDefault);
+	tmp = L"Release Log: " + b2ws(releaseLog);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Bitmap path: " + config.bitmapPath;
+	tmp = L"No default: " + b2ws(noDefault);
+	DebugPrintLn(tmp.c_str());
+	tmp = L"Bitmap path: " + bitmapPath;
 	DebugPrintLn(tmp.c_str());
 }

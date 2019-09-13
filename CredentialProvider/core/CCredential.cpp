@@ -22,6 +22,7 @@
 #endif
 
 #include "CCredential.h"
+#include "Logger.h"
 #include <string>
 
 // CCredential ////////////////////////////////////////////////////////

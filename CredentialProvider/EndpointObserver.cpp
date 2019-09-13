@@ -1,4 +1,5 @@
 #include "EndpointObserver.h"
+#include "Logger.h"
 
 namespace EndpointObserver
 {

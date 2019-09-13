@@ -2,8 +2,9 @@
 #define _ENDPOINT_H
 #pragma once
 
+#ifndef _SECURE_SCL
 #define _SECURE_SCL 0
-
+#endif
 /////////////////////////
 /////////////////////// BASE ENDPOINT INCLUDES
 /////////////////////////
@@ -37,8 +38,6 @@
 #include <thread>
 #include <atlutil.h>
 #include "rapidjson/stringbuffer.h"
-
-//#include <iostream>
 
 /////////////////////////
 /////////////////////// BASE ENDPOINT DECLARATIONS
