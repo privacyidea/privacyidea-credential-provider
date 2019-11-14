@@ -1,21 +1,24 @@
-/* * * * * * * * * * * * * * * * * * * * *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2012 Dominik Pretzsch
-** 
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
 **    You may obtain a copy of the License at
-** 
+**
 **        http://www.apache.org/licenses/LICENSE-2.0
-** 
+**
 **    Unless required by applicable law or agreed to in writing, software
 **    distributed under the License is distributed on an "AS IS" BASIS,
 **    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 **    See the License for the specific language governing permissions and
 **    limitations under the License.
 **
-** * * * * * * * * * * * * * * * * * * */
-
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "helpers.h"
 #include <intsafe.h>
@@ -42,11 +45,12 @@ HRESULT FieldDescriptorCoAllocCopy(
         pcpfd->cpft = rcpfd.cpft;
 
 		std::wstring label(rcpfd.pszLabel);
-		// check if the field is the OTP Field, if so replace text with OTP text from config, if there is
+		// check if the field is the OTP Field, if so replace text with OTP text from Configuration::Get(), if there is
 		if (label.compare(L"One-Time Password") == 0) 
 		{
 			std::wstring otpText(Configuration::Get().otpText);
-			if (otpText.empty()) {
+			if (otpText.empty()) 
+			{
 				hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
 			}
 			else

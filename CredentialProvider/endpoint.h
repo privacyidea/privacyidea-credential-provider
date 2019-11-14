@@ -1,112 +1,27 @@
-#ifndef _ENDPOINT_H
-#define _ENDPOINT_H
+/* * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright 2019 NetKnights GmbH
+** Author: Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * */
+
 #pragma once
-
-#ifndef _SECURE_SCL
-#define _SECURE_SCL 0
-#endif
-/////////////////////////
-/////////////////////// BASE ENDPOINT INCLUDES
-/////////////////////////
-
-#include "common.h"
-#include "CCredential.h"
-
-/////////////////////////
-/////////////////////// CONCRETE ENDPOINT INCLUDES
-/////////////////////////
-
-#ifdef _DEBUG
-#ifndef _CRTDBG_MAP_ALLOC
-#define _CRTDBG_MAP_ALLOC
-#endif
-#endif
-
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/error/en.h"
-#include "Configuration.h"
-
 #include <string>
-#include <time.h>
+#include <map>
 #include <Windows.h>
-#include <winhttp.h>
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <thread>
-#include <atlutil.h>
-#include "rapidjson/stringbuffer.h"
 
-/////////////////////////
-/////////////////////// BASE ENDPOINT DECLARATIONS
-/////////////////////////
-
-namespace Endpoint
-{
-#define ENDPOINT_TIMEOUT_SECS	90
-
-#define ENDPOINT_AUTH_OK		((HRESULT)0x78809001)
-#define ENDPOINT_AUTH_FAIL		((HRESULT)0x88809001)
-#define ENDPOINT_AUTH_CONTINUE	((HRESULT)0x88809002)
-
-#define ENDPOINT_VALIDATE_CHECK	"/validate/check"
-
-	enum ENDPOINT_STATUS
-	{
-		NOT_READY = 0,
-		READY = 1,
-		FINISHED = 2,
-		NOT_FINISHED = 3,
-		WAITING = 4,
-		DATA_READY = 5,
-		SYNC_DATA = 6,
-		SHUTDOWN = 7,
-	};
-
-#define ENDPOINT_ERROR_MSG_SIZE 150
-#define ENDPOINT_INSTRUCTION_MSG_SIZE 150
-#define ENDPOINT_INFO_MSG_SIZE 150
-
-#define MAX_BUFFER_SIZE_PASSWORD 2048
-#define MAX_BUFFER_SIZE_NAMES 256
-
-	// TODO: dynamic data structure
-	// !!! Match to concrete endpoint for project
-	struct ENDPOINT
-	{
-		bool	protectMe = false; // Set to true, to protect from Deinit() and Default()
-
-		//////
-
-		wchar_t username[MAX_BUFFER_SIZE_NAMES];
-		wchar_t ldapPass[MAX_BUFFER_SIZE_PASSWORD];
-		wchar_t otpPass[64];
-	};
-
-	static ENDPOINT_STATUS STATUS = NOT_READY;
-	static HRESULT LAST_ERROR_CODE = ENDPOINT_AUTH_FAIL;
-
-	//static struct ENDPOINT_PACK *_epPck;
-
-	ENDPOINT*& Get();
-	void Default();
-	void Init();
-	void Deinit();
-	HRESULT GetLastErrorCode();
-	ENDPOINT_STATUS GetStatus();
-	void GetLastErrorDescription(wchar_t(&error)[ENDPOINT_ERROR_MSG_SIZE]);
-	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool*& big);
-
-	void ShowInfoMessage(long msg_code);
-	HRESULT Call();
-	/////////////////////////
-	/////////////////////// CONCRETE ENDPOINT DECLARATIONS
-	/////////////////////////
-
-	namespace Concrete
-	{
 #define ENDPOINT_SUCCESS_DEBUG_OK					((HRESULT)0x78809AAA)
 
 #define ENDPOINT_ERROR_JSON_NULL					((HRESULT)0x88809004)
@@ -119,7 +34,7 @@ namespace Endpoint
 #define ENDPOINT_ERROR_CONNECT_ERROR				((HRESULT)0x8880900B)
 #define ENDPOINT_ERROR_SETUP_ERROR					((HRESULT)0x8880900C)
 #define ENDPOINT_ERROR_RESPONSE_ERROR				((HRESULT)0x8880900D)
-#define ENDPOINT_ERROR_HTTP_ERROR					((HRESULT)0x8880990F)
+#define ENDPOINT_ERROR_EMPTY_RESPONSE				((HRESULT)0x8880990F)
 
 #define ENDPOINT_SUCCESS_STATUS_TRUE				((HRESULT)0x78809007)
 #define ENDPOINT_SUCCESS_VALUE_TRUE					((HRESULT)0x78809008)
@@ -134,16 +49,40 @@ namespace Endpoint
 
 #define ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR		(int)101
 
-		// Define our struct for accepting http output
-		struct BufferStruct
-		{
-			char* buffer;
-			size_t size;
-		};
+#define ENDPOINT_STATUS_AUTH_OK						((HRESULT)0x78809001)
+#define ENDPOINT_STATUS_AUTH_FAIL					((HRESULT)0x88809001)
+#define ENDPOINT_STATUS_AUTH_CONTINUE				((HRESULT)0x88809002)
+#define ENDPOINT_STATUS_NOT_SET						((HRESULT)0x7880900F)
 
-		HRESULT SendPOSTRequest(/*std::string domain, */ std::string path, std::string dat, struct BufferStruct*& buffer);
-		HRESULT PrepareAndSendRequest(struct BufferStruct*& buffer, wchar_t* pass);
-		HRESULT CheckJSONResponse(char*& buffer);
-	}
-}
-#endif
+#define VALIDATE_CHECK "/validate/check"
+
+enum class RequestMethod {
+	GET = 1,
+	POST = 2,
+};
+
+class Endpoint
+{
+public:
+	Endpoint();
+
+	std::string connect(std::string endpoint, std::map<std::string, std::string> params, RequestMethod method);
+
+	std::wstring get_utf16(const std::string& str, int codepage);
+
+	std::string escapeUrl(const std::string& in);
+
+	HRESULT parseAuthenticationRequest(std::string in);
+
+	HRESULT parseTriggerRequest(std::string in);
+
+	HRESULT parseForError(std::string in);
+
+private:
+	bool ignoreInvalidCN = false;
+	bool ignoreUnknownCA = false;
+	std::wstring hostname = L"";
+	std::wstring path = L"";
+	int customPort = 0;
+};
+

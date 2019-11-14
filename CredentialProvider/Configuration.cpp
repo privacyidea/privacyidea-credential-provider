@@ -1,3 +1,22 @@
+/* * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright 2019 NetKnights GmbH
+** Author: Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * */
+
 #include "Configuration.h"
 #include "version.h"
 #include "Logger.h"
@@ -14,29 +33,43 @@ Configuration::Configuration()
 }
 
 void Configuration::loadConfig() {
-	this->bitmapPath = getRegistry(L"v1_bitmap_path");
+	bitmapPath = getRegistry(L"v1_bitmap_path");
+	loginText = getRegistry(L"login_text");
+	otpText = getRegistry(L"otp_text");
+	otpFailureText = getRegistry(L"otp_fail_text");
 
-	this->path = getRegistry(L"path");
-	this->hostname = getRegistry(L"hostname");
+	twoStepHideOTP = getBoolRegistry(L"two_step_hide_otp");
+	twoStepSendEmptyPassword = getBoolRegistry(L"two_step_send_empty_password");
+	twoStepSendPassword = getBoolRegistry(L"two_step_send_password");
+	
+	releaseLog = getBoolRegistry(L"release_log");
+	logSensitive = getBoolRegistry(L"log_sensitive");
 
-	this->hideDomainName = getBoolRegistry(L"hide_domainname");
-	this->hideFullName = getBoolRegistry(L"hide_fullname");
-	this->sslIgnoreCA = getBoolRegistry(L"ssl_ignore_unknown_ca");
-	this->sslIgnoreCN = getBoolRegistry(L"ssl_ignore_invalid_cn");
-	this->loginText = getRegistry(L"login_text");
-	this->otpText = getRegistry(L"otp_text");
-	this->twoStepHideOTP = getBoolRegistry(L"two_step_hide_otp");
-	this->twoStepSendEmptyPassword = getBoolRegistry(L"two_step_send_empty_password");
-	this->twoStepSendPassword = getBoolRegistry(L"two_step_send_password");
-	this->releaseLog = getBoolRegistry(L"release_log");
-	this->logSensitive = getBoolRegistry(L"log_sensitive");
-	this->customPort = _wtoi(getRegistry(L"custom_port").c_str());
-	this->hide_otp_sleep_s = _wtoi(getRegistry(L"hide_otp_sleep_s").c_str());
+	hideDomainName = getBoolRegistry(L"hide_domainname");
+	hideFullName = getBoolRegistry(L"hide_fullname");
+	hide_otp_sleep_s = getIntRegistry(L"hide_otp_sleep_s");
+	// Check if the path contains the placeholder, if so replace with nothing
+	auto tmp = getRegistry(L"path");
+	endpoint.path = (tmp == L"/path/to/pi" ? L"" : tmp);
+	endpoint.hostname = getRegistry(L"hostname");
+	endpoint.sslIgnoreCA = getBoolRegistry(L"ssl_ignore_unknown_ca");
+	endpoint.sslIgnoreCN = getBoolRegistry(L"ssl_ignore_invalid_cn");
+	endpoint.customPort = getIntRegistry(L"custom_port");
 
-	// Validate that only one of hideDomainName and hideFullName is active
+	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
-	if (this->hideDomainName && this->hideFullName) {
-		this->hideDomainName = false;
+	if (hideDomainName && hideFullName)
+	{
+		hideDomainName = false;
+	}
+	// Validate 2Step
+	if (twoStepSendEmptyPassword || twoStepSendPassword)
+	{
+		twoStepHideOTP = true;
+	}
+	if (twoStepSendEmptyPassword && twoStepSendPassword)
+	{
+		twoStepSendEmptyPassword = false;
 	}
 
 	// Get the Windows Version 
@@ -46,20 +79,26 @@ void Configuration::loadConfig() {
 	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 	GetVersionEx((LPOSVERSIONINFO)& info);
 
-	this->winVerMajor = info.dwMajorVersion;
-	this->winVerMinor = info.dwMinorVersion;
-	this->winBuildNr = info.dwBuildNumber;
+	winVerMajor = info.dwMajorVersion;
+	winVerMinor = info.dwMinorVersion;
+	winBuildNr = info.dwBuildNumber;
 }
 
-bool Configuration::getBoolRegistry(wstring name) {
+bool Configuration::getBoolRegistry(wstring name) 
+{
 	// Non existing keys evaluate to false.
 	return getRegistry(name) == L"1";
+}
+
+int Configuration::getIntRegistry(wstring name) 
+{
+	return _wtoi(getRegistry(name).c_str());
 }
 
 wstring Configuration::getRegistry(wstring name)
 {
 	DWORD dwRet;
-	HKEY hKey;
+	HKEY hKey = nullptr;
 
 	dwRet = RegOpenKeyEx(
 		HKEY_LOCAL_MACHINE,
@@ -101,7 +140,7 @@ inline const wstring b2ws(bool b) {
 	return b ? L"true" : L"false";
 }
 
-void Configuration::PrintConfig()
+void Configuration::printConfig()
 {
 	string version(VER_FILE_VERSION_STR);
 	wstring tmp = L"Credential Provider Version: " + Helper::s2ws(version);
@@ -110,11 +149,11 @@ void Configuration::PrintConfig()
 		+ L"." + to_wstring(winBuildNr);
 	DebugPrintLn(tmp.c_str());
 	DebugPrintLn("----- Configuration -----");
-	tmp = L"Hostname: " + hostname;
+	tmp = L"Hostname: " + endpoint.hostname;
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Path: " + path;
+	tmp = L"Path: " + endpoint.path;
 	DebugPrintLn(tmp.c_str());
-	tmp = L"Custom port:" + to_wstring(customPort);
+	tmp = L"Custom port:" + to_wstring(endpoint.customPort);
 	DebugPrintLn(tmp.c_str());
 	tmp = L"Login text: " + loginText;
 	DebugPrintLn(tmp.c_str());
@@ -124,9 +163,9 @@ void Configuration::PrintConfig()
 	DebugPrintLn(tmp.c_str());
 	tmp = L"Hide full name: " + b2ws(hideFullName);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(sslIgnoreCN);
+	tmp = L"SSL ignore invalid CN: " + b2ws(endpoint.sslIgnoreCN);
 	DebugPrintLn(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(sslIgnoreCN);
+	tmp = L"SSL ignore invalid CN: " + b2ws(endpoint.sslIgnoreCN);
 	DebugPrintLn(tmp.c_str());
 	tmp = L"2step hide OTP: " + b2ws(twoStepHideOTP);
 	DebugPrintLn(tmp.c_str());

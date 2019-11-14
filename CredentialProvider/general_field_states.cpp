@@ -1,5 +1,29 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "general_field_states.h"
 #include "Configuration.h"
+#include "Logger.h"
+
 namespace General
 {
 	namespace Fields
@@ -10,8 +34,9 @@ namespace General
 				__in ICredentialProviderCredential* self,
 				__in ICredentialProviderCredentialEvents* pCPCE,
 				__in SCENARIO scenario
-				)
+			)
 			{
+				DebugPrintLn("Setting fields for scenario: " + std::to_string(scenario));
 				HRESULT hr = S_OK;
 				switch (scenario)
 				{
@@ -45,10 +70,10 @@ namespace General
 			}
 
 			HRESULT SetScenarioBasedTextFields(
-				__inout int &largeTextFieldId,
-				__inout int &smallTextFieldId,
+				__inout int& largeTextFieldId,
+				__inout int& smallTextFieldId,
 				__in CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario
-				)
+			)
 			{
 				switch (scenario)
 				{
@@ -76,16 +101,18 @@ namespace General
 		const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus)
 		{
 			//// CONCRETE
-			if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
+			if (Configuration::Get().provider.usage_scenario == CPUS_LOGON)
 			{
-				if (Configuration::Get().twoStepHideOTP) {
+				if (Configuration::Get().twoStepHideOTP)
+				{
 					return s_rgScenarioLogonUnlockFieldStatePairsTwoStep;
 				}
 				return s_rgScenarioLogonUnlockFieldStatePairs;
 			}
-			else if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
+			else if (Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION)
 			{
-				if (Configuration::Get().twoStepHideOTP) {
+				if (Configuration::Get().twoStepHideOTP)
+				{
 					return s_rgScenarioLogonUnlockFieldStatePairsUnlockTwoStep;
 				}
 				return s_rgScenarioLogonUnlockFieldStatePairsUnlock;
@@ -93,41 +120,6 @@ namespace General
 			////
 
 			return s_rgCredProvBaseFieldStatePairsFor[cpus];
-		}
-
-		const FIELD_STATE_PAIR* GetFieldStatePairFor(SCENARIO scenario)
-		{
-			switch (scenario)
-			{
-			case SCENARIO_LOGON_BASE:
-				return s_rgScenarioLogonUnlockFieldStatePairs;
-				break;
-
-			case SCENARIO_UNLOCK_BASE:
-				return s_rgScenarioLogonUnlockFieldStatePairsUnlock;
-				break;
-
-			case SCENARIO_SECOND_STEP:
-				return s_rgScenarioLogonUnlockFieldStatePairsSecondStep;
-				break;
-
-			case SCENARIO_CHANGE_PASSWORD:
-				return s_rgScenarioChangePasswordFieldStatePairs;
-				break;
-
-			case SCENARIO_LOGON_TWO_STEP:
-				return s_rgScenarioLogonUnlockFieldStatePairsTwoStep;
-				break;
-
-			case SCENARIO_UNLOCK_TWO_STEP:
-				return s_rgScenarioLogonUnlockFieldStatePairsUnlockTwoStep;
-				break;
-
-			case SCENARIO_NO_CHANGE:
-			default:
-				return NULL;
-				break;
-			}
 		}
 	}
 }

@@ -1,729 +1,477 @@
-#include "endpoint.h"
-#include "Logger.h"
+/* * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright	2019 NetKnights GmbH
+** Author:		Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * */
 
-#pragma comment(lib,"winhttp.lib")
+#include "Endpoint.h"
+#include "Logger.h"
+#include "Configuration.h"
+#include "helper.h"
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/error/en.h"
+#include "rapidjson/stringbuffer.h"
+#include "nlohmann/json.hpp"
+#include <winhttp.h>
+#include <atlutil.h>
+#include <algorithm>
+
+#pragma comment(lib, "winhttp.lib")
 
 using namespace std;
+using json = nlohmann::json;
 
-namespace Endpoint
+Endpoint::Endpoint()
 {
+	auto& config = Configuration::Get();
+	this->customPort = config.endpoint.customPort;
+	this->hostname = config.endpoint.hostname;
+	this->path = config.endpoint.path;
+	this->ignoreInvalidCN = config.endpoint.sslIgnoreCN;
+	this->ignoreUnknownCA = config.endpoint.sslIgnoreCA;
+}
 
-	/////////////////////////
-	/////////////////////// BASE ENDPOINT FUNCTIONALITY
-	/////////////////////////
-
-	ENDPOINT*& Get()
+string Endpoint::escapeUrl(const string& in)
+{
+	if (in.empty())
 	{
-		static struct ENDPOINT* epPck = NULL;
-
-		return epPck;
+		return in;
 	}
+	DWORD len = in.size();
+	DWORD maxLen = (len * 3);
+	DWORD* pdwLen = &len;
+	LPSTR out = (char*)malloc(sizeof(char) * maxLen);
+	LPCSTR input = in.c_str();
+	HRESULT res = AtlEscapeUrl(input, out, pdwLen, maxLen, (DWORD)NULL);
 
-	void Default()
+	if (SUCCEEDED(res))
 	{
-		struct ENDPOINT*& epPck = Get();
-
-		if (epPck == NULL || epPck->protectMe == true)
-			return;
-
-		ZERO(epPck->username);
-		ZERO(epPck->ldapPass);
-		ZERO(epPck->otpPass);
+		string ret(out);
+		free(out);
+		return ret;
 	}
-
-	void Init()
+	else
 	{
-		DebugPrintLn(__FUNCTION__);
-
-		struct ENDPOINT*& epPck = Get();
-
-		if (epPck == NULL /*|| (epPck != NULL && !epPck->protectMe)*/)
-		{
-			epPck = (struct ENDPOINT*) malloc(sizeof(struct ENDPOINT));
-
-			STATUS = READY;
-			epPck->protectMe = false;
-		}
-
-		//Concrete::receivedResponse = "";
-
-		Default();
+		DebugPrintLn("AtlEscapeUrl Failure");
+		free(out);
+		return "";
 	}
+}
 
-	void Deinit()
+wstring Endpoint::get_utf16(const std::string& str, int codepage)
+{
+	if (str.empty()) return wstring();
+	int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
+	wstring res(sz, 0);
+	MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), &res[0], sz);
+	return res;
+}
+
+string Endpoint::connect(string endpoint, map<string, string> params, RequestMethod method)
+{
+	// Prepare the parameters
+	wstring wHostname = get_utf16(Helper::ws2s(hostname), CP_UTF8);
+	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
+	wstring fullPath = get_utf16((Helper::ws2s(path) + endpoint), CP_UTF8);
+
+	// Encode and accumulate the data
+	string toSend;
+	for (auto const& x : params)
 	{
-		DebugPrintLn(__FUNCTION__);
-
-		struct ENDPOINT*& epPck = Get();
-
-		Default();
-
-		if (epPck != NULL && epPck->protectMe == false)
-		{
-			free(epPck);
-			epPck = NULL;
-
-			STATUS = NOT_READY;
-		}
+		toSend += escapeUrl(x.first) + "=" + escapeUrl(x.second) + "&";
 	}
-
-	ENDPOINT_STATUS GetStatus()
-	{
-		return STATUS;
-	}
-
-	HRESULT GetLastErrorCode()
-	{
-		return LAST_ERROR_CODE;
-	}
-
-	void GetLastErrorDescription(wchar_t(&error)[ENDPOINT_ERROR_MSG_SIZE])
-	{
-		DebugPrintLn(__FUNCTION__);
-		DebugPrintLn(LAST_ERROR_CODE);
-
-		//if (!SUCCEEDED(LAST_ERROR_CODE)) {
-		switch ((int)LAST_ERROR_CODE) {
-			// CheckJSONResponse
-		case (int)ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER:
-			wcscpy_s(error, ARRAYSIZE(error), L"Service could not handle request.");
-			break;
-		case (int)ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER:
-			wcscpy_s(error, ARRAYSIZE(error), L"You could not be authenticated. Wrong credentials.");
-			break;
-		case (int)ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION:
-			wcscpy_s(error, ARRAYSIZE(error), L"Insufficient subscription. The user count exceeds your subscription. ");
-			break;
-		case (int)ENDPOINT_ERROR_PARSE_ERROR:
-		case (int)ENDPOINT_ERROR_NO_RESULT:
-			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while parsing the server's response");
-			break;
-			// WinHttp Errors
-		case (int)ENDPOINT_ERROR_CONNECT_ERROR:
-			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while connecting to the server. Please check your configuration.");
-			break;
-		case (int)ENDPOINT_ERROR_SETUP_ERROR:
-			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while setting up the connection to the server. Please check your configuration.");
-			break;
-		case (int)ENDPOINT_ERROR_RESPONSE_ERROR:
-			wcscpy_s(error, ARRAYSIZE(error), L"An error occured while processing the server's response.");
-			break;
-			/*case (int)ENDPOINT_CUSTOM_MESSAGE:
-				wcscpy_s(error, ARRAYSIZE(error), Get()->custom_message);
-				break;
-			*/
-		default:
-			break;
-		}
-		//}
-	}
-
-	void GetLastInstructionDescription(wchar_t(&msg)[ENDPOINT_INSTRUCTION_MSG_SIZE], bool*& big)
-	{
-		DebugPrintLn(__FUNCTION__);
-
-		UNREFERENCED_PARAMETER(msg);
-		UNREFERENCED_PARAMETER(big);
-
-		//if (SUCCEEDED(LAST_ERROR_CODE)) {
-		switch ((int)LAST_ERROR_CODE) {
-		case (int)ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"Please enter your second factor.");
-			big = false;
-			break;
-		default:
-			break;
-		}
-		//}
-	}
-
-	void ShowInfoMessage(long msg_code)
-	{
-		DebugPrintLn(__FUNCTION__);
-
-		if (Data::Credential::Get()->pqcws == NULL)
-			return;
-
-		wchar_t msg[ENDPOINT_INFO_MSG_SIZE];
-
-		switch (msg_code) {
-		case ENDPOINT_INFO_PLEASE_WAIT:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"Please wait...");
-			break;
-		case ENDPOINT_INFO_CALLING_ENDPOINT:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"Communicating with 2FA server...");
-			break;
-		case ENDPOINT_INFO_CHECKING_RESPONSE:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"Checking response...");
-			break;
-		case ENDPOINT_INFO_PROCESSING:
-			wcscpy_s(msg, ARRAYSIZE(msg), L"Processing...");
-			break;
-		default:
-			break;
-		}
-
-		Data::Credential::Get()->pqcws->SetStatusMessage(msg);
-	}
-
-	string ToEscapingURI(string in) {
-		DWORD len = in.size();
-		DWORD maxLen = (len * 3);
-		DWORD* pdwLen = &len;
-		LPSTR out = (char*)malloc(sizeof(char) * maxLen);
-		LPCSTR input = in.c_str();
-		HRESULT res = AtlEscapeUrl(input, out, pdwLen, maxLen, (DWORD)NULL);
-
-		if (SUCCEEDED(res)) {
-			string ret(out);
-			free(out);
-			return ret;
-		}
-		else {
-			DebugPrintLn("AtlEscapeUrl Failure");
-			free(out);
-			return "";
-		}
-	}
-
-	HRESULT Call()
-	{
-		DebugPrintLn(__FUNCTION__);
-		HRESULT result = ENDPOINT_AUTH_FAIL;
-
-		// && EMPTY(Get()->otpPass) makes the bools possibly only true in the first step. 
-		// After the OTP filled the epPck these are always false indicating the "real" auth request
-		bool sendEmptyPWFirst = Configuration::Get().twoStepSendEmptyPassword && EMPTY(Get()->otpPass);
-		bool sendDomainPWFirst = Configuration::Get().twoStepSendPassword && EMPTY(Get()->otpPass);
-		bool hideOTP = Configuration::Get().twoStepHideOTP && EMPTY(Get()->otpPass);
-
-		/////////// FIRST STEP ///////////
-		if (hideOTP && !sendEmptyPWFirst && !sendDomainPWFirst)
-		{
-			// NO ENDPOINT CALL
-			ShowInfoMessage(ENDPOINT_INFO_PROCESSING);
-			DebugPrintLn("Enter OTP in second step, no request sent yet");
-			LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
-			STATUS = NOT_FINISHED;
-			DebugPrintLn(Configuration::Get().hide_otp_sleep_s);
-			if (Configuration::Get().hide_otp_sleep_s > 0) {
-				using namespace std::chrono_literals;
-				std::this_thread::sleep_for(std::chrono::seconds(Configuration::Get().hide_otp_sleep_s));
-			}
-			return ENDPOINT_AUTH_CONTINUE;
-		}
-
-		// ENDPOINT CALL
-		ShowInfoMessage(ENDPOINT_INFO_CALLING_ENDPOINT);
-
-		// Create an instance of our BufferStruct to accept the response
-		struct Concrete::BufferStruct* output = (struct Concrete::BufferStruct*) malloc(sizeof(struct Concrete::BufferStruct));
-		output->buffer = NULL;
-		output->size = 0;
-
-		if (hideOTP && sendEmptyPWFirst)
-		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, L"");
-		}
-		else if (hideOTP && sendDomainPWFirst)
-		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, Get()->ldapPass);
-		}
-		////////////////////////////////////////////
-		/////////// SECOND STEP	with OTP ///////////
-		else
-		{
-			LAST_ERROR_CODE = Concrete::PrepareAndSendRequest(output, Get()->otpPass);
-		}
-		////////////////////////////////////////////
-
-		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_RESPONSE_OK)
-		{	// Request successful
-			ShowInfoMessage(ENDPOINT_INFO_CHECKING_RESPONSE);
-			// Parse and check JSON response
-			if (output->buffer != NULL)
-			{
-				char* json = output->buffer;
-				LAST_ERROR_CODE = Concrete::CheckJSONResponse(json);
-			}
-		}
-
-		//ShowInfoMessage(ENDPOINT_INFO_PLEASE_WAIT);
-
-		// TRANSLATE HRESULT TO BASE DEFINITIONS
-		if (LAST_ERROR_CODE == ENDPOINT_SUCCESS_VALUE_TRUE)
-		{
-			DebugPrintLn("Verification successfull :)");
-			result = ENDPOINT_AUTH_OK; // Default success code
-			STATUS = FINISHED;
-		}
-		else
-		{
-			if (hideOTP || sendEmptyPWFirst || sendDomainPWFirst)
-			{	// we are in the first step so we want to continue
-				DebugPrintLn("Second step of verification required :)");
-				LAST_ERROR_CODE = ENDPOINT_SUCCESS_AUTHENTICATION_CONTINUE;
-				result = ENDPOINT_AUTH_CONTINUE;
-				STATUS = NOT_FINISHED;
-			}
-			else
-			{
-				DebugPrintLn("Verification failed :(");
-				STATUS = NOT_FINISHED; // let him try again
-			}
-		}
-		free(output);
-		return result;
-	}
-
-	/////////////////////////
-	/////////////////////// CONCRETE ENDPOINT FUNCTIONALITY
-	/////////////////////////
-
-	namespace Concrete
-	{
-		string checkPath(string path) {
-			// check if there is a path, if it starts with slash and append /validate/check
-			string tmp = path;
-
-			string compare("/path/to/pi");	// this is the default from the installer, check it here so the hint stays in the registry
-			if (tmp == compare || tmp.empty()) {
-				// path is "empty" so we return only /validate/check
-				return ENDPOINT_VALIDATE_CHECK;
-			}
-
-			string slash("/");
-			if (strncmp(path.c_str(), slash.c_str(), slash.size()) != 0) {
-				// path does not start with /, so we prepend it
-				return slash + tmp + ENDPOINT_VALIDATE_CHECK;
-			}
-
-			// path contains a valid path
-			return tmp + ENDPOINT_VALIDATE_CHECK;
-		}
-
-		std::wstring get_utf16(const string& str, int codepage)
-		{
-			if (str.empty()) return std::wstring();
-			int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
-			std::wstring res(sz, 0);
-			MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), &res[0], sz);
-			return res;
-		}
-
-		HRESULT PrepareAndSendRequest(struct BufferStruct*& buffer, wchar_t* pass)
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			INIT_ZERO_CHAR(post_data, 4096);
-
-			// Pack the data for post request
-			string szPass = Helper::ws2s(wstring(pass));
-			string szUser = Helper::ws2s(wstring(Get()->username));
-
-			// Encode as escaping uri
-			string szPassEncoded = ToEscapingURI(szPass);
-			string szUserEncoded = ToEscapingURI(szUser);
-
-			sprintf_s(post_data, sizeof(post_data) / sizeof(char),
-				"pass=%s&user=%s",
-				szPassEncoded.c_str(),
-				szUserEncoded.c_str()
-			);
-
-			HRESULT result = ENDPOINT_ERROR_HTTP_ERROR;
-			// Get hostname and path
-			//string hostname(Configuration::Get().hostname);
-			string data(post_data);	// post_data already contains the payload correctly encoded
-			string path(Helper::ws2s(Configuration::Get().path));
-			string tx_id(Data::Credential::Get()->tx_id);
-
-			if (!tx_id.empty()) {
-				DebugPrintLn("transaction id found. Appending it to the post_data.");
-				data.append("&transaction_id=");
-
-				// Encode escaping uri
-				string szTxIDEncoded = ToEscapingURI(string(Data::Credential::Get()->tx_id));
-				data.append(szTxIDEncoded);
-			}
-
-			path = checkPath(path);
-			result = SendPOSTRequest(/*hostname,*/ path, data, buffer);
-
-			if (result == 0) {
-				result = ENDPOINT_SUCCESS_RESPONSE_OK;
-			}
-
-			return result;
-		}
-
-
-		HRESULT SendPOSTRequest(/*string domain, */string path, string dat, struct BufferStruct*& buffer)
-		{
-			HRESULT result = S_OK;
-
-			//Extra
-			LPSTR data = const_cast<char*>(dat.c_str());
-			const DWORD data_len = strnlen_s(data, 4096);
-
-			//std::wstring hostname = get_utf16(domain, CP_UTF8);
-			std::wstring wpath = get_utf16(path, CP_UTF8); 
-			string response;
+	toSend = toSend.substr(0, (toSend.length() - 1));
+	DebugPrintLn("String to send: " + toSend);
+	LPSTR data = _strdup(toSend.c_str());
+	const DWORD data_len = strnlen_s(toSend.c_str(), MAXDWORD32);
+	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
 #ifdef _DEBUG
-			wstring msg = L"WinHttp sending to: " + Configuration::Get().hostname + wpath;
-			DebugPrintLn(msg.c_str());
-			if (Configuration::Get().logSensitive) {
-				DebugPrintLn("post_data:");
-				DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!! 
-			}
+	wstring msg = L"Sending to: " + wHostname + fullPath;
+	DebugPrintLn(msg.c_str());
+	if (Configuration::Get().logSensitive)
+	{
+		DebugPrintLn("data:");
+		DebugPrintLn(data);			// !!! this can show the windows password in cleartext !!!
+	}
 #endif
-			DWORD dwSize = 0;
-			DWORD dwDownloaded = 0;
-			LPSTR pszOutBuffer;
-			BOOL  bResults = FALSE;
-			HINTERNET  hSession = NULL,
-				hConnect = NULL,
-				hRequest = NULL;
+	DWORD dwSize = 0;
+	DWORD dwDownloaded = 0;
+	LPSTR pszOutBuffer = nullptr;
+	BOOL  bResults = FALSE;
+	HINTERNET  hSession = nullptr,
+		hConnect = nullptr,
+		hRequest = nullptr;
 
-			// Use WinHttpOpen to obtain a session handle.
-			hSession = WinHttpOpen(L"privacyidea-cp",
-				WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-				WINHTTP_NO_PROXY_NAME,
-				WINHTTP_NO_PROXY_BYPASS, 0);
+	// Use WinHttpOpen to obtain a session handle.
+	hSession = WinHttpOpen(L"privacyidea-cp",
+		WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+		WINHTTP_NO_PROXY_NAME,
+		WINHTTP_NO_PROXY_BYPASS, 0);
 
-			// Specify an HTTP server.
-			if (hSession) {
-				// check if custom port is set
-				if (Configuration::Get().customPort != 0) {
-					hConnect = WinHttpConnect(hSession, Configuration::Get().hostname.c_str(),
-						Configuration::Get().customPort, 0);
-				}
-				else {
-					hConnect = WinHttpConnect(hSession, Configuration::Get().hostname.c_str(),
-						INTERNET_DEFAULT_HTTPS_PORT, 0);
-				}
-			}
-			else {
-				DebugPrintLn("WinHttpOpen failure:");
-				DebugPrintLn(GetLastError());
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("WinHttpOpen failure:");
-					//writeToLog(GetLastError());
-					//writeToLog("Trying to send to:");
-					//writeToLog(hostname.c_str());
-					//writeToLog(path.c_str());
-				}
-				return ENDPOINT_ERROR_SETUP_ERROR;
-			}
-			// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
-			if (hConnect) {
-				hRequest = WinHttpOpenRequest(hConnect, L"POST", wpath.c_str(),
-					NULL, WINHTTP_NO_REFERER,
-					WINHTTP_DEFAULT_ACCEPT_TYPES,
-					WINHTTP_FLAG_SECURE);
-			}
-			else {
-				DebugPrintLn("WinHttpOpenRequest failure:");
-				DebugPrintLn(GetLastError());
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("WinHttpOpenRequest failure:");
-					//writeToLog(GetLastError());
-					//writeToLog("Trying to send to:");
-					//writeToLog(hostname.c_str());
-					//writeToLog(path.c_str());
-				}
-				return ENDPOINT_ERROR_SETUP_ERROR;
-			}
+	// Specify an HTTP server.
+	if (hSession)
+	{
+		int port = (customPort != 0) ? customPort : INTERNET_DEFAULT_HTTPS_PORT;
+		hConnect = WinHttpConnect(hSession, wHostname.c_str(), port, 0);
+	}
+	else
+	{
+		DbgRelPrintLn("WinHttpOpen failure: " + to_string(GetLastError()));
+		return "";//ENDPOINT_ERROR_SETUP_ERROR;
+	}
+	// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
+	if (hConnect) {
+		hRequest = WinHttpOpenRequest(hConnect, requestMethod, fullPath.c_str(),
+			NULL, WINHTTP_NO_REFERER,
+			WINHTTP_DEFAULT_ACCEPT_TYPES,
+			WINHTTP_FLAG_SECURE);
+	}
+	else {
+		DbgRelPrintLn("WinHttpOpenRequest failure: " + to_string(GetLastError()));
+		return "";
+	}
 
-			// Set Option Security Flags to start TLS
-			DWORD dwReqOpts = 0;
-			if (WinHttpSetOption(
-				hRequest,
-				WINHTTP_OPTION_SECURITY_FLAGS,
-				&dwReqOpts,
-				sizeof(DWORD))) {
-			}
-			else {
-				DebugPrintLn("WinHttpOptions security flag could not be set:");
-				DebugPrintLn(GetLastError());
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("WinHttpOptions security flag could not be set:");
-					//writeToLog(GetLastError());
-				}
-				return ENDPOINT_ERROR_SETUP_ERROR;
-			}
+	// Set Option Security Flags to start TLS
+	DWORD dwReqOpts = 0;
+	if (WinHttpSetOption(
+		hRequest,
+		WINHTTP_OPTION_SECURITY_FLAGS,
+		&dwReqOpts,
+		sizeof(DWORD))) {
+	}
+	else {
+		DbgRelPrintLn("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
+		return "";//ENDPOINT_ERROR_SETUP_ERROR;
+	}
 
-			/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
-			DWORD dwSSLFlags = 0;
+	/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
+	DWORD dwSSLFlags = 0;
+	if (ignoreUnknownCA) {
+		dwSSLFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA;
+		DebugPrintLn("SSL ignore unknown CA flag set");
+	}
 
-			if (Configuration::Get().sslIgnoreCA) {
-				dwSSLFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA;
-				DebugPrintLn("SSL ignore unknown CA flag set");
-			}
+	if (ignoreInvalidCN) {
+		dwSSLFlags = dwSSLFlags | SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
+		DebugPrintLn("SSL ignore invalid CN flag set");
+	}
 
-			if (Configuration::Get().sslIgnoreCN) {
-				dwSSLFlags = dwSSLFlags | SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
-				DebugPrintLn("SSL ignore invalid CN flag set");
-			}
-
-			if (Configuration::Get().sslIgnoreCA || Configuration::Get().sslIgnoreCN) {
-				if (WinHttpSetOption(hRequest,
-					WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
-					//DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
-				}
-				else {
-					DebugPrintLn("WinHttpOption flags could not be set:");
-					DebugPrintLn(GetLastError());
-					if (Configuration::Get().releaseLog) {
-						//writeToLog("WinHttpOption flags could not be set:");
-						//writeToLog(GetLastError());
-					}
-					return ENDPOINT_ERROR_SETUP_ERROR;
-				}
-			}
-			///////////////////////////////////////////////////////////////////////////////
-
-			// Define for POST to be recognized
-			LPCWSTR additionalHeaders = L"Content-Type: application/x-www-form-urlencoded\r\n";
-
-			// Send a request.
-			if (hRequest)
-				bResults = WinHttpSendRequest(hRequest,
-					additionalHeaders, (DWORD)-1,
-					(LPVOID)data, data_len,
-					data_len, 0);
-
-			if (!bResults) {
-				DebugPrintLn("WinHttpSendRequest failure:");
-				DebugPrintLn(GetLastError());
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("WinHttpSendRequest failure:");
-					//writeToLog(GetLastError());
-					//writeToLog("Trying to send to:");
-					//writeToLog(hostname.c_str());
-					//writeToLog(path.c_str());
-				}
-				return ENDPOINT_ERROR_CONNECT_ERROR;
-			}
-
-			// End the request.
-			if (bResults)
-				bResults = WinHttpReceiveResponse(hRequest, NULL);
-
-			// Keep checking for data until there is nothing left.
-			if (bResults)
-			{
-				do
-				{
-					// Check for available data.
-					dwSize = 0;
-					if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
-						DebugPrintLn("WinHttpQueryDataAvailable Error:");
-						DebugPrintLn(GetLastError());
-						if (Configuration::Get().releaseLog) {
-							//writeToLog("WinHttpQueryDataAvailable error:");
-							//writeToLog(GetLastError());
-						}
-						result = ENDPOINT_ERROR_RESPONSE_ERROR;
-					}
-
-					// Allocate space for the buffer.
-					pszOutBuffer = new char[dwSize + 1];
-					if (!pszOutBuffer)
-					{
-						DebugPrintLn("WinHttpReadData out of memory");
-						if (Configuration::Get().releaseLog) {
-							//writeToLog("WinHttpReadData out of memory");
-						}
-						result = ENDPOINT_ERROR_RESPONSE_ERROR;
-						dwSize = 0;
-					}
-					else
-					{
-						// Read the data.
-						ZeroMemory(pszOutBuffer, dwSize + 1);
-
-						if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer,
-							dwSize, &dwDownloaded)) {
-							DebugPrintLn("WinHttpReadData Error:");
-							DebugPrintLn(GetLastError());
-							if (Configuration::Get().releaseLog) {
-								//writeToLog("WinHttpReadData Error:");
-								//writeToLog(GetLastError());
-							}
-							result = ENDPOINT_ERROR_RESPONSE_ERROR;
-						}
-						else
-							//printf("%s", pszOutBuffer);
-							response = response + string(pszOutBuffer);
-						// Free the memory allocated to the buffer.
-						delete[] pszOutBuffer;
-					}
-				} while (dwSize > 0);
-			}
-			// Report any errors.
-			if (!bResults) {
-				DebugPrintLn("WinHttp Result Error:");
-				DebugPrintLn(GetLastError());
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("WinHttp Result Error:");
-					//writeToLog(GetLastError());
-				}
-				result = ENDPOINT_ERROR_RESPONSE_ERROR;
-				//printf("Error %d has occurred.\n", GetLastError());
-			}
-			// Close any open handles.
-			if (hRequest) WinHttpCloseHandle(hRequest);
-			if (hConnect) WinHttpCloseHandle(hConnect);
-			if (hSession) WinHttpCloseHandle(hSession);
-
-			// write response to bufferstruct
-			buffer->buffer = _strdup(response.c_str());
-
-			return result;
+	if (ignoreUnknownCA || ignoreInvalidCN) {
+		if (WinHttpSetOption(hRequest,
+			WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
+			//DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
 		}
+		else {
+			DbgRelPrintLn("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
+			return ""; //ENDPOINT_ERROR_SETUP_ERROR;
+		}
+	}
+	///////////////////////////////////////////////////////////////////////////////
 
-		HRESULT CheckJSONResponse(char*& json)
+	// Define for POST to be recognized
+	LPCWSTR additionalHeaders = L"Content-Type: application/x-www-form-urlencoded\r\n";
+
+	// Send a request.
+	if (hRequest)
+		bResults = WinHttpSendRequest(hRequest,
+			additionalHeaders, (DWORD)-1,
+			(LPVOID)data, data_len,
+			data_len, 0);
+
+	if (!bResults) {
+		DbgRelPrintLn("WinHttpSendRequest failure: " + to_string(GetLastError()));
+		return ""; //ENDPOINT_ERROR_CONNECT_ERROR;
+	}
+
+	// End the request.
+	if (bResults)
+		bResults = WinHttpReceiveResponse(hRequest, NULL);
+
+	// Keep checking for data until there is nothing left.
+	string response;
+	if (bResults)
+	{
+		do
 		{
-			DebugPrintLn(__FUNCTION__);
-
-			DebugPrintLn("Plain JSON response:");
-			DebugPrintLn(json);
-
-			HRESULT result = E_FAIL;
-
-			if (json == NULL) {
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("JSON response was null: ENDPOINT_ERROR_JSON_NULL");
-				}
-				return ENDPOINT_ERROR_JSON_NULL;
+			// Check for available data.
+			dwSize = 0;
+			if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
+				DbgRelPrintLn("WinHttpQueryDataAvailable failure: " + to_string(GetLastError()));
+				response = ""; //ENDPOINT_ERROR_RESPONSE_ERROR;
 			}
 
-			// 1. Parse a JSON string into DOM.
-			rapidjson::Document json_document;
-			json_document.Parse(json);
-
-			if (json_document.HasParseError())
+			// Allocate space for the buffer.
+			pszOutBuffer = new char[dwSize + 1];
+			if (!pszOutBuffer)
 			{
-				DebugPrintLn("Parse error at:");
-				DebugPrintLn(static_cast<unsigned int>(json_document.GetErrorOffset()));
-				DebugPrintLn("Parse error description:");
-				DebugPrintLn(GetParseError_En(json_document.GetParseError()));
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("JSON parse error: ENDPOINT_ERROR_PARSE_ERROR");
-					//writeToLog("Plaintext response:");
-					//writeToLog(json);
-				}
-				return ENDPOINT_ERROR_PARSE_ERROR;
-			}
-
-			// 1.2 Check detail for serial and transaction id
-			if (!json_document.HasMember("detail")) {
-				DebugPrintLn("JSON reponse has no member detail");
-			}
-			else {
-				rapidjson::Value& json_detail = json_document["detail"];
-				if (json_detail.IsNull()) {
-					DebugPrintLn("JSON response detail is null");
-				}
-				else {
-
-					if (json_detail.HasMember("serial")) {
-						rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
-						//Data::Credential::Get()->serial = string(json_serial->value.GetString());
-						strncpy_s(Data::Credential::Get()->serial, json_serial->value.GetString(), sizeof(Data::Credential::Get()->serial));
-					}
-					else { DebugPrintLn("JSON response has no serial in detail"); }
-
-					if (json_detail.HasMember("transaction_id"))
-					{
-						rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
-						//Data::Credential::Get()->tx_id = string(json_tx_id->value.GetString());
-						strncpy_s(Data::Credential::Get()->tx_id, json_tx_id->value.GetString(), sizeof(Data::Credential::Get()->tx_id));
-						DebugPrintLn("tx_id in response: (response/Data::Credential):");
-						DebugPrintLn(json_tx_id->value.GetString());
-						DebugPrintLn(Data::Credential::Get()->tx_id);
-					}
-					else { DebugPrintLn("JSON response has no tx_id in detail"); }
-
-					// Get the message to display it to the user, limited to 256 bytes at the moment
-					if (json_detail.HasMember("message"))
-					{
-						rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
-						strncpy_s(Data::Credential::Get()->message, json_message->value.GetString(), sizeof(Data::Credential::Get()->message));
-					}
-					else { DebugPrintLn("JSON response has no message in detail"); }
-				}
-			}
-
-			// 2. Get result-object
-			if (!json_document.HasMember("result")) {
-				DebugPrintLn("JSON reponse has no member result");
-				if (Configuration::Get().releaseLog) {
-					//writeToLog("Response has no member 'result': ENDPOINT_ERROR_NO_RESULT");
-					//writeToLog("Plaintext response:");
-					//writeToLog(json);
-				}
-				return ENDPOINT_ERROR_NO_RESULT;
-			}
-
-			rapidjson::Value& json_result = json_document["result"];
-
-			// 3. Check result
-			rapidjson::Value::MemberIterator json_status = json_result.FindMember("status");
-			if (json_status != json_result.MemberEnd() && json_status->value.GetBool()) // request handled successfully?
-			{
-				result = ENDPOINT_SUCCESS_STATUS_TRUE;
-
-				rapidjson::Value::MemberIterator json_value = json_result.FindMember("value");
-				if (json_value != json_result.MemberEnd() && json_value->value.GetBool()) // authentication successfully?
-				{
-					result = ENDPOINT_SUCCESS_VALUE_TRUE;
-				}
-				else
-				{
-					// No Member "value" or "value" = false
-					// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
-					if (Configuration::Get().releaseLog && !Configuration::Get().twoStepSendPassword) {
-						//writeToLog("Response has no member 'value': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
-						//writeToLog("Plaintext response:");
-						//writeToLog(json);
-					}
-					result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
-				}
+				DbgRelPrintLn("WinHttpReadData out of memory: " + to_string(GetLastError()));
+				response = ""; // ENDPOINT_ERROR_RESPONSE_ERROR;
+				dwSize = 0;
 			}
 			else
 			{
-				// No Member "status" or "status" = false
-				result = ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
-
-				// Check if error is present
-				if (!json_result.HasMember("error")) {
-					if (Configuration::Get().releaseLog) {
-						//writeToLog("Response has no member 'error': ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER");
-						//writeToLog("Plaintext response:");
-						//writeToLog(json);
-					}
-					return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
+				// Read the data.
+				ZeroMemory(pszOutBuffer, dwSize + 1);
+				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded)) {
+					DbgRelPrintLn("WinHttpReadData error: " + to_string(GetLastError()));
+					response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 				}
-
-				// Check for error code
-				rapidjson::Value& json_error = json_result["error"];
-				rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
-
-				if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR) {
-					if (Configuration::Get().releaseLog) {
-						//writeToLog("Insufficient subscription error: ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION");
-						//writeToLog("Plaintext response:");
-						//writeToLog(json);
-					}
-					result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
-				}
+				else
+					response = response + string(pszOutBuffer);
+				// Free the memory allocated to the buffer.
+				delete[] pszOutBuffer;
 			}
-			return result;
+		} while (dwSize > 0);
+	}
+	// Report any errors.
+	if (!bResults) {
+		DbgRelPrintLn("WinHttp Result error: " + to_string(GetLastError()));
+		response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
+	}
+	// Close any open handles.
+	if (hRequest) WinHttpCloseHandle(hRequest);
+	if (hConnect) WinHttpCloseHandle(hConnect);
+	if (hSession) WinHttpCloseHandle(hSession);
+
+	return response;
+}
+
+/*
+HRESULT Endpoint::parseResponse(string json)
+{
+	DebugPrintLn(__FUNCTION__);
+
+	DebugPrintLn("Plain JSON response:");
+	DebugPrintLn(json);
+
+	HRESULT result = E_FAIL;
+
+	if (json.empty())
+	{
+		DbgRelPrintLn("Server response was empty");
+		return ENDPOINT_ERROR_JSON_NULL;
+	}
+
+	// 1. Parse a JSON string into DOM.
+	rapidjson::Document json_document;
+	json_document.Parse(json.c_str());
+
+
+	if (json_document.HasParseError())
+	{
+		DbgRelPrintLn("Parse error in response: " + json);
+		DebugPrintLn("at: " + to_string(static_cast<unsigned int>(json_document.GetErrorOffset())) + "description: " + string(GetParseError_En(json_document.GetParseError())));
+		return ENDPOINT_ERROR_PARSE_ERROR;
+	}
+
+	// 1.2 Check detail for serial and transaction id
+	if (!json_document.HasMember("detail"))
+	{
+		DebugPrintLn("JSON reponse has no member detail");
+	}
+	else
+	{
+		rapidjson::Value& json_detail = json_document["detail"];
+		if (json_detail.IsNull())
+		{
+			DebugPrintLn("JSON response detail is null");
+		}
+		else
+		{
+			if (json_detail.HasMember("serial"))
+			{
+				rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
+				Configuration::Get().challenge_response.serial = string(json_serial->value.GetString());
+				DebugPrintLn("CR serial: " + Configuration::Get().challenge_response.serial);
+			}
+			else
+			{
+				DebugPrintLn("JSON response has no serial in detail");
+			}
+
+			if (json_detail.HasMember("transaction_id"))
+			{
+				rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
+				Configuration::Get().challenge_response.transactionID = string(json_tx_id->value.GetString());
+				DebugPrintLn("CR txID: " + Configuration::Get().challenge_response.transactionID);
+			}
+			else
+			{
+				DebugPrintLn("JSON response has no txID in detail");
+			}
+
+			// Get the message to display it to the user, limited to 256 bytes at the moment
+			if (json_detail.HasMember("message"))
+			{
+				rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
+				Configuration::Get().challenge_response.message = string(json_message->value.GetString());
+				DebugPrintLn("CR message: " + Configuration::Get().challenge_response.message);
+			}
+			else
+			{
+				DebugPrintLn("JSON response has no message in detail");
+			}
+		}
+	}
+
+	// 2. Get result-object
+	if (!json_document.HasMember("result"))
+	{
+		DbgRelPrintLn("Server reponse has no member result: " + json);
+		return ENDPOINT_ERROR_NO_RESULT;
+	}
+
+	rapidjson::Value& json_result = json_document["result"];
+
+	// 3. Check result
+	const rapidjson::Value::MemberIterator json_status = json_result.FindMember("status");
+	if (json_status != json_result.MemberEnd() && json_status->value.GetBool()) // request handled successfully?
+	{
+		result = ENDPOINT_SUCCESS_STATUS_TRUE;
+
+		const rapidjson::Value::MemberIterator json_value = json_result.FindMember("value");
+		if (json_value != json_result.MemberEnd() && json_value->value.GetBool()) // authentication successfully?
+		{
+			result = ENDPOINT_SUCCESS_VALUE_TRUE;
+		}
+		else
+		{
+			// No Member "value" or "value" = false
+			// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
+			if (!Configuration::Get().twoStepSendPassword)
+			{
+				DbgRelPrintLn("Server response has no member 'value': " + json);
+			}
+			result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
+		}
+	}
+	else
+	{
+		// No Member "status" or "status" = false
+		result = ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
+
+		// Check if error is present
+		if (!json_result.HasMember("error"))
+		{
+			DbgRelPrintLn("Unknown error in server response: " + json);
+			return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
 		}
 
-	} // Namespace Concrete
+		// Check for error code
+		rapidjson::Value& json_error = json_result["error"];
+		const rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
 
-} // Namespace Endpoint
+		if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR)
+		{
+			DbgRelPrintLn("Insufficient subscription");
+			result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
+		}
+	}
+	return result;
+}
+*/
+
+HRESULT Endpoint::parseAuthenticationRequest(string in)
+{
+	if (in.empty())
+	{
+		DbgRelPrintLn("Received empty response from server.");
+		return ENDPOINT_ERROR_EMPTY_RESPONSE;
+	}
+
+	auto j = json::parse(in);
+
+	//string value = j["result"]["value"].get<std::string>();
+	string value = j["result"]["value"].dump();
+	if (value.empty())
+	{
+		return parseForError(in);
+	}
+	else
+	{
+		return (value == "true") ? ENDPOINT_STATUS_AUTH_OK : ENDPOINT_STATUS_AUTH_FAIL;
+	}
+	return ENDPOINT_STATUS_AUTH_FAIL;
+}
+
+HRESULT Endpoint::parseTriggerRequest(std::string in)
+{
+	if (in.empty())
+	{
+		DbgRelPrintLn("Received empty response from server.");
+		return ENDPOINT_ERROR_EMPTY_RESPONSE;
+	}
+	auto& config = Configuration::Get();
+	auto j = json::parse(in);
+	json multiChallenge = j["detail"]["multi_challenge"];
+
+	if (multiChallenge.empty())
+	{
+		return parseForError(in);
+	}
+
+	// Check each element for messages / transaction IDs / push token
+	for (auto val : multiChallenge.items())
+	{
+		json j2 = val.value();
+		string message = j2["message"].get<std::string>();
+		string type = j2["type"].get<std::string>();
+		string txid = j2["transaction_id"].get<std::string>();
+		string serial = j2["serial"].get<std::string>();
+		
+		if (type == "push")
+		{
+			config.challenge_response.usingPushToken = true;
+		}
+
+		if (!message.empty())
+		{
+			// TODO Accumulate if there are multiple message, no duplicates
+			config.challenge_response.message = message;
+		}
+		// TODO are multiple transaction ids possible?
+		if (!txid.empty())
+		{
+			config.challenge_response.transactionID = txid;
+		}
+		if (!serial.empty())
+		{
+			config.challenge_response.serial = serial;
+		}
+		//DebugPrintLn("msg=" + message + ", type=" + type + ", txid=" + txid + ", serial= " + serial);
+	}
+	// TODO 
+	return ENDPOINT_STATUS_AUTH_CONTINUE;
+}
+
+HRESULT Endpoint::parseForError(std::string in)
+{
+	auto j = json::parse(in);
+	// Check for error code
+	string errorCode = j["result"]["error"]["code"].dump();
+	if (errorCode == "101")
+	{
+		return ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR;
+	}
+	else
+	{
+		DbgRelPrintLn("Received invalid reponse from server:" + in);
+		return ENDPOINT_ERROR_RESPONSE_ERROR;
+	}
+}

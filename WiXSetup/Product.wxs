@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-/* * * * * * * * * * * * * * * * * * * * *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2012 Dominik Pretzsch
-** 
+** Copyright	2012 Dominik Pretzsch
+**				    2017 NetKnights GmbH
+**
+** Author		  Dominik Pretzsch
+**				    Nils Behlen
+**
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
 **    You may obtain a copy of the License at
-** 
+**
 **        http://www.apache.org/licenses/LICENSE-2.0
-** 
+**
 **    Unless required by applicable law or agreed to in writing, software
 **    distributed under the License is distributed on an "AS IS" BASIS,
 **    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 **    See the License for the specific language governing permissions and
 **    limitations under the License.
 **
-** * * * * * * * * * * * * * * * * * * */
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <?include $(sys.CURRENTDIR)\Config.wxi?>
@@ -189,23 +193,23 @@
           <Condition>1</Condition>
           <!-- Files -->
           <File Id="CredentialProvider"
-                Name="$(var.EndpointName)$(var.CredentialProvider.TargetFileName)"
+                Name="PrivacyIDEA$(var.CredentialProvider.TargetFileName)"
                 Source="$(var.CredentialProvider.TargetPath)"
                 KeyPath="yes" />
 
-          <RemoveFile Id="RemoveCredentialProviderFiles" Name="$(var.EndpointName)$(var.CredentialProvider.TargetFileName)" On="uninstall"/>
+          <RemoveFile Id="RemoveCredentialProviderFiles" Name="PrivacyIDEA$(var.CredentialProvider.TargetFileName)" On="uninstall"/>
           <!-- END Files -->
 
           <!-- Registry -->
           <RegistryKey Root='HKCR' Key='CLSID\{$(var.ProviderRegistryGUID)}' ForceCreateOnInstall='yes'>
-            <RegistryValue Type='string' Value='$(var.EndpointName)$(var.CredentialProvider.TargetName)' />
+            <RegistryValue Type='string' Value='PrivacyIDEA$(var.CredentialProvider.TargetName)' />
             <RegistryKey Key='InprocServer32'>
-              <RegistryValue Type='string' Value='$(var.EndpointName)$(var.CredentialProvider.TargetFileName)' />
+              <RegistryValue Type='string' Value='PrivacyIDEA$(var.CredentialProvider.TargetFileName)' />
               <RegistryValue Name='ThreadingModel' Type='string' Value='Apartment' />
             </RegistryKey>
           </RegistryKey>
 
-          <RegistryValue Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}' Type='string' Value='$(var.EndpointName)$(var.CredentialProvider.TargetName)' />
+          <RegistryValue Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}' Type='string' Value='PrivacyIDEA$(var.CredentialProvider.TargetName)' />
           <RemoveRegistryKey Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}' Action='removeOnUninstall'/>
 
           <!-- Configuration values (from dialogs/registry/unattended) -->
@@ -243,18 +247,18 @@
         <Component Location="local" Guid="a6d595a6-58b4-4541-8171-65f3f364b58c">
           <!-- Files -->
           <File Id="CredentialProviderFilter"
-                Name="$(var.EndpointName)$(var.CredentialProviderFilter.TargetFileName)"
+                Name="PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)"
                 Source="$(var.CredentialProviderFilter.TargetPath)"
                 KeyPath="yes" />
 
-          <RemoveFile Id="RemoveCredentialProviderFilterFiles" Name="$(var.EndpointName)$(var.CredentialProviderFilter.TargetFileName)" On="uninstall" />
+          <RemoveFile Id="RemoveCredentialProviderFilterFiles" Name="PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)" On="uninstall" />
           <!-- END Files -->
 
           <!-- Registry -->
           <RegistryKey Root='HKCR' Key='CLSID\{$(var.ProviderFilterRegistryGUID)}' ForceCreateOnInstall='yes'>
-            <RegistryValue Type='string' Value='$(var.EndpointName)$(var.CredentialProviderFilter.TargetName)' />
+            <RegistryValue Type='string' Value='PrivacyIDEA$(var.CredentialProviderFilter.TargetName)' />
             <RegistryKey Key='InprocServer32'>
-              <RegistryValue Type='string' Value='$(var.EndpointName)$(var.CredentialProviderFilter.TargetFileName)' />
+              <RegistryValue Type='string' Value='PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)' />
               <RegistryValue Name='ThreadingModel' Type='string' Value='Apartment' />
             </RegistryKey>
           </RegistryKey>         
@@ -264,7 +268,7 @@
 
         <!-- Activate ProviderFilter (InstallAsDefault) component -->
         <Component Id="ActivateCredentialProviderFilter" Location="local" Guid="ddc94b52-e7f2-4632-9f04-37f1b2b3c7a3">
-          <RegistryValue Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}' Type='string' Value='$(var.EndpointName)$(var.CredentialProviderFilter.TargetName)' KeyPath='yes' />
+          <RegistryValue Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}' Type='string' Value='PrivacyIDEA$(var.CredentialProviderFilter.TargetName)' KeyPath='yes' />
           <RemoveRegistryKey Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}' Action='removeOnUninstall'/>
         </Component>
         <!-- END Activate ProviderFilter component -->

@@ -1,6 +1,10 @@
-/* * * * * * * * * * * * * * * * * * * * *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2012 Dominik Pretzsch
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
@@ -14,7 +18,7 @@
 **    See the License for the specific language governing permissions and
 **    limitations under the License.
 **
-** * * * * * * * * * * * * * * * * * * */
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #ifndef _CPROVIDER_H
 #define _CPROVIDER_H
@@ -28,8 +32,6 @@
 #include <helpers.h>
 
 #include "CCredential.h"
-
-#include "dependencies.h"
 
 #define MAX_CREDENTIALS 3
 #define MAX_DWORD   0xffffffff        // maximum DWORD

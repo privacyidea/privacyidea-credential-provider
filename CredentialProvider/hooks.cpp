@@ -1,321 +1,120 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "hooks.h"
-#include <Lmcons.h>
 #include "Logger.h"
+#include "Configuration.h"
+#include <Lmcons.h>
+
+using namespace std;
 
 namespace Hook
 {
-
 	namespace Serialization
 	{
+		auto& config = Configuration::Get();
 
-		DATA*& Get()
-		{
-			static struct DATA *data = NULL;
-
-			return data;
-		}
-
-		void Default()
-		{
-			struct DATA*& data = Get();
-
-			if (data == NULL)
-				return;
-
-			data->pcpcs = NULL;
-			data->pcpgsr = NULL;
-			data->status_icon = NULL;
-			data->status_text = NULL;
-			data->pCredProvCredentialEvents = NULL;
-			data->pCredProvCredential = NULL;
-		}
-
-		void Init()
-		{
-			struct DATA*& data = Get();
-
-			data = (struct DATA*) malloc(sizeof(struct DATA));
-
-			Default();
-		}
-
-		void Deinit()
-		{
-			struct DATA*& data = Get();
-
-			Default();
-
-			free(data);
-			data = NULL;
-		}
-
-		HRESULT Initialization(
-			/*
-			CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
-			CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
-			PWSTR*& ppwszOptionalStatusText,
-			CREDENTIAL_PROVIDER_STATUS_ICON*& pcpsiOptionalStatusIcon,
-			ICredentialProviderCredentialEvents*& pCredProvCredentialEvents,
-			ICredentialProviderCredential* pCredProvCredential
-			*/)
+		HRESULT ReadFieldValues()
 		{
 			DebugPrintLn(__FUNCTION__);
-
-			if (Get() == NULL)
-				Init();
-
-			if (Get() == NULL)
-				return HOOK_CRITICAL_FAILURE;
-
-			Default();
-
-			/*
-			Hook::Serialization::Init(
-				pcpgsr,
-				pcpcs,
-				ppwszOptionalStatusText,
-				pcpsiOptionalStatusIcon,
-				pCredProvCredentialEvents,
-				pCredProvCredential);
-			*/
-
-			return S_OK;
-		}
-
-		HRESULT EndpointInitialization()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			if (Endpoint::Get() == NULL)
-				Endpoint::Init();
-
-			if (Endpoint::Get() == NULL)
-				return HOOK_CRITICAL_FAILURE;
-
-			return S_OK;
-		}
-
-		HRESULT DataInitialization()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			if (Data::General::Get()->bypassDataInitialization == true)
-			{
-				DebugPrintLn("Skipping...");
-
-				Data::General::Get()->bypassDataInitialization = false;
-				return S_FALSE;
-			}
-
-			if (Data::Gui::Get() == NULL)
-				Data::Gui::Init();
-
-			if (Data::Gui::Get() == NULL || Data::Provider::Get() == NULL)
-				return HOOK_CRITICAL_FAILURE;
-
-			// copy GUI fields to internal datastructures (we don't want to touch the GUI values)
-			switch (Data::Provider::Get()->usage_scenario)
+			HRESULT ret = S_OK;
+			switch (Configuration::Get().provider.usage_scenario)
 			{
 			case CPUS_LOGON:
 			case CPUS_UNLOCK_WORKSTATION:
-				if (NOT_EMPTY(Data::Credential::Get()->user_name))
-				{
-					DebugPrintLn("Loading username from external credential");
-
-					wcscpy_s(Data::Gui::Get()->user_name, sizeof(Data::Gui::Get()->user_name) / sizeof(wchar_t), Data::Credential::Get()->user_name);
-
-					if (NOT_EMPTY(Data::Credential::Get()->domain_name))
-					{
-						DebugPrintLn("Loading domainname from external credential");
-						wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
-					}
-				}
-				else
-				{
-					DebugPrintLn("Loading username/domainname from GUI");
-
-					Helper::SeparateUserAndDomainName(Serialization::Get()->field_strings[LUFI_OTP_USERNAME],
-						Data::Gui::Get()->user_name, sizeof(Data::Gui::Get()->user_name) / sizeof(wchar_t),
-						Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t)
-					);
-
-					if (EMPTY(Data::Gui::Get()->domain_name) && NOT_EMPTY(Data::Credential::Get()->domain_name))
-					{
-						DebugPrintLn("Loading domainname from external credential, because not provided in GUI");
-						// user's choice has always precedence
-						wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
-					}
-				}
-
-				if (NOT_EMPTY(Data::Credential::Get()->password))
-				{
-					if (wcslen(Data::Credential::Get()->password) > (MAX_BUFFER_SIZE_PASSWORD-1)) 
-					{
-						// probably never hitting this but just in case (max pw length for windows is 127 wchars)
-						DebugPrintLn("CREDPROTECTED PASSWORD TOO LONG FOR BUFFER - RETURNING EMPTY BUFFER");
-						wcscpy_s(Data::Gui::Get()->ldap_pass, 2, L"");
-						ZERO(Data::Credential::Get()->password);
-					}
-					else 
-					{
-						DebugPrintLn("Loading password from external credential");
-						wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Data::Credential::Get()->password);
-					}
-				}
-				else
-				{
-					DebugPrintLn("Loading password from GUI");
-					wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[LUFI_OTP_LDAP_PASS]);
-				}
-
-				DebugPrintLn("Loading OTP from GUI");
-				wcscpy_s(Data::Gui::Get()->otp_pass, sizeof(Data::Gui::Get()->otp_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[LUFI_OTP_PASS]);
-
-				break;
 			case CPUS_CREDUI:
-				DebugPrintLn("Loading username/domainname from GUI");
-				Helper::SeparateUserAndDomainName(Serialization::Get()->field_strings[CFI_OTP_USERNAME],
-					Data::Gui::Get()->user_name, sizeof(Data::Gui::Get()->user_name) / sizeof(wchar_t),
-					Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t)
-				);
-
-				if (EMPTY(Data::Gui::Get()->domain_name) && NOT_EMPTY(Data::Credential::Get()->domain_name))
-				{
-					DebugPrintLn("Loading domainname from external credential, because not provided in GUI");
-					// user's choice has always precedence
-					wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
-				}
-				
-				DebugPrintLn("Loading password from GUI");
-				wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[CFI_OTP_LDAP_PASS]);
-				if (Configuration::Get().logSensitive) {
-					DebugPrintLn(Data::Gui::Get()->ldap_pass);
-				}
-
-				DebugPrintLn("Loading OTP from GUI");
-				wcscpy_s(Data::Gui::Get()->otp_pass, sizeof(Data::Gui::Get()->otp_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[CFI_OTP_PASS]);
-
+				ReadUserField();
+				ReadPasswordField();
+				ReadOTPField();
 				break;
-			case CPUS_CHANGE_PASSWORD: {
-				/////////////////////// UNSUPPORTED ///////////////////////////////////////
-				wchar_t username[UNLEN + 1];
-				DWORD username_len = UNLEN + 1;
-				GetUserName(username, &username_len);
-				DebugPrintLn("CHANGEPW USERNAME:");
-				DebugPrintLn(username);
-
-				wcscpy_s(username, sizeof(username) / sizeof(wchar_t), Data::Credential::Get()->user_name);
-
-
-				if (!Data::Credential::Get()->domain_name) {
-					wcscpy_s(Data::Gui::Get()->domain_name, sizeof(Data::Gui::Get()->domain_name) / sizeof(wchar_t), Data::Credential::Get()->domain_name);
-				}
-
-				wcscpy_s(Data::Gui::Get()->ldap_pass, sizeof(Data::Gui::Get()->ldap_pass) / sizeof(wchar_t), Serialization::Get()->field_strings[CPFI_OTP_PASS_OLD]);
-				wcscpy_s(Data::Gui::Get()->ldap_pass_new_1, sizeof(Data::Gui::Get()->ldap_pass_new_1) / sizeof(wchar_t), Serialization::Get()->field_strings[CPFI_OTP_PASS_NEW_1]);
-				wcscpy_s(Data::Gui::Get()->ldap_pass_new_2, sizeof(Data::Gui::Get()->ldap_pass_new_2) / sizeof(wchar_t), Serialization::Get()->field_strings[CPFI_OTP_PASS_NEW_2]);
-				/////////////////////////////////////////////////////////////////////////////
-				break; }
-			default:
-				return E_INVALIDARG;
 			}
-
-			return S_OK;
+			return ret;
 		}
 
-		HRESULT EndpointLoadData()
+		HRESULT ReadUserField()
 		{
-			DebugPrintLn(__FUNCTION__);
-			if (!Data::General::Get()->bypassEndpoint) {
-				if (NOT_EMPTY(Data::Gui::Get()->user_name))
-				{
-					DebugPrintLn("Copy username to epPack");
-					wcscpy_s(Endpoint::Get()->username, sizeof(Endpoint::Get()->username) / sizeof(wchar_t), Data::Gui::Get()->user_name);
-				}
-				else {
-					DebugPrintLn("Data::Gui::Get()->username seems empty!");
-				}
+			DebugPrintLn(L"Loading username/domainname from GUI, raw: " + wstring(config.provider.field_strings[LUFI_OTP_USERNAME]));
 
+			wchar_t user_name[1024];
+			wchar_t domain_name[1024];
 
-				if (NOT_EMPTY(Data::Gui::Get()->ldap_pass))
-				{
-					DebugPrintLn("Copy ldapPass to epPack");
-					wcscpy_s(Endpoint::Get()->ldapPass, sizeof(Endpoint::Get()->ldapPass) / sizeof(wchar_t), Data::Gui::Get()->ldap_pass);
-				}
-				else {
-					DebugPrintLn("Data::Gui::Get()->ldap_pass seems empty!");
-				}
-
-				if (NOT_EMPTY(Data::Gui::Get()->otp_pass))
-				{
-					DebugPrintLn("Copy otpPass to epPack");
-					wcscpy_s(Endpoint::Get()->otpPass, sizeof(Endpoint::Get()->otpPass) / sizeof(wchar_t), Data::Gui::Get()->otp_pass);
-				}
-				else {
-					DebugPrintLn("Data::Gui::Get()->otp_pass seems empty!");
-				}
-			}
-			return S_OK;
-		}
-
-		HRESULT EndpointCallCancelled()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			Endpoint::Get()->protectMe = false;
-
-			SHStrDupW(L"Logon cancelled", Hook::Serialization::Get()->status_text);
-
-			*Hook::Serialization::Get()->status_icon = CPSI_ERROR;
-			*Hook::Serialization::Get()->pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
-
-			return S_OK;
-		}
-
-		HRESULT EndpointCallSuccessfull()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			Endpoint::Get()->protectMe = false;
-
-			return S_OK;
-		}
-
-		HRESULT EndpointCallContinue()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			Endpoint::Get()->protectMe = true;
-			Data::General::Get()->bypassDataDeinitialization = true;
-
-			INIT_ZERO_WCHAR(endpoint_instruction_msg, ENDPOINT_INSTRUCTION_MSG_SIZE);
-			INIT_ZERO_WCHAR(instruction_message, ENDPOINT_INSTRUCTION_MSG_SIZE + 100);
-
-			bool *big;
-
-			Endpoint::GetLastInstructionDescription(endpoint_instruction_msg, big);
-
-			if (endpoint_instruction_msg[0] == NULL)
-				return S_FALSE;
-
-			if (big)
+			Helper::SeparateUserAndDomainName(config.provider.field_strings[LUFI_OTP_USERNAME],
+				user_name, sizeof(user_name) / sizeof(wchar_t),
+				domain_name, sizeof(domain_name) / sizeof(wchar_t)
+			);
+			if (NOT_EMPTY(user_name))
 			{
-				swprintf_s(instruction_message, sizeof(instruction_message) / sizeof(wchar_t), L"The endpoint requires further interaction on your side. Code: %X\n\n%s",
-							Endpoint::GetLastErrorCode(), endpoint_instruction_msg);
-				SHStrDupW(instruction_message, Hook::Serialization::Get()->status_text);
-
-				*Hook::Serialization::Get()->status_icon = CPSI_SUCCESS;
+				Configuration::Get().credential.user_name = wstring(user_name);
 			}
 			else
 			{
-				///// Concrete Endpoint
-				//Data::General::Get()->startEndpointObserver = true;
-				Data::General::Get()->clearFields = false;
-				/////
-				General::Fields::SetScenario(Hook::Serialization::Get()->pCredProvCredential, Hook::Serialization::Get()->pCredProvCredentialEvents,
-											 General::Fields::SCENARIO_SECOND_STEP, NULL, endpoint_instruction_msg);
+				DebugPrintLn("Username is empty, keeping old value");
 			}
 
+			if (NOT_EMPTY(domain_name))
+			{
+				Configuration::Get().credential.domain_name = wstring(domain_name);
+			}
+			else
+			{
+				DebugPrintLn("Domain is empty, keeping old value");
+			}
+			return S_OK;
+		}
+
+		HRESULT ReadPasswordField()
+		{
+			wstring newPassword(config.provider.field_strings[LUFI_OTP_LDAP_PASS]);
+			//wchar_t password[1024];
+			//wcscpy_s(password, sizeof(password) / sizeof(wchar_t), Serialization::Get()->field_strings[LUFI_OTP_LDAP_PASS]);
+			//Configuration::Get().credential.password = wstring(password);
+
+			if (newPassword.empty())
+			{
+				DebugPrintLn("New password empty, keeping old value");
+			}
+			else
+			{
+				Configuration::Get().credential.password = newPassword;
+				DebugPrintLn(L"Loading password from GUI, value: " + newPassword);
+			}
+			return S_OK;
+		}
+
+		HRESULT ReadOTPField()
+		{
+			wstring newOTP(config.provider.field_strings[LUFI_OTP_PASS]);
+			//wchar_t otp[256];
+			//wcscpy_s(otp, sizeof(otp) / sizeof(wchar_t), Serialization::Get()->field_strings[LUFI_OTP_PASS]);
+			//Configuration::Get().credential.otp = wstring(otp);
+			if (newOTP.empty())
+			{
+				DebugPrintLn("new OTP empty, keeping old value");
+			}
+			else
+			{
+				Configuration::Get().credential.otp = newOTP;
+				DebugPrintLn(L"Loading OTP from GUI, value: " + newOTP);
+			}
 			return S_OK;
 		}
 
@@ -323,66 +122,37 @@ namespace Hook
 		{
 			DebugPrintLn(__FUNCTION__);
 
-			Endpoint::Get()->protectMe = false;
+			//Endpoint::Get()->protectMe = false;
 
-			INIT_ZERO_WCHAR(endpoint_error_msg, ENDPOINT_ERROR_MSG_SIZE);
-			INIT_ZERO_WCHAR(error_message, ENDPOINT_ERROR_MSG_SIZE + 100);
+			INIT_ZERO_WCHAR(endpoint_error_msg, 150);
+			INIT_ZERO_WCHAR(error_message, 150 + 100);
 
-			Endpoint::GetLastErrorDescription(endpoint_error_msg);
+			//Endpoint::GetLastErrorDescription(endpoint_error_msg);
 
-			swprintf_s(error_message, sizeof(error_message) / sizeof(wchar_t), L"An error occured. Error Code: %X\n\n%s", Endpoint::GetLastErrorCode(), endpoint_error_msg);
-			SHStrDupW(error_message, Hook::Serialization::Get()->status_text);
+			//TODO
+			swprintf_s(error_message, sizeof(error_message) / sizeof(wchar_t), L"An error occured. Error Code: %X\n\n%s", 345432, endpoint_error_msg);
+			SHStrDupW(error_message, config.provider.status_text);
 
-			*Hook::Serialization::Get()->status_icon = CPSI_ERROR;
-
-			return S_OK;
-		}
-
-		HRESULT EndpointDeinitialization()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			Endpoint::Deinit();
+			*config.provider.status_icon = CPSI_ERROR;
 
 			return S_OK;
 		}
-
-		HRESULT DataDeinitialization()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			if (Data::General::Get()->bypassDataDeinitialization == true)
-			{
-				DebugPrintLn("Skipping...");
-
-				Data::General::Get()->bypassDataDeinitialization = false;
-				return S_FALSE;
-			}
-
-			Data::Gui::Deinit();
-
-			// Leave provider data intact
-
-			return S_OK;
-		}
-
-		/////////////
 
 		HRESULT ChangePasswordSuccessfull()
 		{
 			DebugPrintLn(__FUNCTION__);
-			
-			if (Data::Credential::Get()->passwordMustChange) {
-				Data::Credential::Get()->passwordChanged = true;
-				Data::General::Get()->clearFields = false;
-				Data::General::Get()->bypassDataDeinitialization = true;
-				Data::Credential::Get()->passwordMustChange = false;
+
+			if (Configuration::Get().credential.passwordMustChange)
+			{
+				Configuration::Get().credential.passwordChanged = true;
+				Configuration::Get().general.clearFields = false;
+				Configuration::Get().credential.passwordMustChange = false;
 			}
 
 			//SHStrDupW(L"Your password was successfully changed.", Hook::Serialization::Get()->status_text);
 
-			*Hook::Serialization::Get()->pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
-			*Hook::Serialization::Get()->status_icon = CPSI_SUCCESS;
+			*config.provider.pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
+			*config.provider.status_icon = CPSI_SUCCESS;
 
 			return S_OK;
 		}
@@ -390,29 +160,11 @@ namespace Hook
 		HRESULT ChangePasswordFailed()
 		{
 			DebugPrintLn(__FUNCTION__);
-			SHStrDupW(L"Your password could not be changed. Make sure you correctly typed your new password twice.", Hook::Serialization::Get()->status_text);
+			SHStrDupW(L"Your password could not be changed. Make sure you correctly typed your new password twice.",
+				config.provider.status_text);
 
-			*Hook::Serialization::Get()->pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-			*Hook::Serialization::Get()->status_icon = CPSI_ERROR;
-
-			return S_OK;
-		}
-
-		/////////////
-
-		HRESULT KerberosCallSuccessfull() { return S_OK; }
-
-		HRESULT KerberosCallFailed() { return S_OK; }
-
-		/////////////
-
-		HRESULT BeforeReturn()
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			Data::Credential::Get()->endpointStatus = E_NOT_SET; // Reset for second run
-
-			Hook::Serialization::Deinit();
+			*config.provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			*config.provider.status_icon = CPSI_ERROR;
 
 			return S_OK;
 		}
@@ -422,84 +174,58 @@ namespace Hook
 	namespace CredentialHooks
 	{
 		// switch passwordChanged and turn on AutoLogon
-		HRESULT CheckPasswordChanging(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, BOOL *&pbAutoLogon)
+		HRESULT CheckPasswordChanging(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents, BOOL*& pbAutoLogon)
 		{
 			DebugPrintLn(__FUNCTION__);
 			UNREFERENCED_PARAMETER(pSelf);
 			UNREFERENCED_PARAMETER(pCredProvCredentialEvents);
-			if (Data::Credential::Get()->passwordMustChange)
+			if (Configuration::Get().credential.passwordMustChange)
 			{
 				DebugPrintLn("CheckPasswordChanging TRUE");
 
 				//General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_CHANGE_PASSWORD);
-				//Data::Credential::Get()->passwordMustChange = false;
+				//Configuration::Get().credential.passwordMustChange = false;
 				return E_ABORT;
 			}
 
-			if (Data::Credential::Get()->passwordChanged) {
-				//Data::Credential::Get()->passwordChanged = false;
-				Data::General::Get()->bypassDataInitialization = true; // we dont want to initialize the kiul with the old password
+			if (Configuration::Get().credential.passwordChanged) {
+				//Configuration::Get().credential.passwordChanged = false;
+				//Configuration::Get().general.bypassDataInitialization = true; // we dont want to initialize the kiul with the old password
 				*pbAutoLogon = TRUE;
 			}
 			*pbAutoLogon = FALSE;
 			return S_OK;
 		}
 
-		HRESULT CheckEndpointObserver(BOOL *&pbAutoLogon)
+		HRESULT ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
 		{
-			//UNREFERENCED_PARAMETER(pbAutoLogon);
 			DebugPrintLn(__FUNCTION__);
-			*pbAutoLogon = FALSE;
-			if (EndpointObserver::Thread::GetStatus() == EndpointObserver::Thread::STATUS::FINISHED)
+			PWSTR username = L"";
+			if (!Configuration::Get().credential.user_name.empty())
 			{
-				DebugPrintLn("Observer FINISHED");
+				username = const_cast<PWSTR>(Configuration::Get().credential.user_name.c_str());
+			}
 
-				if (EndpointObserver::Result()->returnValue == EPT_SUCCESS)
+			if (Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION)
+			{
+				if (Configuration::Get().twoStepHideOTP)
 				{
-					DebugPrintLn("EPT_SUCCESS");
-
-					EndpointObserver::Result()->returnValue = EPT_UNKNOWN;
-					Data::General::Get()->bypassEndpoint = true;
-					Data::General::Get()->bypassDataInitialization = true;
-
-					//*pbAutoLogon = TRUE;
+					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_UNLOCK_TWO_STEP, NULL, username);
 				}
 				else
 				{
-					DebugPrintLn("EPT_FAILURE or EPT_UNKNOWN");
-
-					Endpoint::Get()->protectMe = false;
-					Hook::Serialization::EndpointDeinitialization();
-
-					return E_FAIL;
-				}
-
-				EndpointObserver::Thread::Destroy();
-			}
-
-			return S_OK;
-		}
-
-		HRESULT ResetScenario(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents)
-		{
-			DebugPrintLn(__FUNCTION__);
-
-			if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION)
-			{
-				if (Configuration::Get().twoStepHideOTP) {
-					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_UNLOCK_TWO_STEP, NULL, WORKSTATION_LOCKED);
-				}
-				else {
-					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_UNLOCK_BASE, NULL, WORKSTATION_LOCKED);
+					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_UNLOCK_BASE, NULL, username);
 				}
 
 			}
-			else if (Data::Provider::Get()->usage_scenario == CPUS_LOGON)
+			else if (Configuration::Get().provider.usage_scenario == CPUS_LOGON)
 			{
-				if (Configuration::Get().twoStepHideOTP) {
+				if (Configuration::Get().twoStepHideOTP)
+				{
 					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_LOGON_TWO_STEP);
 				}
-				else {
+				else
+				{
 					General::Fields::SetScenario(pSelf, pCredProvCredentialEvents, General::Fields::SCENARIO_LOGON_BASE);
 				}
 			}
@@ -507,7 +233,7 @@ namespace Hook
 			return S_OK;
 		}
 
-		HRESULT GetSubmitButtonValue(DWORD dwFieldID, DWORD* &pdwAdjacentTo)
+		HRESULT GetSubmitButtonValue(DWORD dwFieldID, DWORD*& pdwAdjacentTo)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -538,7 +264,7 @@ namespace Hook
 			return hr;
 		}
 
-		HRESULT GetComboBoxValueCount(DWORD dwFieldID, DWORD* &pcItems, DWORD* &pdwSelectedItem)
+		HRESULT GetComboBoxValueCount(DWORD dwFieldID, DWORD*& pcItems, DWORD*& pdwSelectedItem)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -555,7 +281,7 @@ namespace Hook
 			return hr;
 		}
 
-		HRESULT GetComboBoxValueAt(DWORD dwFieldID, DWORD dwItem, PWSTR* &ppwszItem)
+		HRESULT GetComboBoxValueAt(DWORD dwFieldID, DWORD dwItem, PWSTR*& ppwszItem)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -570,8 +296,8 @@ namespace Hook
 			return hr;
 		}
 
-		HRESULT SetComboBoxSelectedValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents,
-										 DWORD dwFieldID, DWORD dwSelectedItem, DWORD &dwSelectedItemBuffer)
+		HRESULT SetComboBoxSelectedValue(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents,
+			DWORD dwFieldID, DWORD dwSelectedItem, DWORD& dwSelectedItemBuffer)
 		{
 			DebugPrintLn(__FUNCTION__);
 
@@ -590,34 +316,35 @@ namespace Hook
 			return hr;
 		}
 
-		HRESULT GetCheckboxValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, wchar_t **rgFieldStrings,
-								 DWORD dwFieldID, BOOL *&pbChecked, PWSTR *&ppwszLabel)
+		HRESULT GetCheckboxValue(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents, wchar_t** rgFieldStrings,
+			DWORD dwFieldID, BOOL*& pbChecked, PWSTR*& ppwszLabel)
 		{
 			DebugPrintLn(__FUNCTION__);
 
 			UNREFERENCED_PARAMETER(pSelf);
 			UNREFERENCED_PARAMETER(pCredProvCredentialEvents);
-
-			if (Data::Gui::Get() == NULL)
+			UNREFERENCED_PARAMETER(pbChecked);
+			/*if (Data::Gui::Get() == NULL)
 				Data::Gui::Init();
 
-			*pbChecked = Data::Gui::Get()->use_offline_pass;
+			*pbChecked = Data::Gui::Get()->use_offline_pass;*/
 			return SHStrDupW(rgFieldStrings[dwFieldID], ppwszLabel);
 		}
 
-		HRESULT SetCheckboxValue(ICredentialProviderCredential *pSelf, ICredentialProviderCredentialEvents *pCredProvCredentialEvents, DWORD dwFieldID, BOOL bChecked)
+		HRESULT SetCheckboxValue(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents, DWORD dwFieldID, BOOL bChecked)
 		{
 			DebugPrintLn(__FUNCTION__);
 
 			UNREFERENCED_PARAMETER(pSelf);
 			UNREFERENCED_PARAMETER(pCredProvCredentialEvents);
 			UNREFERENCED_PARAMETER(dwFieldID);
+			UNREFERENCED_PARAMETER(bChecked);
 
-			if (Data::Gui::Get() == NULL)
-				Data::Gui::Init();
+			/*	if (Data::Gui::Get() == NULL)
+					Data::Gui::Init();
 
-			Data::Gui::Get()->use_offline_pass = bChecked != 0;
-
+				Data::Gui::Get()->use_offline_pass = bChecked != 0;
+	*/
 			return S_OK;
 		}
 

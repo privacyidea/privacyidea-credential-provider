@@ -1,3 +1,25 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef _HOOKS_H
 #define _HOOKS_H
 #pragma once
@@ -8,7 +30,6 @@
 
 #include "general.h"
 #include "endpoint.h"
-#include "EndpointObserver.h"
 
 namespace Hook
 {
@@ -17,6 +38,7 @@ namespace Hook
 
 	namespace Serialization
 	{
+		/*
 		struct DATA
 		{
 			// Possibly read-write
@@ -36,17 +58,17 @@ namespace Hook
 		void Init();
 		void Deinit();
 		void Default();
+		*/
+		HRESULT ReadFieldValues();
 
-		HRESULT Initialization();
+		HRESULT ReadUserField();
+		HRESULT ReadPasswordField();
+		HRESULT ReadOTPField();
 
-		HRESULT EndpointInitialization();
-		HRESULT DataInitialization();
-		HRESULT EndpointLoadData();
 		HRESULT EndpointCallCancelled();
 		HRESULT EndpointCallSuccessfull();
-		HRESULT EndpointCallContinue();
+		HRESULT PrepareSecondStep();
 		HRESULT EndpointCallFailed();
-		HRESULT EndpointDeinitialization();
 		HRESULT DataDeinitialization();
 
 		HRESULT ChangePasswordSuccessfull();

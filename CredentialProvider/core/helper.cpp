@@ -1,5 +1,28 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "helper.h"
 #include "Logger.h"
+#include "Configuration.h"
 
 namespace Helper
 {
@@ -19,13 +42,32 @@ namespace Helper
 		return converterX.to_bytes(wstr);
 	}
 
+	PWSTR ws2pwstr(const std::wstring& wstr)
+	{
+		UNREFERENCED_PARAMETER(wstr);
+		//PWSTR ret = new wchar_t[wstr.length + 1];
+		//wcscpy_s(ret, (wstr.length+1), wstr.c_str());
+		//return ret;
+		return nullptr;
+	}
+
+	char* s2psz(const std::string& str)
+	{
+		UNREFERENCED_PARAMETER(str);
+
+		//char* ret = new char[str.length + 1];
+		//strcpy_s(ret, (str.length + 1), str.c_str());
+		//return ret;
+		return nullptr;
+	}
+
 	void RedrawGUI()
 	{
 		DebugPrintLn(__FUNCTION__);
 
-		if (Data::Provider::Get()->_pcpe != NULL)
+		if (Configuration::Get().provider._pCredentialProviderEvents != NULL)
 		{
-			Data::Provider::Get()->_pcpe->CredentialsChanged(Data::Provider::Get()->_upAdviseContext);
+			Configuration::Get().provider._pCredentialProviderEvents->CredentialsChanged(Configuration::Get().provider._upAdviseContext);
 		}
 	}
 

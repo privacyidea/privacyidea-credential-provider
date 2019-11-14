@@ -1,3 +1,25 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "general.h"
 #include "Configuration.h"
 #include "Logger.h"
@@ -178,6 +200,9 @@ namespace General
 			}
 			DebugPrintLn(domain);
 #endif
+
+
+			const DWORD credPackFlags = Configuration::Get().provider.credPackFlags;
 			PWSTR pwzProtectedPassword;
 			HRESULT hr = ProtectIfNecessaryAndCopyPassword(password, cpus, &pwzProtectedPassword);
 
@@ -201,7 +226,7 @@ namespace General
 					DWORD size = 0;
 					BYTE* rawbits = NULL;
 
-					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
+					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
 						domainUsername, password, rawbits, &size))
 					{
 						// We received the necessary size, let's allocate some rawbits
@@ -209,7 +234,7 @@ namespace General
 						{
 							rawbits = (BYTE*)HeapAlloc(GetProcessHeap(), 0, size);
 
-							if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & Data::Provider::Get()->credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
+							if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
 								domainUsername, password, rawbits, &size))
 							{
 								HeapFree(GetProcessHeap(), 0, rawbits);
@@ -283,40 +308,46 @@ namespace General
 			__in ICredentialProviderCredential* self,
 			__in ICredentialProviderCredentialEvents* pCPCE,
 			__in SCENARIO scenario,
-			__in_opt PWSTR large_text,
-			__in_opt PWSTR small_text
+			__in_opt PWSTR textForLargeField,
+			__in_opt PWSTR textForSmallField
 		)
 		{
 			DebugPrintLn(__FUNCTION__);
-
+			DebugPrintLn("SetScenario: " + to_string(scenario));
 			HRESULT hr = S_OK;
 			hr = Helpers::SetScenarioBasedFieldStates(self, pCPCE, scenario);
 
 
-			int hide_fullname = Configuration::Get().hideFullName;
-
+			const int hide_fullname = Configuration::Get().hideFullName;
+			 
 			// Set text fields separately
 			int largeTextFieldId = 0, smallTextFieldId = 0;
 
-			hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Data::Provider::Get()->usage_scenario);
+			hr = Helpers::SetScenarioBasedTextFields(largeTextFieldId, smallTextFieldId, Configuration::Get().provider.usage_scenario);
 
-			if (large_text)
+			if (textForLargeField)
 			{
 				DebugPrintLn("Large Text:");
-				DebugPrintLn(large_text);
-				pCPCE->SetFieldString(self, largeTextFieldId, large_text);
+				DebugPrintLn(textForLargeField);
+				pCPCE->SetFieldString(self, largeTextFieldId, textForLargeField);
+			}
+			else
+			{
+				// Set the username for the large text
+				pCPCE->SetFieldString(self, largeTextFieldId, Configuration::Get().credential.user_name.c_str());
 			}
 
-			if (small_text && !hide_fullname)
+			if (textForSmallField && !hide_fullname)
 			{
 				DebugPrintLn("Small Text:");
-				DebugPrintLn(small_text);
-				pCPCE->SetFieldString(self, smallTextFieldId, small_text);
+				DebugPrintLn(textForSmallField);
+				pCPCE->SetFieldString(self, smallTextFieldId, textForSmallField);
 				//pCPCE->SetFieldState(self, smallTextFieldId, CPFS_DISPLAY_IN_SELECTED_TILE);
 			}
-			else if (hide_fullname) {
+			else if (hide_fullname) 
+			{
 				DebugPrintLn("Small Text: hide username");
-				DebugPrintLn(small_text);
+				DebugPrintLn(textForSmallField);
 				pCPCE->SetFieldString(self, smallTextFieldId, L"");
 			}
 			else
@@ -326,14 +357,10 @@ namespace General
 				pCPCE->SetFieldState(self, smallTextFieldId, CPFS_HIDDEN);
 			}
 
-			if (!EMPTY(Data::Credential::Get()->message) && !EMPTY(Data::Credential::Get()->tx_id))
+			if (!Configuration::Get().challenge_response.message.empty() && !Configuration::Get().challenge_response.transactionID.empty())
 			{
-				DebugPrintLn("Challenge-Response message found, setting it to smalltext:");
-				wchar_t tmp[256];
-				size_t length = strlen(Data::Credential::Get()->message);
-				mbstowcs_s(&length, tmp, Data::Credential::Get()->message, length);
-				DebugPrintLn(tmp);
-				pCPCE->SetFieldString(self, smallTextFieldId, tmp);
+				DebugPrintLn("CR message found, setting it to smalltext: " + Configuration::Get().challenge_response.message);
+				pCPCE->SetFieldString(self, smallTextFieldId, Helper::s2ws(Configuration::Get().challenge_response.message).c_str());
 				pCPCE->SetFieldState(self, smallTextFieldId, CPFS_DISPLAY_IN_BOTH);
 			}
 
@@ -405,10 +432,9 @@ namespace General
 		{
 			//DebugPrintLn(__FUNCTION__);
 
-			if (Data::Provider::Get() != NULL)
+			if (Configuration::Get().provider.usage_scenario != NULL)
 			{
-				return  s_rgCredProvNumFieldsFor[Data::Provider::Get()->usage_scenario];
-
+				return  s_rgCredProvNumFieldsFor[Configuration::Get().provider.usage_scenario];
 			}
 
 			return 0;
@@ -418,10 +444,12 @@ namespace General
 		HRESULT InitializeField(LPWSTR* rgFieldStrings, const FIELD_INITIALIZOR initializer, DWORD field_index)
 		{
 			HRESULT hr = E_INVALIDARG;
-			int hide_fullname = Configuration::Get().hideFullName;
-			int hide_domainname = Configuration::Get().hideDomainName;
+			const int hide_fullname = Configuration::Get().hideFullName;
+			const int hide_domainname = Configuration::Get().hideDomainName;
 
 			wstring loginText = Configuration::Get().loginText;
+			wstring user_name = Configuration::Get().credential.user_name;
+			wstring domain_name = Configuration::Get().credential.domain_name;
 
 			switch (initializer.type)
 			{
@@ -432,25 +460,23 @@ namespace General
 				break;
 			case FIT_USERNAME:
 				//DebugPrintLn("...FIT_USERNAME");
-				if (NOT_EMPTY(Data::Credential::Get()->user_name) && !hide_fullname)
-					hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+				if (!user_name.empty() && !hide_fullname)
+					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
 				else
 					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 				//DebugPrintLn(rgFieldStrings[field_index]);
 				break;
 			case FIT_USERNAME_AND_DOMAIN:
 				//DebugPrintLn("...FIT_USERNAME_AND_DOMAIN");
-				if (NOT_EMPTY(Data::Credential::Get()->user_name) && NOT_EMPTY(Data::Credential::Get()->domain_name)
-					&& !hide_fullname && !hide_domainname)
+				if (!user_name.empty() && !domain_name.empty() && !hide_fullname && !hide_domainname)
 				{
-
-					wstring fullName = wstring(Data::Credential::Get()->user_name) + L"@" + wstring(Data::Credential::Get()->domain_name);
+					wstring fullName = wstring(user_name.c_str()) + L"@" + wstring(domain_name.c_str());
 
 					hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
 				}
-				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname)
+				else if (!user_name.empty() && hide_domainname)
 				{
-					hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
 				}
 				else
 				{
@@ -481,7 +507,7 @@ namespace General
 						// Provide default value
 						hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 					}
-					else 
+					else
 					{
 						hr = SHStrDupW(initializer.value, &rgFieldStrings[field_index]);
 					}
@@ -490,26 +516,26 @@ namespace General
 				break;
 			case FIT_VALUE_OR_LOCKED_TEXT:
 				//DebugPrintLn("...FIT_VALUE_OR_LOCKED_TEXT");
-				//if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(WORKSTATION_LOCKED))
-				if (Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(Data::Credential::Get()->user_name)
+				//if (Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(WORKSTATION_LOCKED))
+				if (Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
 					&& !hide_fullname && !hide_domainname)
 				{
-					//DebugPrintLn("......Data::Provider::Get()->usage_scenario == CPUS_UNLOCK_WORKSTATION");
+					//DebugPrintLn("...usage_scenario == CPUS_UNLOCK_WORKSTATION");
 					//hr = SHStrDupW(WORKSTATION_LOCKED, &rgFieldStrings[field_index]);
-					if (NOT_EMPTY(Data::Credential::Get()->domain_name))
+					if (!domain_name.empty())
 					{
-						wstring fullName = wstring(Data::Credential::Get()->user_name) + L"@" + wstring(Data::Credential::Get()->domain_name);
+						wstring fullName = user_name + L"@" + domain_name;
 
 						hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
 					}
-					else if (NOT_EMPTY(Data::Credential::Get()->user_name))
+					else if (!user_name.empty())
 					{
-						hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+						hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
 					}
 				}
-				else if (NOT_EMPTY(Data::Credential::Get()->user_name) && hide_domainname && !hide_fullname)
+				else if (!user_name.empty() && hide_domainname && !hide_fullname)
 				{
-					hr = SHStrDupW(Data::Credential::Get()->user_name, &rgFieldStrings[field_index]);
+					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
 				}
 				else if (hide_fullname)
 				{
