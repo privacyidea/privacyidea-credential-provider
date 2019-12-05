@@ -42,6 +42,10 @@
 	char NAME[SIZE]; \
 	ZERO(NAME)
 
+#define INIT_ZERO_TCHAR(NAME, SIZE) \
+	TCHAR NAME[SIZE]; \
+	ZERO(NAME)
+
 #define NOT_EMPTY(NAME) \
 	(NAME != NULL && NAME[0] != NULL)
 

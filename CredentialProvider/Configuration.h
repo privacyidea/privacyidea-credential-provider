@@ -19,8 +19,23 @@
 
 #pragma once
 #include "Endpoint.h"
+#include "Challenge.h"
+#include <list>
 #include <string>
 #include <credentialprovider.h>
+#include <map>
+
+// Token Type Available
+enum class TTA
+{
+	NOT_SET,
+	OTP,
+	PUSH,
+	BOTH
+};
+
+extern const std::wstring base_registry_path;
+extern const std::wstring realm_registry_path;
 
 class Configuration
 {
@@ -28,7 +43,8 @@ public:
 	Configuration(Configuration const&) = delete;
 	void operator=(Configuration const&) = delete;
 
-	static Configuration& Get() {
+	static Configuration& Get()
+	{
 		static Configuration instance;
 		return instance;
 	}
@@ -59,7 +75,12 @@ public:
 	int winVerMinor = 0;
 	int winBuildNr = 0;
 
-	struct PROVIDER {
+	std::wstring default_realm = L"";
+
+	std::map<std::wstring, std::wstring> realm_map = std::map<std::wstring, std::wstring>();
+
+	struct PROVIDER
+	{
 		ICredentialProviderEvents* _pCredentialProviderEvents = nullptr;
 		UINT_PTR _upAdviseContext = 0;
 
@@ -97,9 +118,9 @@ public:
 
 	struct ENDPOINT
 	{
-		IQueryContinueWithStatus* pQueryContinueWithStatus = nullptr;
-		HRESULT status = ENDPOINT_STATUS_NOT_SET;
-		bool userCanceled = false;
+		IQueryContinueWithStatus* pQueryContinueWithStatus = nullptr; // TODO remove? use only locally
+		HRESULT status = ENDPOINT_STATUS_NOT_SET; // TODO remove, use member variable of endpoint instance
+		bool userCanceled = false; // TODO remove, use status to indicate if needed
 
 		std::wstring hostname = L"";
 		std::wstring path = L"";
@@ -108,11 +129,16 @@ public:
 		bool sslIgnoreCN = false;
 	} endpoint;
 
-	struct CHALLENGERESPONSE {
-		bool usingPushToken = false;
+	struct CHALLENGERESPONSE
+	{
+		std::list<Challenge> challenges = std::list<Challenge>();
+		bool usingPushToken = false; // TODO remove
+		bool pushAuthenticationSuccessful = false;
 		std::string transactionID = "";
 		std::string serial = "";
 		std::string message = "";
+
+		TTA tta = TTA::NOT_SET;
 	} challenge_response;
 
 	struct GENERAL
@@ -124,8 +150,11 @@ public:
 private:
 	Configuration();
 
-	void loadConfig();
+	void loadMapping();
+
 	std::wstring getRegistry(std::wstring name);
+
 	bool getBoolRegistry(std::wstring name);
+
 	int getIntRegistry(std::wstring name);
 };

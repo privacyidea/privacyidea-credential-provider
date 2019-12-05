@@ -18,7 +18,6 @@
 
 #pragma once
 #include <string>
-#include <codecvt>
 
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
@@ -55,6 +54,6 @@ private:
 
 	bool releaseLog;
 
-	std::string logfilePathDebug = "C:\\privacyIDEACPDebugLog.txt";
-	std::string logfilePathProduction = "C:\\privacyIDEACredentialProviderLog.txt";
+	std::string logfilePathDebug = "C:\\PICredentialProviderDebugLog.txt";
+	std::string logfilePathProduction = "C:\\PICredentialProviderLog.txt";
 };

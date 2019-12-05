@@ -19,10 +19,11 @@
 
 #include "Logger.h"
 #include "Configuration.h"
-#include <objbase.h>
+#include "core/common.h"
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <codecvt>
 
 using namespace std;
 
@@ -46,17 +47,25 @@ void Logger::logS(string message, const char* file, int line, bool logInProducti
 #endif // !_DEBUG
 
 	// Format: [Time] [file:line]  message
-	time_t rawtime;
+	time_t rawtime = NULL;
 	struct tm* timeinfo = (tm*)CoTaskMemAlloc(sizeof(tm));
-	char buffer[80];
+	INIT_ZERO_CHAR(buffer, 80);
+	if (timeinfo == nullptr)
+	{
+		return;
+	}
 	time(&rawtime);
-	localtime_s(timeinfo, &rawtime);
+	const errno_t err = localtime_s(timeinfo, &rawtime);
+	if (err != 0)
+	{
+		return;
+	}
 	strftime(buffer, sizeof(buffer), "%d-%m-%Y %I:%M:%S", timeinfo);
 	CoTaskMemFree(timeinfo);
 	string fullMessage = "[" + string(buffer) + "] [" + string(file) + ":" + to_string(line) + "] " + message;
-	
+
 	ofstream os;
-	os.open(outfilePath.c_str(), std::ios_base::app); // Append mode
+	os.open(outfilePath.c_str(), std::ios_base::app);
 	os << fullMessage << std::endl;
 
 	OutputDebugStringA(fullMessage.c_str());
@@ -75,7 +84,7 @@ void Logger::logW(wstring message, const char* file, int line, bool logInProduct
 void Logger::log(const char* message, const char* file, int line, bool logInProduction)
 {
 	string msg = "";
-	if (message != NULL && message[0] != NULL) {
+	if (message != nullptr && message[0] != NULL) {
 		msg = string(message);
 	}
 	logS(msg, file, line, logInProduction);
@@ -84,7 +93,7 @@ void Logger::log(const char* message, const char* file, int line, bool logInProd
 void Logger::log(const wchar_t* message, const char* file, int line, bool logInProduction)
 {
 	wstring msg = L"";
-	if (message != NULL && message[0] != NULL) {
+	if (message != nullptr && message[0] != NULL) {
 		msg = wstring(message);
 	}
 	logW(msg, file, line, logInProduction);

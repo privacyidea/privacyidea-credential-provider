@@ -32,10 +32,10 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
-using namespace std;
-auto& config = Configuration::Get();
+#include <future>
+#include <sstream>
 
-// CCredential ////////////////////////////////////////////////////////
+using namespace std;
 
 CCredential::CCredential() :
 	_cRef(1),
@@ -48,33 +48,12 @@ CCredential::CCredential() :
 	ZERO(_rgCredProvFieldDescriptors);
 	ZERO(_rgFieldStatePairs);
 	ZERO(_rgFieldStrings);
-
-	// END
-
-	//Data::General::Init();
-	//Data::Credential::Init();
-	//EndpointObserver::Init();
+	_endpoint = Endpoint();
 }
 
 CCredential::~CCredential()
 {
 	General::Fields::Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, NULL, CLEAR_FIELDS_ALL_DESTROY);
-
-	// END
-	// Make sure runtime is clean (see ctor "Initialize Configuration::Get() variables")
-	// Use SecureZeroMemory for confidential information
-	//Configuration::Deinit();
-
-	// END
-	// Endpoint deinit
-
-
-	// END
-
-	//EndpointObserver::Deinint();
-	//Data::Credential::Deinit();
-	//Data::General::Deinit();
-
 	DllRelease();
 }
 
@@ -171,10 +150,31 @@ HRESULT CCredential::Initialize(
 	return hr;
 }
 
-HRESULT CCredential::EndpointCallback(__in DWORD dwFlag)
+HRESULT CCredential::checkForRealm(std::map<std::string, std::string>& map)
 {
-	UNREFERENCED_PARAMETER(dwFlag);
-	return E_NOTIMPL;
+	auto& config = Configuration::Get();
+	// Check if mapping exists for the current domain
+	wstring realm = L"";
+	try
+	{
+		realm = config.realm_map.at(config.credential.domain_name);
+	}
+	catch (const std::out_of_range & e)
+	{
+		UNREFERENCED_PARAMETER(e);
+		// no mapping - if default domain exists use that
+		if (!config.default_realm.empty())
+		{
+			realm = config.default_realm;
+		}
+	}
+
+	if (!realm.empty())
+	{
+		map.try_emplace("realm", Helper::ws2s(realm));
+	}
+
+	return S_OK;
 }
 
 // LogonUI calls this in order to give us a callback in case we need to notify it of anything.
@@ -220,6 +220,8 @@ HRESULT CCredential::UnAdvise()
 // Callback for the DialogBox
 INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	auto& config = Configuration::Get();
+
 	wchar_t lpszPassword_old[64];
 	wchar_t lpszPassword_new[64];
 	wchar_t lpszPassword_new_rep[64];
@@ -401,7 +403,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			//config.general.bypassDataDeinitialization = true;
 			//config.general.bypassDataInitialization = true;
 			config.general.bypassEndpoint = true;
-			
+
 			DebugPrintLn("Evaluate CHANGE PASSWORD DIALOG - END");
 			EndDialog(hDlg, TRUE);
 			return TRUE;
@@ -442,10 +444,18 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 {
 	DebugPrintLn(__FUNCTION__);
-	*pbAutoLogon = FALSE;
+	*pbAutoLogon = false;
 	HRESULT hr = S_OK;
-	if (Configuration::Get().credential.passwordMustChange && Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION
-		&& Configuration::Get().winVerMajor != 10)
+
+	auto& config = Configuration::Get();
+
+	if (config.challenge_response.pushAuthenticationSuccessful)
+	{
+		*pbAutoLogon = true;
+	}
+
+	if (config.credential.passwordMustChange && config.provider.usage_scenario == CPUS_UNLOCK_WORKSTATION
+		&& config.winVerMajor != 10)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
 		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
@@ -457,9 +467,9 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
-	if (Configuration::Get().credential.passwordMustChange || Configuration::Get().credential.passwordChanged)
+	if (config.credential.passwordMustChange || config.credential.passwordChanged)
 	{
-		if (Configuration::Get().provider.usage_scenario == CPUS_LOGON || Configuration::Get().winVerMajor == 10)
+		if (config.provider.usage_scenario == CPUS_LOGON || config.winVerMajor == 10)
 		{
 			*pbAutoLogon = true;
 			DebugPrintLn("Password change mode LOGON - AutoLogon true");
@@ -754,7 +764,8 @@ HRESULT CCredential::SetCheckboxValue(
 HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
-	return E_NOTIMPL;
+	DebugPrintLn("COMMAND LINK CLICKED!");
+	return S_OK;
 }
 
 //------ end of methods for controls we don't have in our tile ----//
@@ -774,6 +785,8 @@ HRESULT CCredential::GetSerialization(
 	*pcpgsr = CPGSR_RETURN_NO_CREDENTIAL_FINISHED;
 
 	HRESULT hr = E_FAIL, retVal = S_OK;
+
+	auto& config = Configuration::Get();
 
 	/*
 	CPGSR_NO_CREDENTIAL_NOT_FINISHED
@@ -863,11 +876,31 @@ HRESULT CCredential::GetSerialization(
 		return S_FALSE;
 	}
 
-	if (/*SUCCEEDED(config.endpoint.status)*/ config.endpoint.status == ENDPOINT_AUTH_OK || config.general.bypassEndpoint == true)
+	if (config.endpoint.status == ENDPOINT_STATUS_AUTH_CONTINUE && config.challenge_response.pushAuthenticationSuccessful == false)
+	{
+		// Prepare for the second step (input only OTP)
+		Configuration::Get().general.clearFields = false;
+		General::Fields::SetScenario(config.provider.pCredProvCredential, config.provider.pCredProvCredentialEvents,
+			General::Fields::SCENARIO_SECOND_STEP, NULL, L"Please enter your second factor:");
+		*config.provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+
+		if (config.challenge_response.usingPushToken)
+		{
+			//_pCredProvCredentialEvents->SetFieldState(config.provider.pCredProvCredential, LPFI_PUSH_COMMAND_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
+			// If push token is used, start polling
+			//future<HRESULT> futurePollingResult = std::async(_endpoint.pollForTransaction, config.challenge_response.transactionID);
+			/*if (SUCCEEDED(res))
+			{
+				// If successful, skip to login
+				config.endpoint.status = ENDPOINT_STATUS_AUTH_OK;
+				//config.general.bypassEndpoint = true;
+			} */
+		}
+	}
+	else if (config.endpoint.status == ENDPOINT_STATUS_AUTH_OK || config.general.bypassEndpoint || config.challenge_response.pushAuthenticationSuccessful)
 	{
 		// LOG IN
-		//HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointCallSuccessfull(), CleanUpAndReturn);
-		if (config.endpoint.status == ENDPOINT_AUTH_OK)
+		if (config.endpoint.status == ENDPOINT_STATUS_AUTH_OK)
 		{
 			// If windows password is wrong, treat it as new logon
 			config.isSecondStep = false;
@@ -895,15 +928,7 @@ HRESULT CCredential::GetSerialization(
 			retVal = S_FALSE;
 		}
 	}
-	else if (config.endpoint.status == ENDPOINT_AUTH_CONTINUE)
-	{
-		// Prepare for the second step (input only OTP)
-		Configuration::Get().general.clearFields = false;
-		General::Fields::SetScenario(config.provider.pCredProvCredential, config.provider.pCredProvCredentialEvents,
-			General::Fields::SCENARIO_SECOND_STEP, NULL, L"Please enter your second factor:");
-		*config.provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-	}
-	else if (config.endpoint.status == ENDPOINT_AUTH_FAIL)
+	else if (config.endpoint.status == ENDPOINT_STATUS_AUTH_FAIL)
 	{
 		wstring otpFailureText = config.otpFailureText.empty() ? L"Wrong One-Time-Password!" : config.otpFailureText;
 		SHStrDupW(otpFailureText.c_str(), config.provider.status_text);
@@ -927,7 +952,7 @@ HRESULT CCredential::GetSerialization(
 	{
 		config.general.clearFields = true; // it's a one-timer...
 	}
-	Hook::Serialization::BeforeReturn();
+
 	// Reset endpoint status 
 	config.endpoint.status = ENDPOINT_STATUS_NOT_SET;
 
@@ -950,100 +975,129 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	DebugPrintLn(__FUNCTION__);
 
-	config.endpoint.pQueryContinueWithStatus = pqcws;
+	auto& config = Configuration::Get();
+	if (!config.realm_map.empty())
+	{
+		DebugPrintLn("Realm Map:");
+		for (auto& entry : config.realm_map)
+		{
+			DebugPrintLn(entry.first + L"=" + entry.second);
+		}
+	}
 
-	/////
-	//HOOK_CHECK_CRITICAL(Hook::Serialization::Initialization(), Exit);
+	config.endpoint.pQueryContinueWithStatus = pqcws;
 
 	config.provider.pCredProvCredential = this;
 	config.provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
 	config.provider.field_strings = _rgFieldStrings;
 	config.provider.num_field_strings = General::Fields::GetCurrentNumFields();
-	/////
-	//HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointInitialization(), Exit);
-	//HOOK_CHECK_CRITICAL(Hook::Serialization::DataInitialization(), Exit);
-	//HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointLoadData(), Exit);
 
 	Hook::Serialization::ReadFieldValues();
 
-	if (config.general.bypassEndpoint == false)
+	if (config.general.bypassEndpoint == false || config.challenge_response.pushAuthenticationSuccessful == true)
 	{
-		// TODO: CALL ENDPOINT - ENDPOINT STATUS DEICIDES HOW TO CONTINUE (2STEP ETC)
+		// TODO: CALL ENDPOINT - ENDPOINT STATUS DEICIDES HOW TO CONTINUE (2STEP ETC), remove sending password/empty
 		if (config.twoStepHideOTP && !config.isSecondStep)
 		{
-
 			if (!config.twoStepSendEmptyPassword && !config.twoStepSendPassword)
 			{
 				// Delay for a short moment, otherwise logonui crashes (???)
 				this_thread::sleep_for(chrono::milliseconds(200));
 				// Then skip to next step
 				config.isSecondStep = true;
-				config.endpoint.status = ENDPOINT_AUTH_CONTINUE;
+				config.endpoint.status = ENDPOINT_STATUS_AUTH_CONTINUE;
 			}
 			else if (config.twoStepSendEmptyPassword && !config.twoStepSendPassword)
 			{
 				// Send an empty pass in the FIRST step
-				Endpoint endpoint;
 				map<string, string> params;
 				params.try_emplace("user", Helper::ws2s(config.credential.user_name));
 				params.try_emplace("pass", "");
-				string response = endpoint.connect(VALIDATE_CHECK, params, RequestMethod::POST);
-				DebugPrintLn("Server response: " + response);
+				checkForRealm(params);
+				string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
 				config.isSecondStep = true;
-				config.endpoint.status = ENDPOINT_AUTH_CONTINUE;
+				config.endpoint.status = ENDPOINT_STATUS_AUTH_CONTINUE;
 			}
 			else if (!config.twoStepSendEmptyPassword && config.twoStepSendPassword)
 			{
-				// Send the windows password in the FIRST step
-				Endpoint endpoint;
+				// Send the windows password in the first step, which may trigger challenges
 				map<string, string> params;
 				params.try_emplace("user", Helper::ws2s(config.credential.user_name));
 				params.try_emplace("pass", Helper::ws2s(config.credential.password));
-				string response = endpoint.connect(VALIDATE_CHECK, params, RequestMethod::POST);
-				DebugPrintLn("Server response: " + response);
-				endpoint.parseTriggerRequest(response);
+				checkForRealm(params);
+
+				string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
+				_endpoint.parseTriggerRequest(response);
+
 				config.isSecondStep = true;
-				config.endpoint.status = ENDPOINT_AUTH_CONTINUE;
+				config.endpoint.status = ENDPOINT_STATUS_AUTH_CONTINUE;
+
+				// if both pushtoken and classic OTP are available, start the polling in background
+				if (config.challenge_response.tta == TTA::BOTH)
+				{
+					_pollResult = std::async(std::launch::async, &Endpoint::pollForTransactionWithLoop, &_endpoint, config.challenge_response.transactionID);
+					//_pollResult = std::async(std::launch::async, poll, config.challenge_response.transactionID);
+				}
+				// if only push is available, start polling in main thread
+				// TODO cancel button??
+				else if (config.challenge_response.tta == TTA::PUSH)
+				{
+					HRESULT res = E_FAIL;
+					pqcws->SetStatusMessage(L"Please confirm the authentication on your mobile device!");
+					while (res != ENDPOINT_STATUS_AUTH_OK)
+					{
+						res = _endpoint.pollForTransactionSingle(config.challenge_response.transactionID);
+					}
+					// When polling returns as successful, the authentication must be finialized
+					res = _endpoint.finalizePolling(Helper::ws2s(config.credential.user_name), config.challenge_response.transactionID);
+					if (res == ENDPOINT_STATUS_AUTH_OK) {
+						config.endpoint.status = ENDPOINT_STATUS_AUTH_OK;
+						config.challenge_response.pushAuthenticationSuccessful = true;
+					}
+				}
+				else
+				{
+					// Only classic OTP available, do nothing else in the first step
+				}
 			}
 			else
 			{
 				DebugPrintLn("UNKNOWN STATE:");
-				config.printConfig();
+				config.isSecondStep;
 			}
 		}
 		//////////////////// SECOND STEP ////////////////////////
 		else if (config.twoStepHideOTP && config.isSecondStep)
 		{
+			//if (config.challenge_response.tta == TTA::BOTH || config.challenge_response.tta == TTA::PUSH)
+			//{
+
+			//}
+			//else
+			//{ 
 			// Send username and OTP in SECOND step
-			Endpoint endpoint;
 			map<string, string> params;
 			params.try_emplace("user", Helper::ws2s(config.credential.user_name));
 			params.try_emplace("pass", Helper::ws2s(config.credential.otp));
-			string response = endpoint.connect(VALIDATE_CHECK, params, RequestMethod::POST);
-			DebugPrintLn("Server response: " + response);
-			config.endpoint.status = endpoint.parseAuthenticationRequest(response);
+			checkForRealm(params);
+
+			string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
+			config.endpoint.status = _endpoint.parseAuthenticationRequest(response);
+			//}
+
 		}
 		//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 		else
 		{
-			Endpoint endpoint;
 			map<string, string> params;
 			params.try_emplace("user", Helper::ws2s(config.credential.user_name));
 			params.try_emplace("pass", Helper::ws2s(config.credential.otp));
-			string response = endpoint.connect(VALIDATE_CHECK, params, RequestMethod::POST);
-			DebugPrintLn("Server response: " + response);
-			config.endpoint.status = endpoint.parseAuthenticationRequest(response);
+			checkForRealm(params);
+
+			string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
+			config.endpoint.status = _endpoint.parseAuthenticationRequest(response);
 		}
 	}
-	
-	// Did the user click the "Cancel" button?
-	config.endpoint.userCanceled = false;
-	if (pqcws->QueryContinue() != S_OK)
-	{
-		DebugPrintLn("User cancelled");
-		config.endpoint.userCanceled = true;
-	}
-
 	config.endpoint.pQueryContinueWithStatus = nullptr;
 	DebugPrintLn("Connect - END");
 	return S_OK; // always S_OK

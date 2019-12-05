@@ -451,6 +451,7 @@ namespace General
 			wstring user_name = Configuration::Get().credential.user_name;
 			wstring domain_name = Configuration::Get().credential.domain_name;
 
+			// TODO this is bad - initializer.type is kinda useless
 			switch (initializer.type)
 			{
 			case FIT_VALUE:

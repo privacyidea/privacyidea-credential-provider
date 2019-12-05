@@ -21,10 +21,10 @@
 #include <string>
 #include <map>
 #include <Windows.h>
+#include <mutex>
 
 #define ENDPOINT_SUCCESS_DEBUG_OK					((HRESULT)0x78809AAA)
 
-#define ENDPOINT_ERROR_JSON_NULL					((HRESULT)0x88809004)
 #define ENDPOINT_ERROR_PARSE_ERROR					((HRESULT)0x88809005)
 #define ENDPOINT_ERROR_NO_RESULT					((HRESULT)0x88809006)
 #define ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER	((HRESULT)0x88809007)
@@ -52,19 +52,26 @@
 #define ENDPOINT_STATUS_AUTH_OK						((HRESULT)0x78809001)
 #define ENDPOINT_STATUS_AUTH_FAIL					((HRESULT)0x88809001)
 #define ENDPOINT_STATUS_AUTH_CONTINUE				((HRESULT)0x88809002)
+#define ENDPOINT_STATUS_POLLING						((HRESULT)0x88809003)
+#define ENDPOINT_STATUS_PUSH_CANCELLED				((HRESULT)0x88809004)
+
 #define ENDPOINT_STATUS_NOT_SET						((HRESULT)0x7880900F)
 
-#define VALIDATE_CHECK "/validate/check"
+#define PI_ENDPOINT_VALIDATE_CHECK "/validate/check"
+#define PI_ENDPOINT_POLL_TX "/validate/polltransaction"
 
 enum class RequestMethod {
-	GET = 1,
-	POST = 2,
+	GET,
+	POST
 };
 
 class Endpoint
 {
 public:
 	Endpoint();
+	~Endpoint() = default;
+	Endpoint(const Endpoint& endpoint) = default;
+	Endpoint& operator=(Endpoint const& endpoint);
 
 	std::string connect(std::string endpoint, std::map<std::string, std::string> params, RequestMethod method);
 
@@ -78,11 +85,30 @@ public:
 
 	HRESULT parseForError(std::string in);
 
+	HRESULT pollForTransactionWithLoop(std::string transaction_id);
+
+	HRESULT pollForTransactionSingle(std::string transaction_id);
+
+	HRESULT parseForTransactionSuccess(std::string in);
+
+	HRESULT finalizePolling(std::string user, std::string transaction_id);
+
+	HRESULT lastError = S_OK;
+
+	void setRunPoll(bool val);
+
 private:
-	bool ignoreInvalidCN = false;
-	bool ignoreUnknownCA = false;
-	std::wstring hostname = L"";
-	std::wstring path = L"";
-	int customPort = 0;
+
+	bool _runPoll = false;
+
+	bool _ignoreInvalidCN = false;
+	bool _ignoreUnknownCA = false;
+	std::wstring _hostname = L"";
+	std::wstring _path = L"";
+	int _customPort = 0;
+
+	std::string _authToken = "";
+
+	std::mutex _mutex;
 };
 

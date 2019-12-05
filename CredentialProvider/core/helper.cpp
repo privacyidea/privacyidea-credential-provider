@@ -42,25 +42,6 @@ namespace Helper
 		return converterX.to_bytes(wstr);
 	}
 
-	PWSTR ws2pwstr(const std::wstring& wstr)
-	{
-		UNREFERENCED_PARAMETER(wstr);
-		//PWSTR ret = new wchar_t[wstr.length + 1];
-		//wcscpy_s(ret, (wstr.length+1), wstr.c_str());
-		//return ret;
-		return nullptr;
-	}
-
-	char* s2psz(const std::string& str)
-	{
-		UNREFERENCED_PARAMETER(str);
-
-		//char* ret = new char[str.length + 1];
-		//strcpy_s(ret, (str.length + 1), str.c_str());
-		//return ret;
-		return nullptr;
-	}
-
 	void RedrawGUI()
 	{
 		DebugPrintLn(__FUNCTION__);

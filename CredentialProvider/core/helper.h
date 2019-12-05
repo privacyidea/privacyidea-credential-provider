@@ -39,27 +39,25 @@ namespace Helper
 	void RedrawGUI();
 
 	std::wstring s2ws(const std::string& str);
+
 	std::string ws2s(const std::wstring& wstr);
 
-	PWSTR ws2pwstr(const std::wstring& wstr);
-	char* s2psz(const std::string& str);
-
 	void SeparateUserAndDomainName(
-		__in wchar_t *domain_slash_username,
-		__out wchar_t *username,
+		__in wchar_t* domain_slash_username,
+		__out wchar_t* username,
 		__in int sizeUsername,
-		__out_opt wchar_t *domain,
+		__out_opt wchar_t* domain,
 		__in_opt int sizeDomain
 	);
 
 	int GetFirstActiveIPAddress(
-		__deref_out_opt char *&ip_addr
+		__deref_out_opt char*& ip_addr
 	);
 
 	void WideCharToChar(
 		__in PWSTR data,
 		__in int buffSize,
-		__out char *pc
+		__out char* pc
 	);
 
 	void CharToWideChar(
@@ -68,7 +66,7 @@ namespace Helper
 		__out PWSTR pc
 	);
 
-	size_t iso8859_1_to_utf8(char *content, size_t max_size);
+	size_t iso8859_1_to_utf8(char* content, size_t max_size);
 
 	// END
 }

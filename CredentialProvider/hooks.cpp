@@ -24,6 +24,7 @@
 #include "Logger.h"
 #include "Configuration.h"
 #include <Lmcons.h>
+#include <gsl.h>
 
 using namespace std;
 
@@ -129,7 +130,7 @@ namespace Hook
 
 			//Endpoint::GetLastErrorDescription(endpoint_error_msg);
 
-			//TODO
+			//TODO delete all of this obfuscation
 			swprintf_s(error_message, sizeof(error_message) / sizeof(wchar_t), L"An error occured. Error Code: %X\n\n%s", 345432, endpoint_error_msg);
 			SHStrDupW(error_message, config.provider.status_text);
 
@@ -203,7 +204,8 @@ namespace Hook
 			PWSTR username = L"";
 			if (!Configuration::Get().credential.user_name.empty())
 			{
-				username = const_cast<PWSTR>(Configuration::Get().credential.user_name.c_str());
+				username = &gsl::at(Configuration::Get().credential.user_name, 0);
+				//username = const_cast<PWSTR>(Configuration::Get().credential.user_name.c_str());
 			}
 
 			if (Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION)
@@ -236,7 +238,7 @@ namespace Hook
 		HRESULT GetSubmitButtonValue(DWORD dwFieldID, DWORD*& pdwAdjacentTo)
 		{
 			DebugPrintLn(__FUNCTION__);
-
+			DebugPrintLn("ID:" + to_string(dwFieldID));
 			HRESULT hr;
 
 			// Validate parameters.
@@ -244,11 +246,18 @@ namespace Hook
 			// !!!!!!!!!!!!!
 			// !!!!!!!!!!!!!
 			// TODO: Change scenario data structures to determine correct submit-button and pdwAdjacentTo dynamically
+			// pdwAdjacentTo is a pointer to the fieldID you want the submit button to appear next to.
 
-			if (LUFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
+			if (LPFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
 			{
-				// pdwAdjacentTo is a pointer to the fieldID you want the submit button to appear next to.
-				*pdwAdjacentTo = LUFI_OTP_PASS;
+				if (Configuration::Get().isSecondStep)
+				{
+					*pdwAdjacentTo = LPFI_OTP_PASS;
+				}
+				else
+				{
+					*pdwAdjacentTo = LPFI_OTP_LDAP_PASS;
+				}
 				hr = S_OK;
 			}
 			else if (CPFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)

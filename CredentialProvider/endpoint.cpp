@@ -19,19 +19,20 @@
 
 #include "Endpoint.h"
 #include "Logger.h"
+#include "Challenge.h"
 #include "Configuration.h"
 #include "helper.h"
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/error/en.h"
-#include "rapidjson/stringbuffer.h"
 #include "nlohmann/json.hpp"
+#include "../CredentialProvider/core/hooks.h"
 #include <winhttp.h>
 #include <atlutil.h>
 #include <algorithm>
+#include <thread>
+#include <sstream>
 
 #pragma comment(lib, "winhttp.lib")
+
+#define PRINT_ENDPOINT_RESPONSES
 
 using namespace std;
 using json = nlohmann::json;
@@ -39,11 +40,11 @@ using json = nlohmann::json;
 Endpoint::Endpoint()
 {
 	auto& config = Configuration::Get();
-	this->customPort = config.endpoint.customPort;
-	this->hostname = config.endpoint.hostname;
-	this->path = config.endpoint.path;
-	this->ignoreInvalidCN = config.endpoint.sslIgnoreCN;
-	this->ignoreUnknownCA = config.endpoint.sslIgnoreCA;
+	this->_customPort = config.endpoint.customPort;
+	this->_hostname = config.endpoint.hostname;
+	this->_path = config.endpoint.path;
+	this->_ignoreInvalidCN = config.endpoint.sslIgnoreCN;
+	this->_ignoreUnknownCA = config.endpoint.sslIgnoreCA;
 }
 
 string Endpoint::escapeUrl(const string& in)
@@ -82,12 +83,27 @@ wstring Endpoint::get_utf16(const std::string& str, int codepage)
 	return res;
 }
 
+Endpoint& Endpoint::operator=(Endpoint const& endpoint)
+{
+	if (this != &endpoint)
+	{
+		_ignoreInvalidCN = endpoint._ignoreInvalidCN;
+		_ignoreUnknownCA = endpoint._ignoreUnknownCA;
+		_customPort = endpoint._customPort;
+		_hostname = endpoint._hostname;
+		_path = endpoint._path;
+		std::lock_guard<std::mutex> guard(_mutex);
+		_runPoll = endpoint._runPoll;
+	}
+	return *this;
+}
+
 string Endpoint::connect(string endpoint, map<string, string> params, RequestMethod method)
 {
 	// Prepare the parameters
-	wstring wHostname = get_utf16(Helper::ws2s(hostname), CP_UTF8);
+	wstring wHostname = get_utf16(Helper::ws2s(_hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
-	wstring fullPath = get_utf16((Helper::ws2s(path) + endpoint), CP_UTF8);
+	wstring fullPath = get_utf16((Helper::ws2s(_path) + endpoint), CP_UTF8);
 
 	// Encode and accumulate the data
 	string toSend;
@@ -127,7 +143,7 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 	// Specify an HTTP server.
 	if (hSession)
 	{
-		int port = (customPort != 0) ? customPort : INTERNET_DEFAULT_HTTPS_PORT;
+		int port = (_customPort != 0) ? _customPort : INTERNET_DEFAULT_HTTPS_PORT;
 		hConnect = WinHttpConnect(hSession, wHostname.c_str(), port, 0);
 	}
 	else
@@ -136,17 +152,19 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 		return "";//ENDPOINT_ERROR_SETUP_ERROR;
 	}
 	// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
-	if (hConnect) {
+	if (hConnect)
+	{
 		hRequest = WinHttpOpenRequest(hConnect, requestMethod, fullPath.c_str(),
 			NULL, WINHTTP_NO_REFERER,
 			WINHTTP_DEFAULT_ACCEPT_TYPES,
 			WINHTTP_FLAG_SECURE);
 	}
-	else {
+	else
+	{
 		DbgRelPrintLn("WinHttpOpenRequest failure: " + to_string(GetLastError()));
 		return "";
 	}
-
+	
 	// Set Option Security Flags to start TLS
 	DWORD dwReqOpts = 0;
 	if (WinHttpSetOption(
@@ -155,29 +173,31 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 		&dwReqOpts,
 		sizeof(DWORD))) {
 	}
-	else {
+	else
+	{
 		DbgRelPrintLn("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
 		return "";//ENDPOINT_ERROR_SETUP_ERROR;
 	}
 
 	/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
 	DWORD dwSSLFlags = 0;
-	if (ignoreUnknownCA) {
+	if (_ignoreUnknownCA) {
 		dwSSLFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA;
-		DebugPrintLn("SSL ignore unknown CA flag set");
+		//DebugPrintLn("SSL ignore unknown CA flag set");
 	}
 
-	if (ignoreInvalidCN) {
+	if (_ignoreInvalidCN) {
 		dwSSLFlags = dwSSLFlags | SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
-		DebugPrintLn("SSL ignore invalid CN flag set");
+		//DebugPrintLn("SSL ignore invalid CN flag set");
 	}
 
-	if (ignoreUnknownCA || ignoreInvalidCN) {
+	if (_ignoreUnknownCA || _ignoreInvalidCN) {
 		if (WinHttpSetOption(hRequest,
 			WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
 			//DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
 		}
-		else {
+		else
+		{
 			DbgRelPrintLn("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
 			return ""; //ENDPOINT_ERROR_SETUP_ERROR;
 		}
@@ -194,7 +214,8 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 			(LPVOID)data, data_len,
 			data_len, 0);
 
-	if (!bResults) {
+	if (!bResults)
+	{
 		DbgRelPrintLn("WinHttpSendRequest failure: " + to_string(GetLastError()));
 		return ""; //ENDPOINT_ERROR_CONNECT_ERROR;
 	}
@@ -228,7 +249,8 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 			{
 				// Read the data.
 				ZeroMemory(pszOutBuffer, dwSize + 1);
-				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded)) {
+				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
+				{
 					DbgRelPrintLn("WinHttpReadData error: " + to_string(GetLastError()));
 					response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 				}
@@ -240,7 +262,8 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 		} while (dwSize > 0);
 	}
 	// Report any errors.
-	if (!bResults) {
+	if (!bResults)
+	{
 		DbgRelPrintLn("WinHttp Result error: " + to_string(GetLastError()));
 		response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 	}
@@ -249,146 +272,19 @@ string Endpoint::connect(string endpoint, map<string, string> params, RequestMet
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
 
+#ifdef _DEBUG
+#ifdef PRINT_ENDPOINT_RESPONSES
+	auto j = nlohmann::json::parse(response);
+	DebugPrintLn(j.dump(4));
+#endif
+#endif
+
 	return response;
 }
 
-/*
-HRESULT Endpoint::parseResponse(string json)
-{
-	DebugPrintLn(__FUNCTION__);
-
-	DebugPrintLn("Plain JSON response:");
-	DebugPrintLn(json);
-
-	HRESULT result = E_FAIL;
-
-	if (json.empty())
-	{
-		DbgRelPrintLn("Server response was empty");
-		return ENDPOINT_ERROR_JSON_NULL;
-	}
-
-	// 1. Parse a JSON string into DOM.
-	rapidjson::Document json_document;
-	json_document.Parse(json.c_str());
-
-
-	if (json_document.HasParseError())
-	{
-		DbgRelPrintLn("Parse error in response: " + json);
-		DebugPrintLn("at: " + to_string(static_cast<unsigned int>(json_document.GetErrorOffset())) + "description: " + string(GetParseError_En(json_document.GetParseError())));
-		return ENDPOINT_ERROR_PARSE_ERROR;
-	}
-
-	// 1.2 Check detail for serial and transaction id
-	if (!json_document.HasMember("detail"))
-	{
-		DebugPrintLn("JSON reponse has no member detail");
-	}
-	else
-	{
-		rapidjson::Value& json_detail = json_document["detail"];
-		if (json_detail.IsNull())
-		{
-			DebugPrintLn("JSON response detail is null");
-		}
-		else
-		{
-			if (json_detail.HasMember("serial"))
-			{
-				rapidjson::Value::MemberIterator json_serial = json_detail.FindMember("serial");
-				Configuration::Get().challenge_response.serial = string(json_serial->value.GetString());
-				DebugPrintLn("CR serial: " + Configuration::Get().challenge_response.serial);
-			}
-			else
-			{
-				DebugPrintLn("JSON response has no serial in detail");
-			}
-
-			if (json_detail.HasMember("transaction_id"))
-			{
-				rapidjson::Value::MemberIterator json_tx_id = json_detail.FindMember("transaction_id");
-				Configuration::Get().challenge_response.transactionID = string(json_tx_id->value.GetString());
-				DebugPrintLn("CR txID: " + Configuration::Get().challenge_response.transactionID);
-			}
-			else
-			{
-				DebugPrintLn("JSON response has no txID in detail");
-			}
-
-			// Get the message to display it to the user, limited to 256 bytes at the moment
-			if (json_detail.HasMember("message"))
-			{
-				rapidjson::Value::MemberIterator json_message = json_detail.FindMember("message");
-				Configuration::Get().challenge_response.message = string(json_message->value.GetString());
-				DebugPrintLn("CR message: " + Configuration::Get().challenge_response.message);
-			}
-			else
-			{
-				DebugPrintLn("JSON response has no message in detail");
-			}
-		}
-	}
-
-	// 2. Get result-object
-	if (!json_document.HasMember("result"))
-	{
-		DbgRelPrintLn("Server reponse has no member result: " + json);
-		return ENDPOINT_ERROR_NO_RESULT;
-	}
-
-	rapidjson::Value& json_result = json_document["result"];
-
-	// 3. Check result
-	const rapidjson::Value::MemberIterator json_status = json_result.FindMember("status");
-	if (json_status != json_result.MemberEnd() && json_status->value.GetBool()) // request handled successfully?
-	{
-		result = ENDPOINT_SUCCESS_STATUS_TRUE;
-
-		const rapidjson::Value::MemberIterator json_value = json_result.FindMember("value");
-		if (json_value != json_result.MemberEnd() && json_value->value.GetBool()) // authentication successfully?
-		{
-			result = ENDPOINT_SUCCESS_VALUE_TRUE;
-		}
-		else
-		{
-			// No Member "value" or "value" = false
-			// This is also reached in case of sending the username and pw to privacyideaIDEA (two step)
-			if (!Configuration::Get().twoStepSendPassword)
-			{
-				DbgRelPrintLn("Server response has no member 'value': " + json);
-			}
-			result = ENDPOINT_ERROR_VALUE_FALSE_OR_NO_MEMBER;
-		}
-	}
-	else
-	{
-		// No Member "status" or "status" = false
-		result = ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
-
-		// Check if error is present
-		if (!json_result.HasMember("error"))
-		{
-			DbgRelPrintLn("Unknown error in server response: " + json);
-			return ENDPOINT_ERROR_STATUS_FALSE_OR_NO_MEMBER;
-		}
-
-		// Check for error code
-		rapidjson::Value& json_error = json_result["error"];
-		const rapidjson::Value::MemberIterator json_error_code = json_error.FindMember("code");
-
-		if (json_error_code->value.GetInt() == ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR)
-		{
-			DbgRelPrintLn("Insufficient subscription");
-			result = ENDPOINT_ERROR_INSUFFICIENT_SUBSCRIPTION;
-		}
-	}
-	return result;
-}
-*/
-
 HRESULT Endpoint::parseAuthenticationRequest(string in)
 {
+	DebugPrintLn(__FUNCTION__);
 	if (in.empty())
 	{
 		DbgRelPrintLn("Received empty response from server.");
@@ -412,6 +308,7 @@ HRESULT Endpoint::parseAuthenticationRequest(string in)
 
 HRESULT Endpoint::parseTriggerRequest(std::string in)
 {
+	DebugPrintLn(__FUNCTION__);
 	if (in.empty())
 	{
 		DbgRelPrintLn("Received empty response from server.");
@@ -434,10 +331,20 @@ HRESULT Endpoint::parseTriggerRequest(std::string in)
 		string type = j2["type"].get<std::string>();
 		string txid = j2["transaction_id"].get<std::string>();
 		string serial = j2["serial"].get<std::string>();
-		
+
+		////// NEW
+		Challenge c(message, txid, serial, type);
+		config.challenge_response.challenges.emplace_back(c);
+
+		//////
 		if (type == "push")
 		{
 			config.challenge_response.usingPushToken = true;
+			config.challenge_response.tta = (config.challenge_response.tta == TTA::OTP) ? TTA::BOTH : TTA::PUSH;
+		}
+		else
+		{
+			config.challenge_response.tta = (config.challenge_response.tta == TTA::PUSH) ? TTA::BOTH : TTA::OTP;
 		}
 
 		if (!message.empty())
@@ -462,6 +369,8 @@ HRESULT Endpoint::parseTriggerRequest(std::string in)
 
 HRESULT Endpoint::parseForError(std::string in)
 {
+	DebugPrintLn(__FUNCTION__);
+	// TODO parse any error text and set it to status
 	auto j = json::parse(in);
 	// Check for error code
 	string errorCode = j["result"]["error"]["code"].dump();
@@ -474,4 +383,115 @@ HRESULT Endpoint::parseForError(std::string in)
 		DbgRelPrintLn("Received invalid reponse from server:" + in);
 		return ENDPOINT_ERROR_RESPONSE_ERROR;
 	}
+}
+
+HRESULT Endpoint::pollForTransactionWithLoop(std::string transaction_id)
+{
+	DebugPrintLn(__FUNCTION__);
+	map<string, string> params;
+	params.try_emplace("transaction_id", transaction_id);
+	setRunPoll(true);
+	HRESULT res = E_FAIL;
+	while (_runPoll)
+	{
+		string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
+		res = parseForTransactionSuccess(response);
+		if (res == ENDPOINT_STATUS_AUTH_OK)
+		{
+			Configuration::Get().endpoint.status = ENDPOINT_STATUS_AUTH_OK;
+			setRunPoll(false);
+			break;
+		}
+		this_thread::sleep_for(chrono::milliseconds(500));
+	}
+	//Hook::CredentialHooks::ResetScenario(Configuration::Get().provider.pCredProvCredential, Configuration::Get().provider.pCredProvCredentialEvents);
+	DebugPrintLn("Polling stopped.");
+
+	// if polling is successfull, the authentication has to be finalized
+	res = finalizePolling(Helper::ws2s(Configuration::Get().credential.user_name), transaction_id);
+	if (res == ENDPOINT_STATUS_AUTH_OK) {
+		Configuration::Get().challenge_response.pushAuthenticationSuccessful = true;
+		Configuration::Get().provider._pCredentialProviderEvents->CredentialsChanged(Configuration::Get().provider._upAdviseContext);
+	}
+
+	return S_OK;
+}
+
+HRESULT Endpoint::pollForTransactionSingle(std::string transaction_id)
+{
+	map<string, string> params;
+	params.try_emplace("transaction_id", transaction_id);
+	string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
+	return parseForTransactionSuccess(response);
+	/*if (res == ENDPOINT_STATUS_AUTH_OK)
+	{
+		Configuration::Get().endpoint.status = ENDPOINT_STATUS_AUTH_OK;
+		return S_OK;
+	} */
+}
+
+HRESULT Endpoint::parseForTransactionSuccess(std::string in)
+{
+	DebugPrintLn(__FUNCTION__);
+	/*if (in.empty())
+	{
+		return E_FAIL;
+	}
+	auto j = json::parse(in);
+
+	auto challenges = j["result"];
+
+	if (challenges.empty())
+	{
+		return parseForError(in);
+	}
+
+	for (auto val : challenges.items())
+	{
+		auto j2 = val.value();
+		const bool success = j2["value"].get<bool>();
+		if (success)
+		{
+			DebugPrintLn("value is true!");
+			return ENDPOINT_STATUS_AUTH_OK;
+		}
+	}
+	DebugPrintLn("value is false");
+	return ENDPOINT_STATUS_AUTH_FAIL;*/
+	if (in.empty())
+	{
+		DbgRelPrintLn("Received empty response from server.");
+		return ENDPOINT_ERROR_EMPTY_RESPONSE;
+	}
+
+	auto j = json::parse(in);
+
+	//string value = j["result"]["value"].get<std::string>();
+	string value = j["result"]["value"].dump();
+	if (value.empty())
+	{
+		return parseForError(in);
+	}
+	else
+	{
+		return (value == "true") ? ENDPOINT_STATUS_AUTH_OK : ENDPOINT_STATUS_AUTH_FAIL;
+	}
+	return ENDPOINT_STATUS_AUTH_FAIL;
+}
+
+HRESULT Endpoint::finalizePolling(std::string user, std::string transaction_id)
+{
+	map<string, string> params;
+	params.try_emplace("user", user);
+	params.try_emplace("transaction_id", transaction_id);
+	params.try_emplace("pass", "");
+
+	string response = connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
+	return parseAuthenticationRequest(response);
+}
+
+void Endpoint::setRunPoll(bool val)
+{
+	const std::lock_guard<std::mutex> lock(_mutex);
+	_runPoll = val;
 }

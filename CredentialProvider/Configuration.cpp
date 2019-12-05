@@ -22,17 +22,12 @@
 #include "Logger.h"
 #include "../CredentialProvider/core/helper.h"
 #include <Windows.h>
-#include <tchar.h>
 #include <iostream>
 
 using namespace std;
 
 Configuration::Configuration()
 {
-	loadConfig();
-}
-
-void Configuration::loadConfig() {
 	bitmapPath = getRegistry(L"v1_bitmap_path");
 	loginText = getRegistry(L"login_text");
 	otpText = getRegistry(L"otp_text");
@@ -41,16 +36,18 @@ void Configuration::loadConfig() {
 	twoStepHideOTP = getBoolRegistry(L"two_step_hide_otp");
 	twoStepSendEmptyPassword = getBoolRegistry(L"two_step_send_empty_password");
 	twoStepSendPassword = getBoolRegistry(L"two_step_send_password");
-	
+
 	releaseLog = getBoolRegistry(L"release_log");
 	logSensitive = getBoolRegistry(L"log_sensitive");
 
 	hideDomainName = getBoolRegistry(L"hide_domainname");
 	hideFullName = getBoolRegistry(L"hide_fullname");
 	hide_otp_sleep_s = getIntRegistry(L"hide_otp_sleep_s");
+
 	// Check if the path contains the placeholder, if so replace with nothing
 	auto tmp = getRegistry(L"path");
 	endpoint.path = (tmp == L"/path/to/pi" ? L"" : tmp);
+
 	endpoint.hostname = getRegistry(L"hostname");
 	endpoint.sslIgnoreCA = getBoolRegistry(L"ssl_ignore_unknown_ca");
 	endpoint.sslIgnoreCN = getBoolRegistry(L"ssl_ignore_invalid_cn");
@@ -72,32 +69,129 @@ void Configuration::loadConfig() {
 		twoStepSendEmptyPassword = false;
 	}
 
-	// Get the Windows Version 
-	// TODO: Use RtlGetVersion
+	// Get the Windows Version, deprecated 
 	OSVERSIONINFOEX info;
 	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
 	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	GetVersionEx((LPOSVERSIONINFO)& info);
+	GetVersionEx((LPOSVERSIONINFO)&info);
 
 	winVerMajor = info.dwMajorVersion;
 	winVerMinor = info.dwMinorVersion;
 	winBuildNr = info.dwBuildNumber;
+
+	loadMapping();
 }
 
-bool Configuration::getBoolRegistry(wstring name) 
+#define MAX_KEY_LENGTH 255
+#define MAX_VALUE_NAME 1024
+
+void Configuration::loadMapping()
+{
+	default_realm = getRegistry(L"default_realm");
+
+	// Open handle to realm-mapping key
+	HKEY hKey = nullptr;
+
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+		_T("SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping"),
+		0,
+		KEY_READ,
+		&hKey) != ERROR_SUCCESS)
+	{
+		return;
+	}
+
+	WCHAR    achKey[MAX_KEY_LENGTH];   // buffer for subkey name
+	DWORD    cbName;                   // size of name string 
+	WCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name 
+	DWORD    cchClassName = MAX_PATH;  // size of class string 
+	DWORD    cSubKeys = 0;               // number of subkeys 
+	DWORD    cbMaxSubKey;              // longest subkey size 
+	DWORD    cchMaxClass;              // longest class string 
+	DWORD    cValues;              // number of values for key 
+	DWORD    cchMaxValue;          // longest value name 
+	DWORD    cbMaxValueData;       // longest value data 
+	DWORD    cbSecurityDescriptor; // size of security descriptor 
+	FILETIME ftLastWriteTime;      // last write time 
+
+	DWORD i, retCode;
+
+	WCHAR achValue[MAX_VALUE_NAME];
+	DWORD cchValue = MAX_VALUE_NAME;
+
+	// Get the class name and the value count. 
+	retCode = RegQueryInfoKey(
+		hKey,                    // key handle 
+		achClass,                // buffer for class name 
+		&cchClassName,           // size of class string 
+		NULL,                    // reserved 
+		&cSubKeys,               // number of subkeys 
+		&cbMaxSubKey,            // longest subkey size 
+		&cchMaxClass,            // longest class string 
+		&cValues,                // number of values for this key 
+		&cchMaxValue,            // longest value name 
+		&cbMaxValueData,         // longest value data 
+		&cbSecurityDescriptor,   // security descriptor 
+		&ftLastWriteTime);       // last write time 
+
+	if (cValues)
+	{
+		for (i = 0, retCode = ERROR_SUCCESS; i < cValues; i++)
+		{
+			cchValue = MAX_VALUE_NAME;
+			achValue[0] = '\0';
+			retCode = RegEnumValueW(hKey, i,
+				achValue,
+				&cchValue,
+				NULL,
+				NULL,
+				NULL,
+				NULL);
+			if (retCode == ERROR_SUCCESS)
+			{
+				wstring value(achValue);
+				// Get the data for the value
+				const DWORD SIZE = 1024;
+				TCHAR szData[SIZE] = _T("");
+				DWORD dwValue = SIZE;
+				DWORD dwType = 0;
+				DWORD dwRet = 0;
+
+				dwRet = RegQueryValueEx(
+					hKey,
+					value.c_str(),
+					NULL,
+					&dwType,
+					(LPBYTE)&szData,
+					&dwValue);
+				if (dwRet == ERROR_SUCCESS)
+				{
+					if (dwType == REG_SZ)
+					{
+						wstring data(szData);
+						realm_map.try_emplace(value, data);
+					}
+				}
+			}
+		}
+	}
+	RegCloseKey(hKey);
+}
+
+bool Configuration::getBoolRegistry(wstring name)
 {
 	// Non existing keys evaluate to false.
 	return getRegistry(name) == L"1";
 }
 
-int Configuration::getIntRegistry(wstring name) 
+int Configuration::getIntRegistry(wstring name)
 {
 	return _wtoi(getRegistry(name).c_str());
 }
 
 wstring Configuration::getRegistry(wstring name)
 {
-	DWORD dwRet;
+	DWORD dwRet = NULL;
 	HKEY hKey = nullptr;
 
 	dwRet = RegOpenKeyEx(
@@ -120,7 +214,7 @@ wstring Configuration::getRegistry(wstring name)
 		name.c_str(),
 		NULL,
 		&dwType,
-		(LPBYTE)& szValue,
+		(LPBYTE)&szValue,
 		&dwValue);
 	if (dwRet != ERROR_SUCCESS)
 	{

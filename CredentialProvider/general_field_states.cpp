@@ -23,6 +23,7 @@
 #include "general_field_states.h"
 #include "Configuration.h"
 #include "Logger.h"
+#include <new_unlock_scenario.h>
 
 namespace General
 {
@@ -41,25 +42,25 @@ namespace General
 				switch (scenario)
 				{
 				case SCENARIO_LOGON_BASE:
-					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioLogonUnlockFieldStatePairs);
+					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioPushFieldStatePairs);
 					break;
 
 				case SCENARIO_UNLOCK_BASE:
-					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioLogonUnlockFieldStatePairsUnlock);
+					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioPushFieldStatePairsUnlock);
 					break;
 
 				case SCENARIO_SECOND_STEP:
-					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioLogonUnlockFieldStatePairsSecondStep);
+					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioPushFieldStatePairsTwoStepSecondStep);
 					break;
 
 				case SCENARIO_CHANGE_PASSWORD:
 					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioChangePasswordFieldStatePairs);
 					break;
 				case SCENARIO_UNLOCK_TWO_STEP:
-					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioLogonUnlockFieldStatePairsUnlockTwoStep);
+					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioPushFieldStatePairsUnlockTwoStep);
 					break;
 				case SCENARIO_LOGON_TWO_STEP:
-					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioLogonUnlockFieldStatePairsTwoStep);
+					hr = SetFieldStatePairBatch(self, pCPCE, s_rgScenarioPushFieldStatePairsTwoStep);
 					break;
 				case SCENARIO_NO_CHANGE:
 				default:
@@ -79,8 +80,8 @@ namespace General
 				{
 				case CPUS_LOGON:
 				case CPUS_UNLOCK_WORKSTATION:
-					largeTextFieldId = LUFI_OTP_LARGE_TEXT;
-					smallTextFieldId = LUFI_OTP_SMALL_TEXT;
+					largeTextFieldId = LPFI_OTP_LARGE_TEXT;
+					smallTextFieldId = LPFI_OTP_SMALL_TEXT;
 					break;
 				case CPUS_CHANGE_PASSWORD:
 					largeTextFieldId = CPFI_OTP_LARGE_TEXT;
@@ -105,9 +106,9 @@ namespace General
 			{
 				if (Configuration::Get().twoStepHideOTP)
 				{
-					return s_rgScenarioLogonUnlockFieldStatePairsTwoStep;
+					return s_rgScenarioPushFieldStatePairsTwoStep;
 				}
-				return s_rgScenarioLogonUnlockFieldStatePairs;
+				return s_rgScenarioPushFieldStatePairs;
 			}
 			else if (Configuration::Get().provider.usage_scenario == CPUS_UNLOCK_WORKSTATION)
 			{
@@ -117,9 +118,7 @@ namespace General
 				}
 				return s_rgScenarioLogonUnlockFieldStatePairsUnlock;
 			}
-			////
-
-			return s_rgCredProvBaseFieldStatePairsFor[cpus];
+			return s_rgScenarioPushFieldStatePairs;
 		}
 	}
 }

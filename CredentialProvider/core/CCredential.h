@@ -20,11 +20,7 @@
 **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _CCREDENTIAL_H
-#define _CCREDENTIAL_H
-
-#include <unknwn.h>
-#include <helpers.h>
+#pragma once
 
 #include "Dll.h"
 #include "common.h"
@@ -35,6 +31,12 @@
 #include "helper.h"
 
 #include "endpoint.h"
+
+#include <unknwn.h>
+#include <helpers.h>
+#include <future>
+#include <string>
+#include <map>
 
 #define TIMEOUT_TEXT L"Timeout: %i secs."
 
@@ -57,7 +59,7 @@ public:
 		return cRef;
 	}
 
-	#pragma warning( disable : 4838 )
+#pragma warning( disable : 4838 )
 	IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv)
 	{
 		static const QITAB qit[] =
@@ -92,7 +94,7 @@ public:
 	IFACEMETHODIMP SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked);
 	IFACEMETHODIMP SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem);
 	IFACEMETHODIMP CommandLinkClicked(__in DWORD dwFieldID);
-	
+
 	IFACEMETHODIMP GetSerialization(__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
@@ -102,17 +104,14 @@ public:
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
 		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon);
 
-	// IConnectableCredentialProviderCredential 
+
 public:
-	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus *pqcws);
+	// IConnectableCredentialProviderCredential 
+	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus* pqcws);
 	IFACEMETHODIMP Disconnect();
 
-	// Default
 	CCredential();
-
 	virtual ~CCredential();
-
-	///////////////////////////////////
 
 public:
 	HRESULT Initialize(//__in CProvider* pProvider,
@@ -122,17 +121,9 @@ public:
 		__in_opt PWSTR domain_name,
 		__in_opt PWSTR password);
 
-	HRESULT EndpointCallback(__in DWORD dwFlag);
+private:
+	HRESULT checkForRealm(std::map<std::string, std::string>& map);
 
-	///////////////////////////////////
-
-private: ////////////// FUNCS
-	// Endpoint funcs
-	
-	// END
-
-private: ////////////// VARS
-	// Default vars
 	LONG									_cRef;
 
 	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[MAX_NUM_FIELDS];	// An array holding the type and 
@@ -141,22 +132,18 @@ private: ////////////// VARS
 	FIELD_STATE_PAIR						_rgFieldStatePairs[MAX_NUM_FIELDS];          // An array holding the state of 
 																						 // each field in the tile.
 
-	wchar_t*								_rgFieldStrings[MAX_NUM_FIELDS];             // An array holding the string 
+	wchar_t* _rgFieldStrings[MAX_NUM_FIELDS];											 // An array holding the string 
 																						 // value of each field. This is 
 																						 // different from the name of 
 																						 // the field held in 
 																						 // _rgCredProvFieldDescriptors.
-	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
+	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
 
 	DWORD                                   _dwComboIndex;                               // Tracks the current index 
 																						 // of our combobox.
+	Endpoint								_endpoint;
 
-	// END
-	// General vars
-
-	// END
+	std::future<HRESULT>					_pollResult;
 };
-
-#endif
 
 INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
