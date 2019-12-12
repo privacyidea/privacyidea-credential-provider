@@ -37,10 +37,11 @@
 
 using namespace std;
 
-CCredential::CCredential() :
-	_cRef(1),
-	_pCredProvCredentialEvents(nullptr)
+CCredential::CCredential()
 {
+	_cRef = 1;
+	_pCredProvCredentialEvents = nullptr;
+
 	DllAddRef();
 
 	_dwComboIndex = 0;
@@ -48,7 +49,8 @@ CCredential::CCredential() :
 	ZERO(_rgCredProvFieldDescriptors);
 	ZERO(_rgFieldStatePairs);
 	ZERO(_rgFieldStrings);
-	_endpoint = Endpoint();
+	auto& config = Configuration::Get();
+	_endpoint = Endpoint(config.endpoint.hostname, config.endpoint.path, config.endpoint.customPort, config.endpoint.sslIgnoreCN, config.endpoint.sslIgnoreCA);
 }
 
 CCredential::~CCredential()
@@ -716,22 +718,13 @@ HRESULT CCredential::GetCheckboxValue(
 	__deref_out PWSTR* ppwszLabel
 )
 {
+	// Called to check the initial state of the checkbox
 	DebugPrintLn(__FUNCTION__);
 
-	HRESULT hr;
+	*pbChecked = FALSE;
+	SHStrDupW(L"Use offline token.", ppwszLabel); // TODO custom text?
 
-	// Validate parameters.
-	if (dwFieldID < ARRAYSIZE(_rgCredProvFieldDescriptors) &&
-		(CPFT_CHECKBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
-	{
-		hr = Hook::CredentialHooks::GetCheckboxValue(this, _pCredProvCredentialEvents, _rgFieldStrings, dwFieldID, pbChecked, ppwszLabel);
-	}
-	else
-	{
-		hr = E_INVALIDARG;
-	}
-
-	return hr;
+	return S_OK;
 }
 
 HRESULT CCredential::SetCheckboxValue(
@@ -741,20 +734,8 @@ HRESULT CCredential::SetCheckboxValue(
 {
 	DebugPrintLn(__FUNCTION__);
 
-	HRESULT hr;
-
-	// Validate parameters.
-	if (dwFieldID < ARRAYSIZE(_rgCredProvFieldDescriptors) &&
-		(CPFT_CHECKBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
-	{
-		hr = Hook::CredentialHooks::SetCheckboxValue(this, _pCredProvCredentialEvents, dwFieldID, bChecked);
-	}
-	else
-	{
-		hr = E_INVALIDARG;
-	}
-
-	return hr;
+	Configuration::Get().use_offline = bChecked;
+	return S_OK;
 }
 
 //------------- 

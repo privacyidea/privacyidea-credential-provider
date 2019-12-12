@@ -37,16 +37,6 @@
 using namespace std;
 using json = nlohmann::json;
 
-Endpoint::Endpoint()
-{
-	auto& config = Configuration::Get();
-	this->_customPort = config.endpoint.customPort;
-	this->_hostname = config.endpoint.hostname;
-	this->_path = config.endpoint.path;
-	this->_ignoreInvalidCN = config.endpoint.sslIgnoreCN;
-	this->_ignoreUnknownCA = config.endpoint.sslIgnoreCA;
-}
-
 string Endpoint::escapeUrl(const string& in)
 {
 	if (in.empty())
@@ -54,7 +44,7 @@ string Endpoint::escapeUrl(const string& in)
 		return in;
 	}
 	DWORD len = in.size();
-	DWORD maxLen = (len * 3);
+	const DWORD maxLen = (len * 3);
 	DWORD* pdwLen = &len;
 	LPSTR out = (char*)malloc(sizeof(char) * maxLen);
 	LPCSTR input = in.c_str();
@@ -77,9 +67,9 @@ string Endpoint::escapeUrl(const string& in)
 wstring Endpoint::get_utf16(const std::string& str, int codepage)
 {
 	if (str.empty()) return wstring();
-	int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
+	int sz = MultiByteToWideChar(codepage, 0, &str[0], str.size(), 0, 0);
 	wstring res(sz, 0);
-	MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), &res[0], sz);
+	MultiByteToWideChar(codepage, 0, &str[0], str.size(), &res[0], sz);
 	return res;
 }
 
@@ -433,31 +423,7 @@ HRESULT Endpoint::pollForTransactionSingle(std::string transaction_id)
 HRESULT Endpoint::parseForTransactionSuccess(std::string in)
 {
 	DebugPrintLn(__FUNCTION__);
-	/*if (in.empty())
-	{
-		return E_FAIL;
-	}
-	auto j = json::parse(in);
-
-	auto challenges = j["result"];
-
-	if (challenges.empty())
-	{
-		return parseForError(in);
-	}
-
-	for (auto val : challenges.items())
-	{
-		auto j2 = val.value();
-		const bool success = j2["value"].get<bool>();
-		if (success)
-		{
-			DebugPrintLn("value is true!");
-			return ENDPOINT_STATUS_AUTH_OK;
-		}
-	}
-	DebugPrintLn("value is false");
-	return ENDPOINT_STATUS_AUTH_FAIL;*/
+	
 	if (in.empty())
 	{
 		DbgRelPrintLn("Received empty response from server.");
@@ -477,6 +443,21 @@ HRESULT Endpoint::parseForTransactionSuccess(std::string in)
 		return (value == "true") ? ENDPOINT_STATUS_AUTH_OK : ENDPOINT_STATUS_AUTH_FAIL;
 	}
 	return ENDPOINT_STATUS_AUTH_FAIL;
+}
+
+HRESULT Endpoint::parseForOfflineToken(std::string in)
+{
+	if (in.empty())
+	{
+		return E_FAIL;
+	}
+
+	auto j = json::parse(in);
+
+	auto auth_items = j["auth_items"];
+
+
+	return E_FAIL;
 }
 
 HRESULT Endpoint::finalizePolling(std::string user, std::string transaction_id)

@@ -66,7 +66,7 @@ void Logger::logS(string message, const char* file, int line, bool logInProducti
 
 	ofstream os;
 	os.open(outfilePath.c_str(), std::ios_base::app);
-	os << fullMessage << std::endl;
+	os << fullMessage << endl;
 
 	OutputDebugStringA(fullMessage.c_str());
 	OutputDebugStringA("\n");

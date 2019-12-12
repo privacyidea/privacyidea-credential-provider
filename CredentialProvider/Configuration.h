@@ -79,6 +79,8 @@ public:
 
 	std::map<std::wstring, std::wstring> realm_map = std::map<std::wstring, std::wstring>();
 
+	bool use_offline = false;
+
 	struct PROVIDER
 	{
 		ICredentialProviderEvents* _pCredentialProviderEvents = nullptr;

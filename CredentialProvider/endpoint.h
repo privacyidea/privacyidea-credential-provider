@@ -68,16 +68,26 @@ enum class RequestMethod {
 class Endpoint
 {
 public:
-	Endpoint();
+	Endpoint() = default;
+	
+	Endpoint(std::wstring hostname, std::wstring path, int customPort, bool ignoreInvalidCN, bool ignoreUnknownCA) :
+		_hostname(hostname), _path(path), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN), _ignoreUnknownCA(ignoreUnknownCA) {};
+	
 	~Endpoint() = default;
 	Endpoint(const Endpoint& endpoint) = default;
 	Endpoint& operator=(Endpoint const& endpoint);
 
 	std::string connect(std::string endpoint, std::map<std::string, std::string> params, RequestMethod method);
 
-	std::wstring get_utf16(const std::string& str, int codepage);
+	HRESULT pollForTransactionWithLoop(std::string transaction_id);
 
-	std::string escapeUrl(const std::string& in);
+	HRESULT pollForTransactionSingle(std::string transaction_id);
+
+	HRESULT finalizePolling(std::string user, std::string transaction_id);
+
+	HRESULT parseForTransactionSuccess(std::string in);
+
+	HRESULT parseForOfflineToken(std::string in);
 
 	HRESULT parseAuthenticationRequest(std::string in);
 
@@ -85,19 +95,15 @@ public:
 
 	HRESULT parseForError(std::string in);
 
-	HRESULT pollForTransactionWithLoop(std::string transaction_id);
-
-	HRESULT pollForTransactionSingle(std::string transaction_id);
-
-	HRESULT parseForTransactionSuccess(std::string in);
-
-	HRESULT finalizePolling(std::string user, std::string transaction_id);
-
-	HRESULT lastError = S_OK;
+	HRESULT status = S_OK;
 
 	void setRunPoll(bool val);
 
 private:
+
+	std::wstring get_utf16(const std::string& str, int codepage);
+
+	std::string escapeUrl(const std::string& in);
 
 	bool _runPoll = false;
 
@@ -106,8 +112,6 @@ private:
 	std::wstring _hostname = L"";
 	std::wstring _path = L"";
 	int _customPort = 0;
-
-	std::string _authToken = "";
 
 	std::mutex _mutex;
 };
