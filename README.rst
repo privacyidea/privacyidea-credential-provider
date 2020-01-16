@@ -26,5 +26,4 @@ The Solution is built using the platform tools v140 (VS 2015)
 
 Dependencies
 ============
-This project uses *rapidjson*. Copy it to the ``/lib`` directory.
-You can get it from https://github.com/Tencent/rapidjson/.
+This project requires *json.hpp* from https://github.com/nlohmann/json, put it in ``/nlohmann/json.hpp``.
