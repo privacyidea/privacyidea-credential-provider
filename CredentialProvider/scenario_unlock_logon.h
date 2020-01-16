@@ -25,7 +25,6 @@
 #pragma once
 
 #include "field_state_pair.h"
-#include "field_initializor.h"
 
 // The indexes of each of the fields in our credential provider's appended tiles.
 enum LOGON_UNLOCK_FIELD_ID

@@ -42,4 +42,23 @@ struct FIELD_STATE_PAIR
 	SUBMIT_BUTTON_CONTROL sbc;
 };
 
+
+enum FIELD_INITIALIZOR_TYPE // TODO remove, used in initializeField
+{
+	FIT_NONE = 0,
+	FIT_VALUE = 1,
+	FIT_USERNAME = 2,
+	FIT_USERNAME_AND_DOMAIN = 3,
+	FIT_LOGIN_TEXT = 4,
+	FIT_VALUE_OR_LOCKED_TEXT = 5,
+	FIT_VALUE_OR_LOGIN_TEXT = 6,
+};
+
+struct FIELD_INITIALIZOR // TODO remove, used in initializeField
+{
+	FIELD_INITIALIZOR_TYPE type;
+	wchar_t* value;
+};
+
+
 #endif

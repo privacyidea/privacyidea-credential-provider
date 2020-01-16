@@ -19,6 +19,7 @@
 **    limitations under the License.
 **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+#pragma once
 
 #include "new_unlock_scenario.h"
 #include "scenario_unlock_logon.h"
@@ -27,22 +28,22 @@
 
 static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* s_rgCredProvFieldDescriptorsFor[] =
 {
-	NULL,												// CPUS_INVALID = 0x0000,
+	nullptr,											// CPUS_INVALID = 0x0000,
 	s_rgScenarioPushCredProvFieldDescriptors,			// CPUS_LOGON,
 	s_rgScenarioPushCredProvFieldDescriptors,			// CPUS_UNLOCK_WORKSTATION,
 	s_rgScenarioChangePasswordCredProvFieldDescriptors,	// CPUS_CHANGE_PASSWORD,
 	s_rgScenarioCredUiCredProvFieldDescriptors,			// CPUS_CREDUI,
-	NULL												// CPUS_PLAP
+	nullptr												// CPUS_PLAP
 };
 
 static const FIELD_INITIALIZOR* s_rgCredProvFieldInitializorsFor[] =
 {
-	NULL,											// CPUS_INVALID = 0x0000,
+	nullptr,											// CPUS_INVALID = 0x0000,
 	s_rgScenarioPushFieldInitializors,				// CPUS_LOGON,
 	s_rgScenarioPushFieldInitializors,				// CPUS_UNLOCK_WORKSTATION,
 	s_rgScenarioChangePasswordFieldInitializors,	// CPUS_CHANGE_PASSWORD,
 	s_rgScenarioCredUiFieldInitializors,			// CPUS_CREDUI,
-	NULL											// CPUS_PLAP
+	nullptr											// CPUS_PLAP
 };
 
 static const unsigned int s_rgCredProvNumFieldsFor[] =

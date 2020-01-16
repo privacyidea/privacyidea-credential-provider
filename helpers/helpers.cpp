@@ -24,7 +24,6 @@
 #include <intsafe.h>
 #include <wincred.h>
 #include <string>
-#include "..//CredentialProvider/Configuration.h"
 
 // 
 // Copies the field descriptor pointed to by rcpfd into a buffer allocated 
@@ -32,7 +31,8 @@
 // 
 HRESULT FieldDescriptorCoAllocCopy(
     __in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& rcpfd,
-    __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd
+    __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd,
+    __in std::wstring otpFieldText
     )
 {
     HRESULT hr;
@@ -48,14 +48,13 @@ HRESULT FieldDescriptorCoAllocCopy(
 		// check if the field is the OTP Field, if so replace text with OTP text from Configuration::Get(), if there is
 		if (label.compare(L"One-Time Password") == 0) 
 		{
-			std::wstring otpText(Configuration::Get().otpText);
-			if (otpText.empty()) 
+			if (otpFieldText.empty()) 
 			{
 				hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
 			}
 			else
 			{
-				hr = SHStrDupW(otpText.c_str(), &pcpfd->pszLabel);
+				hr = SHStrDupW(otpFieldText.c_str(), &pcpfd->pszLabel);
 			}
 		}
 		else if (rcpfd.pszLabel)

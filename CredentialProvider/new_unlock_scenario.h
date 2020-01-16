@@ -1,6 +1,5 @@
 #pragma once
 #include "field_state_pair.h"
-#include "field_initializor.h"
 
 // The indexes of each of the fields in our credential provider's appended tiles.
 enum LOGON_PUSH_FIELD_ID
@@ -57,7 +56,7 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsUnlock[] =
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// LPFI_OTP_LDAP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_SUBMIT_BUTTON
-	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_OFFLINE_CHECKBOX
+	{ CPFS_HIDDEN, CPFIS_NONE },			// LPFI_OTP_OFFLINE_CHECKBOX
 };
 
 static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStepSecondStep[] =
@@ -69,7 +68,7 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStepSecondStep[]
 	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_LDAP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// LPFI_OTP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_SUBMIT_BUTTON
-	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_OFFLINE_CHECKBOX
+	{ CPFS_HIDDEN, CPFIS_NONE },			// LPFI_OTP_OFFLINE_CHECKBOX
 };
 
 static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStep[] =

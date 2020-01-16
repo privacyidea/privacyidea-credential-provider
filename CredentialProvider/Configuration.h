@@ -18,21 +18,12 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "Endpoint.h"
+#include "PIConf.h"
 #include "Challenge.h"
 #include <list>
 #include <string>
 #include <credentialprovider.h>
 #include <map>
-
-// Token Type Available
-enum class TTA
-{
-	NOT_SET,
-	OTP,
-	PUSH,
-	BOTH
-};
 
 extern const std::wstring base_registry_path;
 extern const std::wstring realm_registry_path;
@@ -40,19 +31,14 @@ extern const std::wstring realm_registry_path;
 class Configuration
 {
 public:
-	Configuration(Configuration const&) = delete;
-	void operator=(Configuration const&) = delete;
+	Configuration();
 
-	static Configuration& Get()
-	{
-		static Configuration instance;
-		return instance;
-	}
+	void printConfiguration();
 
-	void printConfig();
+	PICONFIG piconfig;
 
 	std::wstring loginText = L"";
-	std::wstring otpText = L"";
+	std::wstring otpFieldText = L"";
 	std::wstring bitmapPath = L"";
 	std::wstring otpFailureText = L"";
 
@@ -74,19 +60,23 @@ public:
 	int winVerMajor = 0;
 	int winVerMinor = 0;
 	int winBuildNr = 0;
+	
+	bool pushAuthenticationSuccessful = false;
+	bool authenticationSuccessful = false;
 
-	std::wstring default_realm = L"";
+	bool userCanceled = false;
+	IQueryContinueWithStatus* pQueryContinueWithStatus = nullptr;
 
-	std::map<std::wstring, std::wstring> realm_map = std::map<std::wstring, std::wstring>();
+	Challenge challenge;
 
-	bool use_offline = false;
+	std::wstring defaultChallengeText = L"Please confirm the authentication!";
 
 	struct PROVIDER
 	{
-		ICredentialProviderEvents* _pCredentialProviderEvents = nullptr;
-		UINT_PTR _upAdviseContext = 0;
+		ICredentialProviderEvents* pCredentialProviderEvents = nullptr;
+		UINT_PTR upAdviseContext = 0;
 
-		CREDENTIAL_PROVIDER_USAGE_SCENARIO usage_scenario = CPUS_INVALID;
+		CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu = CPUS_INVALID;
 		DWORD credPackFlags = 0;
 
 		// Possibly read-write
@@ -101,11 +91,14 @@ public:
 		wchar_t** field_strings = nullptr;
 		int num_field_strings = 0;
 	} provider;
+	
+	bool clearFields = true;
+	bool bypassPrivacyIDEA = false;
 
 	struct CREDENTIAL
 	{
-		std::wstring user_name = L"";
-		std::wstring domain_name = L"";
+		std::wstring username = L"";
+		std::wstring domain = L"";
 		std::wstring password = L""; // TODO make pw wchar* to overwrite it
 		std::wstring otp = L"";
 
@@ -118,10 +111,10 @@ public:
 		std::wstring newPassword2 = L"";
 	} credential;
 
+	/*
 	struct ENDPOINT
 	{
 		IQueryContinueWithStatus* pQueryContinueWithStatus = nullptr; // TODO remove? use only locally
-		HRESULT status = ENDPOINT_STATUS_NOT_SET; // TODO remove, use member variable of endpoint instance
 		bool userCanceled = false; // TODO remove, use status to indicate if needed
 
 		std::wstring hostname = L"";
@@ -130,29 +123,13 @@ public:
 		bool sslIgnoreCA = false;
 		bool sslIgnoreCN = false;
 	} endpoint;
-
-	struct CHALLENGERESPONSE
-	{
-		std::list<Challenge> challenges = std::list<Challenge>();
-		bool usingPushToken = false; // TODO remove
-		bool pushAuthenticationSuccessful = false;
-		std::string transactionID = "";
-		std::string serial = "";
-		std::string message = "";
-
-		TTA tta = TTA::NOT_SET;
-	} challenge_response;
-
-	struct GENERAL
-	{
-		bool bypassEndpoint = false;
-		bool clearFields = true;
-	} general;
+	*/
 
 private:
-	Configuration();
 
-	void loadMapping();
+	bool loadRegistry();
+
+	bool loadMapping();
 
 	std::wstring getRegistry(std::wstring name);
 

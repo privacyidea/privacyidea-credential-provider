@@ -1,0 +1,122 @@
+/* * * * * * * * * * * * * * * * * * * * *
+**
+** Copyright 2019 NetKnights GmbH
+** Author: Nils Behlen
+**
+**    Licensed under the Apache License, Version 2.0 (the "License");
+**    you may not use this file except in compliance with the License.
+**    You may obtain a copy of the License at
+**
+**        http://www.apache.org/licenses/LICENSE-2.0
+**
+**    Unless required by applicable law or agreed to in writing, software
+**    distributed under the License is distributed on an "AS IS" BASIS,
+**    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**    See the License for the specific language governing permissions and
+**    limitations under the License.
+**
+** * * * * * * * * * * * * * * * * * * */
+#pragma once
+
+#include "OfflineHandler.h"
+#include "Logger.h"
+#include "Endpoint.h"
+#include "PIConf.h"
+
+#include <Windows.h>
+#include <string>
+#include <map>
+#include <functional>
+#include <atomic>
+
+#define PI_AUTH_SUCCESS								((HRESULT)0x78809001)
+#define PI_AUTH_FAILURE								((HRESULT)0x78809002)
+#define PI_TRANSACTION_SUCCESS						((HRESULT)0x78809004)
+#define PI_TRANSACTION_FAILURE						((HRESULT)0x78809005)
+#define PI_OFFLINE_OTP_SUCCESS						((HRESULT)0x78809006)
+#define PI_OFFLINE_OTP_FAILURE						((HRESULT)0x78809007)
+#define PI_TRIGGERED_CHALLENGE						((HRESULT)0x78809008)
+
+#define PI_ERROR_EMPTY_RESPONSE						((HRESULT)0x7880900E)
+#define PI_STATUS_NOT_SET							((HRESULT)0x7880900F)
+
+
+#define ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR		(int)101
+
+#define PI_ENDPOINT_VALIDATE_CHECK					"/validate/check"
+#define PI_ENDPOINT_POLL_TX							"/validate/polltransaction"
+
+class PrivacyIDEA
+{
+public:
+	PrivacyIDEA(PICONFIG conf)
+		:
+		_realmMap(conf.realmMap),
+		_defaultRealm(conf.defaultRealm),
+		_logPasswords(conf.logPasswords),
+		_endpoint(conf.hostname, conf.path, conf.customPort, conf.ignoreInvalidCN, conf.ignoreUnknownCA, conf.logPasswords),
+		_offlineHandler("", conf.offlineTryWindow)
+	{};
+
+	PrivacyIDEA() = default;
+
+	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA);
+
+	// Tries to verify with offline otp first. If there is none,
+	// sends the parameters to privacyIDEA and checks the response for
+	// 1. Offline otp data, 2. Triggered challenges, 3. Authentication success
+	// <returns> PI_OFFLINE_OTP_SUCCESS, PI_OFFLINE_OTP_FAILURE
+	//			 PI_OFFLINE_DATA_SUCCESS, PI_OFFLINE_DATA_FAILURE(//TODO),
+	//			 PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_SUCCESS </returns>
+	HRESULT validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp, const std::string& transaction_id);
+
+	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, const std::wstring& transaction_id);
+
+	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp);
+
+	HRESULT validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp);
+	
+	//bool asyncPollTransaction(std::string username, std::string transactionID);
+
+	bool stopPoll();
+
+	// Poll for the given transaction asynchronously. When polling returns success, the transaction is finalized
+	// according to https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
+	// After that, the callback function is called with the result
+	void asyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback);
+
+	// Poll for a transaction once. Can be used if the plugin wants to control the looping
+	// <returns> PI_TRANSACTION_SUCCESS or PI_TRANSACTION_FAILURE </returns>
+	HRESULT pollTransaction(std::string transaction_id);
+
+	HRESULT getLastErrorCode();
+
+	std::string getLastErrorText();
+
+	Challenge getCurrentChallenge();
+
+	static std::wstring s2ws(const std::string& s);
+
+	static std::string ws2s(const std::wstring& ws);
+
+private:
+	HRESULT checkForRealm(std::map<std::string, std::string>& map, std::string domain);
+
+	void pollThread(const std::map<std::string, std::string>& params, const std::string& username, std::function<void(bool)> callback);
+
+	std::map<std::wstring, std::wstring> _realmMap;
+
+	Endpoint _endpoint;
+	OfflineHandler _offlineHandler;
+
+	Challenge _currentChallenge;
+
+	bool _logPasswords = false;
+	std::wstring _defaultRealm = L"";
+
+	std::string _lastErrorText = "";
+	HRESULT _lastErrorCode = 0;
+
+	std::atomic<bool> _runPoll = false;
+};
+

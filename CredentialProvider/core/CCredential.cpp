@@ -27,9 +27,8 @@
 
 #include "CCredential.h"
 #include "Configuration.h"
-#include "Endpoint.h"
 #include "Logger.h"
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include <string>
 #include <thread>
 #include <future>
@@ -37,7 +36,7 @@
 
 using namespace std;
 
-CCredential::CCredential()
+CCredential::CCredential(std::shared_ptr<Configuration> c) : _config(c), _util(_config)//, _privacyIDEA(_config->piconfig)
 {
 	_cRef = 1;
 	_pCredProvCredentialEvents = nullptr;
@@ -49,13 +48,13 @@ CCredential::CCredential()
 	ZERO(_rgCredProvFieldDescriptors);
 	ZERO(_rgFieldStatePairs);
 	ZERO(_rgFieldStrings);
-	auto& config = Configuration::Get();
-	_endpoint = Endpoint(config.endpoint.hostname, config.endpoint.path, config.endpoint.customPort, config.endpoint.sslIgnoreCN, config.endpoint.sslIgnoreCA);
+
+	_privacyIDEA = PrivacyIDEA(_config->piconfig);
 }
 
 CCredential::~CCredential()
 {
-	General::Fields::Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, NULL, CLEAR_FIELDS_ALL_DESTROY);
+	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, NULL, CLEAR_FIELDS_ALL_DESTROY);
 	DllRelease();
 }
 
@@ -70,51 +69,43 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR password
 )
 {
-
 	wstring wstrUsername, wstrDomainname, wstrPassword;
 
 	if (NOT_EMPTY(user_name))
-	{
 		wstrUsername = wstring(user_name);
-	}
+
 	if (NOT_EMPTY(domain_name))
-	{
 		wstrDomainname = wstring(domain_name);
-	}
+
 	if (NOT_EMPTY(password))
-	{
 		wstrPassword = wstring(password);
-	}
+
 
 #ifdef _DEBUG
-	DebugPrintLn(__FUNCTION__);
-	/*if (!wstrUsername.empty()) {
-
-	}*/
-	DebugPrintLn(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
-	DebugPrintLn(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
-	if (Configuration::Get().logSensitive) {
-		DebugPrintLn(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
-	}
+	DebugPrint(__FUNCTION__);
+	DebugPrint(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
+	DebugPrint(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
+	if (_config->logSensitive)
+		DebugPrint(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 #endif
 	HRESULT hr = S_OK;
 
 	if (!wstrUsername.empty())
 	{
-		DebugPrintLn("Copying user_name to credential");
-		Configuration::Get().credential.user_name = wstrUsername;
+		DebugPrint("Copying user_name to credential");
+		_config->credential.username = wstrUsername;
 	}
 
 	if (!wstrDomainname.empty())
 	{
-		DebugPrintLn("Copying domain_name to credential");
-		Configuration::Get().credential.domain_name = wstrDomainname;
+		DebugPrint("Copying domain_name to credential");
+		_config->credential.domain = wstrDomainname;
 	}
 
 	if (!wstrPassword.empty())
 	{
-		DebugPrintLn("Copying password to credential");
-		Configuration::Get().credential.password = wstrPassword;
+		DebugPrint("Copying password to credential");
+		_config->credential.password = wstrPassword;
 	}
 
 
@@ -129,7 +120,7 @@ HRESULT CCredential::Initialize(
 	// !!!!!!!!!!!!!!!!!!!!
 
 	//for (DWORD i = 0; SUCCEEDED(hr) && i < ARRAYSIZE(_rgCredProvFieldDescriptors); i++)
-	for (DWORD i = 0; SUCCEEDED(hr) && i < General::Fields::GetCurrentNumFields(); i++)
+	for (DWORD i = 0; SUCCEEDED(hr) && i < Utilities::CredentialFieldCountFor(_config->provider.cpu); i++)
 	{
 		//DebugPrintLn("Copy field #:");
 		//DebugPrintLn(i + 1);
@@ -139,44 +130,17 @@ HRESULT CCredential::Initialize(
 		if (FAILED(hr))
 			break;
 
-		if (s_rgCredProvFieldInitializorsFor[Configuration::Get().provider.usage_scenario] != NULL)
-			General::Fields::InitializeField(_rgFieldStrings, s_rgCredProvFieldInitializorsFor[Configuration::Get().provider.usage_scenario][i], i);
+		if (s_rgCredProvFieldInitializorsFor[_config->provider.cpu] != NULL)
+			_util.InitializeField(_rgFieldStrings, s_rgCredProvFieldInitializorsFor[_config->provider.cpu][i], i);
 	}
 
-	DebugPrintLn("Init result:");
+	DebugPrint("Init result:");
 	if (SUCCEEDED(hr))
-		DebugPrintLn("OK");
+		DebugPrint("OK");
 	else
-		DebugPrintLn("FAIL");
+		DebugPrint("FAIL");
 
 	return hr;
-}
-
-HRESULT CCredential::checkForRealm(std::map<std::string, std::string>& map)
-{
-	auto& config = Configuration::Get();
-	// Check if mapping exists for the current domain
-	wstring realm = L"";
-	try
-	{
-		realm = config.realm_map.at(config.credential.domain_name);
-	}
-	catch (const std::out_of_range & e)
-	{
-		UNREFERENCED_PARAMETER(e);
-		// no mapping - if default domain exists use that
-		if (!config.default_realm.empty())
-		{
-			realm = config.default_realm;
-		}
-	}
-
-	if (!realm.empty())
-	{
-		map.try_emplace("realm", Helper::ws2s(realm));
-	}
-
-	return S_OK;
 }
 
 // LogonUI calls this in order to give us a callback in case we need to notify it of anything.
@@ -192,16 +156,6 @@ HRESULT CCredential::Advise(
 	}
 	_pCredProvCredentialEvents = pcpce;
 	_pCredProvCredentialEvents->AddRef();
-
-	/////
-
-	/*if (Configuration::Get().general.startEndpointObserver == true)
-	{
-		Configuration::Get().general.startEndpointObserver = false;
-
-		if (EndpointObserver::Thread::GetStatus() == EndpointObserver::Thread::STATUS::NOT_RUNNING)
-			EndpointObserver::Thread::Create(NULL);
-	} */
 
 	return S_OK;
 }
@@ -220,9 +174,8 @@ HRESULT CCredential::UnAdvise()
 }
 
 // Callback for the DialogBox
-INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK CCredential::ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	auto& config = Configuration::Get();
 
 	wchar_t lpszPassword_old[64];
 	wchar_t lpszPassword_new[64];
@@ -232,12 +185,12 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 	switch (message)
 	{
 	case WM_INITDIALOG: {
-		DebugPrintLn("Init change password dialog - START");
+		DebugPrint("Init change password dialog - START");
 
 		// Get the bitmap to display on top of the dialog (same as the logo of the normal tile)
 		static HBITMAP hbmp;
 		// Check if custom bitmap was set and load that
-		std::string szBitmapPath = Helper::ws2s(config.bitmapPath);
+		std::string szBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath);
 		if (!szBitmapPath.empty())
 		{
 			DWORD dwAttrib = GetFileAttributesA(szBitmapPath.c_str());
@@ -246,8 +199,8 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 				hbmp = (HBITMAP)LoadImageA(NULL, szBitmapPath.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 				if (hbmp == NULL)
 				{
-					DebugPrintLn("Loading custom tile image for dialog failed:");
-					DebugPrintLn(GetLastError());
+					DebugPrint("Loading custom tile image for dialog failed:");
+					DebugPrint(GetLastError());
 				}
 			}
 		}
@@ -279,7 +232,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		PostMessage(hDlg, WM_SETFOCUS, 0, 0);
 
 		// concat domain\user and put it in the edit control
-		std::wstring domainWithUser = config.credential.user_name + L"\\" + config.credential.domain_name;
+		std::wstring domainWithUser = _config->credential.username + L"\\" + _config->credential.domain;
 		//std::wstring tmp_user = std::wstring(Data::Gui::Get()->user_name);
 		//std::wstring tmp_domain = std::wstring(Data::Gui::Get()->domain_name);
 		//domainWithUser.append(tmp_domain).append(L"\\").append(tmp_user);
@@ -316,7 +269,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 			rcOwner.top + (rc.bottom / 2),
 			0, 0,          // Ignores size arguments. 
 			SWP_NOSIZE);
-		DebugPrintLn("Init change password dialog - END");
+		DebugPrint("Init change password dialog - END");
 		return TRUE;
 	}
 	case WM_COMMAND: {
@@ -329,7 +282,7 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 		switch (wParam)
 		{
 		case IDOK: {	// User pressed OK - evaluate the inputs
-			DebugPrintLn("Evaluate change password dialog - START");
+			DebugPrint("Evaluate change password dialog - START");
 			// Get number of characters for each input
 			cchPassword_old = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
 			cchPassword_new = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
@@ -382,51 +335,47 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 				return FALSE;
 			}
 			// copy new password to password for auto-login
-			config.credential.password = wstring(lpszPassword_new);
+			_config->credential.password = wstring(lpszPassword_new);
 
 			/*if (Data::Gui::Get()->ldap_pass || lpszPassword_old)
 				wcscpy_s(Data::Gui::Get()->ldap_pass, lpszPassword_old);
 			copyNewVals(lpszPassword_new); */
 
-			PWSTR user = const_cast<PWSTR>(config.credential.user_name.c_str());
-			PWSTR domain = const_cast<PWSTR>(config.credential.domain_name.c_str());
+			PWSTR user = const_cast<PWSTR>(_config->credential.username.c_str());
+			PWSTR domain = const_cast<PWSTR>(_config->credential.domain.c_str());
 
 			// pcpgsr and pcpcs are set in GetSerialization
-			HRESULT	hr = General::Logon::KerberosChangePassword(config.provider.pcpgsr, config.provider.pcpcs,
+			HRESULT	hr = _util.KerberosChangePassword(_config->provider.pcpgsr,
+				_config->provider.pcpcs,
 				user, lpszPassword_old, lpszPassword_new, domain);
 
 			if (SUCCEEDED(hr))
-				Hook::Serialization::ChangePasswordSuccessfull();
+			{
+				_config->credential.passwordMustChange = false;
+				_config->credential.passwordChanged = true;
+				_config->clearFields = false;
+			}
 			else
-				Hook::Serialization::ChangePasswordFailed();
+			{
+				// TODO
+			}
 
-			// setup for autologin after changing password
-			//config.general.bypassEndpoint = true;
-			//config.general.bypassDataDeinitialization = true;
-			//config.general.bypassDataInitialization = true;
-			config.general.bypassEndpoint = true;
+			_config->bypassPrivacyIDEA = true;
 
-			DebugPrintLn("Evaluate CHANGE PASSWORD DIALOG - END");
+			DebugPrint("Evaluate CHANGE PASSWORD DIALOG - END");
 			EndDialog(hDlg, TRUE);
 			return TRUE;
 		}
 		case IDCANCEL: {
 			// Dialog canceled, reset everything
-			DebugPrintLn("Exit change password dialog - CANCELED");
-			/*	config.credential.passwordMustChange = false;
-				config.credential.passwordChanged = false;
-				config.general.bypassDataDeinitialization = false;
-				config.general.bypassEndpoint = false;
-				config.general.bypassDataInitialization = false;*/
+			DebugPrint("Exit change password dialog - CANCELED");
 
-			config.credential.passwordMustChange = false;
-			config.credential.passwordChanged = false;
-			//config.general.bypassDataDeinitialization = false;
-			config.general.bypassEndpoint = false;
-			//config.general.bypassDataInitialization = false;
-			DebugPrintLn("Exit change password dialog - Data::General RESET ");
+			_config->credential.passwordMustChange = false;
+			_config->credential.passwordChanged = false;
+			_config->bypassPrivacyIDEA = false;
+			DebugPrint("Exit change password dialog - Data::General RESET ");
 			EndDialog(hDlg, TRUE);
-			Hook::CredentialHooks::ResetScenario(config.provider.pCredProvCredential, config.provider.pCredProvCredentialEvents);
+			_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
 			return TRUE;
 		}
 		}
@@ -445,22 +394,20 @@ INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
 // selected, you would do it here.
 HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 	*pbAutoLogon = false;
 	HRESULT hr = S_OK;
 
-	auto& config = Configuration::Get();
-
-	if (config.challenge_response.pushAuthenticationSuccessful)
+	if (_config->pushAuthenticationSuccessful)
 	{
 		*pbAutoLogon = true;
 	}
 
-	if (config.credential.passwordMustChange && config.provider.usage_scenario == CPUS_UNLOCK_WORKSTATION
-		&& config.winVerMajor != 10)
+	if (_config->credential.passwordMustChange && _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
+		&& _config->winVerMajor != 10)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
-		DebugPrintLn("Password must change in CPUS_UNLOCK_WORKSTATION");
+		DebugPrint("Password must change in CPUS_UNLOCK_WORKSTATION");
 		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"Go back until you are asked to sign in.");
 		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"To change your password sign out and in again.");
 		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
@@ -469,16 +416,16 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
 	// if passwordChanged, we want to auto-login
-	if (config.credential.passwordMustChange || config.credential.passwordChanged)
+	if (_config->credential.passwordMustChange || _config->credential.passwordChanged)
 	{
-		if (config.provider.usage_scenario == CPUS_LOGON || config.winVerMajor == 10)
+		if (_config->provider.cpu == CPUS_LOGON || _config->winVerMajor == 10)
 		{
 			*pbAutoLogon = true;
-			DebugPrintLn("Password change mode LOGON - AutoLogon true");
+			DebugPrint("Password change mode LOGON - AutoLogon true");
 		}
 		else
 		{
-			DebugPrintLn("Password change mode UNLOCK - AutoLogon false");
+			DebugPrint("Password change mode UNLOCK - AutoLogon false");
 		}
 	}
 
@@ -490,25 +437,25 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 // is to clear out the password field.
 HRESULT CCredential::SetDeselected()
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
 	HRESULT hr = S_OK;
 
-	General::Fields::Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
+	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
 
 	//// CONCRETE
-	Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
+	_util.ResetScenario(this, _pCredProvCredentialEvents);
 	////
 
 	// Reset password changing in case another user wants to log in
-	if (Configuration::Get().credential.passwordChanged)
+	if (_config->credential.passwordChanged)
 	{
-		Configuration::Get().credential.passwordChanged = false;
+		_config->credential.passwordChanged = false;
 	}
 	// If its not UNLOCK_WORKSTATION we keep this status to keep the info to sign out first
-	if (Configuration::Get().credential.passwordMustChange && (Configuration::Get().provider.usage_scenario != CPUS_UNLOCK_WORKSTATION))
+	if (_config->credential.passwordMustChange && (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION))
 	{
-		Configuration::Get().credential.passwordMustChange = false;
+		_config->credential.passwordMustChange = false;
 	}
 
 	return hr;
@@ -527,7 +474,7 @@ HRESULT CCredential::GetFieldState(
 	HRESULT hr;
 
 	// Validate paramters.
-	if ((dwFieldID < General::Fields::GetCurrentNumFields()) && pcpfs && pcpfis)
+	if ((dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu)) && pcpfs && pcpfis)
 	{
 		*pcpfs = _rgFieldStatePairs[dwFieldID].cpfs;
 		*pcpfis = _rgFieldStatePairs[dwFieldID].cpfis;
@@ -555,7 +502,7 @@ HRESULT CCredential::GetStringValue(
 	HRESULT hr;
 
 	// Check to make sure dwFieldID is a legitimate index.
-	if (dwFieldID < General::Fields::GetCurrentNumFields() && ppwsz)
+	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) && ppwsz)
 	{
 		// Make a copy of the string and return that. The caller
 		// is responsible for freeing it.
@@ -577,11 +524,54 @@ HRESULT CCredential::GetBitmapValue(
 	__out HBITMAP* phbmp
 )
 {
-	//DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
-	HRESULT hr = Hook::CredentialHooks::GetBitmapValue(HINST_THISDLL, dwFieldID, phbmp);
+	HRESULT hr;
+	if ((LUFI_OTP_LOGO == dwFieldID) && phbmp)
+	{
+		HBITMAP hbmp = NULL;
+		LPCSTR lpszBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath).c_str();
+		DebugPrint(lpszBitmapPath);
 
-	//DebugPrintLn(hr);
+		if (NOT_EMPTY(lpszBitmapPath))
+		{
+			DWORD dwAttrib = GetFileAttributesA(lpszBitmapPath);
+
+			DebugPrint(dwAttrib);
+
+			if (dwAttrib != INVALID_FILE_ATTRIBUTES
+				&& !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+			{
+				hbmp = (HBITMAP)LoadImageA(NULL, lpszBitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+				if (hbmp == NULL)
+				{
+					DebugPrint(GetLastError());
+				}
+			}
+		}
+
+		if (hbmp == NULL)
+		{
+			hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
+		}
+
+		if (hbmp != NULL)
+		{
+			hr = S_OK;
+			*phbmp = hbmp;
+		}
+		else
+		{
+			hr = HRESULT_FROM_WIN32(GetLastError());
+		}
+	}
+	else
+	{
+		hr = E_INVALIDARG;
+	}
+
+	DebugPrint(hr);
 
 	return hr;
 }
@@ -595,11 +585,37 @@ HRESULT CCredential::GetSubmitButtonValue(
 	__out DWORD* pdwAdjacentTo
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint("ID:" + to_string(dwFieldID));
+	HRESULT hr;
 
-	HRESULT hr = Hook::CredentialHooks::GetSubmitButtonValue(dwFieldID, pdwAdjacentTo);
+	// Validate parameters.
 
-	DebugPrintLn(hr);
+	// !!!!!!!!!!!!!
+	// !!!!!!!!!!!!!
+	// TODO: Change scenario data structures to determine correct submit-button and pdwAdjacentTo dynamically
+	// pdwAdjacentTo is a pointer to the fieldID you want the submit button to appear next to.
+
+	if (LPFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
+	{
+		if (_config->isSecondStep)
+		{
+			*pdwAdjacentTo = LPFI_OTP_PASS;
+		}
+		else
+		{
+			*pdwAdjacentTo = LPFI_OTP_LDAP_PASS;
+		}
+		hr = S_OK;
+	}/*
+	else if (CPFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
+	{
+		*pdwAdjacentTo = CPFI_OTP_PASS_NEW_2;
+		hr = S_OK;
+	} */
+	else
+	{
+		hr = E_INVALIDARG;
+	}
 
 	return hr;
 }
@@ -614,7 +630,7 @@ HRESULT CCredential::SetStringValue(
 	HRESULT hr;
 
 	// Validate parameters.
-	if (dwFieldID < General::Fields::GetCurrentNumFields() &&
+	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
 		(CPFT_EDIT_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft ||
 			CPFT_PASSWORD_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
@@ -640,24 +656,21 @@ HRESULT CCredential::GetComboBoxValueCount(
 	__out_range(< , *pcItems) DWORD* pdwSelectedItem
 )
 {
-	DebugPrintLn(__FUNCTION__);
-
-	HRESULT hr;
+	DebugPrint(__FUNCTION__);
 
 	// Validate parameters.
-	if (dwFieldID < General::Fields::GetCurrentNumFields() &&
+	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
 		(CPFT_COMBOBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
-		hr = Hook::CredentialHooks::GetComboBoxValueCount(dwFieldID, pcItems, pdwSelectedItem);
+		// UNUSED
+		*pcItems = 0;
+		*pdwSelectedItem = 0;
+		return S_OK;
 	}
 	else
 	{
-		hr = E_INVALIDARG;
+		return E_INVALIDARG;
 	}
-
-	DebugPrintLn(hr);
-
-	return S_OK;
 }
 
 // Called iteratively to fill the combobox with the string (ppwszItem) at index dwItem.
@@ -666,24 +679,25 @@ HRESULT CCredential::GetComboBoxValueAt(
 	__in DWORD dwItem,
 	__deref_out PWSTR* ppwszItem)
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
+	UNREFERENCED_PARAMETER(dwItem);
+	UNREFERENCED_PARAMETER(dwFieldID);
+	UNREFERENCED_PARAMETER(ppwszItem);
 
-	HRESULT hr;
-
+	return E_INVALIDARG;
+	/*
 	// Validate parameters.
-	if (dwFieldID < General::Fields::GetCurrentNumFields() &&
+	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
 		(CPFT_COMBOBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
-		hr = Hook::CredentialHooks::GetComboBoxValueAt(dwFieldID, dwItem, ppwszItem);
+		// UNUSED
+		return E_INVALIDARG;
 	}
 	else
 	{
-		hr = E_INVALIDARG;
+		return E_INVALIDARG;
 	}
-
-	DebugPrintLn(hr);
-
-	return hr;
+	*/
 }
 
 // Called when the user changes the selected item in the combobox.
@@ -692,24 +706,18 @@ HRESULT CCredential::SetComboBoxSelectedValue(
 	__in DWORD dwSelectedItem
 )
 {
-	DebugPrintLn(__FUNCTION__);
-
-	HRESULT hr = 0;
-
+	DebugPrint(__FUNCTION__);
+	UNREFERENCED_PARAMETER(dwSelectedItem);
 	// Validate parameters.
-	if (dwFieldID < General::Fields::GetCurrentNumFields() &&
+	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
 		(CPFT_COMBOBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
-		hr = Hook::CredentialHooks::SetComboBoxSelectedValue(this, _pCredProvCredentialEvents, dwFieldID, dwSelectedItem, _dwComboIndex);
+		return S_OK;
 	}
 	else
 	{
-		hr = E_INVALIDARG;
+		return E_INVALIDARG;
 	}
-
-	DebugPrintLn(hr);
-
-	return hr;
 }
 
 HRESULT CCredential::GetCheckboxValue(
@@ -719,10 +727,11 @@ HRESULT CCredential::GetCheckboxValue(
 )
 {
 	// Called to check the initial state of the checkbox
-	DebugPrintLn(__FUNCTION__);
-
+	DebugPrint(__FUNCTION__);
+	UNREFERENCED_PARAMETER(dwFieldID);
+	UNREFERENCED_PARAMETER(ppwszLabel);
 	*pbChecked = FALSE;
-	SHStrDupW(L"Use offline token.", ppwszLabel); // TODO custom text?
+	//SHStrDupW(L"Use offline token.", ppwszLabel); // TODO custom text?
 
 	return S_OK;
 }
@@ -732,9 +741,9 @@ HRESULT CCredential::SetCheckboxValue(
 	__in BOOL bChecked
 )
 {
-	DebugPrintLn(__FUNCTION__);
-
-	Configuration::Get().use_offline = bChecked;
+	UNREFERENCED_PARAMETER(dwFieldID);
+	UNREFERENCED_PARAMETER(bChecked);
+	DebugPrint(__FUNCTION__);
 	return S_OK;
 }
 
@@ -745,7 +754,7 @@ HRESULT CCredential::SetCheckboxValue(
 HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
-	DebugPrintLn("COMMAND LINK CLICKED!");
+	DebugPrint(__FUNCTION__);
 	return S_OK;
 }
 
@@ -761,13 +770,13 @@ HRESULT CCredential::GetSerialization(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
 	*pcpgsr = CPGSR_RETURN_NO_CREDENTIAL_FINISHED;
 
 	HRESULT hr = E_FAIL, retVal = S_OK;
 
-	auto& config = Configuration::Get();
+
 
 	/*
 	CPGSR_NO_CREDENTIAL_NOT_FINISHED
@@ -786,29 +795,28 @@ HRESULT CCredential::GetSerialization(
 	will force the logon UI to return, which will unadvise all the credential providers.
 	*/
 
-	// reference parameters to internal datastructures (we need them in the hooks)
-	//HOOK_CHECK_CRITICAL(Hook::Serialization::Initialization(), CleanUpAndReturn);
-	//Hook::Serialization::Initialization();
-	config.provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
-	config.provider.pCredProvCredential = this;
+	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
+	_config->provider.pCredProvCredential = this;
 
-	config.provider.pcpcs = pcpcs;
-	config.provider.pcpgsr = pcpgsr;
+	_config->provider.pcpcs = pcpcs;
+	_config->provider.pcpgsr = pcpgsr;
 
-	config.provider.status_icon = pcpsiOptionalStatusIcon;
-	config.provider.status_text = ppwszOptionalStatusText;
+	_config->provider.status_icon = pcpsiOptionalStatusIcon;
+	_config->provider.status_text = ppwszOptionalStatusText;
 
-	config.provider.field_strings = _rgFieldStrings;
-	config.provider.num_field_strings = General::Fields::GetCurrentNumFields();
+	_config->provider.field_strings = _rgFieldStrings;
+	_config->provider.num_field_strings = Utilities::CredentialFieldCountFor(_config->provider.cpu);
 
-
-	PWSTR currentUsername = const_cast<PWSTR>(config.credential.user_name.c_str());
-	PWSTR currentPassword = const_cast<PWSTR>(config.credential.password.c_str());
-	PWSTR currentDomain = const_cast<PWSTR>(config.credential.domain_name.c_str());
+	// TODO THIS IS VERY BAD
+	PWSTR currentUsername = const_cast<PWSTR>(_config->credential.username.c_str());
+	PWSTR currentPassword = const_cast<PWSTR>(_config->credential.password.c_str());
+	PWSTR currentDomain = const_cast<PWSTR>(_config->credential.domain.c_str());
 
 	// open dialog for old/new password
-	if (config.credential.passwordMustChange)
+	if (_config->credential.passwordMustChange)
 	{
+		// TODO rebuild password change
+		/*
 		HWND hwndOwner = nullptr;
 		HRESULT res = E_FAIL;
 		if (_pCredProvCredentialEvents)
@@ -817,7 +825,7 @@ HRESULT CCredential::GetSerialization(
 		}
 		if (SUCCEEDED(res))
 		{
-			if (config.provider.usage_scenario == CPUS_LOGON || config.winVerMajor == 10)
+			if (_pConfiguration->provider.usage_scenario == CPUS_LOGON || _pConfiguration->winVerMajor == 10)
 			{//It's password change on Logon we can handle that
 				DebugPrintLn("Passwordchange with CPUS_LOGON - open Dialog");
 				::DialogBox(HINST_THISDLL,					// application instance
@@ -831,209 +839,209 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			DbgRelPrintLn("Opening password change dialog failed: Handle to owner window is missing");
-		}
+		} */
 	}
 
-	if (config.credential.passwordChanged)
+	if (_config->credential.passwordChanged)
 	{
-		DebugPrintLn("Password change success- Set Data::General for autologon");
-		config.general.bypassEndpoint = true;
-		//config.general.bypassDataDeinitialization = true;
-		//config.general.bypassDataInitialization = true;
+		DebugPrint("Password change success- Set Data::General for autologon");
+		_config->bypassPrivacyIDEA = true;
 	}
 
-	if (config.endpoint.status == ENDPOINT_STATUS_NOT_SET && config.general.bypassEndpoint == false)
-	{
-		// Something went wrong
 
-	}
-
-	if (config.endpoint.userCanceled)
+	if (_config->userCanceled)
 	{
-		//Hook::Serialization::EndpointCallCancelled();
-		*config.provider.status_icon = CPSI_ERROR;
-		*config.provider.pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
-		SHStrDupW(L"Logon cancelled", config.provider.status_text);
+		*_config->provider.status_icon = CPSI_ERROR;
+		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
+		SHStrDupW(L"Logon cancelled", _config->provider.status_text);
 		return S_FALSE;
 	}
-
-	if (config.endpoint.status == ENDPOINT_STATUS_AUTH_CONTINUE && config.challenge_response.pushAuthenticationSuccessful == false)
+	// Check if we are pre 2nd step
+	if (_config->authenticationSuccessful == false && _config->pushAuthenticationSuccessful == false)
 	{
 		// Prepare for the second step (input only OTP)
-		Configuration::Get().general.clearFields = false;
-		General::Fields::SetScenario(config.provider.pCredProvCredential, config.provider.pCredProvCredentialEvents,
-			General::Fields::SCENARIO_SECOND_STEP, NULL, L"Please enter your second factor:");
-		*config.provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-
-		if (config.challenge_response.usingPushToken)
-		{
-			//_pCredProvCredentialEvents->SetFieldState(config.provider.pCredProvCredential, LPFI_PUSH_COMMAND_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
-			// If push token is used, start polling
-			//future<HRESULT> futurePollingResult = std::async(_endpoint.pollForTransaction, config.challenge_response.transactionID);
-			/*if (SUCCEEDED(res))
-			{
-				// If successful, skip to login
-				config.endpoint.status = ENDPOINT_STATUS_AUTH_OK;
-				//config.general.bypassEndpoint = true;
-			} */
-		}
+		_config->clearFields = false;
+		_util.SetScenario(_config->provider.pCredProvCredential,
+			_config->provider.pCredProvCredentialEvents,
+			SCENARIO::SECOND_STEP, std::wstring(), L"Please enter your second factor:");
+		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 	}
-	else if (config.endpoint.status == ENDPOINT_STATUS_AUTH_OK || config.general.bypassEndpoint || config.challenge_response.pushAuthenticationSuccessful)
+	// It is the final step -> try to log in
+	else if (_config->authenticationSuccessful || _config->pushAuthenticationSuccessful || _config->bypassPrivacyIDEA)
 	{
-		// LOG IN
-		if (config.endpoint.status == ENDPOINT_STATUS_AUTH_OK)
+		if (_piStatus == PI_AUTH_SUCCESS)
 		{
 			// If windows password is wrong, treat it as new logon
-			config.isSecondStep = false;
-			config.endpoint.status = ENDPOINT_STATUS_NOT_SET;
+			_config->isSecondStep = false;
+			_piStatus = PI_STATUS_NOT_SET;
 		}
 
-		if (config.provider.usage_scenario == CPUS_CREDUI)
+		if (_config->provider.cpu == CPUS_CREDUI)
 		{
-			hr = General::Logon::CredPackAuthentication(pcpgsr, pcpcs, config.provider.usage_scenario, currentUsername,
+			hr = _util.CredPackAuthentication(pcpgsr, pcpcs, _config->provider.cpu,
+				currentUsername,
 				currentPassword, currentDomain);
 		}
 		else
 		{
-			hr = General::Logon::KerberosLogon(pcpgsr, pcpcs, config.provider.usage_scenario, currentUsername,
+			hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
+				currentUsername,
 				currentPassword, currentDomain);
 		}
 		if (SUCCEEDED(hr))
 		{
-			if (config.credential.passwordChanged) { config.credential.passwordChanged = false; }
-			//HOOK_CHECK_CRITICAL(Hook::Serialization::KerberosCallSuccessfull(), CleanUpAndReturn);
+			if (_config->credential.passwordChanged)
+				_config->credential.passwordChanged = false;
 		}
 		else
 		{
-			//HOOK_CHECK_CRITICAL(Hook::Serialization::KerberosCallFailed(), CleanUpAndReturn);
 			retVal = S_FALSE;
 		}
 	}
-	else if (config.endpoint.status == ENDPOINT_STATUS_AUTH_FAIL)
+	else if (_piStatus == PI_AUTH_FAILURE) // TODO
 	{
-		wstring otpFailureText = config.otpFailureText.empty() ? L"Wrong One-Time-Password!" : config.otpFailureText;
-		SHStrDupW(otpFailureText.c_str(), config.provider.status_text);
-		*config.provider.status_icon = CPSI_ERROR;
-		*config.provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+		wstring otpFailureText = _config->otpFailureText.empty() ? L"Wrong One-Time-Password!" : _config->otpFailureText;
+		SHStrDupW(otpFailureText.c_str(), _config->provider.status_text);
+		*_config->provider.status_icon = CPSI_ERROR;
+		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 	}
 	else
 	{
-		//HOOK_CHECK_CRITICAL(Hook::Serialization::EndpointCallFailed(), CleanUpAndReturn);
-		Hook::Serialization::EndpointCallFailed();
+		wstring message = L"Unexpected Error";
+		/*
+		switch (_endpointStatus)
+		{
+			case ENDPOINT_STATUS_AUTH_FAIL: message = L"Wrong otp";
+		} */// TODO
+
+		// Display the error message and icon
+		SHStrDupW(message.c_str(), _config->provider.status_text);
+		*_config->provider.status_icon = CPSI_ERROR;
+
 		// Jump to the first login window
-		Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
+		_util.ResetScenario(this, _pCredProvCredentialEvents);
 		retVal = S_FALSE;
 	}
 
-	if (config.general.clearFields)
+	if (_config->clearFields)
 	{
-		General::Fields::Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
+		_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
 	}
 	else
 	{
-		config.general.clearFields = true; // it's a one-timer...
+		_config->clearFields = true; // it's a one-timer...
 	}
 
-	// Reset endpoint status 
-	config.endpoint.status = ENDPOINT_STATUS_NOT_SET;
+	// Reset privacyIDEA status 
+	_piStatus = PI_STATUS_NOT_SET;
 
-	////////////// DEBUG
+#ifdef _DEBUG
 	if (pcpgsr)
 	{
-		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { DebugPrintLn("CPGSR_NO_CREDENTIAL_FINISHED"); }
-		if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { DebugPrintLn("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
-		if (*pcpgsr == CPGSR_RETURN_CREDENTIAL_FINISHED) { DebugPrintLn("CPGSR_RETURN_CREDENTIAL_FINISHED"); }
-		if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrintLn("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
+		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_FINISHED"); }
+		if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
+		if (*pcpgsr == CPGSR_RETURN_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_CREDENTIAL_FINISHED"); }
+		if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
 	}
-	else { DebugPrintLn("pcpgsr is a nullpointer!"); }
-	DebugPrintLn("CCredential::GetSerialization - END");
-	///////////////////////////////////
+	else { DebugPrint("pcpgsr is a nullpointer!"); }
+	DebugPrint("CCredential::GetSerialization - END");
+#endif //_DEBUG
 	return retVal;
+}
+
+// If push is successful, reset the credential to set autologin in 
+void CCredential::pushAuthenticationCallback(bool success)
+{
+	DebugPrint(__FUNCTION__);
+	if (success)
+	{
+		_config->pushAuthenticationSuccessful = true;
+		// When autologon is triggered, connect is called instantly, therefore bypass privacyIDEA on next run
+		_config->bypassPrivacyIDEA = true;
+		_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+	}
 }
 
 // Connect is called first after the submit button is pressed.
 HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
-	auto& config = Configuration::Get();
-	if (!config.realm_map.empty())
+	_config->pQueryContinueWithStatus = pqcws;
+
+	_config->provider.pCredProvCredential = this;
+	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
+	_config->provider.field_strings = _rgFieldStrings;
+	_config->provider.num_field_strings = Utilities::CredentialFieldCountFor(_config->provider.cpu);
+	_util.ReadFieldValues();
+
+	if (_config->bypassPrivacyIDEA == false)
 	{
-		DebugPrintLn("Realm Map:");
-		for (auto& entry : config.realm_map)
+		if (_config->twoStepHideOTP && !_config->isSecondStep)
 		{
-			DebugPrintLn(entry.first + L"=" + entry.second);
-		}
-	}
-
-	config.endpoint.pQueryContinueWithStatus = pqcws;
-
-	config.provider.pCredProvCredential = this;
-	config.provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
-	config.provider.field_strings = _rgFieldStrings;
-	config.provider.num_field_strings = General::Fields::GetCurrentNumFields();
-
-	Hook::Serialization::ReadFieldValues();
-
-	if (config.general.bypassEndpoint == false || config.challenge_response.pushAuthenticationSuccessful == true)
-	{
-		// TODO: CALL ENDPOINT - ENDPOINT STATUS DEICIDES HOW TO CONTINUE (2STEP ETC), remove sending password/empty
-		if (config.twoStepHideOTP && !config.isSecondStep)
-		{
-			if (!config.twoStepSendEmptyPassword && !config.twoStepSendPassword)
+			if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 			{
 				// Delay for a short moment, otherwise logonui crashes (???)
 				this_thread::sleep_for(chrono::milliseconds(200));
 				// Then skip to next step
-				config.isSecondStep = true;
-				config.endpoint.status = ENDPOINT_STATUS_AUTH_CONTINUE;
 			}
-			else if (config.twoStepSendEmptyPassword && !config.twoStepSendPassword)
+			else if (_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 			{
 				// Send an empty pass in the FIRST step
-				map<string, string> params;
-				params.try_emplace("user", Helper::ws2s(config.credential.user_name));
-				params.try_emplace("pass", "");
-				checkForRealm(params);
-				string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
-				config.isSecondStep = true;
-				config.endpoint.status = ENDPOINT_STATUS_AUTH_CONTINUE;
+				_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain, L"");
+				if (_piStatus == PI_TRIGGERED_CHALLENGE)
+				{
+					// TODO do same with triggered challenge?
+				}
 			}
-			else if (!config.twoStepSendEmptyPassword && config.twoStepSendPassword)
+			else if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
 			{
 				// Send the windows password in the first step, which may trigger challenges
-				map<string, string> params;
-				params.try_emplace("user", Helper::ws2s(config.credential.user_name));
-				params.try_emplace("pass", Helper::ws2s(config.credential.password));
-				checkForRealm(params);
-
-				string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
-				_endpoint.parseTriggerRequest(response);
-
-				config.isSecondStep = true;
-				config.endpoint.status = ENDPOINT_STATUS_AUTH_CONTINUE;
-
-				// if both pushtoken and classic OTP are available, start the polling in background
-				if (config.challenge_response.tta == TTA::BOTH)
+				_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain,
+					_config->credential.password);
+				if (_piStatus == PI_TRIGGERED_CHALLENGE)
 				{
-					_pollResult = std::async(std::launch::async, &Endpoint::pollForTransactionWithLoop, &_endpoint, config.challenge_response.transactionID);
-					//_pollResult = std::async(std::launch::async, poll, config.challenge_response.transactionID);
-				}
-				// if only push is available, start polling in main thread
-				// TODO cancel button??
-				else if (config.challenge_response.tta == TTA::PUSH)
-				{
-					HRESULT res = E_FAIL;
-					pqcws->SetStatusMessage(L"Please confirm the authentication on your mobile device!");
-					while (res != ENDPOINT_STATUS_AUTH_OK)
+					Challenge c = _privacyIDEA.getCurrentChallenge();
+					_config->challenge = c;
+					if (!c.transaction_id.empty())
 					{
-						res = _endpoint.pollForTransactionSingle(config.challenge_response.transactionID);
+						// Set a message in any case
+						wstring msg = c.getAggregatedMessage();
+						if (!msg.empty())
+							pqcws->SetStatusMessage(msg.c_str());
+						else
+							pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
+
+						// if both pushtoken and classic OTP are available, start polling in background
+						if (c.tta == TTA::BOTH)
+						{
+							// When polling finishes, pushauthenticationsuccess has to be set, then resetscenario has to be called
+							_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
+								std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
+						}
+						// if only push is available, start polling in main thread 
+						else if (c.tta == TTA::PUSH)
+						{
+							while (_piStatus != PI_TRANSACTION_SUCCESS)
+							{
+								_piStatus = _privacyIDEA.pollTransaction(c.transaction_id);
+
+								this_thread::sleep_for(300ms);
+
+								if (pqcws->QueryContinue() != S_OK) //TODO cancel button??
+								{
+									_config->userCanceled = true;
+									break;
+								}
+							}
+
+							_piStatus = (_piStatus == PI_TRANSACTION_SUCCESS) ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
+							if (_piStatus == PI_AUTH_SUCCESS) _config->authenticationSuccessful = true;
+						}
 					}
-					// When polling returns as successful, the authentication must be finialized
-					res = _endpoint.finalizePolling(Helper::ws2s(config.credential.user_name), config.challenge_response.transactionID);
-					if (res == ENDPOINT_STATUS_AUTH_OK) {
-						config.endpoint.status = ENDPOINT_STATUS_AUTH_OK;
-						config.challenge_response.pushAuthenticationSuccessful = true;
+					else
+					{
+						DebugPrint("Triggering challenge returned no transaction_id");
 					}
 				}
 				else
@@ -1043,44 +1051,40 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 			else
 			{
-				DebugPrintLn("UNKNOWN STATE:");
-				config.isSecondStep;
+				DebugPrint("UNKNOWN STATE IN CCREDENTIAL::CONNECT");
 			}
+			_config->isSecondStep = true;
 		}
 		//////////////////// SECOND STEP ////////////////////////
-		else if (config.twoStepHideOTP && config.isSecondStep)
+		else if (_config->twoStepHideOTP && _config->isSecondStep)
 		{
-			//if (config.challenge_response.tta == TTA::BOTH || config.challenge_response.tta == TTA::PUSH)
-			//{
-
-			//}
-			//else
-			//{ 
-			// Send username and OTP in SECOND step
-			map<string, string> params;
-			params.try_emplace("user", Helper::ws2s(config.credential.user_name));
-			params.try_emplace("pass", Helper::ws2s(config.credential.otp));
-			checkForRealm(params);
-
-			string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
-			config.endpoint.status = _endpoint.parseAuthenticationRequest(response);
-			//}
-
+			// Send with optional transaction_id from first step
+			_piStatus = _privacyIDEA.validateCheck(
+				PrivacyIDEA::ws2s(_config->credential.username),
+				PrivacyIDEA::ws2s(_config->credential.domain),
+				PrivacyIDEA::ws2s(_config->credential.otp),
+				_config->challenge.transaction_id);
+			if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
+			{
+				_config->authenticationSuccessful = true;
+			}
 		}
 		//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 		else
 		{
-			map<string, string> params;
-			params.try_emplace("user", Helper::ws2s(config.credential.user_name));
-			params.try_emplace("pass", Helper::ws2s(config.credential.otp));
-			checkForRealm(params);
-
-			string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
-			config.endpoint.status = _endpoint.parseAuthenticationRequest(response);
+			_piStatus = _privacyIDEA.validateCheck(_config->credential.username,
+				_config->credential.domain, _config->credential.otp);
+			if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
+			{
+				_config->authenticationSuccessful = true;
+			}
 		}
 	}
-	config.endpoint.pQueryContinueWithStatus = nullptr;
-	DebugPrintLn("Connect - END");
+	else
+		DebugPrint("bypassing privacyIDEA...");
+
+	_config->pQueryContinueWithStatus = nullptr;
+	DebugPrint("Connect - END");
 	return S_OK; // always S_OK
 }
 
@@ -1101,21 +1105,28 @@ HRESULT CCredential::ReportResult(
 )
 {
 #ifdef _DEBUG
-	DebugPrintLn(__FUNCTION__);
-	DebugPrintLn("ntsStatus:");
-	DebugPrintLn(ntsStatus);
-	DebugPrintLn("ntsSubstatus:");
-	DebugPrintLn(ntsSubstatus);
+	DebugPrint(__FUNCTION__);
+	// only print interesting statuses
+	if (ntsStatus != 0)
+	{
+		DebugPrint("ntsStatus:");
+		DebugPrint(ntsStatus);
+	}
+	if (ntsSubstatus != 0)
+	{
+		DebugPrint("ntsSubstatus:");
+		DebugPrint(ntsSubstatus);
+	}
 #endif
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
-	Configuration::Get().credential.passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
+	_config->credential.passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
 
-	if (Configuration::Get().credential.passwordMustChange)
+	if (_config->credential.passwordMustChange)
 	{
-		DebugPrintLn("Status: Password must change");
+		DebugPrint("Status: Password must change");
 		return E_NOTIMPL;
 	}
 
@@ -1124,7 +1135,7 @@ HRESULT CCredential::ReportResult(
 	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD);
 	if (pwNotUpdated)
 	{
-		DebugPrintLn("Status: Password update failed: Not conform to policies");
+		DebugPrint("Status: Password update failed: Not conform to policies");
 	}
 	// this catches the wrong old password, 
 	pwNotUpdated = pwNotUpdated || ((ntsStatus == STATUS_LOGON_FAILURE) && (ntsSubstatus == STATUS_INTERNAL_ERROR));
@@ -1132,15 +1143,13 @@ HRESULT CCredential::ReportResult(
 	if (pwNotUpdated)
 	{
 		// it wasn't updated so we start over again
-		Configuration::Get().credential.passwordMustChange = true;
-		Configuration::Get().credential.passwordChanged = false;
+		_config->credential.passwordMustChange = true;
+		_config->credential.passwordChanged = false;
 	}
 
 	if (ntsStatus == STATUS_LOGON_FAILURE && !pwNotUpdated)
 	{
-		Hook::CredentialHooks::ResetScenario(this, _pCredProvCredentialEvents);
+		_util.ResetScenario(this, _pCredProvCredentialEvents);
 	}
 	return E_NOTIMPL;
 }
-
-

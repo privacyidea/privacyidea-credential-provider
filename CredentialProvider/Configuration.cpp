@@ -18,40 +18,23 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "Configuration.h"
+#include "Utilities.h"
 #include "version.h"
 #include "Logger.h"
-#include "../CredentialProvider/core/helper.h"
 #include <Windows.h>
 #include <iostream>
+#include <tchar.h>
+
+#define MAX_KEY_LENGTH 255
+#define MAX_VALUE_NAME 1024
 
 using namespace std;
 
 Configuration::Configuration()
 {
-	bitmapPath = getRegistry(L"v1_bitmap_path");
-	loginText = getRegistry(L"login_text");
-	otpText = getRegistry(L"otp_text");
-	otpFailureText = getRegistry(L"otp_fail_text");
+	loadRegistry();
 
-	twoStepHideOTP = getBoolRegistry(L"two_step_hide_otp");
-	twoStepSendEmptyPassword = getBoolRegistry(L"two_step_send_empty_password");
-	twoStepSendPassword = getBoolRegistry(L"two_step_send_password");
-
-	releaseLog = getBoolRegistry(L"release_log");
-	logSensitive = getBoolRegistry(L"log_sensitive");
-
-	hideDomainName = getBoolRegistry(L"hide_domainname");
-	hideFullName = getBoolRegistry(L"hide_fullname");
-	hide_otp_sleep_s = getIntRegistry(L"hide_otp_sleep_s");
-
-	// Check if the path contains the placeholder, if so replace with nothing
-	auto tmp = getRegistry(L"path");
-	endpoint.path = (tmp == L"/path/to/pi" ? L"" : tmp);
-
-	endpoint.hostname = getRegistry(L"hostname");
-	endpoint.sslIgnoreCA = getBoolRegistry(L"ssl_ignore_unknown_ca");
-	endpoint.sslIgnoreCN = getBoolRegistry(L"ssl_ignore_invalid_cn");
-	endpoint.customPort = getIntRegistry(L"custom_port");
+	loadMapping();
 
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
@@ -78,16 +61,44 @@ Configuration::Configuration()
 	winVerMajor = info.dwMajorVersion;
 	winVerMinor = info.dwMinorVersion;
 	winBuildNr = info.dwBuildNumber;
-
-	loadMapping();
 }
 
-#define MAX_KEY_LENGTH 255
-#define MAX_VALUE_NAME 1024
-
-void Configuration::loadMapping()
+bool Configuration::loadRegistry()
 {
-	default_realm = getRegistry(L"default_realm");
+	// Credential Provider specific config
+	bitmapPath = getRegistry(L"v1_bitmap_path");
+	loginText = getRegistry(L"login_text");
+	otpFieldText = getRegistry(L"otp_text");
+	otpFailureText = getRegistry(L"otp_fail_text");
+
+	twoStepHideOTP = getBoolRegistry(L"two_step_hide_otp");
+	twoStepSendEmptyPassword = getBoolRegistry(L"two_step_send_empty_password");
+	twoStepSendPassword = getBoolRegistry(L"two_step_send_password");
+
+	releaseLog = getBoolRegistry(L"release_log");
+	logSensitive = getBoolRegistry(L"log_sensitive");
+
+	hideDomainName = getBoolRegistry(L"hide_domainname");
+	hideFullName = getBoolRegistry(L"hide_fullname");
+	hide_otp_sleep_s = getIntRegistry(L"hide_otp_sleep_s");
+
+
+	// Config for PrivacyIDEA
+	piconfig.hostname = getRegistry(L"hostname");
+	// Check if the path contains the placeholder, if so replace with nothing
+	auto tmp = getRegistry(L"path");
+	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
+
+	piconfig.ignoreUnknownCA = getBoolRegistry(L"ssl_ignore_unknown_ca");
+	piconfig.ignoreInvalidCN = getBoolRegistry(L"ssl_ignore_invalid_cn");
+	piconfig.customPort = getIntRegistry(L"custom_port");
+
+	return true;
+}
+
+bool Configuration::loadMapping()
+{
+	piconfig.defaultRealm = getRegistry(L"default_realm");
 
 	// Open handle to realm-mapping key
 	HKEY hKey = nullptr;
@@ -98,21 +109,21 @@ void Configuration::loadMapping()
 		KEY_READ,
 		&hKey) != ERROR_SUCCESS)
 	{
-		return;
+		return false;
 	}
 
-	WCHAR    achKey[MAX_KEY_LENGTH];   // buffer for subkey name
-	DWORD    cbName;                   // size of name string 
-	WCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name 
-	DWORD    cchClassName = MAX_PATH;  // size of class string 
-	DWORD    cSubKeys = 0;               // number of subkeys 
-	DWORD    cbMaxSubKey;              // longest subkey size 
-	DWORD    cchMaxClass;              // longest class string 
-	DWORD    cValues;              // number of values for key 
-	DWORD    cchMaxValue;          // longest value name 
-	DWORD    cbMaxValueData;       // longest value data 
-	DWORD    cbSecurityDescriptor; // size of security descriptor 
-	FILETIME ftLastWriteTime;      // last write time 
+	//WCHAR    achKey[MAX_KEY_LENGTH];		// buffer for subkey name
+	//DWORD    cbName;						// size of name string 
+	WCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name 
+	DWORD    cchClassName = MAX_PATH;		// size of class string 
+	DWORD    cSubKeys = 0;					// number of subkeys 
+	DWORD    cbMaxSubKey;					// longest subkey size 
+	DWORD    cchMaxClass;					// longest class string 
+	DWORD    cValues;						// number of values for key 
+	DWORD    cchMaxValue;					// longest value name 
+	DWORD    cbMaxValueData;				// longest value data 
+	DWORD    cbSecurityDescriptor;			// size of security descriptor 
+	FILETIME ftLastWriteTime;				// last write time 
 
 	DWORD i, retCode;
 
@@ -169,13 +180,15 @@ void Configuration::loadMapping()
 					if (dwType == REG_SZ)
 					{
 						wstring data(szData);
-						realm_map.try_emplace(value, data);
+						piconfig.realmMap.try_emplace(value, data);
 					}
 				}
 			}
 		}
 	}
 	RegCloseKey(hKey);
+
+	return true;
 }
 
 bool Configuration::getBoolRegistry(wstring name)
@@ -230,47 +243,47 @@ wstring Configuration::getRegistry(wstring name)
 	return wstring(szValue);
 }
 
-inline const wstring b2ws(bool b) {
+wstring b2ws(bool b) {
 	return b ? L"true" : L"false";
 }
 
-void Configuration::printConfig()
+void Configuration::printConfiguration()
 {
 	string version(VER_FILE_VERSION_STR);
-	wstring tmp = L"Credential Provider Version: " + Helper::s2ws(version);
-	DebugPrintLn(tmp.c_str());
-	tmp = L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
+	string stmp = "Credential Provider Version: " + version;
+	DebugPrint(stmp.c_str());
+	wstring tmp = L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
 		+ L"." + to_wstring(winBuildNr);
-	DebugPrintLn(tmp.c_str());
-	DebugPrintLn("----- Configuration -----");
-	tmp = L"Hostname: " + endpoint.hostname;
-	DebugPrintLn(tmp.c_str());
-	tmp = L"Path: " + endpoint.path;
-	DebugPrintLn(tmp.c_str());
-	tmp = L"Custom port:" + to_wstring(endpoint.customPort);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
+	DebugPrint("----- Configuration -----");
+	tmp = L"Hostname: " + piconfig.hostname;
+	DebugPrint(tmp.c_str());
+	tmp = L"Path: " + piconfig.path;
+	DebugPrint(tmp.c_str());
+	tmp = L"Custom port:" + to_wstring(piconfig.customPort);
+	DebugPrint(tmp.c_str());
 	tmp = L"Login text: " + loginText;
-	DebugPrintLn(tmp.c_str());
-	tmp = L"OTP field text: " + otpText;
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
+	tmp = L"OTP field text: " + otpFieldText;
+	DebugPrint(tmp.c_str());
 	tmp = L"Hide domain only: " + b2ws(hideDomainName);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 	tmp = L"Hide full name: " + b2ws(hideFullName);
-	DebugPrintLn(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(endpoint.sslIgnoreCN);
-	DebugPrintLn(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(endpoint.sslIgnoreCN);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
+	tmp = L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreUnknownCA);
+	DebugPrint(tmp.c_str());
+	tmp = L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreInvalidCN);
+	DebugPrint(tmp.c_str());
 	tmp = L"2step hide OTP: " + b2ws(twoStepHideOTP);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 	tmp = L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 	tmp = L"2step send domain PW: " + b2ws(twoStepSendPassword);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 	tmp = L"Release Log: " + b2ws(releaseLog);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 	tmp = L"No default: " + b2ws(noDefault);
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 	tmp = L"Bitmap path: " + bitmapPath;
-	DebugPrintLn(tmp.c_str());
+	DebugPrint(tmp.c_str());
 }

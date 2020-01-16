@@ -20,40 +20,40 @@
 **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <credentialprovider.h>
 #include "CProvider.h"
 #include "version.h"
 #include "Logger.h"
 #include "Configuration.h"
+#include "../scenarios.h"
+#include <credentialprovider.h>
+#include <tchar.h>
 
 using namespace std;
 
-// CProvider ////////////////////////////////////////////////////////
-
 CProvider::CProvider() :
 	_cRef(1),
-	_pkiulSetSerialization(NULL),
-	_pccCredential(NULL),
-	//_dwNumCreds(0),
-	_bAutoSubmitSetSerializationCred(false),
+	_pkiulSetSerialization(nullptr),
 	_dwSetSerializationCred(CREDENTIAL_PROVIDER_NO_DEFAULT)
 {
 	DllAddRef();
-	Configuration::Get(); // Init config
+
+	_config = std::make_shared<Configuration>();
+	Logger::Get().releaseLog = _config->releaseLog;
 }
 
 CProvider::~CProvider()
 {
-	if (_pccCredential != NULL)
+	if (_credential != NULL)
 	{
-		_pccCredential->Release();
+		_credential->Release();
 	}
 	DllRelease();
 }
 
 void CProvider::_CleanupSetSerialization()
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
+
 
 	if (_pkiulSetSerialization)
 	{
@@ -77,14 +77,14 @@ HRESULT CProvider::SetUsageScenario(
 )
 {
 #ifdef _DEBUG
-	DebugPrintLn(__FUNCTION__);
-	DebugPrintLn(cpus);
-	Configuration::Get().printConfig();
+	DebugPrint(__FUNCTION__);
+	DebugPrint(cpus);
+	_config->printConfiguration();
 #endif
 	HRESULT hr = E_INVALIDARG;
-	
-	Configuration::Get().provider.credPackFlags = dwFlags;
-	Configuration::Get().provider.usage_scenario = cpus;
+
+	_config->provider.credPackFlags = dwFlags;
+	_config->provider.cpu = cpus;
 
 	// Decide which scenarios to support here. Returning E_NOTIMPL simply tells the caller
 	// that we're not designed for that scenario.
@@ -105,9 +105,9 @@ HRESULT CProvider::SetUsageScenario(
 		break;
 	case CPUS_CREDUI:
 		// turn off two step in case of CredUI
-		Configuration::Get().twoStepHideOTP = 0;
-		Configuration::Get().twoStepSendEmptyPassword = 0;
-		Configuration::Get().twoStepSendPassword = 0;
+		_config->twoStepHideOTP = 0;
+		_config->twoStepSendEmptyPassword = 0;
+		_config->twoStepSendPassword = 0;
 		hr = S_OK;
 		break;
 
@@ -121,8 +121,8 @@ HRESULT CProvider::SetUsageScenario(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrintLn("CSample_CreateInstance Result:");
-	DebugPrintLn(hr);
+	DebugPrint("CSample_CreateInstance Result:");
+	DebugPrint(hr);
 
 	return hr;
 }
@@ -130,17 +130,17 @@ HRESULT CProvider::SetUsageScenario(
 #define TERMINAL_SERVER_KEY _T("SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\")
 #define GLASS_SESSION_ID    _T("GlassSessionId")
 
-BOOL IsCurrentSessionRemoteable()
+BOOL CProvider::IsCurrentSessionRemoteable()
 {
 	BOOL fIsRemoteable = FALSE;
-	DebugPrintLn("check for remote session...");
+	DebugPrint("check for remote session...");
 	if (GetSystemMetrics(SM_REMOTESESSION))
 	{
 		fIsRemoteable = TRUE;
 	}
 	else
 	{
-		HKEY hRegKey = NULL;
+		HKEY hRegKey = nullptr;
 		LONG lResult;
 
 		lResult = RegOpenKeyEx(
@@ -153,16 +153,16 @@ BOOL IsCurrentSessionRemoteable()
 
 		if (lResult == ERROR_SUCCESS)
 		{
-			DWORD dwGlassSessionId;
+			DWORD dwGlassSessionId = 0;
 			DWORD cbGlassSessionId = sizeof(dwGlassSessionId);
-			DWORD dwType;
+			DWORD dwType = 0;
 
 			lResult = RegQueryValueEx(
 				hRegKey,
 				GLASS_SESSION_ID,
 				NULL, // lpReserved
 				&dwType,
-				(BYTE*)& dwGlassSessionId,
+				(BYTE*)&dwGlassSessionId,
 				&cbGlassSessionId
 			);
 
@@ -184,11 +184,11 @@ BOOL IsCurrentSessionRemoteable()
 	}
 	if (fIsRemoteable)
 	{
-		DebugPrintLn("... returning - is remote session!");
+		DebugPrint("... returning - is remote session!");
 	}
 	else
 	{
-		DebugPrintLn("... returning - is not remote session!");
+		DebugPrint("... returning - is not remote session!");
 	}
 	return fIsRemoteable;
 }
@@ -210,31 +210,31 @@ HRESULT CProvider::SetSerialization(
 	__in const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 	HRESULT result = E_NOTIMPL;
 	ULONG authPackage = NULL;
 	result = RetrieveNegotiateAuthPackage(&authPackage);
 
 	if (!SUCCEEDED(result))
 	{
-		DebugPrintLn("Failed to retrieve authPackage");
+		DebugPrint("Failed to retrieve authPackage");
 		return result;
 	}
 
-	if (Configuration::Get().provider.usage_scenario == CPUS_CREDUI)
+	if (_config->provider.cpu == CPUS_CREDUI)
 	{
-		DebugPrintLn("CPUS_CREDUI");
+		DebugPrint("CPUS_CREDUI");
 
-		if (((Configuration::Get().provider.credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (Configuration::Get().provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY))
+		if (((_config->provider.credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (_config->provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY))
 			&& authPackage != pcpcs->ulAuthenticationPackage)
 		{
-			DebugPrintLn("authPackage invalid");
+			DebugPrint("authPackage invalid");
 			return E_INVALIDARG;
 		}
 
-		if (Configuration::Get().provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY)
+		if (_config->provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY)
 		{
-			DebugPrintLn("CPUS_CREDUI but not CREDUIWIN_AUTHPACKAGE_ONLY");
+			DebugPrint("CPUS_CREDUI but not CREDUIWIN_AUTHPACKAGE_ONLY");
 			result = S_FALSE;
 		}
 	}
@@ -246,11 +246,11 @@ HRESULT CProvider::SetSerialization(
 		{
 			if (pkil->Logon.UserName.Length && pkil->Logon.UserName.Buffer)
 			{
-				BYTE* nativeSerialization = NULL;
+				BYTE* nativeSerialization = nullptr;
 				DWORD nativeSerializationSize = 0;
-				DebugPrintLn("Serialization found from remote");
+				DebugPrint("Serialization found from remote");
 
-				if (Configuration::Get().provider.credPackFlags == CPUS_CREDUI && (Configuration::Get().provider.credPackFlags & CREDUIWIN_PACK_32_WOW))
+				if (_config->provider.credPackFlags == CPUS_CREDUI && (_config->provider.credPackFlags & CREDUIWIN_PACK_32_WOW))
 				{
 					if (!SUCCEEDED(KerbInteractiveUnlockLogonRepackNative(pcpcs->rgbSerialization, pcpcs->cbSerialization,
 						&nativeSerialization, &nativeSerializationSize)))
@@ -280,7 +280,7 @@ HRESULT CProvider::SetSerialization(
 			}
 		}
 	}
-	DebugPrintLn(result);
+	DebugPrint(result);
 
 	return result;
 }
@@ -292,17 +292,17 @@ HRESULT CProvider::Advise(
 	__in UINT_PTR upAdviseContext
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
-	if (Configuration::Get().provider._pCredentialProviderEvents != NULL)
+	if (_config->provider.pCredentialProviderEvents != NULL)
 	{
-		Configuration::Get().provider._pCredentialProviderEvents->Release();
+		_config->provider.pCredentialProviderEvents->Release();
 	}
 
-	Configuration::Get().provider._pCredentialProviderEvents = pcpe;
-	Configuration::Get().provider._pCredentialProviderEvents->AddRef();
+	_config->provider.pCredentialProviderEvents = pcpe;
+	_config->provider.pCredentialProviderEvents->AddRef();
 
-	Configuration::Get().provider._upAdviseContext = upAdviseContext;
+	_config->provider.upAdviseContext = upAdviseContext;
 
 	return S_OK;
 }
@@ -310,15 +310,15 @@ HRESULT CProvider::Advise(
 // Called by LogonUI when the ICredentialProviderEvents callback is no longer valid.
 HRESULT CProvider::UnAdvise()
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
-	if (Configuration::Get().provider._pCredentialProviderEvents != NULL)
+	if (_config->provider.pCredentialProviderEvents != NULL)
 	{
-		Configuration::Get().provider._pCredentialProviderEvents->Release();
+		_config->provider.pCredentialProviderEvents->Release();
 	}
 
-	Configuration::Get().provider._pCredentialProviderEvents = NULL;
-	Configuration::Get().provider._upAdviseContext = NULL;
+	_config->provider.pCredentialProviderEvents = NULL;
+	_config->provider.upAdviseContext = NULL;
 
 	return S_OK;
 }
@@ -333,9 +333,9 @@ HRESULT CProvider::GetFieldDescriptorCount(
 	__out DWORD* pdwCount
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
-	*pdwCount = General::Fields::GetCurrentNumFields();
+	*pdwCount = Utilities::CredentialFieldCountFor(_config->provider.cpu);
 
 	return S_OK;
 }
@@ -347,14 +347,14 @@ HRESULT CProvider::GetFieldDescriptorAt(
 )
 {
 	//DebugPrintLn(__FUNCTION__);
-
 	HRESULT hr;
+	if (!_config->provider.cpu) return E_FAIL;
 
 	// Verify dwIndex is a valid field.
-	if ((dwIndex < General::Fields::GetCurrentNumFields()) && ppcpfd)
+	if ((dwIndex < s_rgCredProvNumFieldsFor[_config->provider.cpu]) && ppcpfd)
 	{
-		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[Configuration::Get().provider.usage_scenario][dwIndex],
-			ppcpfd);
+		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[_config->provider.cpu][dwIndex],
+			ppcpfd, _config->otpFieldText);
 	}
 	else
 	{
@@ -380,14 +380,14 @@ HRESULT CProvider::GetCredentialCount(
 	__out BOOL* pbAutoLogonWithDefault
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
 	HRESULT hr = S_OK;
 
 	*pdwCount = 1; //_dwNumCreds;
 	*pdwDefault = 0; // this means we want to be the default
 	*pbAutoLogonWithDefault = FALSE;
-	if (Configuration::Get().noDefault)
+	if (_config->noDefault)
 	{
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
 	}
@@ -397,7 +397,7 @@ HRESULT CProvider::GetCredentialCount(
 	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
 	{
 		*pdwDefault = 0;
-		if (IsCurrentSessionRemoteable() && !Configuration::Get().twoStepHideOTP)
+		if (IsCurrentSessionRemoteable() && !_config->twoStepHideOTP)
 		{
 			*pbAutoLogonWithDefault = FALSE;
 		}
@@ -407,7 +407,7 @@ HRESULT CProvider::GetCredentialCount(
 		}
 	}
 
-	DebugPrintLn(hr);
+	DebugPrint(hr);
 	return hr;
 }
 
@@ -418,26 +418,26 @@ HRESULT CProvider::GetCredentialAt(
 	__deref_out ICredentialProviderCredential** ppcpc
 )
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
 	HRESULT hr = E_FAIL;
-	const CREDENTIAL_PROVIDER_USAGE_SCENARIO usage_scenario = Configuration::Get().provider.usage_scenario;
+	const CREDENTIAL_PROVIDER_USAGE_SCENARIO usage_scenario = _config->provider.cpu;
 
 
-	if (!_pccCredential)
+	if (!_credential)
 	{
-		DebugPrintLn("Checking for serialized credentials");
+		DebugPrint("Checking for serialized credentials");
 
 		PWSTR serializedUser, serializedPass, serializedDomain;
 		_GetSerializedCredentials(&serializedUser, &serializedPass, &serializedDomain);
 
-		DebugPrintLn("Checking for missing credentials");
+		DebugPrint("Checking for missing credentials");
 
 		if (usage_scenario == CPUS_UNLOCK_WORKSTATION && serializedUser == NULL)
 		{
 			if (serializedUser == NULL)
 			{
-				DebugPrintLn("Looking-up missing user name from session");
+				DebugPrint("Looking-up missing user name from session");
 
 				DWORD dwLen;
 
@@ -453,7 +453,7 @@ HRESULT CProvider::GetCredentialAt(
 
 			if (serializedDomain == NULL)
 			{
-				DebugPrintLn("Looking-up missing domain name from session");
+				DebugPrint("Looking-up missing domain name from session");
 
 				DWORD dwLen;
 
@@ -471,7 +471,7 @@ HRESULT CProvider::GetCredentialAt(
 		{
 			if (serializedDomain == NULL)
 			{
-				DebugPrintLn("Looking-up missing domain name from computer");
+				DebugPrint("Looking-up missing domain name from computer");
 
 				NETSETUP_JOIN_STATUS join_status;
 
@@ -482,55 +482,56 @@ HRESULT CProvider::GetCredentialAt(
 				{
 					serializedDomain = NULL;
 				}
-				DebugPrintLn("Found domain:");
-				DebugPrintLn(serializedDomain);
+				DebugPrint("Found domain:");
+				DebugPrint(serializedDomain);
 			}
 		}
 
-		DebugPrintLn("Initializing CCredential");
+		DebugPrint("Initializing CCredential");
 
-		_pccCredential = new CCredential();
-		hr = _pccCredential->Initialize(s_rgCredProvFieldDescriptorsFor[usage_scenario],
- 			General::Fields::GetFieldStatePairFor(usage_scenario), serializedUser,
-			serializedDomain, serializedPass);
+		_credential = std::make_unique<CCredential>(_config);
+
+		hr = _credential->Initialize(s_rgCredProvFieldDescriptorsFor[usage_scenario],
+			Utilities::GetFieldStatePairFor(usage_scenario, _config->twoStepHideOTP),
+			serializedUser, serializedDomain, serializedPass);
 	}
 	else
 	{
-		hr = S_OK; 
+		hr = S_OK;
 	}
 
-	DebugPrintLn("Checking for successful initialization");
+	DebugPrint("Checking for successful initialization");
 
 	if (FAILED(hr))
 	{
-		DebugPrintLn("Initialization failed");
+		DebugPrint("Initialization failed");
 		return hr;
 	}
 
-	DebugPrintLn("Checking for successful instantiation");
+	DebugPrint("Checking for successful instantiation");
 
-	if (!_pccCredential)
+	if (!_credential)
 	{
-		DebugPrintLn("Instantiation failed");
+		DebugPrint("Instantiation failed");
 		return E_OUTOFMEMORY;
 	}
 
-	DebugPrintLn("Returning interface to credential");
+	DebugPrint("Returning interface to credential");
 
 	// Validate parameters.
 	//if((dwIndex < _dwNumCreds) && ppcpc)
-	
+
 	if ((dwIndex == 0) && ppcpc)
 	{
 		if (usage_scenario == CPUS_CREDUI)
 		{
-			DebugPrintLn("CredUI: returning an IID_ICredentialProviderCredential");
-			hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
+			DebugPrint("CredUI: returning an IID_ICredentialProviderCredential");
+			hr = _credential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
 		}
 		else
 		{
-			DebugPrintLn("Non-CredUI: returning an IID_IConnectableCredentialProviderCredential");
-			hr = _pccCredential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
+			DebugPrint("Non-CredUI: returning an IID_IConnectableCredentialProviderCredential");
+			hr = _credential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
 			//hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void **>(ppcpc));
 		}
 	}
@@ -539,7 +540,7 @@ HRESULT CProvider::GetCredentialAt(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrintLn(hr);
+	DebugPrint(hr);
 
 	return hr;
 }
@@ -547,7 +548,7 @@ HRESULT CProvider::GetCredentialAt(
 // Boilerplate code to create our provider.
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
-	DebugPrintLn(__FUNCTION__);
+	//DebugPrint(__FUNCTION__);
 	HRESULT hr;
 
 	CProvider* pProvider = new CProvider();
@@ -561,15 +562,15 @@ HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 	{
 		hr = E_OUTOFMEMORY;
 	}
-	DebugPrintLn("CSample_CreateInstance Result:");
-	DebugPrintLn(hr);
+	//DebugPrint("CSample_CreateInstance Result:");
+	//DebugPrint(hr);
 
 	return hr;
 }
 
 void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWSTR* domain)
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
 	if (username)
 	{
@@ -607,13 +608,13 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 
 bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE_FOR checkFor)
 {
-	DebugPrintLn(__FUNCTION__);
+	DebugPrint(__FUNCTION__);
 
 	bool result = false;
 
 	if (!_pkiulSetSerialization)
 	{
-		DebugPrintLn("No serialized creds set");
+		DebugPrint("No serialized creds set");
 	}
 	else {
 		switch (checkFor)

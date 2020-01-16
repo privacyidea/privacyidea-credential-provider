@@ -25,7 +25,6 @@
 #pragma once
 
 #include "field_state_pair.h"
-#include "field_initializor.h"
 
 enum CHANGE_PASSWORD_FIELD_ID
 {

@@ -25,12 +25,9 @@
 #include "Dll.h"
 #include "common.h"
 
-#include "hooks.h"
-#include "general.h"
-#include "data.h"
-#include "helper.h"
-
-#include "endpoint.h"
+#include "Utilities.h"
+#include "Configuration.h"
+#include "PrivacyIDEA.h"
 
 #include <unknwn.h>
 #include <helpers.h>
@@ -49,12 +46,12 @@ public:
 		return ++_cRef;
 	}
 
-	IFACEMETHODIMP_(ULONG) Release()
+	IFACEMETHODIMP_(ULONG) Release() noexcept
 	{
 		LONG cRef = --_cRef;
 		if (!cRef)
 		{
-			delete this;
+			//delete this;
 		}
 		return cRef;
 	}
@@ -110,7 +107,7 @@ public:
 	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus* pqcws);
 	IFACEMETHODIMP Disconnect();
 
-	CCredential();
+	CCredential(std::shared_ptr<Configuration> c);
 	virtual ~CCredential();
 
 public:
@@ -122,7 +119,10 @@ public:
 		__in_opt PWSTR password);
 
 private:
-	HRESULT checkForRealm(std::map<std::string, std::string>& map);
+
+	void pushAuthenticationCallback(bool success);
+
+	INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 	LONG									_cRef;
 
@@ -137,13 +137,19 @@ private:
 																						 // different from the name of 
 																						 // the field held in 
 																						 // _rgCredProvFieldDescriptors.
-	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
+	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
 
 	DWORD                                   _dwComboIndex;                               // Tracks the current index 
 																						 // of our combobox.
-	Endpoint								_endpoint;
+
+	PrivacyIDEA								_privacyIDEA;
 
 	std::future<HRESULT>					_pollResult;
+
+	std::shared_ptr<Configuration>			_config;
+
+	Utilities								_util;
+
+	HRESULT									_piStatus = E_FAIL;
 };
 
-INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
