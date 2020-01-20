@@ -4,21 +4,21 @@
 // The indexes of each of the fields in our credential provider's appended tiles.
 enum LOGON_PUSH_FIELD_ID
 {
-	LPFI_OTP_LOGO = 0,
-	LPFI_OTP_LARGE_TEXT = 1,
-	LPFI_OTP_SMALL_TEXT = 2,
-	LPFI_OTP_USERNAME = 3,
-	LPFI_OTP_LDAP_PASS = 4,
-	LPFI_OTP_PASS = 5,
-	LPFI_OTP_SUBMIT_BUTTON = 6,
-	LPFI_OTP_OFFLINE_CHECKBOX = 7,
-	LPFI_NUM_FIELDS = 8,
+	FID_OTP_LOGO = 0,
+	FID_OTP_LARGE_TEXT = 1,
+	FID_OTP_SMALL_TEXT = 2,
+	FID_OTP_USERNAME = 3,
+	FID_OTP_LDAP_PASS = 4,
+	FID_OTP_PASS = 5,
+	FID_OTP_SUBMIT_BUTTON = 6,
+	FID_OTP_OFFLINE_CHECKBOX = 7,
+	FID_NUM_FIELDS = 8,
 };
 
 // Default values
-static const FIELD_INITIALIZOR s_rgScenarioPushFieldInitializors[] =
+static const FIELD_INITIALIZOR s_rgScenarioFieldInitializors[] =
 {
-	{ FIT_NONE, NULL },										// LPFI_OTP_LOGO
+	{ FIT_NONE, nullptr },									// LPFI_OTP_LOGO
 	{ FIT_VALUE_OR_LOGIN_TEXT, L"" },						// LPFI_OTP_LARGE_TEXT
 	{ FIT_VALUE_OR_LOCKED_TEXT, L"" },						// LPFI_OTP_SMALL_TEXT
 	{ FIT_USERNAME_AND_DOMAIN, L"" },						// LPFI_OTP_USERNAME
@@ -35,7 +35,7 @@ static const FIELD_INITIALIZOR s_rgScenarioPushFieldInitializors[] =
 // The field state value indicates whether the field is displayed
 // in the selected tile, the deselected tile, or both.
 // The Field interactive state indicates when 
-static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairs[] =
+static const FIELD_STATE_PAIR s_rgScenarioDisplayAllFields[] =
 {
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LARGE_TEXT
@@ -47,7 +47,7 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairs[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_OFFLINE_CHECKBOX
 };
 
-static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsUnlock[] =
+static const FIELD_STATE_PAIR s_rgScenarioUnlockPasswordOTP[] =
 {
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LARGE_TEXT
@@ -56,10 +56,10 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsUnlock[] =
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// LPFI_OTP_LDAP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_SUBMIT_BUTTON
-	{ CPFS_HIDDEN, CPFIS_NONE },			// LPFI_OTP_OFFLINE_CHECKBOX
+	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_OFFLINE_CHECKBOX
 };
 
-static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStepSecondStep[] =
+static const FIELD_STATE_PAIR s_rgScenarioSecondStepOTP[] =
 {
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LARGE_TEXT
@@ -68,10 +68,10 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStepSecondStep[]
 	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_LDAP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// LPFI_OTP_PASS
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_SUBMIT_BUTTON
-	{ CPFS_HIDDEN, CPFIS_NONE },			// LPFI_OTP_OFFLINE_CHECKBOX
+	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_OFFLINE_CHECKBOX
 };
 
-static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStep[] =
+static const FIELD_STATE_PAIR s_rgScenarioLogonFirstStepUserLDAP[] =
 {
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LARGE_TEXT
@@ -83,7 +83,20 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsTwoStep[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_OFFLINE_CHECKBOX
 };
 
-static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsUnlockTwoStep[] =
+// Show all 3 fields for password change
+static const FIELD_STATE_PAIR s_rgScenarioPasswordChange[] =
+{
+	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LOGO
+	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LARGE_TEXT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_SMALL_TEXT
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// LPFI_OTP_USERNAME
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_LDAP_PASS
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_PASS
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// LPFI_OTP_SUBMIT_BUTTON
+	{ CPFS_HIDDEN, CPFIS_NONE },							// LPFI_OTP_OFFLINE_CHECKBOX
+};
+
+static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
 {
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// LPFI_OTP_LARGE_TEXT
@@ -99,19 +112,14 @@ static const FIELD_STATE_PAIR s_rgScenarioPushFieldStatePairsUnlockTwoStep[] =
 // The first field is the index of the field.
 // The second is the type of the field.
 // The third is the name of the field, NOT the value which will appear in the field.
-static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioPushCredProvFieldDescriptors[] =
+static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors[] =
 {
-	{ LPFI_OTP_LOGO, CPFT_TILE_IMAGE, L"Logo" },
-	{ LPFI_OTP_LARGE_TEXT, CPFT_LARGE_TEXT, L"LargeText" },
-	{ LPFI_OTP_SMALL_TEXT, CPFT_SMALL_TEXT, L"SmallText" },
-	{ LPFI_OTP_USERNAME, CPFT_EDIT_TEXT, L"Username" },
-	{ LPFI_OTP_LDAP_PASS, CPFT_PASSWORD_TEXT, L"Password" },
-	{ LPFI_OTP_PASS, CPFT_PASSWORD_TEXT, L"One-Time Password" },
-	{ LPFI_OTP_SUBMIT_BUTTON, CPFT_SUBMIT_BUTTON, L"Submit" },
-	{ LPFI_OTP_OFFLINE_CHECKBOX, CPFT_CHECKBOX, L"UseOffline"},
-};
-
-static PWSTR s_rgScenarioPushComboBoxModeStrings[] =
-{
-	L"Nothing", // default
+	{ FID_OTP_LOGO, CPFT_TILE_IMAGE, L"Logo" },
+	{ FID_OTP_LARGE_TEXT, CPFT_LARGE_TEXT, L"LargeText" },
+	{ FID_OTP_SMALL_TEXT, CPFT_SMALL_TEXT, L"SmallText" },
+	{ FID_OTP_USERNAME, CPFT_EDIT_TEXT, L"Username" },
+	{ FID_OTP_LDAP_PASS, CPFT_PASSWORD_TEXT, L"Password" },
+	{ FID_OTP_PASS, CPFT_PASSWORD_TEXT, L"One-Time Password" },
+	{ FID_OTP_SUBMIT_BUTTON, CPFT_SUBMIT_BUTTON, L"Submit" },
+	{ FID_OTP_OFFLINE_CHECKBOX, CPFT_CHECKBOX, L"UseOffline"},
 };

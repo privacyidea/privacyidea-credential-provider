@@ -24,7 +24,7 @@
 #include "version.h"
 #include "Logger.h"
 #include "Configuration.h"
-#include "../scenarios.h"
+#include "scenario.h"
 #include <credentialprovider.h>
 #include <tchar.h>
 
@@ -351,9 +351,9 @@ HRESULT CProvider::GetFieldDescriptorAt(
 	if (!_config->provider.cpu) return E_FAIL;
 
 	// Verify dwIndex is a valid field.
-	if ((dwIndex < s_rgCredProvNumFieldsFor[_config->provider.cpu]) && ppcpfd)
+	if ((dwIndex < FID_NUM_FIELDS) && ppcpfd)
 	{
-		hr = FieldDescriptorCoAllocCopy(s_rgCredProvFieldDescriptorsFor[_config->provider.cpu][dwIndex],
+		hr = FieldDescriptorCoAllocCopy(s_rgScenarioCredProvFieldDescriptors[dwIndex],
 			ppcpfd, _config->otpFieldText);
 	}
 	else
@@ -491,7 +491,7 @@ HRESULT CProvider::GetCredentialAt(
 
 		_credential = std::make_unique<CCredential>(_config);
 
-		hr = _credential->Initialize(s_rgCredProvFieldDescriptorsFor[usage_scenario],
+		hr = _credential->Initialize(s_rgScenarioCredProvFieldDescriptors,
 			Utilities::GetFieldStatePairFor(usage_scenario, _config->twoStepHideOTP),
 			serializedUser, serializedDomain, serializedPass);
 	}

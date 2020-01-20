@@ -130,8 +130,7 @@ HRESULT CCredential::Initialize(
 		if (FAILED(hr))
 			break;
 
-		if (s_rgCredProvFieldInitializorsFor[_config->provider.cpu] != NULL)
-			_util.InitializeField(_rgFieldStrings, s_rgCredProvFieldInitializorsFor[_config->provider.cpu][i], i);
+		_util.initializeField(_rgFieldStrings, s_rgScenarioFieldInitializors[i] , i);
 	}
 
 	DebugPrint("Init result:");
@@ -408,10 +407,10 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
 		DebugPrint("Password must change in CPUS_UNLOCK_WORKSTATION");
-		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_LARGE_TEXT, L"Go back until you are asked to sign in.");
-		_pCredProvCredentialEvents->SetFieldString(this, LUFI_OTP_SMALL_TEXT, L"To change your password sign out and in again.");
-		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_LDAP_PASS, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, LUFI_OTP_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldString(this, FID_OTP_LARGE_TEXT, L"Go back until you are asked to sign in.");
+		_pCredProvCredentialEvents->SetFieldString(this, FID_OTP_SMALL_TEXT, L"To change your password sign out and in again.");
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP_LDAP_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP_PASS, CPFS_HIDDEN);
 	}
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
@@ -527,7 +526,7 @@ HRESULT CCredential::GetBitmapValue(
 	DebugPrint(__FUNCTION__);
 
 	HRESULT hr;
-	if ((LUFI_OTP_LOGO == dwFieldID) && phbmp)
+	if ((FID_OTP_LOGO == dwFieldID) && phbmp)
 	{
 		HBITMAP hbmp = NULL;
 		LPCSTR lpszBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath).c_str();
@@ -595,15 +594,15 @@ HRESULT CCredential::GetSubmitButtonValue(
 	// TODO: Change scenario data structures to determine correct submit-button and pdwAdjacentTo dynamically
 	// pdwAdjacentTo is a pointer to the fieldID you want the submit button to appear next to.
 
-	if (LPFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
+	if (FID_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
 	{
 		if (_config->isSecondStep)
 		{
-			*pdwAdjacentTo = LPFI_OTP_PASS;
+			*pdwAdjacentTo = FID_OTP_PASS;
 		}
 		else
 		{
-			*pdwAdjacentTo = LPFI_OTP_LDAP_PASS;
+			*pdwAdjacentTo = FID_OTP_LDAP_PASS;
 		}
 		hr = S_OK;
 	}/*
@@ -864,6 +863,8 @@ HRESULT CCredential::GetSerialization(
 		_util.SetScenario(_config->provider.pCredProvCredential,
 			_config->provider.pCredProvCredentialEvents,
 			SCENARIO::SECOND_STEP, std::wstring(), L"Please enter your second factor:");
+		// Set the submit button next to the OTP field for the second step
+		_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_OTP_SUBMIT_BUTTON, FID_OTP_PASS);
 		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 	}
 	// It is the final step -> try to log in

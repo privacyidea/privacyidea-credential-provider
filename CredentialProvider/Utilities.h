@@ -87,7 +87,7 @@ public:
 		__in const FIELD_STATE_PAIR* pFSP
 	);
 
-	HRESULT InitializeField(
+	HRESULT initializeField(
 		LPWSTR* rgFieldStrings,
 		const FIELD_INITIALIZOR initializer,
 		DWORD field_index
@@ -108,12 +108,6 @@ public:
 	size_t Iso8859_1_to_utf8(char* content, size_t max_size);
 
 	HRESULT ReadFieldValues();
-
-	HRESULT GetTextfieldIDsForScenario(
-		__inout int& largeTextFieldId,
-		__inout int& smallTextFieldId,
-		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario
-	);
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 

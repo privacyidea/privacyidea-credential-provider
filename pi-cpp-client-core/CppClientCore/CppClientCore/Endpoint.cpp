@@ -115,7 +115,7 @@ string Endpoint::connect(const string& endpoint, map<string, string> params, con
 		toSend += escapeUrl(x.first) + "=" + escapeUrl(x.second) + "&";
 	}
 	toSend = toSend.substr(0, (toSend.length() - 1));
-	DebugPrint("String to send: " + toSend);
+	DebugPrint("Params: " + toSend);
 	LPSTR data = _strdup(toSend.c_str());
 	const DWORD data_len = strnlen_s(toSend.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
@@ -126,7 +126,7 @@ string Endpoint::connect(const string& endpoint, map<string, string> params, con
 	if (_logPasswords)
 	{
 		DebugPrint("data:");
-		DebugPrint(data);			// !!! this can show the windows password in cleartext !!!
+		DebugPrint(data);			// !!! this can log the windows password in cleartext !!!
 	}
 #endif
 	DWORD dwSize = 0;

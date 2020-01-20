@@ -52,6 +52,6 @@
 #define EMPTY(NAME) \
 	(NAME == NULL || NAME[0] == NULL)
 
-#include "scenarios.h"
+#include "scenario.h"
 
 #endif

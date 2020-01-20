@@ -285,22 +285,22 @@ HRESULT Utilities::SetScenario(
 	switch (scenario)
 	{
 	case SCENARIO::LOGON_BASE:
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPushFieldStatePairs);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioDisplayAllFields);
 		break;
 	case SCENARIO::UNLOCK_BASE:
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPushFieldStatePairsUnlock);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockPasswordOTP);
 		break;
 	case SCENARIO::SECOND_STEP:
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPushFieldStatePairsTwoStepSecondStep);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
 		break;
 	case SCENARIO::CHANGE_PASSWORD:
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioChangePasswordFieldStatePairs);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
 		break;
 	case SCENARIO::UNLOCK_TWO_STEP:
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPushFieldStatePairsUnlockTwoStep);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockFirstStepPassword);
 		break;
 	case SCENARIO::LOGON_TWO_STEP:
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPushFieldStatePairsTwoStep);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
 		break;
 	case SCENARIO::NO_CHANGE:
 	default:
@@ -310,9 +310,8 @@ HRESULT Utilities::SetScenario(
 	const int hide_fullname = _config->hideFullName;
 
 	// Fill the textfields with text depending on configuration
-	int largeTextFieldId = 0, smallTextFieldId = 0;
-
-	hr = GetTextfieldIDsForScenario(largeTextFieldId, smallTextFieldId, _config->provider.cpu);
+	int largeTextFieldId = FID_OTP_LARGE_TEXT,
+		smallTextFieldId = FID_OTP_SMALL_TEXT;
 
 	if (!textForLargeField.empty())
 	{
@@ -425,7 +424,7 @@ HRESULT Utilities::SetFieldStatePairBatch(
 	return hr;
 }
 
-HRESULT Utilities::InitializeField(
+HRESULT Utilities::initializeField(
 	LPWSTR* rgFieldStrings,
 	const FIELD_INITIALIZOR initializer,
 	DWORD field_index)
@@ -439,6 +438,7 @@ HRESULT Utilities::InitializeField(
 	wstring domain_name = _config->credential.domain;
 
 	// TODO this is bad - initializer.type is kinda useless
+	// Use field index + cpu to decide values
 	switch (initializer.type)
 	{
 	case FIT_VALUE:
@@ -658,12 +658,12 @@ HRESULT Utilities::ReadFieldValues()
 
 HRESULT Utilities::ReadUserField()
 {
-	DebugPrint(L"Loading username/domainname from GUI, raw: " + wstring(_config->provider.field_strings[LUFI_OTP_USERNAME]));
+	DebugPrint(L"Loading username/domainname from GUI, raw: " + wstring(_config->provider.field_strings[FID_OTP_USERNAME]));
 
 	wchar_t user_name[1024];
 	wchar_t domain_name[1024];
 
-	SeparateUserAndDomainName(_config->provider.field_strings[LUFI_OTP_USERNAME],
+	SeparateUserAndDomainName(_config->provider.field_strings[FID_OTP_USERNAME],
 		user_name, sizeof(user_name) / sizeof(wchar_t),
 		domain_name, sizeof(domain_name) / sizeof(wchar_t)
 	);
@@ -689,7 +689,7 @@ HRESULT Utilities::ReadUserField()
 
 HRESULT Utilities::ReadPasswordField()
 {
-	wstring newPassword(_config->provider.field_strings[LUFI_OTP_LDAP_PASS]);
+	wstring newPassword(_config->provider.field_strings[FID_OTP_LDAP_PASS]);
 
 	if (newPassword.empty())
 	{
@@ -705,7 +705,7 @@ HRESULT Utilities::ReadPasswordField()
 
 HRESULT Utilities::ReadOTPField()
 {
-	wstring newOTP(_config->provider.field_strings[LUFI_OTP_PASS]);
+	wstring newOTP(_config->provider.field_strings[FID_OTP_PASS]);
 	if (newOTP.empty())
 	{
 		DebugPrint("new OTP empty, keeping old value");
@@ -718,66 +718,21 @@ HRESULT Utilities::ReadOTPField()
 	return S_OK;
 }
 
-HRESULT Utilities::GetTextfieldIDsForScenario(
-	__inout int& largeTextFieldId,
-	__inout int& smallTextFieldId,
-	__in CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario
-)
-{
-	switch (scenario)
-	{
-	case CPUS_LOGON:
-	case CPUS_UNLOCK_WORKSTATION:
-		largeTextFieldId = LPFI_OTP_LARGE_TEXT;
-		smallTextFieldId = LPFI_OTP_SMALL_TEXT;
-		break;
-	case CPUS_CHANGE_PASSWORD:
-		largeTextFieldId = CPFI_OTP_LARGE_TEXT;
-		smallTextFieldId = CPFI_OTP_SMALL_TEXT;
-		break;
-	case CPUS_CREDUI:
-		largeTextFieldId = CFI_OTP_LARGE_TEXT;
-		smallTextFieldId = CFI_OTP_SMALL_TEXT;
-		break;
-	default:
-		break;
-	}
-
-	return S_OK;
-}
-
 const FIELD_STATE_PAIR* Utilities::GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP)
 {
-	if (cpus == CPUS_LOGON)
+	if (cpus == CPUS_UNLOCK_WORKSTATION)
 	{
-		if (twoStepHideOTP)
-		{
-			return s_rgScenarioPushFieldStatePairsTwoStep;
-		}
-		return s_rgScenarioPushFieldStatePairs;
+		return twoStepHideOTP ? s_rgScenarioUnlockFirstStepPassword : s_rgScenarioUnlockPasswordOTP;
 	}
-	else if (cpus == CPUS_UNLOCK_WORKSTATION)
+	else
 	{
-		if (twoStepHideOTP)
-		{
-			return s_rgScenarioLogonUnlockFieldStatePairsUnlockTwoStep;
-		}
-		return s_rgScenarioLogonUnlockFieldStatePairsUnlock;
+		return twoStepHideOTP ? s_rgScenarioLogonFirstStepUserLDAP : s_rgScenarioDisplayAllFields;
 	}
-	return s_rgScenarioPushFieldStatePairs;
 }
 
 unsigned int Utilities::CredentialFieldCountFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu)
 {
-	if (cpu)
-	{
-		return s_rgCredProvNumFieldsFor[cpu];
-	}
-	else
-	{
-		DebugPrint("No scenario set - cannot get field descriptor count");
-		return 0;
-	}
+	return FID_NUM_FIELDS;
 }
 
 HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
@@ -796,13 +751,13 @@ HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredenti
 		if (_config->twoStepHideOTP)
 		{
 			SetScenario(pSelf, pCredProvCredentialEvents,
- SCENARIO::UNLOCK_TWO_STEP,
+				SCENARIO::UNLOCK_TWO_STEP,
 				std::wstring(), _config->credential.username);
 		}
 		else
 		{
 			SetScenario(pSelf, pCredProvCredentialEvents,
- SCENARIO::UNLOCK_BASE,
+				SCENARIO::UNLOCK_BASE,
 				std::wstring(), _config->credential.username);
 		}
 
