@@ -8,13 +8,18 @@
 #include "OfflineHandler.h"
 #include "CallbackTestClass.h"
 #include <iostream>
+#include <thread>
+#include <chrono>
+
 #define assertEquals(expected, actual)	 Assert::AreEqual(expected, actual)
 
-#define _OUTPUT_TO_COUT
+//#define _OUTPUT_TO_COUT
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using std::string;
 using std::wstring;
+using std::cout;
+using std::endl;
 
 namespace Microsoft {
 	namespace VisualStudio {
@@ -75,6 +80,12 @@ namespace Tests
 			pi.getLastErrorText();
 		}
 
+		TEST_METHOD(TestOffline)
+		{
+
+		}
+
+
 		TEST_METHOD(TestAsyncPoll)
 		{
 			PICONFIG conf;
@@ -88,6 +99,10 @@ namespace Tests
 			Challenge c = pi.getCurrentChallenge();
 			pi.asyncPollTransaction("Administrator", c.transaction_id,
 				std::bind(&CallbackTestClass::callback, ctc, std::placeholders::_1));
+
+			std::this_thread::sleep_for(std::chrono::seconds(10));
+			//Logger::WriteMessage("HALLO");
+			cout << "HALLO" << endl;
 		}
 	};
 }
