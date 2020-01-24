@@ -359,8 +359,8 @@ void Utilities::SetScenario(
 }
 
 HRESULT Utilities::Clear(
-	wchar_t* (&field_strings)[MAX_NUM_FIELDS],
-	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[MAX_NUM_FIELDS],
+	wchar_t* (&field_strings)[FID_NUM_FIELDS],
+	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[FID_NUM_FIELDS],
 	ICredentialProviderCredential* pcpc,
 	ICredentialProviderCredentialEvents* pcpce,
 	char clear)
@@ -369,7 +369,7 @@ HRESULT Utilities::Clear(
 
 	HRESULT hr = S_OK;
 
-	for (unsigned int i = 0; i < CredentialFieldCountFor(_config->provider.cpu) && SUCCEEDED(hr); i++)
+	for (unsigned int i = 0; i < FID_NUM_FIELDS && SUCCEEDED(hr); i++)
 	{
 		char do_something = 0;
 
@@ -413,7 +413,7 @@ HRESULT Utilities::SetFieldStatePairBatch(
 	if (!pCPCE || !self)
 		return E_INVALIDARG;
 
-	for (unsigned int i = 0; i < CredentialFieldCountFor(_config->provider.cpu) && SUCCEEDED(hr); i++)
+	for (unsigned int i = 0; i < FID_NUM_FIELDS && SUCCEEDED(hr); i++)
 	{
 		hr = pCPCE->SetFieldState(self, i, pFSP[i].cpfs);
 
@@ -728,11 +728,6 @@ const FIELD_STATE_PAIR* Utilities::GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAG
 	{
 		return twoStepHideOTP ? s_rgScenarioLogonFirstStepUserLDAP : s_rgScenarioDisplayAllFields;
 	}
-}
-
-unsigned int Utilities::CredentialFieldCountFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu)
-{
-	return FID_NUM_FIELDS;
 }
 
 HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents)

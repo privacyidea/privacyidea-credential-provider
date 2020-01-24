@@ -120,7 +120,7 @@ HRESULT CCredential::Initialize(
 	// !!!!!!!!!!!!!!!!!!!!
 
 	//for (DWORD i = 0; SUCCEEDED(hr) && i < ARRAYSIZE(_rgCredProvFieldDescriptors); i++)
-	for (DWORD i = 0; SUCCEEDED(hr) && i < Utilities::CredentialFieldCountFor(_config->provider.cpu); i++)
+	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
 	{
 		//DebugPrintLn("Copy field #:");
 		//DebugPrintLn(i + 1);
@@ -130,7 +130,7 @@ HRESULT CCredential::Initialize(
 		if (FAILED(hr))
 			break;
 
-		_util.initializeField(_rgFieldStrings, s_rgScenarioFieldInitializors[i] , i);
+		_util.initializeField(_rgFieldStrings, s_rgScenarioFieldInitializors[i], i);
 	}
 
 	DebugPrint("Init result:");
@@ -397,9 +397,10 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	*pbAutoLogon = false;
 	HRESULT hr = S_OK;
 
-	if (_config->pushAuthenticationSuccessful)
+	if (_config->doAutoLogon)
 	{
 		*pbAutoLogon = true;
+		_config->doAutoLogon = false;
 	}
 
 	if (_config->credential.passwordMustChange && _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
@@ -473,11 +474,10 @@ HRESULT CCredential::GetFieldState(
 	HRESULT hr;
 
 	// Validate paramters.
-	if ((dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu)) && pcpfs && pcpfis)
+	if (dwFieldID < FID_NUM_FIELDS && pcpfs && pcpfis)
 	{
 		*pcpfs = _rgFieldStatePairs[dwFieldID].cpfs;
 		*pcpfis = _rgFieldStatePairs[dwFieldID].cpfis;
-
 		hr = S_OK;
 	}
 	else
@@ -501,7 +501,7 @@ HRESULT CCredential::GetStringValue(
 	HRESULT hr;
 
 	// Check to make sure dwFieldID is a legitimate index.
-	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) && ppwsz)
+	if (dwFieldID < FID_NUM_FIELDS && ppwsz)
 	{
 		// Make a copy of the string and return that. The caller
 		// is responsible for freeing it.
@@ -584,39 +584,16 @@ HRESULT CCredential::GetSubmitButtonValue(
 	__out DWORD* pdwAdjacentTo
 )
 {
-	DebugPrint("ID:" + to_string(dwFieldID));
-	HRESULT hr;
-
-	// Validate parameters.
-
-	// !!!!!!!!!!!!!
-	// !!!!!!!!!!!!!
-	// TODO: Change scenario data structures to determine correct submit-button and pdwAdjacentTo dynamically
-	// pdwAdjacentTo is a pointer to the fieldID you want the submit button to appear next to.
-
+	DebugPrint(__FUNCTION__);
+	//DebugPrint("Submit Button ID:" + to_string(dwFieldID));
 	if (FID_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
 	{
-		if (_config->isSecondStep)
-		{
-			*pdwAdjacentTo = FID_OTP_PASS;
-		}
-		else
-		{
-			*pdwAdjacentTo = FID_OTP_LDAP_PASS;
-		}
-		hr = S_OK;
-	}/*
-	else if (CPFI_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
-	{
-		*pdwAdjacentTo = CPFI_OTP_PASS_NEW_2;
-		hr = S_OK;
-	} */
-	else
-	{
-		hr = E_INVALIDARG;
+		// This is only called once when the credential is created.
+		// When switching to the second step, the button is set via CredentialEvents
+		*pdwAdjacentTo = FID_OTP_LDAP_PASS;
+		return S_OK;
 	}
-
-	return hr;
+	return E_INVALIDARG;
 }
 
 // Sets the value of a field which can accept a string as a value.
@@ -629,7 +606,7 @@ HRESULT CCredential::SetStringValue(
 	HRESULT hr;
 
 	// Validate parameters.
-	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
+	if (dwFieldID < FID_NUM_FIELDS &&
 		(CPFT_EDIT_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft ||
 			CPFT_PASSWORD_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
@@ -658,7 +635,7 @@ HRESULT CCredential::GetComboBoxValueCount(
 	DebugPrint(__FUNCTION__);
 
 	// Validate parameters.
-	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
+	if (dwFieldID < FID_NUM_FIELDS &&
 		(CPFT_COMBOBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
 		// UNUSED
@@ -708,7 +685,7 @@ HRESULT CCredential::SetComboBoxSelectedValue(
 	DebugPrint(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwSelectedItem);
 	// Validate parameters.
-	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
+	if (dwFieldID < FID_NUM_FIELDS &&
 		(CPFT_COMBOBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
 	{
 		return S_OK;
@@ -775,22 +752,23 @@ HRESULT CCredential::GetSerialization(
 
 	HRESULT hr = E_FAIL, retVal = S_OK;
 
-
-
 	/*
 	CPGSR_NO_CREDENTIAL_NOT_FINISHED
 	No credential was serialized because more information is needed.
 
 	CPGSR_NO_CREDENTIAL_FINISHED
-	This serialization response means that the Credential Provider has not serialized a credential but it has completed its work. This response has multiple meanings.
-	It can mean that no credential was serialized and the user should not try again. This response can also mean no credential was submitted but the credential’s work is complete.
+	This serialization response means that the Credential Provider has not serialized a credential but
+	it has completed its work. This response has multiple meanings.
+	It can mean that no credential was serialized and the user should not try again. 
+	This response can also mean no credential was submitted but the credential’s work is complete.
 	For instance, in the Change Password scenario, this response implies success.
 
 	CPGSR_RETURN_CREDENTIAL_FINISHED
 	A credential was serialized. This response implies a serialization structure was passed back.
 
 	CPGSR_RETURN_NO_CREDENTIAL_FINISHED
-	The credential provider has not serialized a credential, but has completed its work. The difference between this value and CPGSR_NO_CREDENTIAL_FINISHED is that this flag
+	The credential provider has not serialized a credential, but has completed its work.
+	The difference between this value and CPGSR_NO_CREDENTIAL_FINISHED is that this flag
 	will force the logon UI to return, which will unadvise all the credential providers.
 	*/
 
@@ -804,7 +782,6 @@ HRESULT CCredential::GetSerialization(
 	_config->provider.status_text = ppwszOptionalStatusText;
 
 	_config->provider.field_strings = _rgFieldStrings;
-	_config->provider.num_field_strings = Utilities::CredentialFieldCountFor(_config->provider.cpu);
 
 	// TODO THIS IS VERY BAD
 	PWSTR currentUsername = const_cast<PWSTR>(_config->credential.username.c_str());
@@ -950,6 +927,13 @@ HRESULT CCredential::GetSerialization(
 	return retVal;
 }
 
+void CCredential::showErrorMessage(std::wstring message, HRESULT code)
+{
+	*_config->provider.status_icon = CPSI_ERROR;
+	wstring errorMessage = message + L" (" + to_wstring(code) + L")";
+	SHStrDupW(errorMessage.c_str(), _config->provider.status_text);
+}
+
 // If push is successful, reset the credential to set autologin in 
 void CCredential::pushAuthenticationCallback(bool success)
 {
@@ -957,6 +941,7 @@ void CCredential::pushAuthenticationCallback(bool success)
 	if (success)
 	{
 		_config->pushAuthenticationSuccessful = true;
+		_config->doAutoLogon = true;
 		// When autologon is triggered, connect is called instantly, therefore bypass privacyIDEA on next run
 		_config->bypassPrivacyIDEA = true;
 		_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
@@ -968,81 +953,72 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	DebugPrint(__FUNCTION__);
 
-	_config->pQueryContinueWithStatus = pqcws;
-
 	_config->provider.pCredProvCredential = this;
 	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
 	_config->provider.field_strings = _rgFieldStrings;
-	_config->provider.num_field_strings = Utilities::CredentialFieldCountFor(_config->provider.cpu);
 	_util.ReadFieldValues();
 
-	if (_config->bypassPrivacyIDEA == false)
+	if (_config->bypassPrivacyIDEA)
 	{
-		if (_config->twoStepHideOTP && !_config->isSecondStep)
+		DebugPrint("Bypassing privacyIDEA...");
+		return S_OK;
+	}
+
+	if (_config->twoStepHideOTP && !_config->isSecondStep)
+	{
+		if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 		{
-			if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
+			// Delay for a short moment, otherwise logonui crashes (???)
+			this_thread::sleep_for(chrono::milliseconds(200));
+			// Then skip to next step
+		}
+		else //  (_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
+		{
+			// Send either empty pass or the windows password in first step
+			wstring toSend = L"";
+			if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
+				toSend = _config->credential.password;
+
+			_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain, toSend);
+			if (_piStatus == PI_TRIGGERED_CHALLENGE)
 			{
-				// Delay for a short moment, otherwise logonui crashes (???)
-				this_thread::sleep_for(chrono::milliseconds(200));
-				// Then skip to next step
-			}
-			else if (_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
-			{
-				// Send an empty pass in the FIRST step
-				_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain, L"");
-				if (_piStatus == PI_TRIGGERED_CHALLENGE)
+				// TODO do same with triggered challenge?
+				Challenge c = _privacyIDEA.getCurrentChallenge();
+				_config->challenge = c;
+				if (!c.transaction_id.empty())
 				{
-					// TODO do same with triggered challenge?
-				}
-			}
-			else if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
-			{
-				// Send the windows password in the first step, which may trigger challenges
-				_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain,
-					_config->credential.password);
-				if (_piStatus == PI_TRIGGERED_CHALLENGE)
-				{
-					Challenge c = _privacyIDEA.getCurrentChallenge();
-					_config->challenge = c;
-					if (!c.transaction_id.empty())
-					{
-						// Set a message in any case
-						wstring msg = c.getAggregatedMessage();
-						if (!msg.empty())
-							pqcws->SetStatusMessage(msg.c_str());
-						else
-							pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
-
-						// if both pushtoken and classic OTP are available, start polling in background
-						if (c.tta == TTA::BOTH)
-						{
-							// When polling finishes, pushauthenticationsuccess has to be set, then resetscenario has to be called
-							_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
-								std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
-						}
-						// if only push is available, start polling in main thread 
-						else if (c.tta == TTA::PUSH)
-						{
-							while (_piStatus != PI_TRANSACTION_SUCCESS)
-							{
-								_piStatus = _privacyIDEA.pollTransaction(c.transaction_id);
-
-								this_thread::sleep_for(300ms);
-
-								if (pqcws->QueryContinue() != S_OK) //TODO cancel button??
-								{
-									_config->userCanceled = true;
-									break;
-								}
-							}
-
-							_piStatus = (_piStatus == PI_TRANSACTION_SUCCESS) ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
-							if (_piStatus == PI_AUTH_SUCCESS) _config->authenticationSuccessful = true;
-						}
-					}
+					// Set a message in any case
+					wstring msg = c.getAggregatedMessage();
+					if (!msg.empty())
+						pqcws->SetStatusMessage(msg.c_str());
 					else
+						pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
+
+					// if both pushtoken and classic OTP are available, start polling in background
+					if (c.tta == TTA::BOTH)
 					{
-						DebugPrint("Triggering challenge returned no transaction_id");
+						// When polling finishes, pushauthenticationsuccess has to be set, then resetscenario has to be called
+						_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
+							std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
+					}
+					// if only push is available, start polling in main thread 
+					else if (c.tta == TTA::PUSH)
+					{
+						while (_piStatus != PI_TRANSACTION_SUCCESS)
+						{
+							_piStatus = _privacyIDEA.pollTransaction(c.transaction_id);
+
+							this_thread::sleep_for(300ms);
+
+							if (pqcws->QueryContinue() != S_OK) //TODO cancel button??
+							{
+								_config->userCanceled = true;
+								break;
+							}
+						}
+
+						_piStatus = (_piStatus == PI_TRANSACTION_SUCCESS) ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
+						if (_piStatus == PI_AUTH_SUCCESS) _config->authenticationSuccessful = true;
 					}
 				}
 				else
@@ -1050,41 +1026,43 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					// Only classic OTP available, do nothing else in the first step
 				}
 			}
-			else
-			{
-				DebugPrint("UNKNOWN STATE IN CCREDENTIAL::CONNECT");
-			}
+
 			_config->isSecondStep = true;
 		}
 		//////////////////// SECOND STEP ////////////////////////
-		else if (_config->twoStepHideOTP && _config->isSecondStep)
+	}
+	else if (_config->twoStepHideOTP && _config->isSecondStep)
+	{
+		// Send with optional transaction_id from first step
+		_piStatus = _privacyIDEA.validateCheck(
+			PrivacyIDEA::ws2s(_config->credential.username),
+			PrivacyIDEA::ws2s(_config->credential.domain),
+			PrivacyIDEA::ws2s(_config->credential.otp),
+			_config->challenge.transaction_id);
+		if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
 		{
-			// Send with optional transaction_id from first step
-			_piStatus = _privacyIDEA.validateCheck(
-				PrivacyIDEA::ws2s(_config->credential.username),
-				PrivacyIDEA::ws2s(_config->credential.domain),
-				PrivacyIDEA::ws2s(_config->credential.otp),
-				_config->challenge.transaction_id);
-			if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
-			{
-				_config->authenticationSuccessful = true;
-			}
+			_config->authenticationSuccessful = true;
 		}
-		//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 		else
 		{
-			_piStatus = _privacyIDEA.validateCheck(_config->credential.username,
-				_config->credential.domain, _config->credential.otp);
-			if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
-			{
-				_config->authenticationSuccessful = true;
-			}
+			showErrorMessage(L"PrivacyIDEA: Authentication failed!", _piStatus);
 		}
 	}
+	//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 	else
-		DebugPrint("bypassing privacyIDEA...");
+	{
+		_piStatus = _privacyIDEA.validateCheck(_config->credential.username,
+			_config->credential.domain, _config->credential.otp);
+		if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
+		{
+			_config->authenticationSuccessful = true;
+		}
+		else
+		{
+			showErrorMessage(L"PrivacyIDEA: Authentication failed!", _piStatus);
+		}
+	}
 
-	_config->pQueryContinueWithStatus = nullptr;
 	DebugPrint("Connect - END");
 	return S_OK; // always S_OK
 }

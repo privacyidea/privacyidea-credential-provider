@@ -28,22 +28,55 @@
 using namespace std;
 using json = nlohmann::json;
 
+std::wstring getErrorText(DWORD err)
+{
+	LPWSTR msgBuf;
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		err,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&msgBuf,
+		0, NULL);
+	return (msgBuf == nullptr) ? wstring() : wstring(msgBuf);
+}
+
+OfflineHandler::OfflineHandler()
+{
+	const HRESULT res = loadFromFile();
+	if (res != S_OK)
+	{
+		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
+	}
+}
+
 OfflineHandler::OfflineHandler(const string& filePath, int tryWindow)
 {
 	// Load the offline file on startup
-	_filePath = filePath;
-	_tryWindow = tryWindow;
-	if (loadFromFile() != S_OK)
+	_filePath = filePath.empty() ? _filePath : filePath;
+	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
+	const HRESULT res = loadFromFile();
+	if (res != S_OK)
 	{
+		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
 	}
+	else
+		DebugPrint("Offline data loaded successfully!");
 }
 
 OfflineHandler::~OfflineHandler()
 {
-	const HRESULT res = saveToFile();
-	if (res != S_OK)
+	if (!dataSets.empty())
 	{
-		DebugPrint("Unable to save offline file: " + to_string(res));
+		const HRESULT res = saveToFile();
+		if (res != S_OK)
+		{
+			DebugPrint(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
+		}
+		else
+			DebugPrint("Offline data saved successfully!");
 	}
 }
 
@@ -123,7 +156,6 @@ HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std
 			map.try_emplace("serial", serial);
 			map.try_emplace("refilltoken", refilltoken);
 			return S_OK;
-
 		}
 	}
 
@@ -147,7 +179,7 @@ HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 	}
 
 	auto jAuth_items = j["auth_items"];
-	if (jAuth_items == NULL) return PI_NO_OFFLINE_DATA;
+	if (jAuth_items == nullptr) return PI_NO_OFFLINE_DATA;
 
 	// Get the serial to add to the data
 	auto jSerial = j["detail"]["serial"];
@@ -266,7 +298,7 @@ HRESULT OfflineHandler::loadFromFile()
 	string line;
 	ifstream ifs(_filePath);
 
-	if (!ifs.good()) return OFFLINE_FILE_DOES_NOT_EXIST;
+	if (!ifs.good()) return GetLastError();
 
 	if (ifs.is_open())
 	{

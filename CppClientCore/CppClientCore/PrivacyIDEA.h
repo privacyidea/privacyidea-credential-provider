@@ -45,6 +45,7 @@
 
 #define PI_ENDPOINT_VALIDATE_CHECK					"/validate/check"
 #define PI_ENDPOINT_POLL_TX							"/validate/polltransaction"
+#define PI_ENDPOINT_OFFLINE_REFILL					"/validate/offlinerefill"
 
 class PrivacyIDEA
 {

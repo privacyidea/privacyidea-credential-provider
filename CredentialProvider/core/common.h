@@ -27,8 +27,6 @@
 #include "guid.h"
 #include "resource.h"
 
-#define MAX_NUM_FIELDS 10
-
 #define MAX_ULONG  ((ULONG)(-1))
 
 #define ZERO(NAME) \

@@ -120,19 +120,21 @@ public:
 
 private:
 
+	void showErrorMessage(std::wstring message, HRESULT code);
+
 	void pushAuthenticationCallback(bool success);
 
 	INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 	LONG									_cRef;
 
-	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[MAX_NUM_FIELDS];	// An array holding the type and 
+	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[FID_NUM_FIELDS];	// An array holding the type and 
 																							// name of each field in the tile.
 
-	FIELD_STATE_PAIR						_rgFieldStatePairs[MAX_NUM_FIELDS];          // An array holding the state of 
+	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];          // An array holding the state of 
 																						 // each field in the tile.
 
-	wchar_t* _rgFieldStrings[MAX_NUM_FIELDS];											 // An array holding the string 
+	wchar_t*								_rgFieldStrings[FID_NUM_FIELDS];											 // An array holding the string 
 																						 // value of each field. This is 
 																						 // different from the name of 
 																						 // the field held in 

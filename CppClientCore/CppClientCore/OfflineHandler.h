@@ -36,7 +36,7 @@
 class OfflineHandler
 {
 public:
-	OfflineHandler() = default;
+	OfflineHandler();
 
 	OfflineHandler(const std::string& filePath, int tryWindow);
 

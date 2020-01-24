@@ -74,8 +74,8 @@ public:
 	);
 
 	HRESULT Clear(
-		wchar_t* (&field_strings)[MAX_NUM_FIELDS],
-		CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[MAX_NUM_FIELDS],
+		wchar_t* (&field_strings)[FID_NUM_FIELDS],
+		CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[FID_NUM_FIELDS],
 		ICredentialProviderCredential* pcpc,
 		ICredentialProviderCredentialEvents* pcpce,
 		char clear
@@ -110,8 +110,6 @@ public:
 	HRESULT ReadFieldValues();
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
-
-	static unsigned int CredentialFieldCountFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu);
 
 	HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents);
 

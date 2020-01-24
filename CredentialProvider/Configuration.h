@@ -64,8 +64,9 @@ public:
 	bool pushAuthenticationSuccessful = false;
 	bool authenticationSuccessful = false;
 
+	bool doAutoLogon = false;
+
 	bool userCanceled = false;
-	IQueryContinueWithStatus* pQueryContinueWithStatus = nullptr;
 
 	Challenge challenge;
 
@@ -89,7 +90,6 @@ public:
 		// Read-only
 		ICredentialProviderCredential* pCredProvCredential = nullptr;
 		wchar_t** field_strings = nullptr;
-		int num_field_strings = 0;
 	} provider;
 	
 	bool clearFields = true;

@@ -335,7 +335,7 @@ HRESULT CProvider::GetFieldDescriptorCount(
 {
 	DebugPrint(__FUNCTION__);
 
-	*pdwCount = Utilities::CredentialFieldCountFor(_config->provider.cpu);
+	*pdwCount = FID_NUM_FIELDS;
 
 	return S_OK;
 }
@@ -433,13 +433,13 @@ HRESULT CProvider::GetCredentialAt(
 
 		DebugPrint("Checking for missing credentials");
 
-		if (usage_scenario == CPUS_UNLOCK_WORKSTATION && serializedUser == NULL)
+		if (usage_scenario == CPUS_UNLOCK_WORKSTATION && serializedUser == nullptr)
 		{
-			if (serializedUser == NULL)
+			if (serializedUser == nullptr)
 			{
 				DebugPrint("Looking-up missing user name from session");
 
-				DWORD dwLen;
+				DWORD dwLen = 0;
 
 				if (!WTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE,
 					WTS_CURRENT_SESSION,
@@ -447,15 +447,15 @@ HRESULT CProvider::GetCredentialAt(
 					&serializedUser,
 					&dwLen))
 				{
-					serializedUser = NULL;
+					serializedUser = nullptr;
 				}
 			}
 
-			if (serializedDomain == NULL)
+			if (serializedDomain == nullptr)
 			{
 				DebugPrint("Looking-up missing domain name from session");
 
-				DWORD dwLen;
+				DWORD dwLen = 0;
 
 				if (!WTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE,
 					WTS_CURRENT_SESSION,
@@ -463,7 +463,7 @@ HRESULT CProvider::GetCredentialAt(
 					&serializedDomain,
 					&dwLen))
 				{
-					serializedDomain = NULL;
+					serializedDomain = nullptr;
 				}
 			}
 		}
@@ -476,11 +476,11 @@ HRESULT CProvider::GetCredentialAt(
 				NETSETUP_JOIN_STATUS join_status;
 
 				if (!NetGetJoinInformation(
-					NULL,
+					nullptr,
 					&serializedDomain,
 					&join_status) == NERR_Success || join_status == NetSetupUnjoined || join_status == NetSetupUnknownStatus)
 				{
-					serializedDomain = NULL;
+					serializedDomain = nullptr;
 				}
 				DebugPrint("Found domain:");
 				DebugPrint(serializedDomain);
@@ -517,9 +517,6 @@ HRESULT CProvider::GetCredentialAt(
 	}
 
 	DebugPrint("Returning interface to credential");
-
-	// Validate parameters.
-	//if((dwIndex < _dwNumCreds) && ppcpc)
 
 	if ((dwIndex == 0) && ppcpc)
 	{
