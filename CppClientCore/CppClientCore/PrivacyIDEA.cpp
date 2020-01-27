@@ -10,15 +10,13 @@ PrivacyIDEA& PrivacyIDEA::operator=(const PrivacyIDEA& privacyIDEA)
 	this->_currentChallenge = privacyIDEA._currentChallenge;
 	this->_defaultRealm = privacyIDEA._defaultRealm;
 	this->_endpoint = privacyIDEA._endpoint;
-	this->_lastErrorCode = privacyIDEA._lastErrorCode;
-	this->_lastErrorText = privacyIDEA._lastErrorText;
 	this->_logPasswords = privacyIDEA._logPasswords;
 	this->_offlineHandler = privacyIDEA._offlineHandler;
 	this->_realmMap = privacyIDEA._realmMap;
 	return *this;
 }
 
-// Check if there is a mapping for the given domain or  - if not - a default realm is set
+// Check if there is a mapping for the given domain or - if not - a default realm is set
 HRESULT PrivacyIDEA::checkForRealm(std::map<std::string, std::string>& map, std::string domain)
 {
 	wstring realm = L"";
@@ -97,6 +95,7 @@ HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, std::string lastOTP)
 	}
 	catch (const std::out_of_range & e)
 	{
+		UNREFERENCED_PARAMETER(e);
 		DebugPrint("Offline refill failed, missing data for " + username);
 		return E_FAIL;
 	}
@@ -115,29 +114,33 @@ HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, std::string lastOTP)
 
 HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp, const std::string& transaction_id)
 {
+	DebugPrint(__FUNCTION__);
 	HRESULT res = E_FAIL, ret = PI_AUTH_FAILURE;
 
 	// Check if offline otp available first
 	res = _offlineHandler.isDataVailable(username);
 	if (res == S_OK)
 	{
+		DebugPrint("Offline data available");
 		res = _offlineHandler.verifyOfflineOTP(s2ws(otp), username);
 		if (res == S_OK)
 		{
+			DebugPrint("Offline authentication successful");
 			// try refill then return
 			res = tryOfflineRefill(username, otp);
 			if (res != S_OK)
 			{
 				DebugPrint("Offline refill failed: " + to_string(res));
-				return S_OK;	// Still return S_OK because offline authentication was successful
 			}
+			return PI_AUTH_SUCCESS;	// Still return SUCCESS because offline authentication was successful
 		}
 		else
 		{
 			// Continue with other steps
+			DebugPrint("Offline authenticiation failed");
 		}
 	}
-	else if (res == OFFLINE_DATA_NO_OTPS_LEFT)
+	else if (res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 	{
 		// Also refill and continue?
 		res = tryOfflineRefill(username, otp);
@@ -160,7 +163,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	if (response.empty())
 	{
 		DebugPrint("Received empty response from server.");
-		return PI_ERROR_EMPTY_RESPONSE;
+		return PI_AUTH_ERROR;
 	}
 
 	// Check for initial offline OTP data
@@ -169,7 +172,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	{
 		// Continue
 	}
-	else if (res == PI_NO_OFFLINE_DATA)
+	else if (res == PI_OFFLINE_NO_OFFLINE_DATA)
 	{
 		// Continue
 	}
@@ -193,7 +196,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 			_currentChallenge = c;
 			ret = PI_TRIGGERED_CHALLENGE;
 		}
-	}
+	} // else if (res == PI_NO_CHALLENGE) {}
 
 	// Check for normal success
 	res = _endpoint.parseAuthenticationRequest(response);
@@ -203,9 +206,15 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	}
 	else
 	{
-		// Error or failure
+		// If a challenge was triggered, parsing for authentication fails, so check here if a challenge was triggered
 		if (ret != PI_TRIGGERED_CHALLENGE)
-			ret = PI_AUTH_FAILURE;
+		{
+			if (res == PI_JSON_ERROR_CONTAINED)
+				ret = PI_AUTH_ERROR;
+			
+			else if (res == PI_AUTH_FAILURE)
+				ret = PI_AUTH_FAILURE;
+		}
 	}
 
 	return ret;
@@ -250,12 +259,12 @@ HRESULT PrivacyIDEA::pollTransaction(std::string transaction_id)
 
 HRESULT PrivacyIDEA::getLastErrorCode()
 {
-	return _lastErrorCode;
+	return _endpoint.getLastErrorCode();
 }
 
-std::string PrivacyIDEA::getLastErrorText()
+std::wstring PrivacyIDEA::getLastErrorMessage()
 {
-	return _lastErrorText;
+	return s2ws(_endpoint.getLastErrorMessage());
 }
 
 Challenge PrivacyIDEA::getCurrentChallenge()

@@ -24,21 +24,12 @@
 #include <Windows.h>
 #include <vector>
 
-#define OFFLINE_FILE_DOES_NOT_EXIST		((HRESULT)0x88809010) // Not an error
-#define OFFLINE_FILE_EMPTY				((HRESULT)0x88809011)
-#define OFFLINE_JSON_FORMAT_ERROR		((HRESULT)0x88809012)
-#define OFFLINE_JSON_PARSE_ERROR		((HRESULT)0x88809014)
-
-#define OFFLINE_DATA_NO_OTPS_LEFT		((HRESULT)0x88809020)
-#define OFFLINE_DATA_USER_NOT_FOUND		((HRESULT)0x88809021)
-#define PI_NO_OFFLINE_DATA				((HRESULT)0x88809022) 
-
 class OfflineHandler
 {
 public:
 	OfflineHandler();
 
-	OfflineHandler(const std::string& filePath, int tryWindow);
+	OfflineHandler(const std::string& filePath, int tryWindow = 10);
 
 	~OfflineHandler();
 

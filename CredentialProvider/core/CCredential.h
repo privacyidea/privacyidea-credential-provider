@@ -24,16 +24,15 @@
 
 #include "Dll.h"
 #include "common.h"
-
 #include "Utilities.h"
 #include "Configuration.h"
 #include "PrivacyIDEA.h"
 
 #include <unknwn.h>
 #include <helpers.h>
-#include <future>
 #include <string>
 #include <map>
+#include <future>
 
 #define TIMEOUT_TEXT L"Timeout: %i secs."
 
@@ -52,6 +51,7 @@ public:
 		if (!cRef)
 		{
 			//delete this;
+			//this->~CCredential();
 		}
 		return cRef;
 	}
@@ -120,7 +120,7 @@ public:
 
 private:
 
-	void showErrorMessage(std::wstring message, HRESULT code);
+	void showErrorMessage(const std::wstring& message, const HRESULT& code);
 
 	void pushAuthenticationCallback(bool success);
 
@@ -134,12 +134,12 @@ private:
 	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];          // An array holding the state of 
 																						 // each field in the tile.
 
-	wchar_t*								_rgFieldStrings[FID_NUM_FIELDS];											 // An array holding the string 
+	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];											 // An array holding the string 
 																						 // value of each field. This is 
 																						 // different from the name of 
 																						 // the field held in 
 																						 // _rgCredProvFieldDescriptors.
-	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
+	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
 
 	DWORD                                   _dwComboIndex;                               // Tracks the current index 
 																						 // of our combobox.

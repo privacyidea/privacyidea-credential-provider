@@ -18,7 +18,8 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "OfflineHandler.h"
-#include "Endpoint.h"
+#include "ErrorCodes.h"
+#include "Endpoint.h" // tryParseJSON
 #include <iostream>
 #include <fstream>
 #include <atlenc.h>
@@ -144,7 +145,7 @@ int OfflineHandler::getOfflineValuesLeft(const std::string& username)
 
 HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::map<std::string, std::string>& map)
 {
-	if (dataSets.empty()) return PI_NO_OFFLINE_DATA;
+	if (dataSets.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 
 	for (auto& item : dataSets)
 	{
@@ -152,44 +153,34 @@ HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std
 		{
 			string serial = item.serial;
 			string refilltoken = item.refilltoken;
-			if (serial.empty() || refilltoken.empty()) return PI_NO_OFFLINE_DATA;
+			if (serial.empty() || refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 			map.try_emplace("serial", serial);
 			map.try_emplace("refilltoken", refilltoken);
 			return S_OK;
 		}
 	}
 
-	return OFFLINE_DATA_USER_NOT_FOUND;
+	return PI_OFFLINE_DATA_USER_NOT_FOUND;
 }
 
 // Check an authentication reponse from privacyIDEA if it contains the inital data for offline
 HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 {
-	if (in.empty()) return E_FAIL;
-
-	json j;
-	try
-	{
-		j = json::parse(in);
-	}
-	catch (const json::parse_error & e)
-	{
-		DebugPrint(e.what());
-		return OFFLINE_JSON_PARSE_ERROR;
-	}
+	auto j = Endpoint::tryParseJSON(in);
+	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	auto jAuth_items = j["auth_items"];
-	if (jAuth_items == nullptr) return PI_NO_OFFLINE_DATA;
+	if (jAuth_items == nullptr) return PI_OFFLINE_NO_OFFLINE_DATA;
 
 	// Get the serial to add to the data
 	auto jSerial = j["detail"]["serial"];
-	if (!jSerial.is_string()) return OFFLINE_JSON_FORMAT_ERROR;
+	if (!jSerial.is_string()) return PI_JSON_FORMAT_ERROR;
 	string serial = jSerial.get<std::string>();
 
 	auto jOffline = jAuth_items["offline"];
 
-	if (!jOffline.is_array()) return OFFLINE_JSON_FORMAT_ERROR;
-	if (jOffline.size() < 1) return PI_NO_OFFLINE_DATA;
+	if (!jOffline.is_array()) return PI_JSON_FORMAT_ERROR;
+	if (jOffline.size() < 1) return PI_OFFLINE_NO_OFFLINE_DATA;
 
 	for (const auto& item : jOffline)
 	{
@@ -202,16 +193,8 @@ HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 
 HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::string& username)
 {
-	json jIn;
-	try
-	{
-		jIn = json::parse(in);
-	}
-	catch (const json::parse_error & e)
-	{
-		DebugPrint(e.what());
-		return OFFLINE_JSON_PARSE_ERROR;
-	}
+	auto jIn = Endpoint::tryParseJSON(in);
+	if (jIn == nullptr) return PI_JSON_PARSE_ERROR;
 	// Set the new refill token
 	json offline;
 	try
@@ -221,10 +204,10 @@ HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::st
 	catch (const std::exception & e)
 	{
 		DebugPrint(e.what());
-		return OFFLINE_JSON_FORMAT_ERROR;
+		return PI_JSON_FORMAT_ERROR;
 	}
 
-	if (offline == nullptr) return OFFLINE_JSON_FORMAT_ERROR;
+	if (offline == nullptr) return PI_JSON_FORMAT_ERROR;
 
 	for (auto& item : dataSets)
 	{
@@ -262,11 +245,11 @@ HRESULT OfflineHandler::isDataVailable(const std::string& username)
 	{
 		if (item.user == username || item.username == username)
 		{
-			return (item.offlineOTPs.empty() ? OFFLINE_DATA_NO_OTPS_LEFT : S_OK);
+			return (item.offlineOTPs.empty() ? PI_OFFLINE_DATA_NO_OTPS_LEFT : S_OK);
 		}
 	}
 
-	return OFFLINE_DATA_USER_NOT_FOUND;
+	return PI_OFFLINE_DATA_USER_NOT_FOUND;
 }
 
 HRESULT OfflineHandler::saveToFile()
@@ -309,7 +292,7 @@ HRESULT OfflineHandler::loadFromFile()
 		ifs.close();
 	}
 
-	if (fileContent.empty()) return OFFLINE_FILE_EMPTY;
+	if (fileContent.empty()) return PI_OFFLINE_FILE_EMPTY;
 
 	try
 	{
@@ -329,7 +312,7 @@ HRESULT OfflineHandler::loadFromFile()
 	catch (const json::parse_error & e)
 	{
 		DebugPrint(e.what());
-		return OFFLINE_JSON_PARSE_ERROR;
+		return PI_JSON_PARSE_ERROR;
 	}
 
 	return S_OK;

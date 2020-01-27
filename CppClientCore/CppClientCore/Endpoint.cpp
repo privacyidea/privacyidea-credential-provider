@@ -43,22 +43,47 @@ string Endpoint::escapeUrl(const string& in)
 	}
 	DWORD len = in.size();
 	const DWORD maxLen = (len * 3);
-	DWORD* pdwLen = &len;
-	LPSTR out = (char*)malloc(sizeof(char) * maxLen);
-	LPCSTR input = in.c_str();
-	HRESULT res = AtlEscapeUrl(input, out, pdwLen, maxLen, (DWORD)NULL);
-
-	if (SUCCEEDED(res))
+	DWORD* pdwLen = nullptr;
+	LPSTR buf = (char*)malloc(sizeof(char) * maxLen);
+	if (buf == nullptr)
 	{
-		string ret(out);
-		free(out);
+		DebugPrint("malloc fail");
+		return "";
+	}
+	LPCSTR input = in.c_str();
+	BOOL res = AtlEscapeUrl(input, buf, pdwLen, maxLen, (DWORD)NULL);
+
+	if (res)
+	{
+		string ret(buf);
+		free(buf);
 		return ret;
 	}
 	else
 	{
 		DebugPrint("AtlEscapeUrl Failure");
-		free(out);
+		free(buf);
 		return "";
+	}
+}
+
+const std::string& Endpoint::getLastErrorMessage()
+{
+	return _lastErrorMessage;
+}
+
+nlohmann::json Endpoint::tryParseJSON(const std::string& in)
+{
+	json j;
+	try
+	{
+		j = json::parse(in);
+		return j;
+	}
+	catch (const json::parse_error & e)
+	{
+		DebugPrint(e.what());
+		return nullptr;
 	}
 }
 
@@ -260,11 +285,12 @@ HRESULT Endpoint::parseAuthenticationRequest(const string& in)
 {
 	DebugPrint(__FUNCTION__);
 
-	auto j = json::parse(in);
+	auto j = Endpoint::tryParseJSON(in);
+	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	//string value = j["result"]["value"].get<std::string>();
 	string value = j["result"]["value"].dump();
-	if (value.empty())
+	if (value == "null")
 	{
 		return parseForError(in);
 	}
@@ -279,12 +305,14 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 {
 	DebugPrint(__FUNCTION__);
 
-	auto j = json::parse(in);
+	auto j = Endpoint::tryParseJSON(in);
+	if (j == nullptr) return PI_JSON_PARSE_ERROR;
+
 	json multiChallenge = j["detail"]["multi_challenge"];
 
 	if (multiChallenge.empty())
 	{
-		return parseForError(in);
+		return PI_NO_CHALLENGES;
 	}
 
 	// Check each element for messages / transaction IDs / push token
@@ -313,7 +341,6 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 			// TODO Accumulate if there are multiple message, no duplicates
 			c.addMessage(message);
 		}
-		// TODO are multiple transaction ids possible?
 		if (!txid.empty())
 		{
 			c.transaction_id = txid;
@@ -322,9 +349,7 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 		{
 			c.serial = serial;
 		}
-		//DebugPrintLn("msg=" + message + ", type=" + type + ", txid=" + txid + ", serial= " + serial);
 	}
-	// TODO 
 	return PI_TRIGGERED_CHALLENGE;
 }
 
@@ -332,20 +357,45 @@ HRESULT Endpoint::parseForError(const std::string& in)
 {
 	DebugPrint(__FUNCTION__);
 	// TODO parse any error text and set it to status
-	auto j = json::parse(in);
-	// Check for error code
+	auto j = Endpoint::tryParseJSON(in);
+	if (j == nullptr) return PI_JSON_PARSE_ERROR;
+
+	// Check for error code and message
+	/*auto error = j["result"]["error"];
+	if (error.is_object())
+	{
+		auto jErrCode = error["code"];
+		auto jErrMsg = error["message"];
+
+		if (jErrCode.is_number())
+		{
+
+		}
+	} */
+
 	string errorCode = j["result"]["error"]["code"].dump();
-	if (errorCode == "101")
+	string errorMessage = j["result"]["error"]["message"].dump();
+
+	if (errorCode == "null" && errorMessage == "null")
 	{
-		return ENDPOINT_RESPONSE_INSUFFICIENT_SUBSCR;
+		ReleaseDebugPrint("Received unknown reponse from server:" + in);
+		return E_INVALIDARG;
 	}
-	else
-	{
-		ReleaseDebugPrint("Received invalid reponse from server:" + in);
-		return S_OK;
-	}
+
+	if (errorCode != "null")
+		_lastErrorCode = std::stoi(errorCode);
+
+	if (errorMessage != "null")
+		_lastErrorMessage = errorMessage;
+
+	return PI_JSON_ERROR_CONTAINED;
 }
- 
+
+const int& Endpoint::getLastErrorCode()
+{
+	return _lastErrorCode;
+}
+
 HRESULT Endpoint::pollForTransaction(const std::map<std::string, std::string>& params)
 {
 	string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
@@ -356,7 +406,8 @@ HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 {
 	DebugPrint(__FUNCTION__);
 
-	auto j = json::parse(in);
+	auto j = Endpoint::tryParseJSON(in);
+	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	//string value = j["result"]["value"].get<std::string>();
 	string value = j["result"]["value"].dump();

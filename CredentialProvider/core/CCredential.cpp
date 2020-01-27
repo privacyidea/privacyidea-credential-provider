@@ -36,7 +36,8 @@
 
 using namespace std;
 
-CCredential::CCredential(std::shared_ptr<Configuration> c) : _config(c), _util(_config)//, _privacyIDEA(_config->piconfig)
+CCredential::CCredential(std::shared_ptr<Configuration> c) :
+	_config(c), _util(_config), _privacyIDEA(c->piconfig)
 {
 	_cRef = 1;
 	_pCredProvCredentialEvents = nullptr;
@@ -48,8 +49,6 @@ CCredential::CCredential(std::shared_ptr<Configuration> c) : _config(c), _util(_
 	ZERO(_rgCredProvFieldDescriptors);
 	ZERO(_rgFieldStatePairs);
 	ZERO(_rgFieldStrings);
-
-	_privacyIDEA = PrivacyIDEA(_config->piconfig);
 }
 
 CCredential::~CCredential()
@@ -80,7 +79,6 @@ HRESULT CCredential::Initialize(
 	if (NOT_EMPTY(password))
 		wstrPassword = wstring(password);
 
-
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
 	DebugPrint(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
@@ -108,18 +106,6 @@ HRESULT CCredential::Initialize(
 		_config->credential.password = wstrPassword;
 	}
 
-
-	// Copy the field descriptors for each field. This is useful if you want to vary the 
-	// field descriptors based on what Usage scenario the credential was created for.
-	// Initialize the fields	
-
-	// !!!!!!!!!!!!!!!!!!!!
-	// !!!!!!!!!!!!!!!!!!!!
-	// TODO: make _rgCredProvFieldDescriptors dynamically allocated depending on current CPUS
-	// !!!!!!!!!!!!!!!!!!!!
-	// !!!!!!!!!!!!!!!!!!!!
-
-	//for (DWORD i = 0; SUCCEEDED(hr) && i < ARRAYSIZE(_rgCredProvFieldDescriptors); i++)
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
 	{
 		//DebugPrintLn("Copy field #:");
@@ -168,7 +154,7 @@ HRESULT CCredential::UnAdvise()
 	{
 		_pCredProvCredentialEvents->Release();
 	}
-	_pCredProvCredentialEvents = NULL;
+	_pCredProvCredentialEvents = nullptr;
 	return S_OK;
 }
 
@@ -590,7 +576,7 @@ HRESULT CCredential::GetSubmitButtonValue(
 	{
 		// This is only called once when the credential is created.
 		// When switching to the second step, the button is set via CredentialEvents
-		*pdwAdjacentTo = FID_OTP_LDAP_PASS;
+		*pdwAdjacentTo = _config->twoStepHideOTP ? FID_OTP_LDAP_PASS : FID_OTP_PASS;
 		return S_OK;
 	}
 	return E_INVALIDARG;
@@ -833,9 +819,9 @@ HRESULT CCredential::GetSerialization(
 		return S_FALSE;
 	}
 	// Check if we are pre 2nd step or failure
-	if (_config->authenticationSuccessful == false && _config->pushAuthenticationSuccessful == false)
+	if (_piStatus != PI_AUTH_SUCCESS && _config->pushAuthenticationSuccessful == false)
 	{
-		if (_config->isSecondStep == false)
+		if (_config->isSecondStep == false && _config->twoStepHideOTP)
 		{
 			// Prepare for the second step (input only OTP)
 			_config->clearFields = false;
@@ -849,22 +835,21 @@ HRESULT CCredential::GetSerialization(
 		}
 		else
 		{
-			// Failed authentication
+			// Failed authentication or error
 			if (_piStatus == PI_AUTH_FAILURE)
 			{
 				showErrorMessage(_config->otpFailureText.empty() ? L"Wrong One-Time-Password!" : _config->otpFailureText, 0);
 			}
+			else if (_piStatus == PI_AUTH_ERROR)
+			{
+				showErrorMessage(_privacyIDEA.getLastErrorMessage(), _privacyIDEA.getLastErrorCode());
+			}
+			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 		}
 	}
-	else if (_config->authenticationSuccessful || _config->pushAuthenticationSuccessful)
+	else if (_piStatus == PI_AUTH_SUCCESS || _config->pushAuthenticationSuccessful)
 	{
-		// LOG IN
-		if (_piStatus == PI_AUTH_SUCCESS)
-		{
-			// If windows password is wrong, treat it as new logon-
-			_config->isSecondStep = false;
-		}
-
+		// Pack credentials for logon
 		if (_config->provider.cpu == CPUS_CREDUI)
 		{
 			hr = _util.CredPackAuthentication(pcpgsr, pcpcs, _config->provider.cpu,
@@ -921,15 +906,15 @@ HRESULT CCredential::GetSerialization(
 }
 
 // if code == 0, it won't be displayed
-void CCredential::showErrorMessage(std::wstring message, HRESULT code)
+void CCredential::showErrorMessage(const std::wstring& message, const HRESULT& code)
 {
 	*_config->provider.status_icon = CPSI_ERROR;
 	wstring errorMessage = message;
-	if (code != 0) message += L" (" + to_wstring(code) + L")";
+	if (code != 0) errorMessage += L" (" + to_wstring(code) + L")";
 	SHStrDupW(errorMessage.c_str(), _config->provider.status_text);
 }
 
-// If push is successful, reset the credential to set autologin in 
+// If push is successful, reset the credential to do autologin
 void CCredential::pushAuthenticationCallback(bool success)
 {
 	DebugPrint(__FUNCTION__);
@@ -1013,9 +998,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 								break;
 							}
 						}
-
-						_piStatus = (_piStatus == PI_TRANSACTION_SUCCESS) ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
-						if (_piStatus == PI_AUTH_SUCCESS) _config->authenticationSuccessful = true;
+						// Translate transaction status to auth status
+						_piStatus = _piStatus == PI_TRANSACTION_SUCCESS ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
 					}
 				}
 				else
@@ -1034,19 +1018,12 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			PrivacyIDEA::ws2s(_config->credential.domain),
 			PrivacyIDEA::ws2s(_config->credential.otp),
 			_config->challenge.transaction_id);
-
-		if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
-			_config->authenticationSuccessful = true;
-
 	}
 	//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 	else
 	{
 		_piStatus = _privacyIDEA.validateCheck(_config->credential.username,
 			_config->credential.domain, _config->credential.otp);
-
-		if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
-			_config->authenticationSuccessful = true;
 	}
 
 	DebugPrint("Connect - END");

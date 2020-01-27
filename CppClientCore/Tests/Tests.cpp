@@ -187,7 +187,7 @@ namespace Tests
 
 			// Test wrong inputs
 			res = offline.isDataVailable("user");
-			assertEquals(OFFLINE_DATA_USER_NOT_FOUND, res);
+			assertEquals(PI_OFFLINE_DATA_USER_NOT_FOUND, res);
 			count = offline.getOfflineValuesLeft("user");
 			assertEquals(-1, count);
 			res = offline.verifyOfflineOTP(L"111111", "daemon");
@@ -197,17 +197,17 @@ namespace Tests
 			res = offline.verifyOfflineOTP(L"im no otp", "daemon");
 			assertEquals(E_FAIL, res);
 			res = offline.getRefillTokenAndSerial("user", params);
-			assertEquals(OFFLINE_DATA_USER_NOT_FOUND, res);
+			assertEquals(PI_OFFLINE_DATA_USER_NOT_FOUND, res);
 			res = offline.parseForOfflineData(string());
 			assertEquals(E_FAIL, res);
 			res = offline.parseForOfflineData("cant parse this");
-			assertEquals(OFFLINE_JSON_PARSE_ERROR, res);
+			assertEquals(PI_JSON_PARSE_ERROR, res);
 			// vv not a "wrong" input vv
 			string authResponse = "{\"detail\": {\"message\": \"matching 1 tokens\", \"otplen\": 6, \"serial\": \"OATH0001A58E\", \"threadid\": 140366760421120, \"type\": \"hotp\"}, \"id\": 1, \"jsonrpc\": \"2.0\", \"result\": {\"status\": true, \"value\": true}, \"time\": 1579772486.3738062, \"version\": \"privacyIDEA 3.2.1\", \"versionnumber\": \"3.2.1\", \"signature\": \"rsa_sha256_pss:\"}";
 			res = offline.parseForOfflineData(authResponse);
-			assertEquals(PI_NO_OFFLINE_DATA, res);
+			assertEquals(PI_OFFLINE_NO_OFFLINE_DATA, res);
 			res = offline.parseRefillResponse("cant parse this", "daemon");
-			assertEquals(OFFLINE_JSON_PARSE_ERROR, res);
+			assertEquals(PI_JSON_PARSE_ERROR, res);
 
 			// Reload the file
 			offline.~OfflineHandler();

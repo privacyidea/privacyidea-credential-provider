@@ -29,17 +29,13 @@ enum class RequestMethod {
 	POST
 };
 
-// Endpoint class that connects to privacyIDEA as well as parsing the reponses
+// Endpoint class that connects to privacyIDEA and parses the reponses
 class Endpoint
 {
 public:
-	Endpoint() = default;
-
 	Endpoint(std::wstring& hostname, std::wstring& path, int customPort, bool ignoreInvalidCN, bool ignoreUnknownCA, bool logPasswords) :
 		_hostname(std::move(hostname)), _path(std::move(path)), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN),
 		_ignoreUnknownCA(ignoreUnknownCA), _logPasswords(logPasswords) {};
-
-	~Endpoint() = default;
 
 	std::string connect(const std::string& endpoint, std::map<std::string, std::string> params, const RequestMethod& method);
 
@@ -58,8 +54,14 @@ public:
 	HRESULT parseTriggerRequest(const std::string& in, Challenge& c);
 
 	// Check the response for error code and message
-	// returns EP_ERROR_CONTAINED if there was an error or S_OK if not
+	// returns PI_JSON_ERROR_CONTAINED if there was an error or S_OK if not
 	HRESULT parseForError(const std::string& in);
+
+	const int& getLastErrorCode();
+
+	const std::string& getLastErrorMessage();
+	
+	static nlohmann::json tryParseJSON(const std::string& in);
 
 private:
 
@@ -74,5 +76,8 @@ private:
 	int _customPort = 0;
 
 	bool _logPasswords = false;
+
+	std::string _lastErrorMessage = "";
+	int _lastErrorCode = 0;
 };
 

@@ -153,6 +153,7 @@
     <ClInclude Include="..\nlohmann\json.hpp" />
     <ClInclude Include="Challenge.h" />
     <ClInclude Include="Endpoint.h" />
+    <ClInclude Include="ErrorCodes.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="OfflineData.h" />
     <ClInclude Include="OfflineHandler.h" />

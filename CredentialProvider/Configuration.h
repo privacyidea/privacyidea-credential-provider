@@ -62,7 +62,6 @@ public:
 	int winBuildNr = 0;
 	
 	bool pushAuthenticationSuccessful = false;
-	bool authenticationSuccessful = false;
 
 	bool doAutoLogon = false;
 
@@ -95,7 +94,6 @@ public:
 		wchar_t** field_strings = nullptr;
 	} provider;
 	
-
 	struct CREDENTIAL
 	{
 		std::wstring username = L"";
