@@ -34,37 +34,7 @@ using namespace std;
 using json = nlohmann::json;
 
 vector<std::string> _excludedEndpoints = { PI_ENDPOINT_POLL_TX };
-/*
-Endpoint::Endpoint(const Endpoint& endpoint)
-{
-	if (this != &endpoint)
-	{
-		_ignoreInvalidCN = endpoint._ignoreInvalidCN;
-		_ignoreUnknownCA = endpoint._ignoreUnknownCA;
-		_customPort = endpoint._customPort;
-		_hostname = endpoint._hostname;
-		_path = endpoint._path;
-		std::lock_guard<std::mutex> guard(_mutex);
-		_runPoll = endpoint._runPoll;
-	}
-}
-*/
-/*
-Endpoint& Endpoint::operator=(Endpoint const& endpoint)
-{
-	if (this != &endpoint)
-	{
-		_ignoreInvalidCN = endpoint._ignoreInvalidCN;
-		_ignoreUnknownCA = endpoint._ignoreUnknownCA;
-		_customPort = endpoint._customPort;
-		_hostname = endpoint._hostname;
-		_path = endpoint._path;
-		std::lock_guard<std::mutex> guard(_mutex);
-		_runPoll = endpoint._runPoll;
-	}
-	return *this;
-}
- */
+
 string Endpoint::escapeUrl(const string& in)
 {
 	if (in.empty())
@@ -375,31 +345,7 @@ HRESULT Endpoint::parseForError(const std::string& in)
 		return S_OK;
 	}
 }
-/*
-HRESULT Endpoint::pollForTransactionWithLoop(const std::string& transaction_id, const std::string& username)
-{
-	DebugPrint(__FUNCTION__);
-	map<string, string> params;
-	params.try_emplace("transaction_id", transaction_id);
-	setRunPoll(true);
-	HRESULT res = E_FAIL;
-	while (_runPoll)
-	{
-		string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
-		res = parseForTransactionSuccess(response);
-		if (res == ENDPOINT_STATUS_AUTH_OK)
-		{
-			setRunPoll(false);
-			break;
-		}
-		this_thread::sleep_for(chrono::milliseconds(500));
-	}
-	DebugPrint("Polling stopped.");
-
-	// if polling is successfull, the authentication has to be finalized
-	return finalizePolling(username, transaction_id);
-}
-*/
+ 
 HRESULT Endpoint::pollForTransaction(const std::map<std::string, std::string>& params)
 {
 	string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);

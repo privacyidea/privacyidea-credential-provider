@@ -759,7 +759,7 @@ HRESULT CCredential::GetSerialization(
 	CPGSR_NO_CREDENTIAL_FINISHED
 	This serialization response means that the Credential Provider has not serialized a credential but
 	it has completed its work. This response has multiple meanings.
-	It can mean that no credential was serialized and the user should not try again. 
+	It can mean that no credential was serialized and the user should not try again.
 	This response can also mean no credential was submitted but the credential’s work is complete.
 	For instance, in the Change Password scenario, this response implies success.
 
@@ -832,39 +832,48 @@ HRESULT CCredential::GetSerialization(
 		SHStrDupW(L"Logon cancelled", _config->provider.status_text);
 		return S_FALSE;
 	}
-	// Check if we are pre 2nd step
+	// Check if we are pre 2nd step or failure
 	if (_config->authenticationSuccessful == false && _config->pushAuthenticationSuccessful == false)
 	{
-		// Prepare for the second step (input only OTP)
-		_config->clearFields = false;
-		_util.SetScenario(_config->provider.pCredProvCredential,
-			_config->provider.pCredProvCredentialEvents,
-			SCENARIO::SECOND_STEP, std::wstring(), L"Please enter your second factor:");
-		// Set the submit button next to the OTP field for the second step
-		_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_OTP_SUBMIT_BUTTON, FID_OTP_PASS);
-		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+		if (_config->isSecondStep == false)
+		{
+			// Prepare for the second step (input only OTP)
+			_config->clearFields = false;
+			_util.SetScenario(_config->provider.pCredProvCredential,
+				_config->provider.pCredProvCredentialEvents,
+				SCENARIO::SECOND_STEP, std::wstring(), L"Please enter your second factor:");
+			// Set the submit button next to the OTP field for the second step
+			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_OTP_SUBMIT_BUTTON, FID_OTP_PASS);
+			*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			_config->isSecondStep = true;
+		}
+		else
+		{
+			// Failed authentication
+			if (_piStatus == PI_AUTH_FAILURE)
+			{
+				showErrorMessage(_config->otpFailureText.empty() ? L"Wrong One-Time-Password!" : _config->otpFailureText, 0);
+			}
+		}
 	}
-	// It is the final step -> try to log in
-	else if (_config->authenticationSuccessful || _config->pushAuthenticationSuccessful || _config->bypassPrivacyIDEA)
+	else if (_config->authenticationSuccessful || _config->pushAuthenticationSuccessful)
 	{
+		// LOG IN
 		if (_piStatus == PI_AUTH_SUCCESS)
 		{
-			// If windows password is wrong, treat it as new logon
+			// If windows password is wrong, treat it as new logon-
 			_config->isSecondStep = false;
-			_piStatus = PI_STATUS_NOT_SET;
 		}
 
 		if (_config->provider.cpu == CPUS_CREDUI)
 		{
 			hr = _util.CredPackAuthentication(pcpgsr, pcpcs, _config->provider.cpu,
-				currentUsername,
-				currentPassword, currentDomain);
+				currentUsername, currentPassword, currentDomain);
 		}
 		else
 		{
 			hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
-				currentUsername,
-				currentPassword, currentDomain);
+				currentUsername, currentPassword, currentDomain);
 		}
 		if (SUCCEEDED(hr))
 		{
@@ -876,25 +885,9 @@ HRESULT CCredential::GetSerialization(
 			retVal = S_FALSE;
 		}
 	}
-	else if (_piStatus == PI_AUTH_FAILURE) // TODO
-	{
-		wstring otpFailureText = _config->otpFailureText.empty() ? L"Wrong One-Time-Password!" : _config->otpFailureText;
-		SHStrDupW(otpFailureText.c_str(), _config->provider.status_text);
-		*_config->provider.status_icon = CPSI_ERROR;
-		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-	}
 	else
 	{
-		wstring message = L"Unexpected Error";
-		/*
-		switch (_endpointStatus)
-		{
-			case ENDPOINT_STATUS_AUTH_FAIL: message = L"Wrong otp";
-		} */// TODO
-
-		// Display the error message and icon
-		SHStrDupW(message.c_str(), _config->provider.status_text);
-		*_config->provider.status_icon = CPSI_ERROR;
+		showErrorMessage(L"Unexpected error", 0);
 
 		// Jump to the first login window
 		_util.ResetScenario(this, _pCredProvCredentialEvents);
@@ -927,10 +920,12 @@ HRESULT CCredential::GetSerialization(
 	return retVal;
 }
 
+// if code == 0, it won't be displayed
 void CCredential::showErrorMessage(std::wstring message, HRESULT code)
 {
 	*_config->provider.status_icon = CPSI_ERROR;
-	wstring errorMessage = message + L" (" + to_wstring(code) + L")";
+	wstring errorMessage = message;
+	if (code != 0) message += L" (" + to_wstring(code) + L")";
 	SHStrDupW(errorMessage.c_str(), _config->provider.status_text);
 }
 
@@ -961,6 +956,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	if (_config->bypassPrivacyIDEA)
 	{
 		DebugPrint("Bypassing privacyIDEA...");
+		_config->bypassPrivacyIDEA = false;
+
 		return S_OK;
 	}
 
@@ -1026,11 +1023,9 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					// Only classic OTP available, do nothing else in the first step
 				}
 			}
-
-			_config->isSecondStep = true;
 		}
-		//////////////////// SECOND STEP ////////////////////////
 	}
+	//////////////////// SECOND STEP ////////////////////////
 	else if (_config->twoStepHideOTP && _config->isSecondStep)
 	{
 		// Send with optional transaction_id from first step
@@ -1039,28 +1034,19 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			PrivacyIDEA::ws2s(_config->credential.domain),
 			PrivacyIDEA::ws2s(_config->credential.otp),
 			_config->challenge.transaction_id);
+
 		if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
-		{
 			_config->authenticationSuccessful = true;
-		}
-		else
-		{
-			showErrorMessage(L"PrivacyIDEA: Authentication failed!", _piStatus);
-		}
+
 	}
 	//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 	else
 	{
 		_piStatus = _privacyIDEA.validateCheck(_config->credential.username,
 			_config->credential.domain, _config->credential.otp);
+
 		if (_piStatus == PI_OFFLINE_OTP_SUCCESS || _piStatus == PI_AUTH_SUCCESS)
-		{
 			_config->authenticationSuccessful = true;
-		}
-		else
-		{
-			showErrorMessage(L"PrivacyIDEA: Authentication failed!", _piStatus);
-		}
 	}
 
 	DebugPrint("Connect - END");

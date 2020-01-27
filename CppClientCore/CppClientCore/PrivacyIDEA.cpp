@@ -80,6 +80,39 @@ void PrivacyIDEA::pollThread(const std::map<std::string, std::string>& params, c
 	}
 }
 
+HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, std::string lastOTP)
+{
+	map<string, string> params = map<string, string>();
+	params.try_emplace("pass", lastOTP);
+	_offlineHandler.getRefillTokenAndSerial(username, params);
+	try
+	{
+		string refilltoken = params.at("refilltoken");
+		string serial = params.at("serial");
+		if (refilltoken.empty() || serial.empty())
+		{
+			DebugPrint("Offline refill params were empty");
+			return E_FAIL;
+		}
+	}
+	catch (const std::out_of_range & e)
+	{
+		DebugPrint("Offline refill failed, missing data for " + username);
+		return E_FAIL;
+	}
+	string response = _endpoint.connect(PI_ENDPOINT_OFFLINE_REFILL, params, RequestMethod::POST);
+
+	if (response.empty())
+	{
+		DebugPrint("Offline refill response was empty");
+		return E_FAIL;
+	}
+
+	HRESULT res = _offlineHandler.parseRefillResponse(response, username);
+
+	return res;
+}
+
 HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp, const std::string& transaction_id)
 {
 	HRESULT res = E_FAIL, ret = PI_AUTH_FAILURE;
@@ -92,7 +125,12 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 		if (res == S_OK)
 		{
 			// try refill then return
-
+			res = tryOfflineRefill(username, otp);
+			if (res != S_OK)
+			{
+				DebugPrint("Offline refill failed: " + to_string(res));
+				return S_OK;	// Still return S_OK because offline authentication was successful
+			}
 		}
 		else
 		{
@@ -101,15 +139,20 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	}
 	else if (res == OFFLINE_DATA_NO_OTPS_LEFT)
 	{
-		// Also refill and continue? 
+		// Also refill and continue?
+		res = tryOfflineRefill(username, otp);
+		if (res != S_OK)
+			DebugPrint("Offline refill failed: " + to_string(res));
 	}
 
 	// Connect with the privacyIDEA Server
 	map<string, string> params;
 	params.try_emplace("user", username);
 	params.try_emplace("pass", otp);
+	
 	if (!transaction_id.empty())
 		params.try_emplace("transaction_id", transaction_id);
+	
 	checkForRealm(params, domain);
 
 	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);

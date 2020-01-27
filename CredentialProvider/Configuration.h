@@ -72,6 +72,9 @@ public:
 
 	std::wstring defaultChallengeText = L"Please confirm the authentication!";
 
+	bool clearFields = true;
+	bool bypassPrivacyIDEA = false;
+
 	struct PROVIDER
 	{
 		ICredentialProviderEvents* pCredentialProviderEvents = nullptr;
@@ -92,8 +95,6 @@ public:
 		wchar_t** field_strings = nullptr;
 	} provider;
 	
-	bool clearFields = true;
-	bool bypassPrivacyIDEA = false;
 
 	struct CREDENTIAL
 	{
@@ -110,20 +111,6 @@ public:
 		std::wstring newPassword1 = L"";
 		std::wstring newPassword2 = L"";
 	} credential;
-
-	/*
-	struct ENDPOINT
-	{
-		IQueryContinueWithStatus* pQueryContinueWithStatus = nullptr; // TODO remove? use only locally
-		bool userCanceled = false; // TODO remove, use status to indicate if needed
-
-		std::wstring hostname = L"";
-		std::wstring path = L"";
-		int customPort = 0;
-		bool sslIgnoreCA = false;
-		bool sslIgnoreCN = false;
-	} endpoint;
-	*/
 
 private:
 

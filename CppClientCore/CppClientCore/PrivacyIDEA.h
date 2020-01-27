@@ -118,6 +118,8 @@ private:
 	std::string _lastErrorText = "";
 	HRESULT _lastErrorCode = 0;
 
+	HRESULT tryOfflineRefill(std::string username, std::string lastOTP);
+
 	std::atomic<bool> _runPoll = false;
 };
 

@@ -36,22 +36,12 @@ public:
 	Endpoint() = default;
 
 	Endpoint(std::wstring& hostname, std::wstring& path, int customPort, bool ignoreInvalidCN, bool ignoreUnknownCA, bool logPasswords) :
-		_hostname(std::move(hostname)), _path(std::move(path)), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN), _ignoreUnknownCA(ignoreUnknownCA),
-		_logPasswords(logPasswords) {};
+		_hostname(std::move(hostname)), _path(std::move(path)), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN),
+		_ignoreUnknownCA(ignoreUnknownCA), _logPasswords(logPasswords) {};
 
 	~Endpoint() = default;
 
-	//Endpoint(const Endpoint& endpoint); // = default;
-
-	//Endpoint& operator=(Endpoint const& endpoint); // = default;
-
-	//Endpoint& operator=(Endpoint&& endpoint) = default;
-
 	std::string connect(const std::string& endpoint, std::map<std::string, std::string> params, const RequestMethod& method);
-
-	// Poll for the transaction in a loop that is controlled by _runPoll. If successful calls finalizePolling.
-	// For use in background thread while displaying OTP field.
-	//HRESULT pollForTransactionWithLoop(const std::string& transaction_id, const std::string& username);
 
 	HRESULT pollForTransaction(const std::map<std::string, std::string>& params);
 
@@ -70,6 +60,7 @@ public:
 	// Check the response for error code and message
 	// returns EP_ERROR_CONTAINED if there was an error or S_OK if not
 	HRESULT parseForError(const std::string& in);
+
 private:
 
 	std::wstring get_utf16(const std::string& str, int codepage);
