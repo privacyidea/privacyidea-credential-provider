@@ -70,6 +70,8 @@ public:
 	// <returns> PI_TRANSACTION_SUCCESS or PI_TRANSACTION_FAILURE </returns>
 	HRESULT pollTransaction(std::string transaction_id);
 
+	bool isOfflineDataAvailable(const std::wstring& username);
+
 	HRESULT getLastErrorCode();
 
 	std::wstring getLastErrorMessage();

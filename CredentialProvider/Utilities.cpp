@@ -639,7 +639,7 @@ size_t Utilities::Iso8859_1_to_utf8(char* content, size_t max_size)
 	return 0;  // SUCCESS
 }
 
-HRESULT Utilities::ReadFieldValues()
+HRESULT Utilities::readFieldValues()
 {
 	DebugPrint(__FUNCTION__);
 	//HRESULT ret = S_OK;
@@ -648,15 +648,15 @@ HRESULT Utilities::ReadFieldValues()
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
 	case CPUS_CREDUI:
-		ReadUserField();
-		ReadPasswordField();
-		ReadOTPField();
+		readUserField();
+		readPasswordField();
+		readOTPField();
 		break;
 	}
 	return S_OK;
 }
 
-HRESULT Utilities::ReadUserField()
+HRESULT Utilities::readUserField()
 {
 	DebugPrint(L"Loading username/domainname from GUI, raw: " + wstring(_config->provider.field_strings[FID_OTP_USERNAME]));
 
@@ -687,7 +687,7 @@ HRESULT Utilities::ReadUserField()
 	return S_OK;
 }
 
-HRESULT Utilities::ReadPasswordField()
+HRESULT Utilities::readPasswordField()
 {
 	wstring newPassword(_config->provider.field_strings[FID_OTP_LDAP_PASS]);
 
@@ -703,7 +703,7 @@ HRESULT Utilities::ReadPasswordField()
 	return S_OK;
 }
 
-HRESULT Utilities::ReadOTPField()
+HRESULT Utilities::readOTPField()
 {
 	wstring newOTP(_config->provider.field_strings[FID_OTP_PASS]);
 	if (newOTP.empty())

@@ -936,7 +936,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	_config->provider.pCredProvCredential = this;
 	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
 	_config->provider.field_strings = _rgFieldStrings;
-	_util.ReadFieldValues();
+	_util.readFieldValues();
 
 	if (_config->bypassPrivacyIDEA)
 	{
@@ -964,7 +964,6 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain, toSend);
 			if (_piStatus == PI_TRIGGERED_CHALLENGE)
 			{
-				// TODO do same with triggered challenge?
 				Challenge c = _privacyIDEA.getCurrentChallenge();
 				_config->challenge = c;
 				if (!c.transaction_id.empty())
@@ -976,15 +975,16 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					else
 						pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
 
-					// if both pushtoken and classic OTP are available, start polling in background
-					if (c.tta == TTA::BOTH)
+					// if both pushtoken and classic OTP or offline are available, start polling in background
+					if (c.tta == TTA::BOTH ||
+						(c.tta == TTA::PUSH && _privacyIDEA.isOfflineDataAvailable(_config->credential.username)))
 					{
-						// When polling finishes, pushauthenticationsuccess has to be set, then resetscenario has to be called
+						// When polling finishes, pushAuthenticationCallback is invoked with the finialization success value
 						_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
 							std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
 					}
-					// if only push is available, start polling in main thread 
-					else if (c.tta == TTA::PUSH)
+					// if only push and NO offline data is available, start polling in main thread 
+					else if (c.tta == TTA::PUSH && !_privacyIDEA.isOfflineDataAvailable(_config->credential.username))
 					{
 						while (_piStatus != PI_TRANSACTION_SUCCESS)
 						{

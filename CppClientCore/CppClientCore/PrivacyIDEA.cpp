@@ -257,6 +257,11 @@ HRESULT PrivacyIDEA::pollTransaction(std::string transaction_id)
 	return _endpoint.pollForTransaction(params);
 }
 
+bool PrivacyIDEA::isOfflineDataAvailable(const std::wstring& username)
+{
+	return _offlineHandler.isDataVailable(ws2s(username)) == S_OK;
+}
+
 HRESULT PrivacyIDEA::getLastErrorCode()
 {
 	return _endpoint.getLastErrorCode();

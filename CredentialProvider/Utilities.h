@@ -107,7 +107,7 @@ public:
 
 	size_t Iso8859_1_to_utf8(char* content, size_t max_size);
 
-	HRESULT ReadFieldValues();
+	HRESULT readFieldValues();
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 
@@ -116,10 +116,10 @@ public:
 private:
 	std::shared_ptr<Configuration> _config;
 
-	HRESULT ReadUserField();
+	HRESULT readUserField();
 
-	HRESULT ReadPasswordField();
+	HRESULT readPasswordField();
 
-	HRESULT ReadOTPField();
+	HRESULT readOTPField();
 };
 
