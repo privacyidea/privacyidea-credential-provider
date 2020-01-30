@@ -769,11 +769,6 @@ HRESULT CCredential::GetSerialization(
 
 	_config->provider.field_strings = _rgFieldStrings;
 
-	// TODO THIS IS VERY BAD
-	PWSTR currentUsername = const_cast<PWSTR>(_config->credential.username.c_str());
-	PWSTR currentPassword = const_cast<PWSTR>(_config->credential.password.c_str());
-	PWSTR currentDomain = const_cast<PWSTR>(_config->credential.domain.c_str());
-
 	// open dialog for old/new password
 	if (_config->credential.passwordMustChange)
 	{
@@ -853,12 +848,12 @@ HRESULT CCredential::GetSerialization(
 		if (_config->provider.cpu == CPUS_CREDUI)
 		{
 			hr = _util.CredPackAuthentication(pcpgsr, pcpcs, _config->provider.cpu,
-				currentUsername, currentPassword, currentDomain);
+				_config->credential.username, _config->credential.password, _config->credential.domain);
 		}
 		else
 		{
 			hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
-				currentUsername, currentPassword, currentDomain);
+				_config->credential.username, _config->credential.password, _config->credential.domain);
 		}
 		if (SUCCEEDED(hr))
 		{

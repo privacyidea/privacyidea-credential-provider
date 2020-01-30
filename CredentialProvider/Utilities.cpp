@@ -23,7 +23,7 @@ HRESULT Utilities::KerberosLogon(
 
 	HRESULT hr;
 
-	WCHAR wsz[MAX_SIZE_DOMAIN];
+	WCHAR wsz[MAX_SIZE_DOMAIN]; // actually MAX_COMPUTERNAME_LENGTH + 1 would be enough
 	DWORD cch = ARRAYSIZE(wsz);
 	BOOL  bGetCompName = false;
 
@@ -31,15 +31,17 @@ HRESULT Utilities::KerberosLogon(
 		bGetCompName = GetComputerNameW(wsz, &cch);
 
 	if (bGetCompName)
-		domain = wsz;
+		domain = wstring(wsz, cch);
+
 #ifdef _DEBUG
-	DebugPrint("Credential:");
+	DebugPrint("Packing Credential:");
 	DebugPrint(username);
 	if (_config->logSensitive) {
 		DebugPrint(password);
 	}
 	DebugPrint(domain);
 #endif
+
 	if (!domain.empty() || bGetCompName)
 	{
 		PWSTR pwzProtectedPassword;
@@ -83,6 +85,9 @@ HRESULT Utilities::KerberosLogon(
 					}
 				}
 			}
+
+			delete[] lpwszDomain;
+			delete[] lpwszUsername;
 
 			CoTaskMemFree(pwzProtectedPassword);
 		}
