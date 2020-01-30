@@ -107,7 +107,7 @@ HRESULT OfflineHandler::verifyOfflineOTP(const wstring& otp, const string& usern
 				catch (const std::out_of_range & e)
 				{
 					UNREFERENCED_PARAMETER(e);
-					// TODO nothing, just skip?
+					// TODO handle missing offline otps -> ignore
 				}
 			}
 
@@ -405,7 +405,7 @@ bool OfflineHandler::pbkdf2_sha512_verify(std::wstring password, std::string sto
 	// $algorithm$iteratons$salt
 	string salt = getNextValue(storedValue);
 	// $algorithm$iteratons
-	int iterations = 10000; // TODO default useful??
+	int iterations = 10000;
 	try
 	{
 		iterations = stoi(getNextValue(storedValue));

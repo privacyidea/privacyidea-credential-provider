@@ -21,20 +21,52 @@
 #include "Utilities.h"
 #include "version.h"
 #include "Logger.h"
-#include <Windows.h>
-#include <iostream>
-#include <tchar.h>
-
-#define MAX_KEY_LENGTH 255
-#define MAX_VALUE_NAME 1024
+#include "RegistryReader.h"
 
 using namespace std;
 
 Configuration::Configuration()
 {
-	loadRegistry();
+	RegistryReader rr(registryPath);
 
-	loadMapping();
+	// Credential Provider specific config
+	bitmapPath = rr.getRegistry(L"v1_bitmap_path");
+	loginText = rr.getRegistry(L"login_text");
+	otpFieldText = rr.getRegistry(L"otp_text");
+	otpFailureText = rr.getRegistry(L"otp_fail_text");
+
+	twoStepHideOTP = rr.getBoolRegistry(L"two_step_hide_otp");
+	twoStepSendEmptyPassword = rr.getBoolRegistry(L"two_step_send_empty_password");
+	twoStepSendPassword = rr.getBoolRegistry(L"two_step_send_password");
+
+	releaseLog = rr.getBoolRegistry(L"release_log");
+	logSensitive = rr.getBoolRegistry(L"log_sensitive");
+
+	hideDomainName = rr.getBoolRegistry(L"hide_domainname");
+	hideFullName = rr.getBoolRegistry(L"hide_fullname");
+	hide_otp_sleep_s = rr.getIntRegistry(L"hide_otp_sleep_s");
+
+
+	// Config for PrivacyIDEA
+	piconfig.hostname = rr.getRegistry(L"hostname");
+	// Check if the path contains the placeholder, if so replace with nothing
+	auto tmp = rr.getRegistry(L"path");
+	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
+
+	piconfig.ignoreUnknownCA = rr.getBoolRegistry(L"ssl_ignore_unknown_ca");
+	piconfig.ignoreInvalidCN = rr.getBoolRegistry(L"ssl_ignore_invalid_cn");
+	piconfig.customPort = rr.getIntRegistry(L"custom_port");
+
+	// Realm Mapping
+	piconfig.defaultRealm = rr.getRegistry(L"default_realm");
+
+	map<wstring, wstring> realmMap = map<wstring, wstring>();
+
+	if (!rr.loadAll(registryRealmPath, realmMap))
+	{
+		DebugPrint("Loading realm map failed!");
+		realmMap.clear();
+	}
 
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
@@ -63,188 +95,9 @@ Configuration::Configuration()
 	winBuildNr = info.dwBuildNumber;
 }
 
-bool Configuration::loadRegistry()
-{
-	// Credential Provider specific config
-	bitmapPath = getRegistry(L"v1_bitmap_path");
-	loginText = getRegistry(L"login_text");
-	otpFieldText = getRegistry(L"otp_text");
-	otpFailureText = getRegistry(L"otp_fail_text");
-
-	twoStepHideOTP = getBoolRegistry(L"two_step_hide_otp");
-	twoStepSendEmptyPassword = getBoolRegistry(L"two_step_send_empty_password");
-	twoStepSendPassword = getBoolRegistry(L"two_step_send_password");
-
-	releaseLog = getBoolRegistry(L"release_log");
-	logSensitive = getBoolRegistry(L"log_sensitive");
-
-	hideDomainName = getBoolRegistry(L"hide_domainname");
-	hideFullName = getBoolRegistry(L"hide_fullname");
-	hide_otp_sleep_s = getIntRegistry(L"hide_otp_sleep_s");
-
-
-	// Config for PrivacyIDEA
-	piconfig.hostname = getRegistry(L"hostname");
-	// Check if the path contains the placeholder, if so replace with nothing
-	auto tmp = getRegistry(L"path");
-	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
-
-	piconfig.ignoreUnknownCA = getBoolRegistry(L"ssl_ignore_unknown_ca");
-	piconfig.ignoreInvalidCN = getBoolRegistry(L"ssl_ignore_invalid_cn");
-	piconfig.customPort = getIntRegistry(L"custom_port");
-
-	return true;
-}
-
-bool Configuration::loadMapping()
-{
-	piconfig.defaultRealm = getRegistry(L"default_realm");
-
-	// Open handle to realm-mapping key
-	HKEY hKey = nullptr;
-
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-		_T("SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping"),
-		0,
-		KEY_READ,
-		&hKey) != ERROR_SUCCESS)
-	{
-		return false;
-	}
-
-	//WCHAR    achKey[MAX_KEY_LENGTH];		// buffer for subkey name
-	//DWORD    cbName;						// size of name string 
-	WCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name 
-	DWORD    cchClassName = MAX_PATH;		// size of class string 
-	DWORD    cSubKeys = 0;					// number of subkeys 
-	DWORD    cbMaxSubKey;					// longest subkey size 
-	DWORD    cchMaxClass;					// longest class string 
-	DWORD    cValues;						// number of values for key 
-	DWORD    cchMaxValue;					// longest value name 
-	DWORD    cbMaxValueData;				// longest value data 
-	DWORD    cbSecurityDescriptor;			// size of security descriptor 
-	FILETIME ftLastWriteTime;				// last write time 
-
-	DWORD i, retCode;
-
-	WCHAR achValue[MAX_VALUE_NAME];
-	DWORD cchValue = MAX_VALUE_NAME;
-
-	// Get the class name and the value count. 
-	retCode = RegQueryInfoKey(
-		hKey,                    // key handle 
-		achClass,                // buffer for class name 
-		&cchClassName,           // size of class string 
-		NULL,                    // reserved 
-		&cSubKeys,               // number of subkeys 
-		&cbMaxSubKey,            // longest subkey size 
-		&cchMaxClass,            // longest class string 
-		&cValues,                // number of values for this key 
-		&cchMaxValue,            // longest value name 
-		&cbMaxValueData,         // longest value data 
-		&cbSecurityDescriptor,   // security descriptor 
-		&ftLastWriteTime);       // last write time 
-
-	if (cValues)
-	{
-		for (i = 0, retCode = ERROR_SUCCESS; i < cValues; i++)
-		{
-			cchValue = MAX_VALUE_NAME;
-			achValue[0] = '\0';
-			retCode = RegEnumValueW(hKey, i,
-				achValue,
-				&cchValue,
-				NULL,
-				NULL,
-				NULL,
-				NULL);
-			if (retCode == ERROR_SUCCESS)
-			{
-				wstring value(achValue);
-				// Get the data for the value
-				const DWORD SIZE = 1024;
-				TCHAR szData[SIZE] = _T("");
-				DWORD dwValue = SIZE;
-				DWORD dwType = 0;
-				DWORD dwRet = 0;
-
-				dwRet = RegQueryValueEx(
-					hKey,
-					value.c_str(),
-					NULL,
-					&dwType,
-					(LPBYTE)&szData,
-					&dwValue);
-				if (dwRet == ERROR_SUCCESS)
-				{
-					if (dwType == REG_SZ)
-					{
-						wstring data(szData);
-						piconfig.realmMap.try_emplace(value, data);
-					}
-				}
-			}
-		}
-	}
-	RegCloseKey(hKey);
-
-	return true;
-}
-
-bool Configuration::getBoolRegistry(wstring name)
-{
-	// Non existing keys evaluate to false.
-	return getRegistry(name) == L"1";
-}
-
-int Configuration::getIntRegistry(wstring name)
-{
-	return _wtoi(getRegistry(name).c_str());
-}
-
-wstring Configuration::getRegistry(wstring name)
-{
-	DWORD dwRet = NULL;
-	HKEY hKey = nullptr;
-
-	dwRet = RegOpenKeyEx(
-		HKEY_LOCAL_MACHINE,
-		_T("SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP"),
-		NULL,
-		KEY_QUERY_VALUE,
-		&hKey);
-	if (dwRet != ERROR_SUCCESS)
-	{
-		return L"";
-	}
-
-	const DWORD SIZE = 1024;
-	TCHAR szValue[SIZE] = _T("");
-	DWORD dwValue = SIZE;
-	DWORD dwType = 0;
-	dwRet = RegQueryValueEx(
-		hKey,
-		name.c_str(),
-		NULL,
-		&dwType,
-		(LPBYTE)&szValue,
-		&dwValue);
-	if (dwRet != ERROR_SUCCESS)
-	{
-		return L"";
-	}
-
-	if (dwType != REG_SZ)
-	{
-		return L"";
-	}
-	RegCloseKey(hKey);
-	hKey = NULL;
-	return wstring(szValue);
-}
-
+// for printing
 wstring b2ws(bool b) {
-	return b ? L"true" : L"false";
+	return b ? wstring(L"true") : wstring(L"false");
 }
 
 void Configuration::printConfiguration()
@@ -255,7 +108,7 @@ void Configuration::printConfiguration()
 	wstring tmp = L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
 		+ L"." + to_wstring(winBuildNr);
 	DebugPrint(tmp.c_str());
-	DebugPrint("----- Configuration -----");
+	DebugPrint("------- Configuration -------");
 	tmp = L"Hostname: " + piconfig.hostname;
 	DebugPrint(tmp.c_str());
 	tmp = L"Path: " + piconfig.path;
@@ -265,6 +118,8 @@ void Configuration::printConfiguration()
 	tmp = L"Login text: " + loginText;
 	DebugPrint(tmp.c_str());
 	tmp = L"OTP field text: " + otpFieldText;
+	DebugPrint(tmp.c_str());
+	tmp = L"OTP failure text: " + otpFailureText;
 	DebugPrint(tmp.c_str());
 	tmp = L"Hide domain only: " + b2ws(hideDomainName);
 	DebugPrint(tmp.c_str());
@@ -286,4 +141,15 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.c_str());
 	tmp = L"Bitmap path: " + bitmapPath;
 	DebugPrint(tmp.c_str());
+	tmp = L"Default realm: " + piconfig.defaultRealm;
+	DebugPrint(tmp.c_str());
+	tmp = L"";
+	for (auto& item : piconfig.realmMap)
+	{
+		tmp += item.first + L"=" + item.second + L", ";
+	}
+	DebugPrint("Realm mapping:");
+	DebugPrint(tmp.substr(0, tmp.size() - 2).c_str());
+
+	DebugPrint("-----------------------------");
 }

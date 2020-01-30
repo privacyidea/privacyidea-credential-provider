@@ -310,7 +310,7 @@ HRESULT Utilities::SetScenario(
 	const int hide_fullname = _config->hideFullName;
 
 	// Fill the textfields with text depending on configuration
-	int largeTextFieldId = FID_OTP_LARGE_TEXT,
+	const int largeTextFieldId = FID_OTP_LARGE_TEXT,
 		smallTextFieldId = FID_OTP_SMALL_TEXT;
 
 	if (!textForLargeField.empty())

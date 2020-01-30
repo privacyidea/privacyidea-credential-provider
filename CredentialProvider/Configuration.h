@@ -20,13 +20,8 @@
 #pragma once
 #include "PIConf.h"
 #include "Challenge.h"
-#include <list>
 #include <string>
 #include <credentialprovider.h>
-#include <map>
-
-extern const std::wstring base_registry_path;
-extern const std::wstring realm_registry_path;
 
 class Configuration
 {
@@ -60,7 +55,7 @@ public:
 	int winVerMajor = 0;
 	int winVerMinor = 0;
 	int winBuildNr = 0;
-	
+
 	bool pushAuthenticationSuccessful = false;
 
 	bool doAutoLogon = false;
@@ -70,6 +65,9 @@ public:
 	Challenge challenge;
 
 	std::wstring defaultChallengeText = L"Please confirm the authentication!";
+
+	std::wstring registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
+	std::wstring registryRealmPath = registryPath + L"realm-mapping";
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
@@ -93,7 +91,7 @@ public:
 		ICredentialProviderCredential* pCredProvCredential = nullptr;
 		wchar_t** field_strings = nullptr;
 	} provider;
-	
+
 	struct CREDENTIAL
 	{
 		std::wstring username = L"";
@@ -109,16 +107,4 @@ public:
 		std::wstring newPassword1 = L"";
 		std::wstring newPassword2 = L"";
 	} credential;
-
-private:
-
-	bool loadRegistry();
-
-	bool loadMapping();
-
-	std::wstring getRegistry(std::wstring name);
-
-	bool getBoolRegistry(std::wstring name);
-
-	int getIntRegistry(std::wstring name);
 };

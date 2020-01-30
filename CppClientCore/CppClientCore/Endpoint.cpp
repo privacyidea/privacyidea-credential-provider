@@ -354,39 +354,28 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 HRESULT Endpoint::parseForError(const std::string& in)
 {
 	DebugPrint(__FUNCTION__);
-	// TODO parse any error text and set it to status
 	auto j = Endpoint::tryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	// Check for error code and message
-	/*auto error = j["result"]["error"];
+	auto error = j["result"]["error"];
 	if (error.is_object())
 	{
 		auto jErrCode = error["code"];
 		auto jErrMsg = error["message"];
 
-		if (jErrCode.is_number())
+		if (jErrCode.is_number() && jErrMsg.is_string())
 		{
-
+			_lastErrorCode = jErrCode.get<int>();
+			_lastErrorMessage = jErrMsg.get<std::string>();
+			return PI_JSON_ERROR_CONTAINED;
 		}
-	} */
-
-	string errorCode = j["result"]["error"]["code"].dump();
-	string errorMessage = j["result"]["error"]["message"].dump();
-
-	if (errorCode == "null" && errorMessage == "null")
+	}
+	else
 	{
 		ReleaseDebugPrint("Received unknown reponse from server:" + in);
-		return E_INVALIDARG;
 	}
-
-	if (errorCode != "null")
-		_lastErrorCode = std::stoi(errorCode);
-
-	if (errorMessage != "null")
-		_lastErrorMessage = errorMessage;
-
-	return PI_JSON_ERROR_CONTAINED;
+	return E_INVALIDARG;
 }
 
 const int& Endpoint::getLastErrorCode()
