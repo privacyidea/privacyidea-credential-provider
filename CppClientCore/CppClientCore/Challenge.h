@@ -32,22 +32,17 @@ enum class TTA
 class Challenge
 {
 public:
-	std::wstring getAggregatedMessage();
-	
 	std::string toString();
-	
-	// encapsulate to filter duplicates
-	void addMessage(const std::string& msg);
 
-	bool messagesEmpty();
+	std::wstring message = L"";
 
 	std::string transaction_id = "";
+
 	std::string serial = "";
+
 	TTA tta = TTA::NOT_SET;
 
 private:
 	std::string ttaToString(TTA tta);
-	std::vector<std::string> _messages = std::vector<std::string>();
-
 };
 

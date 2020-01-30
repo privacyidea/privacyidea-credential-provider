@@ -315,11 +315,15 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 		return PI_NO_CHALLENGES;
 	}
 
-	// Check each element for messages / transaction IDs / push token
+	// Get the message from detail, that is the accumulated message created by privacyIDEA
+	auto jMessage = j["detail"]["message"];
+	if (jMessage.is_string())
+		c.message = PrivacyIDEA::s2ws(jMessage.get<std::string>());
+
+	// Check each element for transaction IDs / push token
 	for (auto val : multiChallenge.items())
 	{
 		json j2 = val.value();
-		string message = j2["message"].get<std::string>();
 		string type = j2["type"].get<std::string>();
 		string txid = j2["transaction_id"].get<std::string>();
 		string serial = j2["serial"].get<std::string>();
@@ -334,12 +338,6 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 			{
 				c.tta = (c.tta == TTA::PUSH) ? TTA::BOTH : TTA::OTP;
 			}
-		}
-		// TODO currently stores the first set of data, need more?
-		if (!message.empty())
-		{
-			// TODO Accumulate if there are multiple message, no duplicates
-			c.addMessage(message);
 		}
 		if (!txid.empty())
 		{

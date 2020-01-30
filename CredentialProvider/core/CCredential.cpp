@@ -969,9 +969,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (!c.transaction_id.empty())
 				{
 					// Set a message in any case
-					wstring msg = c.getAggregatedMessage();
-					if (!msg.empty())
-						pqcws->SetStatusMessage(msg.c_str());
+					if (!c.message.empty())
+						pqcws->SetStatusMessage(c.message.c_str());
 					else
 						pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
 

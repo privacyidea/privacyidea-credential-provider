@@ -152,10 +152,10 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	map<string, string> params;
 	params.try_emplace("user", username);
 	params.try_emplace("pass", otp);
-	
+
 	if (!transaction_id.empty())
 		params.try_emplace("transaction_id", transaction_id);
-	
+
 	checkForRealm(params, domain);
 
 	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
@@ -186,7 +186,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	if (res == PI_TRIGGERED_CHALLENGE)
 	{
 		// Check the challenge data 
-		if (c.messagesEmpty() || c.serial.empty() || c.transaction_id.empty() || c.tta == TTA::NOT_SET)
+		if (c.serial.empty() || c.transaction_id.empty() || c.tta == TTA::NOT_SET)
 		{
 			DebugPrint("Incomplete challenge data: " + c.toString());
 			ret = PI_AUTH_FAILURE;
@@ -211,7 +211,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 		{
 			if (res == PI_JSON_ERROR_CONTAINED)
 				ret = PI_AUTH_ERROR;
-			
+
 			else if (res == PI_AUTH_FAILURE)
 				ret = PI_AUTH_FAILURE;
 		}

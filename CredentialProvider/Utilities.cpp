@@ -340,10 +340,10 @@ HRESULT Utilities::SetScenario(
 		pCPCE->SetFieldString(pCredential, smallTextFieldId, L"");
 		pCPCE->SetFieldState(pCredential, smallTextFieldId, CPFS_HIDDEN);
 	}
-	if (!_config->challenge.messagesEmpty())
+	if (!_config->challenge.message.empty())
 	{
-		DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.getAggregatedMessage());
-		pCPCE->SetFieldString(pCredential, smallTextFieldId, _config->challenge.getAggregatedMessage().c_str());
+		DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
+		pCPCE->SetFieldString(pCredential, smallTextFieldId, _config->challenge.message.c_str());
 		pCPCE->SetFieldState(pCredential, smallTextFieldId, CPFS_DISPLAY_IN_BOTH);
 	}
 

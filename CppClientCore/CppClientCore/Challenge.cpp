@@ -19,50 +19,10 @@
 #include "Challenge.h"
 #include "PrivacyIDEA.h"
 
-const std::vector<std::string> punctuationChars = { "!", "?", ";" ,":", "."};
-
-std::wstring Challenge::getAggregatedMessage()
-{
-	std::string ret = "";
-	for (const auto& m : _messages)
-	{
-		ret.append(m).append(" or ");
-	}
-	if (!ret.empty())
-	{
-		ret = ret.substr(0, ret.size() - 4);
-		std::string lastChar = ret.substr(ret.size() - 1, ret.size());
-		if (std::find(punctuationChars.begin(), punctuationChars.end(), lastChar) == punctuationChars.end())
-		{
-			ret.append(":");
-		}
-	}
-	return PrivacyIDEA::s2ws(ret);
-}
-
 std::string Challenge::toString()
 {
-	std::string ret;
-	ret = "Challenge: serial=" + serial + ", transaction_id=" + transaction_id + ", tta=" + ttaToString(tta)+ ", messages=";
-	for (const auto& m : _messages)
-	{
-		ret.append(m).append(", ");
-	}
-	ret = _messages.empty() ? ret : ret.substr(0, ret.size() - 2);
-	return ret;
-}
-
-void Challenge::addMessage(const std::string& msg)
-{
-	if (std::find(_messages.begin(), _messages.end(), msg) == _messages.end())
-	{
-		_messages.push_back(msg);
-	}
-}
-
-bool Challenge::messagesEmpty()
-{
-	return _messages.empty();
+	return "Challenge: serial=" + serial + ", transaction_id=" + transaction_id + ", tta=" + ttaToString(tta)
+			+ ", message=" + PrivacyIDEA::ws2s(message);
 }
 
 std::string Challenge::ttaToString(TTA tta)

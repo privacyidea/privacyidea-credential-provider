@@ -213,7 +213,6 @@ HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::st
 	{
 		if (item.user == username || item.username == username)
 		{
-			// TODO if there is no refill token then what? 
 			// still adding the values we got
 			if (offline["refilltoken"].is_string())
 			{
@@ -406,7 +405,7 @@ bool OfflineHandler::pbkdf2_sha512_verify(std::wstring password, std::string sto
 	// $algorithm$iteratons$salt
 	string salt = getNextValue(storedValue);
 	// $algorithm$iteratons
-	int iterations = 1000; // TODO default useful??
+	int iterations = 10000; // TODO default useful??
 	try
 	{
 		iterations = stoi(getNextValue(storedValue));
