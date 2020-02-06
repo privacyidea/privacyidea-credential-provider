@@ -89,7 +89,6 @@ public:
 
 	HRESULT initializeField(
 		LPWSTR* rgFieldStrings,
-		const FIELD_INITIALIZOR initializer,
 		DWORD field_index
 	);
 

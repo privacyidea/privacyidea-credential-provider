@@ -56,6 +56,8 @@ Configuration::Configuration()
 	piconfig.ignoreUnknownCA = rr.getBoolRegistry(L"ssl_ignore_unknown_ca");
 	piconfig.ignoreInvalidCN = rr.getBoolRegistry(L"ssl_ignore_invalid_cn");
 	piconfig.customPort = rr.getIntRegistry(L"custom_port");
+	piconfig.offlineFilePath = rr.getRegistry(L"offline_file");
+	piconfig.offlineTryWindow = rr.getIntRegistry(L"offline_try_window");
 
 	// Realm Mapping
 	piconfig.defaultRealm = rr.getRegistry(L"default_realm");

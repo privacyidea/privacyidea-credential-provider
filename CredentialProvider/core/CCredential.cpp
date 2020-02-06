@@ -116,7 +116,7 @@ HRESULT CCredential::Initialize(
 		if (FAILED(hr))
 			break;
 
-		_util.initializeField(_rgFieldStrings, s_rgScenarioFieldInitializors[i], i);
+		_util.initializeField(_rgFieldStrings, i);
 	}
 
 	DebugPrint("Init result:");

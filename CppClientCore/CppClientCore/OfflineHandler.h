@@ -27,9 +27,7 @@
 class OfflineHandler
 {
 public:
-	OfflineHandler();
-
-	OfflineHandler(const std::string& filePath, int tryWindow = 10);
+	OfflineHandler(const std::wstring& filePath, int tryWindow = 10);
 
 	~OfflineHandler();
 
@@ -48,7 +46,7 @@ public:
 private:
 	std::vector<OfflineData> dataSets = std::vector<OfflineData>();
 
-	std::string _filePath = "C:\\offlineFile.json";
+	std::wstring _filePath = L"C:\\offlineFile.json";
 
 	int _tryWindow = 10;
 

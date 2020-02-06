@@ -317,7 +317,7 @@ HRESULT Utilities::SetScenario(
 	// Fill the textfields with text depending on configuration
 	const int largeTextFieldId = FID_OTP_LARGE_TEXT,
 		smallTextFieldId = FID_OTP_SMALL_TEXT;
-
+	// TODO vv this is bad vv
 	if (!textForLargeField.empty())
 	{
 		DebugPrint(L"Large Text:" + textForLargeField);
@@ -431,7 +431,6 @@ HRESULT Utilities::SetFieldStatePairBatch(
 
 HRESULT Utilities::initializeField(
 	LPWSTR* rgFieldStrings,
-	const FIELD_INITIALIZOR initializer,
 	DWORD field_index)
 {
 	HRESULT hr = E_INVALIDARG;
@@ -442,28 +441,18 @@ HRESULT Utilities::initializeField(
 	wstring user_name = _config->credential.username;
 	wstring domain_name = _config->credential.domain;
 
-	// TODO this is bad - initializer.type is kinda useless
-	// Use field index + cpu to decide values
-	switch (initializer.type)
+	switch (field_index)
 	{
-	case FIT_VALUE:
-		//DebugPrintLn("...FIT_VALUE");
-		hr = SHStrDupW(initializer.value, &rgFieldStrings[field_index]);
-		//DebugPrintLn(rgFieldStrings[field_index]);
+	case FID_OTP_LDAP_PASS:
+	case FID_OTP_PASS:
+	case FID_OTP_SUBMIT_BUTTON:
+	case FID_OTP_OFFLINE_CHECKBOX:
+		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		break;
-	case FIT_USERNAME:
-		//DebugPrintLn("...FIT_USERNAME");
-		if (!user_name.empty() && !hide_fullname)
-			hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
-		else
-			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		//DebugPrintLn(rgFieldStrings[field_index]);
-		break;
-	case FIT_USERNAME_AND_DOMAIN:
-		//DebugPrintLn("...FIT_USERNAME_AND_DOMAIN");
+	case FID_OTP_USERNAME:
 		if (!user_name.empty() && !domain_name.empty() && !hide_fullname && !hide_domainname)
 		{
-			wstring fullName = wstring(user_name.c_str()) + L"@" + wstring(domain_name.c_str());
+			wstring fullName = user_name + L"@" + domain_name;
 
 			hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
 		}
@@ -475,46 +464,24 @@ HRESULT Utilities::initializeField(
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		}
-		//DebugPrintLn(rgFieldStrings[field_index]);
 		break;
-	case FIT_LOGIN_TEXT:
-		hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
-		//DebugPrintLn(rgFieldStrings[field_index]);
-		break;
-	case FIT_VALUE_OR_LOGIN_TEXT:
-		//DebugPrintLn("...FIT_VALUE_OR_LOGIN_TEXT");
+	case FID_OTP_LARGE_TEXT:
 		// This is the USERNAME field which is displayed in the list of users to the right
 		if (!loginText.empty())
 		{
 			hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
 		}
-		else if (hide_fullname)
-		{
-			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		}
 		else
 		{
-			wstring initValue(initializer.value);
-			// TODO initializer value is always empty for the user field?
-			if (initValue.empty()) {
-				// Provide default value
-				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
-			}
-			else
-			{
-				hr = SHStrDupW(initializer.value, &rgFieldStrings[field_index]);
-			}
+			hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 		}
-		//DebugPrintLn(rgFieldStrings[field_index]);
 		break;
-	case FIT_VALUE_OR_LOCKED_TEXT:
-		//DebugPrintLn("...FIT_VALUE_OR_LOCKED_TEXT");
-		//if (_pConfiguration->provider.usage_scenario == CPUS_UNLOCK_WORKSTATION && NOT_EMPTY(WORKSTATION_LOCKED))
+	case FID_OTP_SMALL_TEXT:
+		// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
+		// and the name is displayed in this field instead (or hidden)
 		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
 			&& !hide_fullname && !hide_domainname)
 		{
-			//DebugPrintLn("...usage_scenario == CPUS_UNLOCK_WORKSTATION");
-			//hr = SHStrDupW(WORKSTATION_LOCKED, &rgFieldStrings[field_index]);
 			if (!domain_name.empty())
 			{
 				wstring fullName = user_name + L"@" + domain_name;
@@ -524,6 +491,10 @@ HRESULT Utilities::initializeField(
 			else if (!user_name.empty())
 			{
 				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+			}
+			else
+			{
+				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			}
 		}
 		else if (!user_name.empty() && hide_domainname && !hide_fullname)
@@ -536,20 +507,17 @@ HRESULT Utilities::initializeField(
 		}
 		else
 		{
-			hr = SHStrDupW(initializer.value, &rgFieldStrings[field_index]);
+			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		}
-		//DebugPrintLn(rgFieldStrings[field_index]);
 		break;
-	case FIT_NONE:
-		//DebugPrintLn("...FIT_NONE");
+	case FID_OTP_LOGO:
+		hr = S_OK;
 		break;
 	default:
 		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		//DebugPrintLn("default:");
-		//DebugPrintLn(rgFieldStrings[field_index]);
 		break;
 	}
-
+	//DebugPrintLn(rgFieldStrings[field_index]);
 	return hr;
 }
 

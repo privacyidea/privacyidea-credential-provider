@@ -44,16 +44,7 @@ std::wstring getErrorText(DWORD err)
 	return (msgBuf == nullptr) ? wstring() : wstring(msgBuf);
 }
 
-OfflineHandler::OfflineHandler()
-{
-	const HRESULT res = loadFromFile();
-	if (res != S_OK)
-	{
-		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
-	}
-}
-
-OfflineHandler::OfflineHandler(const string& filePath, int tryWindow)
+OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 {
 	// Load the offline file on startup
 	_filePath = filePath.empty() ? _filePath : filePath;

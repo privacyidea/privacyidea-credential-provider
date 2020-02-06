@@ -30,6 +30,6 @@ struct PICONFIG
 	std::map<std::wstring, std::wstring> realmMap = std::map<std::wstring, std::wstring>();
 	std::wstring defaultRealm = L"";
 	bool logPasswords = false;
-	std::wstring offlineFilePath = L"";
+	std::wstring offlineFilePath = L"C:\\offlineFile.json";
 	int offlineTryWindow = 10;
 };

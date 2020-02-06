@@ -42,7 +42,7 @@ public:
 		_defaultRealm(conf.defaultRealm),
 		_logPasswords(conf.logPasswords),
 		_endpoint(conf.hostname, conf.path, conf.customPort, conf.ignoreInvalidCN, conf.ignoreUnknownCA, conf.logPasswords),
-		_offlineHandler("", conf.offlineTryWindow)
+		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA);
