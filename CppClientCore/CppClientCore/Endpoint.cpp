@@ -35,7 +35,7 @@ using json = nlohmann::json;
 
 vector<std::string> _excludedEndpoints = { PI_ENDPOINT_POLL_TX };
 
-string Endpoint::escapeUrl(const string& in)
+SecureString Endpoint::escapeUrl(const SecureString& in)
 {
 	if (in.empty())
 	{
@@ -52,19 +52,16 @@ string Endpoint::escapeUrl(const string& in)
 	}
 	LPCSTR input = in.c_str();
 	BOOL res = AtlEscapeUrl(input, buf, pdwLen, maxLen, (DWORD)NULL);
+	SecureString ret;
 
 	if (res)
-	{
-		string ret(buf);
-		free(buf);
-		return ret;
-	}
+		ret = SecureString(buf);
 	else
-	{
 		DebugPrint("AtlEscapeUrl Failure");
-		free(buf);
-		return "";
-	}
+
+	SecureZeroMemory(buf, sizeof(buf));
+	free(buf);
+	return ret;
 }
 
 const std::string& Endpoint::getLastErrorMessage()
@@ -96,18 +93,23 @@ wstring Endpoint::get_utf16(const std::string& str, int codepage)
 	return res;
 }
 
-string Endpoint::connect(const string& endpoint, map<string, string> params, const RequestMethod& method)
+std::string Endpoint::escapeUrl(const std::string& in)
+{
+	return string(escapeUrl(SecureString(in.c_str())).c_str());
+}
+
+string Endpoint::connect(const string& endpoint, map<string, SecureString> params, const RequestMethod& method)
 {
 	// Prepare the parameters
 	wstring wHostname = get_utf16(PrivacyIDEA::ws2s(_hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
 	wstring fullPath = get_utf16((PrivacyIDEA::ws2s(_path) + endpoint), CP_UTF8);
 
-	// Encode and accumulate the data
-	string toSend;
+	// Encode and accumulate the data // TODO move this out of this function
+	SecureString toSend;
 	for (auto const& x : params)
 	{
-		toSend += escapeUrl(x.first) + "=" + escapeUrl(x.second) + "&";
+		toSend += SecureString(escapeUrl(x.first).c_str()) + "=" + escapeUrl(x.second) + "&";
 	}
 	toSend = toSend.substr(0, (toSend.length() - 1));
 	DebugPrint("Params: " + toSend);
@@ -215,6 +217,8 @@ string Endpoint::connect(const string& endpoint, map<string, string> params, con
 	if (!bResults)
 	{
 		ReleaseDebugPrint("WinHttpSendRequest failure: " + to_string(GetLastError()));
+		_lastErrorCode = GetLastError();
+		_lastErrorMessage = "Server unreachable.";
 		return ""; //ENDPOINT_ERROR_CONNECT_ERROR;
 	}
 
@@ -269,6 +273,8 @@ string Endpoint::connect(const string& endpoint, map<string, string> params, con
 	if (hRequest) WinHttpCloseHandle(hRequest);
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
+
+	SecureZeroMemory(data, data_len);
 
 #ifdef _DEBUG
 	if (std::find(_excludedEndpoints.begin(), _excludedEndpoints.end(), endpoint) == _excludedEndpoints.end())
@@ -383,7 +389,7 @@ const int& Endpoint::getLastErrorCode()
 	return _lastErrorCode;
 }
 
-HRESULT Endpoint::pollForTransaction(const std::map<std::string, std::string>& params)
+HRESULT Endpoint::pollForTransaction(const std::map<std::string, SecureString>& params)
 {
 	string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
 	return parseForTransactionSuccess(response);
@@ -396,7 +402,7 @@ HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 	auto j = Endpoint::tryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
-	//string value = j["result"]["value"].get<std::string>();
+	//string value = j["result"]["value"].get<std::string>(); // TODO
 	string value = j["result"]["value"].dump();
 	if (value.empty())
 	{
@@ -412,9 +418,9 @@ HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 HRESULT Endpoint::finalizePolling(const std::string& user, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
-	map<string, string> params;
-	params.try_emplace("user", user);
-	params.try_emplace("transaction_id", transaction_id);
+	map<string, SecureString> params;
+	params.try_emplace("user", SecureString(user.c_str()));
+	params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
 	params.try_emplace("pass", "");
 
 	string response = connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);

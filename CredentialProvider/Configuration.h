@@ -20,6 +20,7 @@
 #pragma once
 #include "PIConf.h"
 #include "Challenge.h"
+#include "SecureString.h"
 #include <string>
 #include <credentialprovider.h>
 
@@ -35,7 +36,6 @@ public:
 	std::wstring loginText = L"";
 	std::wstring otpFieldText = L"";
 	std::wstring bitmapPath = L"";
-	std::wstring otpFailureText = L"";
 
 	bool twoStepHideOTP = false;
 	bool twoStepSendPassword = false;
@@ -63,8 +63,9 @@ public:
 	bool userCanceled = false;
 
 	Challenge challenge;
-
+	std::wstring defaultOTPFailureText = L"Wrong One-Time-Password!";
 	std::wstring defaultChallengeText = L"Please confirm the authentication!";
+	std::wstring defaultOTPText = L"Please enter your second factor!";
 
 	std::wstring registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
 	std::wstring registryRealmPath = registryPath + L"realm-mapping";
@@ -96,7 +97,7 @@ public:
 	{
 		std::wstring username = L"";
 		std::wstring domain = L"";
-		std::wstring password = L""; // TODO make pw wchar* to overwrite it
+		SecureWString password = L"";
 		std::wstring otp = L"";
 
 		bool passwordMustChange = false;
@@ -104,7 +105,7 @@ public:
 		bool use_offline_pass = false;
 
 		// ChangePassword
-		std::wstring newPassword1 = L"";
-		std::wstring newPassword2 = L"";
+		SecureWString newPassword1 = L"";
+		SecureWString newPassword2 = L"";
 	} credential;
 };

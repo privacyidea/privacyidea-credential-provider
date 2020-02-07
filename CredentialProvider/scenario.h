@@ -1,31 +1,25 @@
 #pragma once
-#include "field_state_pair.h"
 
 // The indexes of each of the fields in our credential provider's appended tiles.
 enum LOGON_PUSH_FIELD_ID
 {
-	FID_OTP_LOGO = 0,
-	FID_OTP_LARGE_TEXT = 1,
-	FID_OTP_SMALL_TEXT = 2,
-	FID_OTP_USERNAME = 3,
-	FID_OTP_LDAP_PASS = 4,
-	FID_OTP_PASS = 5,
-	FID_OTP_SUBMIT_BUTTON = 6,
-	FID_OTP_OFFLINE_CHECKBOX = 7,
+	FID_LOGO = 0,
+	FID_LARGE_TEXT = 1,
+	FID_SMALL_TEXT = 2,
+	FID_USERNAME = 3,
+	FID_LDAP_PASS = 4,
+	FID_PASS = 5,
+	FID_SUBMIT_BUTTON = 6,
+	FID_OFFLINE_CHECKBOX = 7,
 	FID_NUM_FIELDS = 8,
 };
 
-// Default values
-static const FIELD_INITIALIZOR s_rgScenarioFieldInitializors[] =
+// The first value indicates when the tile is displayed (selected, not selected)
+// the second indicates things like whether the field is enabled, whether it has key focus, etc.
+struct FIELD_STATE_PAIR
 {
-	{ FIT_NONE, nullptr },									// LPFI_OTP_LOGO
-	{ FIT_VALUE_OR_LOGIN_TEXT, L"" },						// LPFI_OTP_LARGE_TEXT
-	{ FIT_VALUE_OR_LOCKED_TEXT, L"" },						// LPFI_OTP_SMALL_TEXT
-	{ FIT_USERNAME_AND_DOMAIN, L"" },						// LPFI_OTP_USERNAME
-	{ FIT_VALUE, L"" },										// LPFI_OTP_LDAP_PASS
-	{ FIT_VALUE, L"" },										// LPFI_OTP_PASS
-	{ FIT_VALUE, L"Submit" },								// LPFI_OTP_SUBMIT_BUTTON
-	{ FIT_VALUE, L"Use offline token."},					// LPFI_OTP_OFFLINE_CHECKBOX
+	CREDENTIAL_PROVIDER_FIELD_STATE cpfs;
+	CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE cpfis;
 };
 
 // These two arrays are seperate because a credential provider might
@@ -114,12 +108,12 @@ static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
 // The third is the name of the field, NOT the value which will appear in the field.
 static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors[] =
 {
-	{ FID_OTP_LOGO, CPFT_TILE_IMAGE, L"Logo" },
-	{ FID_OTP_LARGE_TEXT, CPFT_LARGE_TEXT, L"LargeText" },
-	{ FID_OTP_SMALL_TEXT, CPFT_SMALL_TEXT, L"SmallText" },
-	{ FID_OTP_USERNAME, CPFT_EDIT_TEXT, L"Username" },
-	{ FID_OTP_LDAP_PASS, CPFT_PASSWORD_TEXT, L"Password" },
-	{ FID_OTP_PASS, CPFT_PASSWORD_TEXT, L"One-Time Password" },
-	{ FID_OTP_SUBMIT_BUTTON, CPFT_SUBMIT_BUTTON, L"Submit" },
-	{ FID_OTP_OFFLINE_CHECKBOX, CPFT_CHECKBOX, L"UseOffline"},
+	{ FID_LOGO, CPFT_TILE_IMAGE, L"Logo" },
+	{ FID_LARGE_TEXT, CPFT_LARGE_TEXT, L"LargeText" },
+	{ FID_SMALL_TEXT, CPFT_SMALL_TEXT, L"SmallText" },
+	{ FID_USERNAME, CPFT_EDIT_TEXT, L"Username" },
+	{ FID_LDAP_PASS, CPFT_PASSWORD_TEXT, L"Password" },
+	{ FID_PASS, CPFT_PASSWORD_TEXT, L"One-Time Password" },
+	{ FID_SUBMIT_BUTTON, CPFT_SUBMIT_BUTTON, L"Submit" },
+	{ FID_OFFLINE_CHECKBOX, CPFT_CHECKBOX, L"UseOffline"},
 };

@@ -17,6 +17,7 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
+#include "SecureString.h"
 #include <string>
 
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
@@ -48,6 +49,10 @@ public:
 	void log(const std::string& message, const char* file, int line, bool logInProduction);
 
 	void log(const std::wstring& message, const char* file, int line, bool logInProduction);
+
+	void log(const SecureString& message, const char* file, int line, bool logInProduction);
+
+	void log(const SecureWString& message, const char* file, int line, bool logInProduction);
 
 	bool releaseLog = false;
 

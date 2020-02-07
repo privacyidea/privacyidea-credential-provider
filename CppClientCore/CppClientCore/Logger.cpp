@@ -115,3 +115,13 @@ void Logger::log(const std::wstring& message, const char* file, int line, bool l
 {
 	logW(message, file, line, logInProduction);
 }
+
+void Logger::log(const SecureString& message, const char* file, int line, bool logInProduction)
+{
+	logS(message.c_str(), file, line, logInProduction);
+}
+
+void Logger::log(const SecureWString& message, const char* file, int line, bool logInProduction)
+{
+	logW(message.c_str(), file, line, logInProduction);
+}

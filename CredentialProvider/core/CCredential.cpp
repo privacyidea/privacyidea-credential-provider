@@ -68,7 +68,8 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR password
 )
 {
-	wstring wstrUsername, wstrDomainname, wstrPassword;
+	wstring wstrUsername, wstrDomainname;
+	SecureWString wstrPassword;
 
 	if (NOT_EMPTY(user_name))
 		wstrUsername = wstring(user_name);
@@ -77,7 +78,7 @@ HRESULT CCredential::Initialize(
 		wstrDomainname = wstring(domain_name);
 
 	if (NOT_EMPTY(password))
-		wstrPassword = wstring(password);
+		wstrPassword = SecureWString(password);
 
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
@@ -104,6 +105,7 @@ HRESULT CCredential::Initialize(
 	{
 		DebugPrint("Copying password to credential");
 		_config->credential.password = wstrPassword;
+		SecureZeroMemory(password, sizeof(password));
 	}
 
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
@@ -218,11 +220,8 @@ INT_PTR CALLBACK CCredential::ChangePasswordProc(HWND hDlg, UINT message, WPARAM
 
 		// concat domain\user and put it in the edit control
 		std::wstring domainWithUser = _config->credential.username + L"\\" + _config->credential.domain;
-		//std::wstring tmp_user = std::wstring(Data::Gui::Get()->user_name);
-		//std::wstring tmp_domain = std::wstring(Data::Gui::Get()->domain_name);
-		//domainWithUser.append(tmp_domain).append(L"\\").append(tmp_user);
+
 		SetDlgItemText(hDlg, IDC_EDIT_USERNAME, domainWithUser.c_str());
-		//SetDlgItemText(hDlg, IDC_EDIT_OLD_PW, Data::Gui::Get()->ldap_pass);
 
 		// Set password character to " * "
 		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETPASSWORDCHAR, (WPARAM)'*', (LPARAM)0);
@@ -320,19 +319,16 @@ INT_PTR CALLBACK CCredential::ChangePasswordProc(HWND hDlg, UINT message, WPARAM
 				return FALSE;
 			}
 			// copy new password to password for auto-login
-			_config->credential.password = wstring(lpszPassword_new);
-
-			/*if (Data::Gui::Get()->ldap_pass || lpszPassword_old)
-				wcscpy_s(Data::Gui::Get()->ldap_pass, lpszPassword_old);
-			copyNewVals(lpszPassword_new); */
-
-			PWSTR user = const_cast<PWSTR>(_config->credential.username.c_str());
-			PWSTR domain = const_cast<PWSTR>(_config->credential.domain.c_str());
+			_config->credential.password = SecureWString(lpszPassword_new);
 
 			// pcpgsr and pcpcs are set in GetSerialization
-			HRESULT	hr = _util.KerberosChangePassword(_config->provider.pcpgsr,
+			const HRESULT hr = _util.KerberosChangePassword(
+				_config->provider.pcpgsr,
 				_config->provider.pcpcs,
-				user, lpszPassword_old, lpszPassword_new, domain);
+				_config->credential.username,
+				_config->credential.password,
+				SecureWString(lpszPassword_old),
+				_config->credential.domain);
 
 			if (SUCCEEDED(hr))
 			{
@@ -346,6 +342,10 @@ INT_PTR CALLBACK CCredential::ChangePasswordProc(HWND hDlg, UINT message, WPARAM
 			}
 
 			_config->bypassPrivacyIDEA = true;
+
+			SecureZeroMemory(lpszPassword_new, 64);
+			SecureZeroMemory(lpszPassword_new_rep, 64);
+			SecureZeroMemory(lpszPassword_old, 64);
 
 			DebugPrint("Evaluate CHANGE PASSWORD DIALOG - END");
 			EndDialog(hDlg, TRUE);
@@ -394,10 +394,10 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
 		DebugPrint("Password must change in CPUS_UNLOCK_WORKSTATION");
-		_pCredProvCredentialEvents->SetFieldString(this, FID_OTP_LARGE_TEXT, L"Go back until you are asked to sign in.");
-		_pCredProvCredentialEvents->SetFieldString(this, FID_OTP_SMALL_TEXT, L"To change your password sign out and in again.");
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP_LDAP_PASS, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, L"Go back until you are asked to sign in.");
+		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, L"To change your password sign out and in again.");
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LDAP_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_PASS, CPFS_HIDDEN);
 	}
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
@@ -512,7 +512,7 @@ HRESULT CCredential::GetBitmapValue(
 	DebugPrint(__FUNCTION__);
 
 	HRESULT hr;
-	if ((FID_OTP_LOGO == dwFieldID) && phbmp)
+	if ((FID_LOGO == dwFieldID) && phbmp)
 	{
 		HBITMAP hbmp = NULL;
 		LPCSTR lpszBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath).c_str();
@@ -572,11 +572,11 @@ HRESULT CCredential::GetSubmitButtonValue(
 {
 	DebugPrint(__FUNCTION__);
 	//DebugPrint("Submit Button ID:" + to_string(dwFieldID));
-	if (FID_OTP_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
+	if (FID_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
 	{
 		// This is only called once when the credential is created.
 		// When switching to the second step, the button is set via CredentialEvents
-		*pdwAdjacentTo = _config->twoStepHideOTP ? FID_OTP_LDAP_PASS : FID_OTP_PASS;
+		*pdwAdjacentTo = _config->twoStepHideOTP ? FID_LDAP_PASS : FID_PASS;
 		return S_OK;
 	}
 	return E_INVALIDARG;
@@ -819,21 +819,21 @@ HRESULT CCredential::GetSerialization(
 		if (_config->isSecondStep == false && _config->twoStepHideOTP)
 		{
 			// Prepare for the second step (input only OTP)
+			_config->isSecondStep = true;
 			_config->clearFields = false;
 			_util.SetScenario(_config->provider.pCredProvCredential,
 				_config->provider.pCredProvCredentialEvents,
-				SCENARIO::SECOND_STEP, std::wstring(), L"Please enter your second factor:");
+				SCENARIO::SECOND_STEP);
 			// Set the submit button next to the OTP field for the second step
-			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_OTP_SUBMIT_BUTTON, FID_OTP_PASS);
+			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_PASS);
 			*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-			_config->isSecondStep = true;
 		}
 		else
 		{
 			// Failed authentication or error
 			if (_piStatus == PI_AUTH_FAILURE)
 			{
-				showErrorMessage(_config->otpFailureText.empty() ? L"Wrong One-Time-Password!" : _config->otpFailureText, 0);
+				showErrorMessage(_config->defaultOTPFailureText, 0);
 			}
 			else if (_piStatus == PI_AUTH_ERROR)
 			{
@@ -900,7 +900,7 @@ HRESULT CCredential::GetSerialization(
 	return retVal;
 }
 
-// if code == 0, it won't be displayed
+// if code == 0, the code won't be displayed
 void CCredential::showErrorMessage(const std::wstring& message, const HRESULT& code)
 {
 	*_config->provider.status_icon = CPSI_ERROR;
@@ -952,7 +952,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		else //  (_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 		{
 			// Send either empty pass or the windows password in first step
-			wstring toSend = L"";
+			SecureWString toSend = L"";
 			if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
 				toSend = _config->credential.password;
 
@@ -970,7 +970,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 						pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
 
 					// if both pushtoken and classic OTP or offline are available, start polling in background
-					if (c.tta == TTA::BOTH ||
+					if	(c.tta == TTA::BOTH ||
 						(c.tta == TTA::PUSH && _privacyIDEA.isOfflineDataAvailable(_config->credential.username)))
 					{
 						// When polling finishes, pushAuthenticationCallback is invoked with the finialization success value
@@ -1008,16 +1008,18 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	{
 		// Send with optional transaction_id from first step
 		_piStatus = _privacyIDEA.validateCheck(
-			PrivacyIDEA::ws2s(_config->credential.username),
-			PrivacyIDEA::ws2s(_config->credential.domain),
-			PrivacyIDEA::ws2s(_config->credential.otp),
+			_config->credential.username,
+			_config->credential.domain,
+			SecureWString(_config->credential.otp.c_str()),
 			_config->challenge.transaction_id);
 	}
 	//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 	else
 	{
-		_piStatus = _privacyIDEA.validateCheck(_config->credential.username,
-			_config->credential.domain, _config->credential.otp);
+		_piStatus = _privacyIDEA.validateCheck(
+			_config->credential.username,
+			_config->credential.domain,
+			SecureWString(_config->credential.otp.c_str()));
 	}
 
 	DebugPrint("Connect - END");

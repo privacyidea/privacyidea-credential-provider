@@ -19,6 +19,7 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "OfflineData.h"
+#include "SecureString.h"
 #include <string>
 #include <map>
 #include <Windows.h>
@@ -31,11 +32,11 @@ public:
 
 	~OfflineHandler();
 
-	HRESULT verifyOfflineOTP(const std::wstring& otp, const std::string& username);
+	HRESULT verifyOfflineOTP(const SecureWString& otp, const std::string& username);
 
 	int getOfflineValuesLeft(const std::string& username);
 
-	HRESULT getRefillTokenAndSerial(const std::string& username, std::map<std::string, std::string>& map);
+	HRESULT getRefillTokenAndSerial(const std::string& username, std::map<std::string, SecureString>& map);
 
 	HRESULT parseForOfflineData(const std::string& in);
 
@@ -50,15 +51,13 @@ private:
 
 	int _tryWindow = 10;
 
-	bool pbkdf2_sha512_verify(std::wstring password, std::string storedValue);
+	bool pbkdf2_sha512_verify(SecureWString password, std::string storedValue);
 
 	void base64toabase64(std::string& in);
 
 	std::string getNextValue(std::string& in);
 
 	char* UnicodeToCodePage(int codePage, const wchar_t* src);
-
-	wchar_t* CodePageToUnicode(int codePage, const char* src);
 
 	HRESULT saveToFile();
 

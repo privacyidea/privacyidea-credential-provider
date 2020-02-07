@@ -22,9 +22,9 @@
 
 class RegistryReader
 {
-public: 
+public:
 	RegistryReader(const std::wstring& pathToKey);
-	
+
 	std::wstring wpath;
 
 	// puts all keys and values from the current path into a map

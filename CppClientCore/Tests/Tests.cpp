@@ -53,20 +53,8 @@ namespace Tests
 
 			assertEquals(emptyString, c.serial);
 			assertEquals(emptyString, c.transaction_id);
-			Assert::IsTrue(c.messagesEmpty());
+			Assert::IsTrue(c.message.empty());
 			assertEquals(TTA::NOT_SET, c.tta);
-
-			c.serial = "HOTP1";
-			c.transaction_id = "1";
-			c.tta = TTA::OTP;
-			c.addMessage("message 1");
-			c.addMessage("message 2");
-
-			wstring msgs = L"message 1 or message 2:";
-			assertEquals(msgs, c.getAggregatedMessage());
-
-			string challengeToStr = "Challenge: serial=HOTP1, transaction_id=1, tta=OTP, messages=message 1, message 2";
-			assertEquals(challengeToStr, c.toString());
 		}
 
 		TEST_METHOD(TestInit)
@@ -78,6 +66,19 @@ namespace Tests
 
 			PrivacyIDEA pi(conf);
 			//pi.getLastErrorText();
+		}
+
+		TEST_METHOD(TestSecureString)
+		{
+			SecureString ss1("teststring");
+
+			SecureWString sws1 = PrivacyIDEA::ss2sws(ss1);
+
+			assertEquals(L"teststring", sws1.c_str());
+
+			SecureString ss2 = PrivacyIDEA::sws2ss(sws1);
+
+			assertEquals(ss1.c_str(), ss2.c_str());
 		}
 
 		TEST_METHOD(TestOffline)
@@ -123,8 +124,8 @@ namespace Tests
 			)"_json;
 
 
-			string filepath = ".\\offline.json";
-			remove(filepath.c_str());
+			wstring filepath = L".\\offline.json";
+			remove(PrivacyIDEA::ws2s(filepath).c_str());
 
 			OfflineHandler offline(filepath, 10);
 			HRESULT res = offline.parseForOfflineData(jInitial.dump());

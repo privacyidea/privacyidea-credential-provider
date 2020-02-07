@@ -1,5 +1,6 @@
 #include "Utilities.h"
 #include "helpers.h"
+#include "SecureString.h"
 #include <string>
 #include <Shlwapi.h>
 #include <codecvt>
@@ -12,12 +13,12 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 }
 
 HRESULT Utilities::KerberosLogon(
-	CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
-	CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
-	CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
-	std::wstring username,
-	std::wstring password,
-	std::wstring domain)
+	__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
+	__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
+	__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
+	__in std::wstring username,
+	__in SecureWString password,
+	__in std::wstring domain)
 {
 	DebugPrint(__FUNCTION__);
 
@@ -37,7 +38,7 @@ HRESULT Utilities::KerberosLogon(
 	DebugPrint("Packing Credential:");
 	DebugPrint(username);
 	if (_config->logSensitive) {
-		DebugPrint(password);
+		DebugPrint(password.c_str());
 	}
 	DebugPrint(domain);
 #endif
@@ -102,12 +103,12 @@ HRESULT Utilities::KerberosLogon(
 }
 
 HRESULT Utilities::KerberosChangePassword(
-	CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
-	CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
-	std::wstring username,
-	std::wstring password_old,
-	std::wstring password_new,
-	std::wstring domain)
+	__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
+	__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
+	__in std::wstring username,
+	__in SecureWString password_old,
+	__in SecureWString password_new,
+	__in std::wstring domain)
 {
 	DebugPrint(__FUNCTION__);
 	KERB_CHANGEPASSWORD_REQUEST kcpr;
@@ -148,6 +149,10 @@ HRESULT Utilities::KerberosChangePassword(
 
 				hr = UnicodeStringInitWithString(lpwszPasswordOld, &kcpr.OldPassword);
 				hr = UnicodeStringInitWithString(lpwszPasswordNew, &kcpr.NewPassword);
+
+				SecureZeroMemory(lpwszPasswordNew, sizeof(lpwszPasswordNew));
+				SecureZeroMemory(lpwszPasswordOld, sizeof(lpwszPasswordOld));
+
 				if (SUCCEEDED(hr))
 				{
 					kcpr.MessageType = KerbChangePasswordMessage;
@@ -179,19 +184,19 @@ HRESULT Utilities::KerberosChangePassword(
 }
 
 HRESULT Utilities::CredPackAuthentication(
-	CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
-	CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
-	CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
-	std::wstring username,
-	std::wstring password,
-	std::wstring domain)
+	__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
+	__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
+	__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
+	__in std::wstring username,
+	__in SecureWString password,
+	__in std::wstring domain)
 {
 
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
 	DebugPrint(username);
 	if (_config->logSensitive) {
-		DebugPrint(password);
+		DebugPrint(password.c_str());
 	}
 	DebugPrint(domain);
 #endif
@@ -269,6 +274,8 @@ HRESULT Utilities::CredPackAuthentication(
 					*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
 				}
 			}
+
+			SecureZeroMemory(lpwszPassword, sizeof(lpwszPassword));
 		}
 
 		CoTaskMemFree(pwzProtectedPassword);
@@ -280,9 +287,7 @@ HRESULT Utilities::CredPackAuthentication(
 HRESULT Utilities::SetScenario(
 	__in ICredentialProviderCredential* pCredential,
 	__in ICredentialProviderCredentialEvents* pCPCE,
-	__in SCENARIO scenario,
-	__in std::wstring textForLargeField,
-	__in std::wstring textForSmallField)
+	__in SCENARIO scenario)
 {
 	DebugPrint(__FUNCTION__);
 	HRESULT hr = S_OK;
@@ -312,55 +317,42 @@ HRESULT Utilities::SetScenario(
 		break;
 	}
 
-	const int hide_fullname = _config->hideFullName;
+	const int hideFullName = _config->hideFullName;
+	const int hideDomain = _config->hideDomainName;
 
 	// Fill the textfields with text depending on configuration
-	const int largeTextFieldId = FID_OTP_LARGE_TEXT,
-		smallTextFieldId = FID_OTP_SMALL_TEXT;
-	// TODO vv this is bad vv
-	if (!textForLargeField.empty())
-	{
-		DebugPrint(L"Large Text:" + textForLargeField);
-		pCPCE->SetFieldString(pCredential, largeTextFieldId, textForLargeField.c_str());
-	}
-	else
-	{
-		pCPCE->SetFieldString(pCredential, largeTextFieldId, _config->credential.username.c_str());
-	}
+	// Large text for username@domain, username or nothing
+	// Small text for transaction message or default OTP message
 
-	if ((!textForSmallField.empty()) && !hide_fullname)
+	// Large text
+	wstring text = _config->credential.username + L"@" + _config->credential.domain;
+	if (hideDomain)
+		text = _config->credential.username;
+	if (hideFullName)
+		text = L"";
+	//DebugPrint(L"Setting large text: " + text);
+	pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
+	if (text.empty())
+		pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
+
+	// Small text, use if 1step or in 2nd step of 2step
+	if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 	{
-		DebugPrint(L"Small Text:" + textForSmallField);
-		pCPCE->SetFieldString(pCredential, smallTextFieldId, textForSmallField.c_str());
-		//pCPCE->SetFieldState(pCredential, smallTextFieldId, CPFS_DISPLAY_IN_SELECTED_TILE);
-	}
-	else if (hide_fullname)
-	{
-		DebugPrint(L"Small Text: hide username, ignoring text " + textForSmallField);
-		pCPCE->SetFieldString(pCredential, smallTextFieldId, L"");
+		if (!_config->challenge.message.empty())
+		{
+			//DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
+			pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->challenge.message.c_str());
+			pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
+		}
+		else
+		{
+			pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->defaultOTPText.c_str());
+		}
 	}
 	else
-	{
-		DebugPrint("Small Text: empty");
-		pCPCE->SetFieldString(pCredential, smallTextFieldId, L"");
-		pCPCE->SetFieldState(pCredential, smallTextFieldId, CPFS_HIDDEN);
-	}
-	if (!_config->challenge.message.empty())
-	{
-		DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
-		pCPCE->SetFieldString(pCredential, smallTextFieldId, _config->challenge.message.c_str());
-		pCPCE->SetFieldState(pCredential, smallTextFieldId, CPFS_DISPLAY_IN_BOTH);
-	}
+		pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_HIDDEN);
 
 	return hr;
-}
-
-void Utilities::SetScenario(
-	__in ICredentialProviderCredential* self,
-	__in ICredentialProviderCredentialEvents* pCPCE,
-	__in SCENARIO scenario)
-{
-	SetScenario(self, pCPCE, scenario, std::wstring(), std::wstring());
 }
 
 HRESULT Utilities::Clear(
@@ -428,7 +420,7 @@ HRESULT Utilities::SetFieldStatePairBatch(
 
 	return hr;
 }
-
+// can be removed, SetScenario does the same
 HRESULT Utilities::initializeField(
 	LPWSTR* rgFieldStrings,
 	DWORD field_index)
@@ -443,13 +435,13 @@ HRESULT Utilities::initializeField(
 
 	switch (field_index)
 	{
-	case FID_OTP_LDAP_PASS:
-	case FID_OTP_PASS:
-	case FID_OTP_SUBMIT_BUTTON:
-	case FID_OTP_OFFLINE_CHECKBOX:
+	case FID_LDAP_PASS:
+	case FID_PASS:
+	case FID_SUBMIT_BUTTON:
+	case FID_OFFLINE_CHECKBOX:
 		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		break;
-	case FID_OTP_USERNAME:
+	case FID_USERNAME:
 		if (!user_name.empty() && !domain_name.empty() && !hide_fullname && !hide_domainname)
 		{
 			wstring fullName = user_name + L"@" + domain_name;
@@ -465,7 +457,7 @@ HRESULT Utilities::initializeField(
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		}
 		break;
-	case FID_OTP_LARGE_TEXT:
+	case FID_LARGE_TEXT:
 		// This is the USERNAME field which is displayed in the list of users to the right
 		if (!loginText.empty())
 		{
@@ -476,7 +468,7 @@ HRESULT Utilities::initializeField(
 			hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 		}
 		break;
-	case FID_OTP_SMALL_TEXT:
+	case FID_SMALL_TEXT:
 		// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
 		// and the name is displayed in this field instead (or hidden)
 		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
@@ -510,7 +502,7 @@ HRESULT Utilities::initializeField(
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		}
 		break;
-	case FID_OTP_LOGO:
+	case FID_LOGO:
 		hr = S_OK;
 		break;
 	default:
@@ -631,12 +623,12 @@ HRESULT Utilities::readFieldValues()
 
 HRESULT Utilities::readUserField()
 {
-	DebugPrint(L"Loading username/domainname from GUI, raw: " + wstring(_config->provider.field_strings[FID_OTP_USERNAME]));
+	DebugPrint(L"Loading username/domainname from GUI, raw: " + wstring(_config->provider.field_strings[FID_USERNAME]));
 
 	wchar_t user_name[1024];
 	wchar_t domain_name[1024];
 
-	SeparateUserAndDomainName(_config->provider.field_strings[FID_OTP_USERNAME],
+	SeparateUserAndDomainName(_config->provider.field_strings[FID_USERNAME],
 		user_name, sizeof(user_name) / sizeof(wchar_t),
 		domain_name, sizeof(domain_name) / sizeof(wchar_t)
 	);
@@ -662,7 +654,7 @@ HRESULT Utilities::readUserField()
 
 HRESULT Utilities::readPasswordField()
 {
-	wstring newPassword(_config->provider.field_strings[FID_OTP_LDAP_PASS]);
+	SecureWString newPassword(_config->provider.field_strings[FID_LDAP_PASS]);
 
 	if (newPassword.empty())
 	{
@@ -671,14 +663,24 @@ HRESULT Utilities::readPasswordField()
 	else
 	{
 		_config->credential.password = newPassword;
-		DebugPrint(L"Loading password from GUI, value: " + newPassword);
+		DebugPrint(L"Loading password from GUI, value:");
+		if (_config->logSensitive)
+			DebugPrint(newPassword.c_str());
+		else
+		{
+			if (newPassword.empty())
+				DebugPrint("[Hidden] empty value");
+			else
+				DebugPrint("[Hidden] has value");
+		}
+
 	}
 	return S_OK;
 }
 
 HRESULT Utilities::readOTPField()
 {
-	wstring newOTP(_config->provider.field_strings[FID_OTP_PASS]);
+	wstring newOTP(_config->provider.field_strings[FID_PASS]);
 	if (newOTP.empty())
 	{
 		DebugPrint("new OTP empty, keeping old value");
@@ -719,14 +721,12 @@ HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredenti
 		if (_config->twoStepHideOTP)
 		{
 			SetScenario(pSelf, pCredProvCredentialEvents,
-				SCENARIO::UNLOCK_TWO_STEP,
-				std::wstring(), _config->credential.username);
+				SCENARIO::UNLOCK_TWO_STEP);
 		}
 		else
 		{
 			SetScenario(pSelf, pCredProvCredentialEvents,
-				SCENARIO::UNLOCK_BASE,
-				std::wstring(), _config->credential.username);
+				SCENARIO::UNLOCK_BASE);
 		}
 
 	}

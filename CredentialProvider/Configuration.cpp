@@ -31,9 +31,9 @@ Configuration::Configuration()
 
 	// Credential Provider specific config
 	bitmapPath = rr.getRegistry(L"v1_bitmap_path");
-	loginText = rr.getRegistry(L"login_text");
-	otpFieldText = rr.getRegistry(L"otp_text");
-	otpFailureText = rr.getRegistry(L"otp_fail_text");
+	hideDomainName = rr.getBoolRegistry(L"hide_domainname");
+	hideFullName = rr.getBoolRegistry(L"hide_fullname");
+	hide_otp_sleep_s = rr.getIntRegistry(L"hide_otp_sleep_s");
 
 	twoStepHideOTP = rr.getBoolRegistry(L"two_step_hide_otp");
 	twoStepSendEmptyPassword = rr.getBoolRegistry(L"two_step_send_empty_password");
@@ -42,15 +42,20 @@ Configuration::Configuration()
 	releaseLog = rr.getBoolRegistry(L"release_log");
 	logSensitive = rr.getBoolRegistry(L"log_sensitive");
 
-	hideDomainName = rr.getBoolRegistry(L"hide_domainname");
-	hideFullName = rr.getBoolRegistry(L"hide_fullname");
-	hide_otp_sleep_s = rr.getIntRegistry(L"hide_otp_sleep_s");
+	// Custom field texts: check if set, otherwise use defaults (from header)
+	loginText = rr.getRegistry(L"login_text");
+	otpFieldText = rr.getRegistry(L"otp_text");
 
+	wstring tmp = rr.getRegistry(L"otp_fail_text");
+	defaultOTPFailureText = tmp.empty() ? defaultOTPFailureText : tmp;
+
+	tmp = rr.getRegistry(L"default_otp_text");
+	defaultOTPText = tmp.empty() ? defaultOTPText : tmp;
 
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.getRegistry(L"hostname");
 	// Check if the path contains the placeholder, if so replace with nothing
-	auto tmp = rr.getRegistry(L"path");
+	tmp = rr.getRegistry(L"path");
 	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
 
 	piconfig.ignoreUnknownCA = rr.getBoolRegistry(L"ssl_ignore_unknown_ca");
@@ -121,7 +126,7 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.c_str());
 	tmp = L"OTP field text: " + otpFieldText;
 	DebugPrint(tmp.c_str());
-	tmp = L"OTP failure text: " + otpFailureText;
+	tmp = L"OTP failure text: " + defaultOTPFailureText;
 	DebugPrint(tmp.c_str());
 	tmp = L"Hide domain only: " + b2ws(hideDomainName);
 	DebugPrint(tmp.c_str());
@@ -142,6 +147,10 @@ void Configuration::printConfiguration()
 	tmp = L"No default: " + b2ws(noDefault);
 	DebugPrint(tmp.c_str());
 	tmp = L"Bitmap path: " + bitmapPath;
+	DebugPrint(tmp.c_str());
+	tmp = L"Offline file path: " + piconfig.offlineFilePath;
+	DebugPrint(tmp.c_str());
+	tmp = L"Offline try window: " + to_wstring(piconfig.offlineTryWindow);
 	DebugPrint(tmp.c_str());
 	tmp = L"Default realm: " + piconfig.defaultRealm;
 	DebugPrint(tmp.c_str());

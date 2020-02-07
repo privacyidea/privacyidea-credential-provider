@@ -72,7 +72,7 @@ OfflineHandler::~OfflineHandler()
 	}
 }
 
-HRESULT OfflineHandler::verifyOfflineOTP(const wstring& otp, const string& username)
+HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string& username)
 {
 	HRESULT success = E_FAIL;
 
@@ -134,7 +134,7 @@ int OfflineHandler::getOfflineValuesLeft(const std::string& username)
 	return -1;
 }
 
-HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::map<std::string, std::string>& map)
+HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::map<std::string, SecureString>& map)
 {
 	if (dataSets.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 
@@ -142,8 +142,8 @@ HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std
 	{
 		if (item.user == username || item.username == username)
 		{
-			string serial = item.serial;
-			string refilltoken = item.refilltoken;
+			SecureString serial(item.serial.c_str());
+			SecureString refilltoken(item.refilltoken.c_str());
 			if (serial.empty() || refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 			map.try_emplace("serial", serial);
 			map.try_emplace("refilltoken", refilltoken);
@@ -308,42 +308,6 @@ HRESULT OfflineHandler::loadFromFile()
 	return S_OK;
 }
 
-// 65001 is utf-8.
-wchar_t* OfflineHandler::CodePageToUnicode(int codePage, const char* src)
-{
-	if (!src) return 0;
-	const int srcLen = strlen(src);
-	if (!srcLen)
-	{
-		wchar_t* w = new wchar_t[1];
-		w[0] = 0;
-		return w;
-	}
-
-	int requiredSize = MultiByteToWideChar(codePage,
-		0,
-		src, srcLen, 0, 0);
-
-	if (!requiredSize)
-	{
-		return 0;
-	}
-
-	wchar_t* w = new wchar_t[requiredSize + 1];
-	w[requiredSize] = 0;
-
-	const int retval = MultiByteToWideChar(codePage,
-		0,
-		src, srcLen, w, requiredSize);
-	if (!retval)
-	{
-		delete[] w;
-		return nullptr;
-	}
-
-	return w;
-}
-
 // Returns the outer right value of the passlib format and cuts it off the input string including the $
 std::string OfflineHandler::getNextValue(std::string& in)
 {
@@ -387,7 +351,7 @@ char* OfflineHandler::UnicodeToCodePage(int codePage, const wchar_t* src)
 	return x;
 }
 
-bool OfflineHandler::pbkdf2_sha512_verify(std::wstring password, std::string storedValue)
+bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string storedValue)
 {
 	bool isValid = false;
 	// Format of stored values (passlib):
@@ -457,9 +421,10 @@ bool OfflineHandler::pbkdf2_sha512_verify(std::wstring password, std::string sto
 			{
 				if (pbDerivedKey[cbDerivedKey] != bufStored[cbDerivedKey])
 				{
-					CoTaskMemFree(pbDerivedKey);
+					/*CoTaskMemFree(pbDerivedKey);
 					CoTaskMemFree(bufStored);
-					return false;
+					return false; */
+					goto Exit;
 				}
 			}
 			isValid = true;
@@ -470,9 +435,11 @@ bool OfflineHandler::pbkdf2_sha512_verify(std::wstring password, std::string sto
 		printf("Error: %x", status);
 		isValid = false;
 	}
-
+Exit:
 	CoTaskMemFree(pbDerivedKey);
 	CoTaskMemFree(bufStored);
+	SecureZeroMemory(prepPassword, sizeof(prepPassword));
+	SecureZeroMemory(prepPasswordBytes, sizeof(prepPasswordBytes));
 
 	return isValid;
 }

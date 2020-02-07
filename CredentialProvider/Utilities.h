@@ -2,7 +2,6 @@
 #include "Configuration.h"
 #include "Logger.h"
 #include "core/common.h"
-#include "core/field_state_pair.h"
 #include <memory>
 #include <Windows.h>
 #include <wincred.h>
@@ -34,41 +33,33 @@ public:
 	HRESULT KerberosLogon(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
-		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, 
-		__in std::wstring username, 
-		__in std::wstring password, 
+		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
+		__in std::wstring username,
+		__in SecureWString password,
 		__in std::wstring domain
 	);
 
 	HRESULT KerberosChangePassword(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
-		__in std::wstring username, 
-		__in std::wstring password_old,
-		__in std::wstring password_new, 
+		__in std::wstring username,
+		__in SecureWString password_old,
+		__in SecureWString password_new,
 		__in std::wstring domain
 	);
 
 	HRESULT CredPackAuthentication(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
-		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, 
-		__in std::wstring username, 
-		__in std::wstring password, 
+		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
+		__in std::wstring username,
+		__in SecureWString password,
 		__in std::wstring domain
 	);
 
 	// Set all fields state depending on the scenario, then fill the fields depending on scenario and configuration
 	HRESULT SetScenario(
-		__in ICredentialProviderCredential * pCredential,
-		__in ICredentialProviderCredentialEvents* pCPCE,
-		__in SCENARIO scenario,
-		__in std::wstring textForLargeField, 
-		__in std::wstring textForSmallField
-	);
-
-	void SetScenario(
-		__in ICredentialProviderCredential* self,
+		__in ICredentialProviderCredential* pCredential,
 		__in ICredentialProviderCredentialEvents* pCPCE,
 		__in SCENARIO scenario
 	);

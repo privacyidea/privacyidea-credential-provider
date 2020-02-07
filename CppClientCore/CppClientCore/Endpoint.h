@@ -37,9 +37,9 @@ public:
 		_hostname(std::move(hostname)), _path(std::move(path)), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN),
 		_ignoreUnknownCA(ignoreUnknownCA), _logPasswords(logPasswords) {};
 
-	std::string connect(const std::string& endpoint, std::map<std::string, std::string> params, const RequestMethod& method);
+	std::string connect(const std::string& endpoint, std::map<std::string, SecureString> params, const RequestMethod& method);
 
-	HRESULT pollForTransaction(const std::map<std::string, std::string>& params);
+	HRESULT pollForTransaction(const std::map<std::string, SecureString>& params);
 
 	HRESULT finalizePolling(const std::string& user, const std::string& transaction_id);
 
@@ -68,6 +68,8 @@ private:
 	std::wstring get_utf16(const std::string& str, int codepage);
 
 	std::string escapeUrl(const std::string& in);
+
+	SecureString escapeUrl(const SecureString& in);
 
 	bool _ignoreInvalidCN = false;
 	bool _ignoreUnknownCA = false;

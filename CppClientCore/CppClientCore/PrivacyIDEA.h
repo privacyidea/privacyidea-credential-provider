@@ -23,6 +23,7 @@
 #include "Endpoint.h"
 #include "PIConf.h"
 #include "ErrorCodes.h"
+#include "SecureString.h"
 #include <Windows.h>
 #include <string>
 #include <map>
@@ -51,13 +52,9 @@ public:
 	// sends the parameters to privacyIDEA and checks the response for
 	// 1. Offline otp data, 2. Triggered challenges, 3. Authentication success
 	// <returns> PI_AUTH_SUCCESS, PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_ERROR </returns>
-	HRESULT validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp, const std::string& transaction_id);
+	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp, const std::string& transaction_id);
 
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, const std::wstring& transaction_id);
-
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp);
-
-	HRESULT validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp);
+	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp);
 
 	bool stopPoll();
 
@@ -82,10 +79,18 @@ public:
 
 	static std::string ws2s(const std::wstring& ws);
 
-private:
-	HRESULT checkForRealm(std::map<std::string, std::string>& map, std::string domain);
+	static SecureString sws2ss(const SecureWString& sws);
 
-	void pollThread(const std::map<std::string, std::string>& params, const std::string& username, std::function<void(bool)> callback);
+	static SecureWString ss2sws(const SecureString& ss);
+
+	static void clearString(std::wstring& ws);
+
+	static void clearString(std::string& s);
+
+private:
+	HRESULT checkForRealm(std::map<std::string, SecureString>& map, std::string domain);
+
+	void pollThread(const std::map<std::string, SecureString>& params, const std::string& username, std::function<void(bool)> callback);
 
 	std::map<std::wstring, std::wstring> _realmMap;
 
@@ -97,7 +102,7 @@ private:
 	bool _logPasswords = false;
 	std::wstring _defaultRealm = L"";
 
-	HRESULT tryOfflineRefill(std::string username, std::string lastOTP);
+	HRESULT tryOfflineRefill(std::string username, SecureString lastOTP);
 
 	std::atomic<bool> _runPoll = false;
 };

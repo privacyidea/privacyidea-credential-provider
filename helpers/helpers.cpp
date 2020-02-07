@@ -466,7 +466,7 @@ static HRESULT _ProtectAndCopyString(
     *ppwzProtected = NULL;
 
     // pwzToProtect is const, but CredProtect takes a non-const string.
-    // So, ake a copy that we know isn't const.
+    // So, make a copy that we know isn't const.
     PWSTR pwzToProtectCopy;
     HRESULT hr = SHStrDupW(pwzToProtect, &pwzToProtectCopy);
     if (SUCCEEDED(hr))
@@ -529,7 +529,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
     __deref_out PWSTR* ppwzProtectedPassword
     )
 {
-    *ppwzProtectedPassword = NULL;
+    *ppwzProtectedPassword = nullptr;
 
     HRESULT hr;
 
@@ -538,7 +538,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
     if (pwzPassword && *pwzPassword)
     {
         // pwzPassword is const, but CredIsProtected takes a non-const string.
-        // So, ake a copy that we know isn't const.
+        // So, make a copy that we know isn't const.
         PWSTR pwzPasswordCopy;
         hr = SHStrDupW(pwzPassword, &pwzPasswordCopy);
         if (SUCCEEDED(hr))
@@ -568,6 +568,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
                 hr = _ProtectAndCopyString(pwzPasswordCopy, ppwzProtectedPassword);
             }
             
+            SecureZeroMemory(pwzPasswordCopy, sizeof(pwzPasswordCopy));
             CoTaskMemFree(pwzPasswordCopy);
         }
     }
@@ -625,12 +626,12 @@ HRESULT KerbInteractiveUnlockLogonRepackNative(
     __out DWORD* pcbNative)
 {
     HRESULT hr = E_OUTOFMEMORY;
-    PWSTR pszDomainUsername = NULL;
+    PWSTR pszDomainUsername = nullptr;
     DWORD cchDomainUsername = 0;
-    PWSTR pszPassword = NULL;
+    PWSTR pszPassword = nullptr;
     DWORD cchPassword = 0;
 
-    *prgbNative = NULL;
+    *prgbNative = nullptr;
     *pcbNative = 0;
 
     // Unpack the 32 bit KERB structure

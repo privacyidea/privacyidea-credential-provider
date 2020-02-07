@@ -17,7 +17,7 @@ PrivacyIDEA& PrivacyIDEA::operator=(const PrivacyIDEA& privacyIDEA)
 }
 
 // Check if there is a mapping for the given domain or - if not - a default realm is set
-HRESULT PrivacyIDEA::checkForRealm(std::map<std::string, std::string>& map, std::string domain)
+HRESULT PrivacyIDEA::checkForRealm(std::map<std::string, SecureString>& map, std::string domain)
 {
 	wstring realm = L"";
 	try
@@ -36,13 +36,13 @@ HRESULT PrivacyIDEA::checkForRealm(std::map<std::string, std::string>& map, std:
 
 	if (!realm.empty())
 	{
-		map.try_emplace("realm", ws2s(realm));
+		map.try_emplace("realm", SecureString(ws2s(realm).c_str()));
 	}
 
 	return S_OK;
 }
 
-void PrivacyIDEA::pollThread(const std::map<std::string, std::string>& params, const std::string& username, std::function<void(bool)> callback)
+void PrivacyIDEA::pollThread(const std::map<std::string, SecureString>& params, const std::string& username, std::function<void(bool)> callback)
 {
 	DebugPrint("Running poll thread...");
 	HRESULT res = E_FAIL;
@@ -65,8 +65,8 @@ void PrivacyIDEA::pollThread(const std::map<std::string, std::string>& params, c
 		try
 		{
 			DebugPrint("Finalizing transaction...");
-			string transaction_id = params.at("transaction_id");
-			HRESULT result = _endpoint.finalizePolling(username, transaction_id);
+			SecureString transaction_id = params.at("transaction_id");
+			HRESULT result = _endpoint.finalizePolling(username, transaction_id.c_str());
 			callback((result == PI_AUTH_SUCCESS));
 		}
 		catch (const std::out_of_range & e)
@@ -78,15 +78,15 @@ void PrivacyIDEA::pollThread(const std::map<std::string, std::string>& params, c
 	}
 }
 
-HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, std::string lastOTP)
+HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, SecureString lastOTP)
 {
-	map<string, string> params = map<string, string>();
+	map<string, SecureString> params = map<string, SecureString>();
 	params.try_emplace("pass", lastOTP);
 	_offlineHandler.getRefillTokenAndSerial(username, params);
 	try
 	{
-		string refilltoken = params.at("refilltoken");
-		string serial = params.at("serial");
+		SecureString refilltoken = params.at("refilltoken");
+		SecureString serial = params.at("serial");
 		if (refilltoken.empty() || serial.empty())
 		{
 			DebugPrint("Offline refill params were empty");
@@ -112,22 +112,25 @@ HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, std::string lastOTP)
 	return res;
 }
 
-HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::string& domain, const  std::string& otp, const std::string& transaction_id)
+HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstring& domain,
+	const SecureWString& otp, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
 	HRESULT res = E_FAIL, ret = PI_AUTH_FAILURE;
 
+	string strUsername = ws2s(username);
+
 	// Check if offline otp available first
-	res = _offlineHandler.isDataVailable(username);
+	res = _offlineHandler.isDataVailable(strUsername);
 	if (res == S_OK)
 	{
 		DebugPrint("Offline data available");
-		res = _offlineHandler.verifyOfflineOTP(s2ws(otp), username);
+		res = _offlineHandler.verifyOfflineOTP(otp, strUsername);
 		if (res == S_OK)
 		{
-			DebugPrint("Offline authentication successful");
 			// try refill then return
-			res = tryOfflineRefill(username, otp);
+			DebugPrint("Offline authentication successful");
+			res = tryOfflineRefill(strUsername, sws2ss(otp));
 			if (res != S_OK)
 			{
 				DebugPrint("Offline refill failed: " + to_string(res));
@@ -143,26 +146,27 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	else if (res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 	{
 		// Also refill and continue?
-		res = tryOfflineRefill(username, otp);
+		res = tryOfflineRefill(strUsername, sws2ss(otp));
 		if (res != S_OK)
 			DebugPrint("Offline refill failed: " + to_string(res));
 	}
 
 	// Connect with the privacyIDEA Server
-	map<string, string> params;
-	params.try_emplace("user", username);
-	params.try_emplace("pass", otp);
+	map<string, SecureString> params;
+	params.try_emplace("user", SecureString(ws2s(username).c_str()));
+	params.try_emplace("pass", sws2ss(otp));
 
 	if (!transaction_id.empty())
-		params.try_emplace("transaction_id", transaction_id);
+		params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
 
-	checkForRealm(params, domain);
+	checkForRealm(params, ws2s(domain));
 
 	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
 
 	if (response.empty())
 	{
 		DebugPrint("Received empty response from server.");
+
 		return PI_AUTH_ERROR;
 	}
 
@@ -220,19 +224,9 @@ HRESULT PrivacyIDEA::validateCheck(const std::string& username, const  std::stri
 	return ret;
 }
 
-HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, const std::wstring& transaction_id)
+HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp)
 {
-	return validateCheck(ws2s(username), ws2s(domain), ws2s(otp), ws2s(transaction_id));
-}
-
-HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp)
-{
-	return validateCheck(ws2s(username), ws2s(domain), ws2s(otp), "");
-}
-
-HRESULT PrivacyIDEA::validateCheck(const std::string& username, const std::string& domain, const std::string& otp)
-{
-	return validateCheck(username, domain, otp, "");
+	return validateCheck(username, domain, otp, string());
 }
 
 bool PrivacyIDEA::stopPoll()
@@ -243,8 +237,8 @@ bool PrivacyIDEA::stopPoll()
 
 void PrivacyIDEA::asyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback)
 {
-	map<string, string> params;
-	params.try_emplace("transaction_id", transaction_id);
+	map<string, SecureString> params;
+	params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
 	_runPoll.store(true);
 	std::thread t(&PrivacyIDEA::pollThread, this, params, username, callback);
 	t.detach();
@@ -252,8 +246,8 @@ void PrivacyIDEA::asyncPollTransaction(std::string username, std::string transac
 
 HRESULT PrivacyIDEA::pollTransaction(std::string transaction_id)
 {
-	map<string, string> params;
-	params.try_emplace("transaction_id", transaction_id);
+	map<string, SecureString> params;
+	params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
 	return _endpoint.pollForTransaction(params);
 }
 
@@ -292,3 +286,57 @@ std::string PrivacyIDEA::ws2s(const std::wstring& ws)
 
 	return converterX.to_bytes(ws);
 }
+
+SecureString PrivacyIDEA::sws2ss(const SecureWString& sws)
+{
+	size_t outSize = 0;
+	size_t size = sws.size() + 1;
+	char* outBuf = new char[size];
+
+	wcstombs_s(&outSize, outBuf, size, sws.c_str(), (size - 1));
+
+	SecureString ret;
+	if (outSize > 0)
+		ret = SecureString(outBuf);
+	else
+		ret = SecureString();
+
+	SecureZeroMemory(outBuf, size);
+	delete[] outBuf;
+
+	return ret;
+}
+
+SecureWString PrivacyIDEA::ss2sws(const SecureString& ss)
+{
+	size_t outSize = 0;
+	size_t size = ss.size() + 1;
+	wchar_t* outBuf = new wchar_t[size];
+
+	mbstowcs_s(&outSize, outBuf, size, ss.c_str(), (size - 1));
+
+	SecureWString ret;
+	if (outSize > 0)
+		ret = SecureWString(outBuf);
+	else
+		ret = SecureWString();
+
+	SecureZeroMemory(outBuf, size);
+	delete[] outBuf;
+
+	return ret;
+}
+
+#pragma optimize( "", off )
+void PrivacyIDEA::clearString(std::wstring& ws)
+{
+	std::fill_n(&ws[0], ws.capacity(), 0xff);
+}
+#pragma optimize( "", on )
+
+#pragma optimize( "", off )
+void PrivacyIDEA::clearString(std::string& s)
+{
+	std::fill_n(&s[0], s.capacity(), 0xff);
+}
+#pragma optimize( "", on )
