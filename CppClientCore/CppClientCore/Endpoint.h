@@ -37,9 +37,14 @@ public:
 		_hostname(std::move(hostname)), _path(std::move(path)), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN),
 		_ignoreUnknownCA(ignoreUnknownCA), _logPasswords(logPasswords) {};
 
-	std::string connect(const std::string& endpoint, std::map<std::string, SecureString> params, const RequestMethod& method);
+	std::string connect(const std::string& endpoint, SecureString sdata, const RequestMethod& method);
 
-	HRESULT pollForTransaction(const std::map<std::string, SecureString>& params);
+	// URL encodes both values and returns "key=value"
+	SecureString encodePair(const std::string& key, const std::string& value);
+	SecureString encodePair(const std::string& key, const SecureString& value);
+	SecureString encodePair(const std::string& key, const SecureWString& value);
+
+	HRESULT pollForTransaction(const SecureString& data);
 
 	HRESULT finalizePolling(const std::string& user, const std::string& transaction_id);
 
@@ -60,14 +65,14 @@ public:
 	const int& getLastErrorCode();
 
 	const std::string& getLastErrorMessage();
-	
+
 	static nlohmann::json tryParseJSON(const std::string& in);
 
 private:
 
 	std::wstring get_utf16(const std::string& str, int codepage);
 
-	std::string escapeUrl(const std::string& in);
+	SecureString escapeUrl(const std::string& in);
 
 	SecureString escapeUrl(const SecureString& in);
 

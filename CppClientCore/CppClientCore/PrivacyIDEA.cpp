@@ -17,12 +17,12 @@ PrivacyIDEA& PrivacyIDEA::operator=(const PrivacyIDEA& privacyIDEA)
 }
 
 // Check if there is a mapping for the given domain or - if not - a default realm is set
-HRESULT PrivacyIDEA::checkForRealm(std::map<std::string, SecureString>& map, std::string domain)
+HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 {
 	wstring realm = L"";
 	try
 	{
-		realm = _realmMap.at(s2ws(domain));
+		realm = _realmMap.at(domain);
 	}
 	catch (const std::out_of_range & e)
 	{
@@ -36,20 +36,21 @@ HRESULT PrivacyIDEA::checkForRealm(std::map<std::string, SecureString>& map, std
 
 	if (!realm.empty())
 	{
-		map.try_emplace("realm", SecureString(ws2s(realm).c_str()));
+		data += "&" + _endpoint.encodePair("realm", ws2s(realm));
 	}
 
 	return S_OK;
 }
 
-void PrivacyIDEA::pollThread(const std::map<std::string, SecureString>& params, const std::string& username, std::function<void(bool)> callback)
+void PrivacyIDEA::pollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback)
 {
 	DebugPrint("Running poll thread...");
 	HRESULT res = E_FAIL;
 	bool success = false;
+	SecureString data = _endpoint.encodePair("transaction_id", transaction_id);
 	while (_runPoll.load())
 	{
-		string response = _endpoint.connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
+		string response = _endpoint.connect(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
 		res = _endpoint.parseForTransactionSuccess(response);
 		if (res == PI_TRANSACTION_SUCCESS)
 		{
@@ -65,8 +66,7 @@ void PrivacyIDEA::pollThread(const std::map<std::string, SecureString>& params, 
 		try
 		{
 			DebugPrint("Finalizing transaction...");
-			SecureString transaction_id = params.at("transaction_id");
-			HRESULT result = _endpoint.finalizePolling(username, transaction_id.c_str());
+			HRESULT result = _endpoint.finalizePolling(username, transaction_id);
 			callback((result == PI_AUTH_SUCCESS));
 		}
 		catch (const std::out_of_range & e)
@@ -80,26 +80,18 @@ void PrivacyIDEA::pollThread(const std::map<std::string, SecureString>& params, 
 
 HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, SecureString lastOTP)
 {
-	map<string, SecureString> params = map<string, SecureString>();
-	params.try_emplace("pass", lastOTP);
-	_offlineHandler.getRefillTokenAndSerial(username, params);
-	try
+	SecureString data = _endpoint.encodePair("pass", lastOTP);
+	string refilltoken, serial;
+	HRESULT hr = _offlineHandler.getRefillTokenAndSerial(username, refilltoken, serial);
+	if (hr != S_OK)
 	{
-		SecureString refilltoken = params.at("refilltoken");
-		SecureString serial = params.at("serial");
-		if (refilltoken.empty() || serial.empty())
-		{
-			DebugPrint("Offline refill params were empty");
-			return E_FAIL;
-		}
-	}
-	catch (const std::out_of_range & e)
-	{
-		UNREFERENCED_PARAMETER(e);
-		DebugPrint("Offline refill failed, missing data for " + username);
+		DebugPrint("Failed to get parameters for offline refill!");
 		return E_FAIL;
 	}
-	string response = _endpoint.connect(PI_ENDPOINT_OFFLINE_REFILL, params, RequestMethod::POST);
+
+	data += "&" + _endpoint.encodePair("refilltoken", refilltoken)
+		+ "&" + _endpoint.encodePair("serial", serial);
+	string response = _endpoint.connect(PI_ENDPOINT_OFFLINE_REFILL, data, RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -152,16 +144,14 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	}
 
 	// Connect with the privacyIDEA Server
-	map<string, SecureString> params;
-	params.try_emplace("user", SecureString(ws2s(username).c_str()));
-	params.try_emplace("pass", sws2ss(otp));
+	SecureString data = _endpoint.encodePair("user", ws2s(username)) + "&" + _endpoint.encodePair("pass", otp);
 
 	if (!transaction_id.empty())
-		params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
+		data += "&" + _endpoint.encodePair("transaction_id", transaction_id);
 
-	checkForRealm(params, ws2s(domain));
+	appendRealm(domain, data);
 
-	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
+	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -237,18 +227,15 @@ bool PrivacyIDEA::stopPoll()
 
 void PrivacyIDEA::asyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback)
 {
-	map<string, SecureString> params;
-	params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
+	//SecureString data = _endpoint.encodePair("transaction_id", transaction_id);
 	_runPoll.store(true);
-	std::thread t(&PrivacyIDEA::pollThread, this, params, username, callback);
+	std::thread t(&PrivacyIDEA::pollThread, this, transaction_id, username, callback);
 	t.detach();
 }
 
 HRESULT PrivacyIDEA::pollTransaction(std::string transaction_id)
 {
-	map<string, SecureString> params;
-	params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
-	return _endpoint.pollForTransaction(params);
+	return _endpoint.pollForTransaction(_endpoint.encodePair("transaction_id", transaction_id));
 }
 
 bool PrivacyIDEA::isOfflineDataAvailable(const std::wstring& username)

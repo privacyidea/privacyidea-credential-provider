@@ -35,6 +35,11 @@ using json = nlohmann::json;
 
 vector<std::string> _excludedEndpoints = { PI_ENDPOINT_POLL_TX };
 
+SecureString Endpoint::escapeUrl(const std::string& in)
+{
+	return escapeUrl(SecureString(in.c_str())).c_str();
+}
+
 SecureString Endpoint::escapeUrl(const SecureString& in)
 {
 	if (in.empty())
@@ -93,38 +98,22 @@ wstring Endpoint::get_utf16(const std::string& str, int codepage)
 	return res;
 }
 
-std::string Endpoint::escapeUrl(const std::string& in)
-{
-	return string(escapeUrl(SecureString(in.c_str())).c_str());
-}
-
-string Endpoint::connect(const string& endpoint, map<string, SecureString> params, const RequestMethod& method)
+string Endpoint::connect(const string& endpoint, SecureString sdata, const RequestMethod& method)
 {
 	// Prepare the parameters
 	wstring wHostname = get_utf16(PrivacyIDEA::ws2s(_hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
 	wstring fullPath = get_utf16((PrivacyIDEA::ws2s(_path) + endpoint), CP_UTF8);
 
-	// Encode and accumulate the data // TODO move this out of this function
-	SecureString toSend;
-	for (auto const& x : params)
-	{
-		toSend += SecureString(escapeUrl(x.first).c_str()) + "=" + escapeUrl(x.second) + "&";
-	}
-	toSend = toSend.substr(0, (toSend.length() - 1));
-	DebugPrint("Params: " + toSend);
-	LPSTR data = _strdup(toSend.c_str());
-	const DWORD data_len = strnlen_s(toSend.c_str(), MAXDWORD32);
+	LPSTR data = _strdup(sdata.c_str());
+	const DWORD data_len = strnlen_s(sdata.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
 #ifdef _DEBUG
-	wstring msg = L"Sending to: " + wHostname + fullPath;
-	DebugPrint(msg.c_str());
+	DebugPrint(L"Sending to: " + wHostname + fullPath);
 	if (_logPasswords)
-	{
-		DebugPrint("data:");
-		DebugPrint(data);			// !!! this can log the windows password in cleartext !!!
-	}
+		DebugPrint("data:" + SecureString(data));
+	// !!! this can log the windows password in cleartext !!!
 #endif
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
@@ -287,6 +276,21 @@ string Endpoint::connect(const string& endpoint, map<string, SecureString> param
 	return response;
 }
 
+SecureString Endpoint::encodePair(const std::string& key, const std::string& value)
+{
+	return escapeUrl(key) + "=" + escapeUrl(value);
+}
+
+SecureString Endpoint::encodePair(const std::string& key, const SecureString& value)
+{
+	return escapeUrl(key) + "=" + escapeUrl(value);
+}
+
+SecureString Endpoint::encodePair(const std::string& key, const SecureWString& value)
+{
+	return encodePair(key, PrivacyIDEA::sws2ss(value));
+}
+
 HRESULT Endpoint::parseAuthenticationRequest(const string& in)
 {
 	DebugPrint(__FUNCTION__);
@@ -389,9 +393,9 @@ const int& Endpoint::getLastErrorCode()
 	return _lastErrorCode;
 }
 
-HRESULT Endpoint::pollForTransaction(const std::map<std::string, SecureString>& params)
+HRESULT Endpoint::pollForTransaction(const SecureString& data)
 {
-	string response = connect(PI_ENDPOINT_POLL_TX, params, RequestMethod::GET);
+	string response = connect(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
 	return parseForTransactionSuccess(response);
 }
 
@@ -418,11 +422,8 @@ HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 HRESULT Endpoint::finalizePolling(const std::string& user, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
-	map<string, SecureString> params;
-	params.try_emplace("user", SecureString(user.c_str()));
-	params.try_emplace("transaction_id", SecureString(transaction_id.c_str()));
-	params.try_emplace("pass", "");
-
-	string response = connect(PI_ENDPOINT_VALIDATE_CHECK, params, RequestMethod::POST);
+	// Finalize with empty pass
+	SecureString data = encodePair("user", user) + "&" + encodePair("transaction_id", transaction_id) + "&pass=";
+	string response = connect(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
 	return parseAuthenticationRequest(response);
 }

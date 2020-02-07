@@ -88,9 +88,9 @@ public:
 	static void clearString(std::string& s);
 
 private:
-	HRESULT checkForRealm(std::map<std::string, SecureString>& map, std::string domain);
+	HRESULT appendRealm(std::wstring domain, SecureString& data);
 
-	void pollThread(const std::map<std::string, SecureString>& params, const std::string& username, std::function<void(bool)> callback);
+	void pollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback);
 
 	std::map<std::wstring, std::wstring> _realmMap;
 

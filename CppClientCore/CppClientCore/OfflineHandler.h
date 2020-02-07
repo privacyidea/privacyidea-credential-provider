@@ -36,7 +36,7 @@ public:
 
 	int getOfflineValuesLeft(const std::string& username);
 
-	HRESULT getRefillTokenAndSerial(const std::string& username, std::map<std::string, SecureString>& map);
+	HRESULT getRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial);
 
 	HRESULT parseForOfflineData(const std::string& in);
 

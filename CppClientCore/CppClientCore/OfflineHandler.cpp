@@ -134,19 +134,19 @@ int OfflineHandler::getOfflineValuesLeft(const std::string& username)
 	return -1;
 }
 
-HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::map<std::string, SecureString>& map)
+HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial)
 {
 	if (dataSets.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 
-	for (auto& item : dataSets)
+	for (const auto& item : dataSets)
 	{
 		if (item.user == username || item.username == username)
 		{
-			SecureString serial(item.serial.c_str());
-			SecureString refilltoken(item.refilltoken.c_str());
-			if (serial.empty() || refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
-			map.try_emplace("serial", serial);
-			map.try_emplace("refilltoken", refilltoken);
+			string iserial(item.serial);
+			string irefilltoken(item.refilltoken);
+			if (iserial.empty() || irefilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
+			refilltoken = irefilltoken;
+			serial = iserial;
 			return S_OK;
 		}
 	}
@@ -436,10 +436,10 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 		isValid = false;
 	}
 Exit:
-	CoTaskMemFree(pbDerivedKey);
-	CoTaskMemFree(bufStored);
 	SecureZeroMemory(prepPassword, sizeof(prepPassword));
 	SecureZeroMemory(prepPasswordBytes, sizeof(prepPasswordBytes));
+	CoTaskMemFree(pbDerivedKey);
+	CoTaskMemFree(bufStored);
 
 	return isValid;
 }
