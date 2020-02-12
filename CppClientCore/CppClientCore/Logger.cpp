@@ -65,11 +65,12 @@ void Logger::logS(const string &message, const char* file, int line, bool logInP
 	os.open(outfilePath.c_str(), std::ios_base::app);
 	os << fullMessage << endl;
 
+
 #ifndef _OUTPUT_TO_COUT
 	OutputDebugStringA(fullMessage.c_str());
 	OutputDebugStringA("\n");
 #else
-	std::cout << fullMessage << std::endl;
+	//std::cout << fullMessage << std::endl;
 #endif // !_OUTPUT_TO_COUT
 }
 

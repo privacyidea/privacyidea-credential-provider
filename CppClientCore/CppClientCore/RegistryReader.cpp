@@ -30,7 +30,7 @@ RegistryReader::RegistryReader(const std::wstring& pathToKey)
 	wpath = pathToKey;
 }
 
-bool RegistryReader::loadAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map)
+bool RegistryReader::getAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map)
 {
 	// Open handle to realm-mapping key
 	HKEY hKey = nullptr;

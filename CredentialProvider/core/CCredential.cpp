@@ -964,42 +964,25 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (!c.transaction_id.empty())
 				{
 					// Set a message in any case
-					if (!c.message.empty())
-						pqcws->SetStatusMessage(c.message.c_str());
-					else
-						pqcws->SetStatusMessage(_config->defaultChallengeText.c_str());
+					pqcws->SetStatusMessage(c.message.empty() ?
+						_config->defaultChallengeText.c_str() : c.message.c_str());
 
-					// if both pushtoken and classic OTP or offline are available, start polling in background
-					if	(c.tta == TTA::BOTH ||
-						(c.tta == TTA::PUSH && _privacyIDEA.isOfflineDataAvailable(_config->credential.username)))
+					// Always show the OTP field, if push was triggered, start polling in background
+					if (c.tta == TTA::BOTH || c.tta == TTA::PUSH)
 					{
 						// When polling finishes, pushAuthenticationCallback is invoked with the finialization success value
 						_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
 							std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
 					}
-					// if only push and NO offline data is available, start polling in main thread 
-					else if (c.tta == TTA::PUSH && !_privacyIDEA.isOfflineDataAvailable(_config->credential.username))
-					{
-						while (_piStatus != PI_TRANSACTION_SUCCESS)
-						{
-							_piStatus = _privacyIDEA.pollTransaction(c.transaction_id);
-
-							this_thread::sleep_for(300ms);
-
-							if (pqcws->QueryContinue() != S_OK) //TODO cancel button??
-							{
-								_config->userCanceled = true;
-								break;
-							}
-						}
-						// Translate transaction status to auth status
-						_piStatus = _piStatus == PI_TRANSACTION_SUCCESS ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
-					}
 				}
-				else
+				else 
 				{
-					// Only classic OTP available, do nothing else in the first step
+					DebugPrint("Found incomplete challenge: " + c.toString());
 				}
+			}
+			else
+			{
+				// Only classic OTP available, nothing else to do in the first step
 			}
 		}
 	}

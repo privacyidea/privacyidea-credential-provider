@@ -28,7 +28,7 @@ public:
 	std::wstring wpath;
 
 	// puts all keys and values from the current path into a map
-	bool loadAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map);
+	bool getAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map);
 
 	std::wstring getRegistry(std::wstring name);
 

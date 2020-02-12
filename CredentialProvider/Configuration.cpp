@@ -69,7 +69,7 @@ Configuration::Configuration()
 
 	map<wstring, wstring> realmMap = map<wstring, wstring>();
 
-	if (!rr.loadAll(registryRealmPath, realmMap))
+	if (!rr.getAll(registryRealmPath, realmMap))
 	{
 		DebugPrint("Loading realm map failed!");
 		realmMap.clear();

@@ -22,7 +22,7 @@
 #include "Logger.h"
 #include "Endpoint.h"
 #include "PIConf.h"
-#include "ErrorCodes.h"
+#include "Codes.h"
 #include "SecureString.h"
 #include <Windows.h>
 #include <string>

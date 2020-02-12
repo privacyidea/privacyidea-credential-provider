@@ -46,25 +46,22 @@ SecureString Endpoint::escapeUrl(const SecureString& in)
 	{
 		return in;
 	}
-	DWORD len = in.size();
-	const DWORD maxLen = (len * 3);
-	DWORD* pdwLen = nullptr;
+	const DWORD maxLen = (in.size() * 3);
+	DWORD* pdwWritten = nullptr;
 	LPSTR buf = (char*)malloc(sizeof(char) * maxLen);
 	if (buf == nullptr)
 	{
 		DebugPrint("malloc fail");
 		return "";
 	}
-	LPCSTR input = in.c_str();
-	BOOL res = AtlEscapeUrl(input, buf, pdwLen, maxLen, (DWORD)NULL);
 	SecureString ret;
 
-	if (res)
+	if (AtlEscapeUrl(in.c_str(), buf, pdwWritten, maxLen, (DWORD)NULL))
 		ret = SecureString(buf);
 	else
 		DebugPrint("AtlEscapeUrl Failure");
 
-	SecureZeroMemory(buf, sizeof(buf));
+	SecureZeroMemory(buf, (sizeof(char) * maxLen));
 	free(buf);
 	return ret;
 }
@@ -278,12 +275,12 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 
 SecureString Endpoint::encodePair(const std::string& key, const std::string& value)
 {
-	return escapeUrl(key) + "=" + escapeUrl(value);
+	return SecureString(key.c_str()) + "=" + escapeUrl(value);
 }
 
 SecureString Endpoint::encodePair(const std::string& key, const SecureString& value)
 {
-	return escapeUrl(key) + "=" + escapeUrl(value);
+	return SecureString(key.c_str()) + "=" + escapeUrl(value);
 }
 
 SecureString Endpoint::encodePair(const std::string& key, const SecureWString& value)

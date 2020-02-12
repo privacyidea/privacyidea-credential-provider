@@ -82,7 +82,7 @@ HRESULT CProvider::SetUsageScenario(
 	_config->printConfiguration();
 #endif
 	HRESULT hr = E_INVALIDARG;
-
+	
 	_config->provider.credPackFlags = dwFlags;
 	_config->provider.cpu = cpus;
 
@@ -121,7 +121,7 @@ HRESULT CProvider::SetUsageScenario(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrint("CSample_CreateInstance Result:");
+	DebugPrint("SetScenario result:");
 	DebugPrint(hr);
 
 	return hr;

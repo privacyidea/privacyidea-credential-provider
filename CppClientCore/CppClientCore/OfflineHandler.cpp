@@ -18,7 +18,7 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "OfflineHandler.h"
-#include "ErrorCodes.h"
+#include "Codes.h"
 #include "Endpoint.h" // tryParseJSON
 #include <iostream>
 #include <fstream>
