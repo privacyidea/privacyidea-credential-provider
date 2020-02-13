@@ -31,6 +31,8 @@ public:
 
 	void printConfiguration();
 
+	void printState();
+
 	PICONFIG piconfig;
 
 	std::wstring loginText = L"";
@@ -102,7 +104,6 @@ public:
 
 		bool passwordMustChange = false;
 		bool passwordChanged = false;
-		bool use_offline_pass = false;
 
 		// ChangePassword
 		SecureWString newPassword1 = L"";

@@ -154,4 +154,3 @@ private:
 
 	HRESULT									_piStatus = E_FAIL;
 };
-

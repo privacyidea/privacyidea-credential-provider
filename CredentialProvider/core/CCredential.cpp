@@ -91,13 +91,13 @@ HRESULT CCredential::Initialize(
 
 	if (!wstrUsername.empty())
 	{
-		DebugPrint("Copying user_name to credential");
+		DebugPrint("Copying user to credential");
 		_config->credential.username = wstrUsername;
 	}
 
 	if (!wstrDomainname.empty())
 	{
-		DebugPrint("Copying domain_name to credential");
+		DebugPrint("Copying domain to credential");
 		_config->credential.domain = wstrDomainname;
 	}
 
@@ -397,7 +397,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, L"Go back until you are asked to sign in.");
 		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, L"To change your password sign out and in again.");
 		_pCredProvCredentialEvents->SetFieldState(this, FID_LDAP_PASS, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_PASS, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
 	}
 
 	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
@@ -511,37 +511,37 @@ HRESULT CCredential::GetBitmapValue(
 {
 	DebugPrint(__FUNCTION__);
 
-	HRESULT hr;
+	HRESULT hr = E_INVALIDARG;
 	if ((FID_LOGO == dwFieldID) && phbmp)
 	{
-		HBITMAP hbmp = NULL;
+		HBITMAP hbmp = nullptr;
 		LPCSTR lpszBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath).c_str();
 		DebugPrint(lpszBitmapPath);
 
 		if (NOT_EMPTY(lpszBitmapPath))
 		{
-			DWORD dwAttrib = GetFileAttributesA(lpszBitmapPath);
+			DWORD const dwAttrib = GetFileAttributesA(lpszBitmapPath);
 
 			DebugPrint(dwAttrib);
 
 			if (dwAttrib != INVALID_FILE_ATTRIBUTES
 				&& !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				hbmp = (HBITMAP)LoadImageA(NULL, lpszBitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+				hbmp = (HBITMAP)LoadImageA(nullptr, lpszBitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
-				if (hbmp == NULL)
+				if (hbmp == nullptr)
 				{
 					DebugPrint(GetLastError());
 				}
 			}
 		}
 
-		if (hbmp == NULL)
+		if (hbmp == nullptr)
 		{
 			hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
 		}
 
-		if (hbmp != NULL)
+		if (hbmp != nullptr)
 		{
 			hr = S_OK;
 			*phbmp = hbmp;
@@ -576,7 +576,7 @@ HRESULT CCredential::GetSubmitButtonValue(
 	{
 		// This is only called once when the credential is created.
 		// When switching to the second step, the button is set via CredentialEvents
-		*pdwAdjacentTo = _config->twoStepHideOTP ? FID_LDAP_PASS : FID_PASS;
+		*pdwAdjacentTo = _config->twoStepHideOTP ? FID_LDAP_PASS : FID_OTP;
 		return S_OK;
 	}
 	return E_INVALIDARG;
@@ -647,19 +647,6 @@ HRESULT CCredential::GetComboBoxValueAt(
 	UNREFERENCED_PARAMETER(ppwszItem);
 
 	return E_INVALIDARG;
-	/*
-	// Validate parameters.
-	if (dwFieldID < Utilities::CredentialFieldCountFor(_config->provider.cpu) &&
-		(CPFT_COMBOBOX == _rgCredProvFieldDescriptors[dwFieldID].cpft))
-	{
-		// UNUSED
-		return E_INVALIDARG;
-	}
-	else
-	{
-		return E_INVALIDARG;
-	}
-	*/
 }
 
 // Called when the user changes the selected item in the combobox.
@@ -782,21 +769,22 @@ HRESULT CCredential::GetSerialization(
 		}
 		if (SUCCEEDED(res))
 		{
-			if (_pConfiguration->provider.usage_scenario == CPUS_LOGON || _pConfiguration->winVerMajor == 10)
+			if (_config->provider.cpu == CPUS_LOGON || _config->winVerMajor == 10)
 			{//It's password change on Logon we can handle that
-				DebugPrintLn("Passwordchange with CPUS_LOGON - open Dialog");
+				DebugPrint("Passwordchange with CPUS_LOGON - open Dialog");
 				::DialogBox(HINST_THISDLL,					// application instance
 					MAKEINTRESOURCE(IDD_DIALOG1),			// dialog box resource
 					hwndOwner,								// owner window
-					ChangePasswordProc						// dialog box window procedure
+					&CCredential::ChangePasswordProc		// dialog box window procedure
 				);
 				//goto CleanUpAndReturn;
 			}
 		}
 		else
 		{
-			DbgRelPrintLn("Opening password change dialog failed: Handle to owner window is missing");
-		} */
+			ReleaseDebugPrint("Opening password change dialog failed: Handle to owner window is missing");
+		} 
+		*/
 	}
 
 	if (_config->credential.passwordChanged)
@@ -825,7 +813,7 @@ HRESULT CCredential::GetSerialization(
 				_config->provider.pCredProvCredentialEvents,
 				SCENARIO::SECOND_STEP);
 			// Set the submit button next to the OTP field for the second step
-			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_PASS);
+			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_OTP);
 			*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 		}
 		else
@@ -844,6 +832,11 @@ HRESULT CCredential::GetSerialization(
 	}
 	else if (_piStatus == PI_AUTH_SUCCESS || _config->pushAuthenticationSuccessful)
 	{
+		// Reset the authentication
+		_piStatus = PI_STATUS_NOT_SET;
+		_config->pushAuthenticationSuccessful = false;
+		_privacyIDEA.stopPoll();
+
 		// Pack credentials for logon
 		if (_config->provider.cpu == CPUS_CREDUI)
 		{
@@ -882,9 +875,6 @@ HRESULT CCredential::GetSerialization(
 	{
 		_config->clearFields = true; // it's a one-timer...
 	}
-
-	// Reset privacyIDEA status 
-	_piStatus = PI_STATUS_NOT_SET;
 
 #ifdef _DEBUG
 	if (pcpgsr)
@@ -945,11 +935,11 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	{
 		if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 		{
-			// Delay for a short moment, otherwise logonui crashes (???)
+			// Delay for a short moment, otherwise logonui freezes (???)
 			this_thread::sleep_for(chrono::milliseconds(200));
 			// Then skip to next step
 		}
-		else //  (_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
+		else 
 		{
 			// Send either empty pass or the windows password in first step
 			SecureWString toSend = L"";
@@ -1031,12 +1021,16 @@ HRESULT CCredential::ReportResult(
 	if (ntsStatus != 0)
 	{
 		DebugPrint("ntsStatus:");
-		DebugPrint(ntsStatus);
+		std::stringstream ss;
+		ss << std::hex << ntsStatus;
+		DebugPrint(ss.str());
 	}
 	if (ntsSubstatus != 0)
 	{
 		DebugPrint("ntsSubstatus:");
-		DebugPrint(ntsSubstatus);
+		std::stringstream ss;
+		ss << std::hex << ntsSubstatus;
+		DebugPrint(ss.str());
 	}
 #endif
 

@@ -71,7 +71,7 @@ Configuration::Configuration()
 
 	if (!rr.getAll(registryRealmPath, realmMap))
 	{
-		DebugPrint("Loading realm map failed!");
+		//DebugPrint("No realm mapping found!");
 		realmMap.clear();
 	}
 
@@ -109,8 +109,9 @@ wstring b2ws(bool b) {
 
 void Configuration::printConfiguration()
 {
+	DebugPrint("-----------------------------");
 	string version(VER_FILE_VERSION_STR);
-	string stmp = "Credential Provider Version: " + version;
+	string stmp = "CP Version: " + version;
 	DebugPrint(stmp.c_str());
 	wstring tmp = L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
 		+ L"." + to_wstring(winBuildNr);
@@ -144,6 +145,8 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.c_str());
 	tmp = L"Release Log: " + b2ws(releaseLog);
 	DebugPrint(tmp.c_str());
+	tmp = L"Log sensitive data: " + b2ws(logSensitive);
+	DebugPrint(tmp.c_str());
 	tmp = L"No default: " + b2ws(noDefault);
 	DebugPrint(tmp.c_str());
 	tmp = L"Bitmap path: " + bitmapPath;
@@ -155,7 +158,7 @@ void Configuration::printConfiguration()
 	tmp = L"Default realm: " + piconfig.defaultRealm;
 	DebugPrint(tmp.c_str());
 	tmp = L"";
-	for (auto& item : piconfig.realmMap)
+	for (const auto& item : piconfig.realmMap)
 	{
 		tmp += item.first + L"=" + item.second + L", ";
 	}
@@ -163,4 +166,35 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.substr(0, tmp.size() - 2).c_str());
 
 	DebugPrint("-----------------------------");
+}
+
+void Configuration::printState()
+{
+	DebugPrint("--------- STATE ---------");
+	wstring tmp;
+	tmp = L"isSecondStep: " + b2ws(isSecondStep);
+	DebugPrint(tmp);
+	tmp = L"pushAuthenticationSuccessful:" + b2ws(pushAuthenticationSuccessful);
+	DebugPrint(tmp);
+	tmp = L"doAutoLogon:" + b2ws(doAutoLogon);
+	DebugPrint(tmp);
+	tmp = L"userCanceled:" + b2ws(userCanceled);
+	DebugPrint(tmp);
+	DebugPrint("Current Challenge:" + challenge.toString());
+	tmp = L"clearFields:" + b2ws(clearFields);
+	DebugPrint(tmp);
+	tmp = L"bypassPrivacyIDEA:" + b2ws(bypassPrivacyIDEA);
+	DebugPrint(tmp);
+	tmp = L"passwordMustChange:" + b2ws(credential.passwordMustChange);
+	DebugPrint(tmp);
+	tmp = L"passwordChanged:" + b2ws(credential.passwordChanged);
+	DebugPrint(tmp);
+	tmp = L"User:" + credential.username;
+	DebugPrint(tmp);
+	tmp = L"Domain:" + credential.domain;
+	DebugPrint(tmp);
+	SecureWString pw = L"Password:" + 
+		(logSensitive ? (credential.password.empty() ? L"empty" : L"hidden but has value") : credential.password);
+	DebugPrint(pw);
+	DebugPrint("-------------------------");
 }

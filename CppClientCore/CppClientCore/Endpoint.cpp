@@ -109,7 +109,9 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 #ifdef _DEBUG
 	DebugPrint(L"Sending to: " + wHostname + fullPath);
 	if (_logPasswords)
+	{
 		DebugPrint("data:" + SecureString(data));
+	}
 	// !!! this can log the windows password in cleartext !!!
 #endif
 	DWORD dwSize = 0;

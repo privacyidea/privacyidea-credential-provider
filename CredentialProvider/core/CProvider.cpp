@@ -78,7 +78,7 @@ HRESULT CProvider::SetUsageScenario(
 {
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
-	DebugPrint(cpus);
+	DebugPrint(Utilities::CPUtoString(cpus));
 	_config->printConfiguration();
 #endif
 	HRESULT hr = E_INVALIDARG;
@@ -469,7 +469,7 @@ HRESULT CProvider::GetCredentialAt(
 		}
 		else if (usage_scenario == CPUS_LOGON || usage_scenario == CPUS_CREDUI)
 		{
-			if (serializedDomain == NULL)
+			if (serializedDomain == nullptr)
 			{
 				DebugPrint("Looking-up missing domain name from computer");
 

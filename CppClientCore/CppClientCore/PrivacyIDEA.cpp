@@ -44,7 +44,7 @@ HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 
 void PrivacyIDEA::pollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback)
 {
-	DebugPrint("Running poll thread...");
+	DebugPrint("Starting poll thread...");
 	HRESULT res = E_FAIL;
 	bool success = false;
 	SecureString data = _endpoint.encodePair("transaction_id", transaction_id);
@@ -221,13 +221,13 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 
 bool PrivacyIDEA::stopPoll()
 {
+	DebugPrint("Stopping poll thread...");
 	_runPoll.store(false);
 	return true;
 }
 
 void PrivacyIDEA::asyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback)
 {
-	//SecureString data = _endpoint.encodePair("transaction_id", transaction_id);
 	_runPoll.store(true);
 	std::thread t(&PrivacyIDEA::pollThread, this, transaction_id, username, callback);
 	t.detach();
