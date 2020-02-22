@@ -84,7 +84,7 @@ HRESULT CCredential::Initialize(
 	DebugPrint(__FUNCTION__);
 	DebugPrint(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
 	DebugPrint(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
-	if (_config->logSensitive)
+	if (_config->piconfig.logPasswords)
 		DebugPrint(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 #endif
 	HRESULT hr = S_OK;
@@ -385,7 +385,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 
 	if (_config->doAutoLogon)
 	{
-		*pbAutoLogon = true;
+		*pbAutoLogon = TRUE;
 		_config->doAutoLogon = false;
 	}
 
@@ -400,19 +400,18 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
 	}
 
-	// if passwordMustChange, we want to skip this to get the dialog spawned in GetSerialization
-	// if passwordChanged, we want to auto-login
-	if (_config->credential.passwordMustChange || _config->credential.passwordChanged)
+ 	if (_config->credential.passwordMustChange)
 	{
-		if (_config->provider.cpu == CPUS_LOGON || _config->winVerMajor == 10)
+		_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::CHANGE_PASSWORD);
+		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 		{
-			*pbAutoLogon = true;
-			DebugPrint("Password change mode LOGON - AutoLogon true");
-		}
-		else
-		{
-			DebugPrint("Password change mode UNLOCK - AutoLogon false");
-		}
+			_config->bypassPrivacyIDEA = true;
+		} 
+	}
+
+	if (_config->credential.passwordChanged)
+	{
+		*pbAutoLogon = TRUE;
 	}
 
 	return hr;
@@ -756,116 +755,103 @@ HRESULT CCredential::GetSerialization(
 
 	_config->provider.field_strings = _rgFieldStrings;
 
-	// open dialog for old/new password
+	// Do password change
 	if (_config->credential.passwordMustChange)
 	{
-		// TODO rebuild password change
-		/*
-		HWND hwndOwner = nullptr;
-		HRESULT res = E_FAIL;
-		if (_pCredProvCredentialEvents)
+		// Compare new passwords
+		if (_config->credential.newPassword1 == _config->credential.newPassword2)
 		{
-			res = _pCredProvCredentialEvents->OnCreatingWindow(&hwndOwner); // get a handle to the owner window
-		}
-		if (SUCCEEDED(res))
-		{
-			if (_config->provider.cpu == CPUS_LOGON || _config->winVerMajor == 10)
-			{//It's password change on Logon we can handle that
-				DebugPrint("Passwordchange with CPUS_LOGON - open Dialog");
-				::DialogBox(HINST_THISDLL,					// application instance
-					MAKEINTRESOURCE(IDD_DIALOG1),			// dialog box resource
-					hwndOwner,								// owner window
-					&CCredential::ChangePasswordProc		// dialog box window procedure
-				);
-				//goto CleanUpAndReturn;
-			}
+			_util.KerberosChangePassword(pcpgsr, pcpcs, _config->credential.username, _config->credential.password,
+				_config->credential.newPassword1, _config->credential.domain);
 		}
 		else
 		{
-			ReleaseDebugPrint("Opening password change dialog failed: Handle to owner window is missing");
-		} 
-		*/
-	}
-
-	if (_config->credential.passwordChanged)
-	{
-		DebugPrint("Password change success- Set Data::General for autologon");
-		_config->bypassPrivacyIDEA = true;
-	}
-
-
-	if (_config->userCanceled)
-	{
-		*_config->provider.status_icon = CPSI_ERROR;
-		*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
-		SHStrDupW(L"Logon cancelled", _config->provider.status_text);
-		return S_FALSE;
-	}
-	// Check if we are pre 2nd step or failure
-	if (_piStatus != PI_AUTH_SUCCESS && _config->pushAuthenticationSuccessful == false)
-	{
-		if (_config->isSecondStep == false && _config->twoStepHideOTP)
-		{
-			// Prepare for the second step (input only OTP)
-			_config->isSecondStep = true;
-			_config->clearFields = false;
-			_util.SetScenario(_config->provider.pCredProvCredential,
-				_config->provider.pCredProvCredentialEvents,
-				SCENARIO::SECOND_STEP);
-			// Set the submit button next to the OTP field for the second step
-			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_OTP);
-			*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-		}
-		else
-		{
-			// Failed authentication or error
-			if (_piStatus == PI_AUTH_FAILURE)
-			{
-				showErrorMessage(_config->defaultOTPFailureText, 0);
-			}
-			else if (_piStatus == PI_AUTH_ERROR)
-			{
-				showErrorMessage(_privacyIDEA.getLastErrorMessage(), _privacyIDEA.getLastErrorCode());
-			}
+			// not finished
+			showErrorMessage(L"New passwords don't match!", 0);
 			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			_config->clearFields = false;
 		}
 	}
-	else if (_piStatus == PI_AUTH_SUCCESS || _config->pushAuthenticationSuccessful)
+	else if (_config->credential.passwordChanged)
 	{
-		// Reset the authentication
-		_piStatus = PI_STATUS_NOT_SET;
-		_config->pushAuthenticationSuccessful = false;
-		_privacyIDEA.stopPoll();
-
-		// Pack credentials for logon
-		if (_config->provider.cpu == CPUS_CREDUI)
-		{
-			hr = _util.CredPackAuthentication(pcpgsr, pcpcs, _config->provider.cpu,
-				_config->credential.username, _config->credential.password, _config->credential.domain);
-		}
-		else
-		{
-			hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
-				_config->credential.username, _config->credential.password, _config->credential.domain);
-		}
-		if (SUCCEEDED(hr))
-		{
-			if (_config->credential.passwordChanged)
-				_config->credential.passwordChanged = false;
-		}
-		else
-		{
-			retVal = S_FALSE;
-		}
+		// Logon with the new password
+		hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
+			_config->credential.username, _config->credential.newPassword1, _config->credential.domain);
+		_config->credential.passwordChanged = false;
 	}
 	else
 	{
-		showErrorMessage(L"Unexpected error", 0);
+		if (_config->userCanceled)
+		{
+			*_config->provider.status_icon = CPSI_ERROR;
+			*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
+			SHStrDupW(L"Logon cancelled", _config->provider.status_text);
+			return S_FALSE;
+		}
+		// Check if we are pre 2nd step or failure
+		if (_piStatus != PI_AUTH_SUCCESS && _config->pushAuthenticationSuccessful == false)
+		{
+			if (_config->isSecondStep == false && _config->twoStepHideOTP)
+			{
+				// Prepare for the second step (input only OTP)
+				_config->isSecondStep = true;
+				_config->clearFields = false;
+				_util.SetScenario(_config->provider.pCredProvCredential,
+					_config->provider.pCredProvCredentialEvents,
+					SCENARIO::SECOND_STEP);
+				*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			}
+			else
+			{
+				// Failed authentication or error
+				if (_piStatus == PI_AUTH_FAILURE)
+				{
+					showErrorMessage(_config->defaultOTPFailureText, 0);
+				}
+				else if (_piStatus == PI_AUTH_ERROR)
+				{
+					showErrorMessage(_privacyIDEA.getLastErrorMessage(), _privacyIDEA.getLastErrorCode());
+				}
+				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			}
+		}
+		else if (_piStatus == PI_AUTH_SUCCESS || _config->pushAuthenticationSuccessful)
+		{
+			// Reset the authentication
+			_piStatus = PI_STATUS_NOT_SET;
+			_config->pushAuthenticationSuccessful = false;
+			_privacyIDEA.stopPoll();
 
-		// Jump to the first login window
-		_util.ResetScenario(this, _pCredProvCredentialEvents);
-		retVal = S_FALSE;
-	}
+			// Pack credentials for logon
+			if (_config->provider.cpu == CPUS_CREDUI)
+			{
+				hr = _util.CredPackAuthentication(pcpgsr, pcpcs, _config->provider.cpu,
+					_config->credential.username, _config->credential.password, _config->credential.domain);
+			}
+			else
+			{
+				hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
+					_config->credential.username, _config->credential.password, _config->credential.domain);
+			}
+			if (SUCCEEDED(hr))
+			{
+				/* if (_config->credential.passwordChanged)
+					_config->credential.passwordChanged = false; */
+			}
+			else
+			{
+				retVal = S_FALSE;
+			}
+		}
+		else
+		{
+			showErrorMessage(L"Unexpected error", 0);
+
+			// Jump to the first login window
+			_util.ResetScenario(this, _pCredProvCredentialEvents);
+			retVal = S_FALSE;
+		}
+	}	
 
 	if (_config->clearFields)
 	{
@@ -939,7 +925,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			this_thread::sleep_for(chrono::milliseconds(200));
 			// Then skip to next step
 		}
-		else 
+		else
 		{
 			// Send either empty pass or the windows password in first step
 			SecureWString toSend = L"";
@@ -954,8 +940,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (!c.transaction_id.empty())
 				{
 					// Set a message in any case
-					pqcws->SetStatusMessage(c.message.empty() ?
-						_config->defaultChallengeText.c_str() : c.message.c_str());
+					//pqcws->SetStatusMessage(c.message.empty() ?
+					//	_config->defaultChallengeText.c_str() : c.message.c_str());
 
 					// Always show the OTP field, if push was triggered, start polling in background
 					if (c.tta == TTA::BOTH || c.tta == TTA::PUSH)
@@ -965,7 +951,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 							std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
 					}
 				}
-				else 
+				else
 				{
 					DebugPrint("Found incomplete challenge: " + c.toString());
 				}
@@ -1036,13 +1022,23 @@ HRESULT CCredential::ReportResult(
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
-
-	_config->credential.passwordMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
-
-	if (_config->credential.passwordMustChange)
+	
+	// TODO vvvv
+	if (_config->credential.passwordMustChange && ntsStatus == 0 && ntsSubstatus == 0)
 	{
+		// Password change was successful, set this so SetSelected knows to autologon
+		_config->credential.passwordMustChange = false;
+		_config->credential.passwordChanged = true;
+
+		return S_OK;
+	}
+
+	bool pwMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
+	if (pwMustChange /* && !_config->credential.passwordMustChange*/)
+	{
+		_config->credential.passwordMustChange = true;
 		DebugPrint("Status: Password must change");
-		return E_NOTIMPL;
+		return S_OK;
 	}
 
 	// check if the password update was NOT successfull
@@ -1066,5 +1062,5 @@ HRESULT CCredential::ReportResult(
 	{
 		_util.ResetScenario(this, _pCredProvCredentialEvents);
 	}
-	return E_NOTIMPL;
+	return S_OK;
 }

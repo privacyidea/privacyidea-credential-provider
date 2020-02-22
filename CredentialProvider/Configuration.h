@@ -47,8 +47,9 @@ public:
 	bool hideFullName = false;
 	bool hideDomainName = false;
 
+	bool showDomainHint = false;
+
 	bool releaseLog = false;
-	bool logSensitive = false;
 
 	bool noDefault = false;
 

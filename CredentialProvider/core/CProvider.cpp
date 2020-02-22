@@ -77,8 +77,7 @@ HRESULT CProvider::SetUsageScenario(
 )
 {
 #ifdef _DEBUG
-	DebugPrint(__FUNCTION__);
-	DebugPrint(Utilities::CPUtoString(cpus));
+	DebugPrint(string(__FUNCTION__) + ": " + Utilities::CPUtoString(cpus));
 	_config->printConfiguration();
 #endif
 	HRESULT hr = E_INVALIDARG;

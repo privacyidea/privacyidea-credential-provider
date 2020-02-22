@@ -39,9 +39,10 @@ Configuration::Configuration()
 	twoStepSendEmptyPassword = rr.getBoolRegistry(L"two_step_send_empty_password");
 	twoStepSendPassword = rr.getBoolRegistry(L"two_step_send_password");
 
+	piconfig.logPasswords = rr.getBoolRegistry(L"log_sensitive");
 	releaseLog = rr.getBoolRegistry(L"release_log");
-	logSensitive = rr.getBoolRegistry(L"log_sensitive");
 
+	showDomainHint = rr.getBoolRegistry(L"show_domain_hint");
 	// Custom field texts: check if set, otherwise use defaults (from header)
 	loginText = rr.getRegistry(L"login_text");
 	otpFieldText = rr.getRegistry(L"otp_text");
@@ -145,9 +146,11 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.c_str());
 	tmp = L"Release Log: " + b2ws(releaseLog);
 	DebugPrint(tmp.c_str());
-	tmp = L"Log sensitive data: " + b2ws(logSensitive);
+	tmp = L"Log sensitive data: " + b2ws(piconfig.logPasswords);
 	DebugPrint(tmp.c_str());
 	tmp = L"No default: " + b2ws(noDefault);
+	DebugPrint(tmp.c_str());
+	tmp = L"Show domain hint: " + b2ws(showDomainHint);
 	DebugPrint(tmp.c_str());
 	tmp = L"Bitmap path: " + bitmapPath;
 	DebugPrint(tmp.c_str());
@@ -193,8 +196,8 @@ void Configuration::printState()
 	DebugPrint(tmp);
 	tmp = L"Domain:" + credential.domain;
 	DebugPrint(tmp);
-	SecureWString pw = L"Password:" + 
-		(logSensitive ? (credential.password.empty() ? L"empty" : L"hidden but has value") : credential.password);
+	SecureWString pw = L"Password:" +
+		(piconfig.logPasswords ? (credential.password.empty() ? L"empty" : L"hidden but has value") : credential.password);
 	DebugPrint(pw);
 	DebugPrint("-------------------------");
 }

@@ -37,7 +37,7 @@ HRESULT Utilities::KerberosLogon(
 #ifdef _DEBUG
 	DebugPrint("Packing Credential:");
 	DebugPrint(username);
-	if (_config->logSensitive) {
+	if (_config->piconfig.logPasswords) {
 		DebugPrint(password.c_str());
 	}
 	DebugPrint(domain);
@@ -124,10 +124,10 @@ HRESULT Utilities::KerberosChangePassword(
 	else
 		bGetCompName = GetComputerNameW(wsz, &cch);
 
-	DebugPrint(username);
-	DebugPrint(wsz);
-	//DebugPrintLn(password_old);
-	//DebugPrintLn(password_new);
+	DebugPrint(L"User: " + username);
+	DebugPrint(L"Domain: " + wstring(wsz));
+	DebugPrint(L"PW OLD: " + password_old);
+	DebugPrint(L"PW NEW: " + password_new);
 
 	if (!domain.empty() || bGetCompName)
 	{
@@ -148,10 +148,10 @@ HRESULT Utilities::KerberosChangePassword(
 
 				hr = UnicodeStringInitWithString(lpwszPasswordOld, &kcpr.OldPassword);
 				hr = UnicodeStringInitWithString(lpwszPasswordNew, &kcpr.NewPassword);
-
-				SecureZeroMemory(lpwszPasswordNew, sizeof(lpwszPasswordNew));
-				SecureZeroMemory(lpwszPasswordOld, sizeof(lpwszPasswordOld));
-
+				
+				//SecureZeroMemory(lpwszPasswordNew, sizeof(lpwszPasswordNew));
+				//SecureZeroMemory(lpwszPasswordOld, sizeof(lpwszPasswordOld));
+				
 				if (SUCCEEDED(hr))
 				{
 					kcpr.MessageType = KerbChangePasswordMessage;
@@ -194,7 +194,7 @@ HRESULT Utilities::CredPackAuthentication(
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
 	DebugPrint(username);
-	if (_config->logSensitive) {
+	if (_config->piconfig.logPasswords) {
 		DebugPrint(password.c_str());
 	}
 	DebugPrint(domain);
@@ -303,10 +303,16 @@ HRESULT Utilities::SetScenario(
 		break;
 	case SCENARIO::SECOND_STEP:
 		DebugPrint("SetScenario: SECOND_STEP");
+		// Set the submit button next to the OTP field for the second step
+		_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(_config->provider.pCredProvCredential,
+			FID_SUBMIT_BUTTON, FID_OTP);
 		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
 		break;
 	case SCENARIO::CHANGE_PASSWORD:
 		DebugPrint("SetScenario: CHANGE_PASSWORD");
+		// Set the submit button next to the repeat pw field
+		_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(_config->provider.pCredProvCredential,
+			FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
 		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
 		break;
 	case SCENARIO::UNLOCK_TWO_STEP:
@@ -323,45 +329,64 @@ HRESULT Utilities::SetScenario(
 		break;
 	}
 
-	const int hideFullName = _config->hideFullName;
-	const int hideDomain = _config->hideDomainName;
 
-	// Fill the textfields with text depending on configuration
-	// Large text for username@domain, username or nothing
-	// Small text for transaction message or default OTP message
-
-	// Large text
-	wstring text = _config->credential.username + L"@" + _config->credential.domain;
-	if (hideDomain)
-		text = _config->credential.username;
-	if (hideFullName)
-		text = L"";
-	//DebugPrint(L"Setting large text: " + text);
-	pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
-	if (text.empty())
-		pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
-
-	// Small text, use if 1step or in 2nd step of 2step
-	if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
+	if (_config->credential.passwordMustChange)
 	{
-		if (!_config->challenge.message.empty())
-		{
-			//DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
-			pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->challenge.message.c_str());
-			pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
-		}
-		else
-		{
-			pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->defaultOTPText.c_str());
-		}
+		// Disable small text, show username in large text, prefill old password
+		//pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
+		//pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
+		pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, _config->credential.username.c_str());
+		pCPCE->SetFieldString(pCredential, FID_LDAP_PASS, _config->credential.password.c_str());
 	}
 	else
-		pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_HIDDEN);
+	{
+		const int hideFullName = _config->hideFullName;
+		const int hideDomain = _config->hideDomainName;
 
-	// Domain in FID_SUBTEXT
-	wstring domaintext{ L"Current Domain: " };
-	domaintext += _config->credential.domain;
-	pCPCE->SetFieldString(pCredential, FID_SUBTEXT, domaintext.c_str());
+		// Fill the textfields with text depending on configuration
+		// Large text for username@domain, username or nothing
+		// Small text for transaction message or default OTP message
+
+		// Large text
+		wstring text = _config->credential.username + L"@" + _config->credential.domain;
+		if (hideDomain)
+			text = _config->credential.username;
+		if (hideFullName)
+			text = L"";
+		//DebugPrint(L"Setting large text: " + text);
+		pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
+		if (text.empty())
+			pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
+
+		// Small text, use if 1step or in 2nd step of 2step
+		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
+		{
+			if (!_config->challenge.message.empty())
+			{
+				//DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
+				pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->challenge.message.c_str());
+				pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
+			}
+			else
+			{
+				pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->defaultOTPText.c_str());
+			}
+		}
+		else
+			pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_HIDDEN);
+
+	}
+
+	// Domain in FID_SUBTEXT, optional
+	if (_config->showDomainHint)
+	{
+		wstring domaintext{ L"Current Domain: " };
+		domaintext += _config->credential.domain;
+		pCPCE->SetFieldString(pCredential, FID_SUBTEXT, domaintext.c_str());
+	}
+	else
+		pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
+	//
 
 	return hr;
 }
@@ -446,6 +471,8 @@ HRESULT Utilities::initializeField(
 
 	switch (field_index)
 	{
+	case FID_NEW_PASS_1:
+	case FID_NEW_PASS_2:
 	case FID_LDAP_PASS:
 	case FID_OTP:
 	case FID_SUBMIT_BUTTON:
@@ -475,6 +502,7 @@ HRESULT Utilities::initializeField(
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		}
+		DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
 		break;
 	}
 	case FID_LARGE_TEXT:
@@ -488,6 +516,7 @@ HRESULT Utilities::initializeField(
 		{
 			hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 		}
+		DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
 		break;
 	}
 	case FID_SMALL_TEXT:
@@ -524,6 +553,7 @@ HRESULT Utilities::initializeField(
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 		}
+		DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
 		break;
 	}
 	case FID_LOGO:
@@ -592,11 +622,33 @@ HRESULT Utilities::readFieldValues()
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
 	case CPUS_CREDUI:
-		readUserField();
-		readPasswordField();
-		readOTPField();
+	{
+		if (!_config->credential.passwordMustChange)
+		{
+			readUserField();
+			readPasswordField();
+			readOTPField();
+		}
+		else
+			readPasswordChangeFields();
 		break;
 	}
+
+	}
+	return S_OK;
+}
+
+HRESULT Utilities::readPasswordChangeFields()
+{
+	// Adjust read values to pw change
+	// username = old pw, ldap = new pw, otp = new pw repeat
+
+	_config->credential.password = _config->provider.field_strings[FID_LDAP_PASS];
+	DebugPrint(L"Old pw: " + _config->credential.password);
+	_config->credential.newPassword1 = _config->provider.field_strings[FID_NEW_PASS_1];
+	DebugPrint(L"new pw1: " + _config->credential.newPassword1);
+	_config->credential.newPassword2 = _config->provider.field_strings[FID_NEW_PASS_2];
+	DebugPrint(L"New pw2: " + _config->credential.newPassword2);
 	return S_OK;
 }
 
@@ -623,54 +675,48 @@ const std::string Utilities::CPUtoString(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu)
 
 HRESULT Utilities::readUserField()
 {
-	wstring input(_config->provider.field_strings[FID_USERNAME]);
-	DebugPrint(L"Loading user/domain from GUI, raw: '" + input + L"'");
-	/*
-	wchar_t user_name[1024];
-	wchar_t domain_name[1024];
+	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
+	{
+		wstring input(_config->provider.field_strings[FID_USERNAME]);
+		DebugPrint(L"Loading user/domain from GUI, raw: '" + input + L"'");
+		wstring user_name, domain_name;
 
-	SeparateUserAndDomainName(_config->provider.field_strings[FID_USERNAME],
-		user_name, sizeof(user_name) / sizeof(wchar_t),
-		domain_name, sizeof(domain_name) / sizeof(wchar_t)
-	);
-	*/
+		auto const pos = input.find_first_of(L"\\", 0);
+		if (pos == std::string::npos)
+		{
+			// only user input, copy string
+			user_name = wstring(input);
+		}
+		else
+		{
+			// Actually split DOMAIN\USER
+			user_name = wstring(input.substr(pos + 1, input.size()));
+			domain_name = wstring(input.substr(0, pos));
+		}
 
-	wstring user_name, domain_name;
+		if (!user_name.empty())
+		{
+			wstring newUsername(user_name);
+			DebugPrint(L"Changing user from '" + _config->credential.username + L"' to '" + newUsername + L"'");
+			_config->credential.username = newUsername;
+		}
+		else
+		{
+			DebugPrint(L"Username is empty, keeping old value: '" + _config->credential.username + L"'");
+		}
 
-	auto pos = input.find_first_of(L"\\", 0);
-	if (pos == std::string::npos)
-	{
-		// only user input, copy string
-		user_name = wstring(input);
-	}
-	else
-	{
-		// Actually split DOMAIN\USER
-		user_name = wstring(input.substr(pos + 1, input.size()));
-		domain_name = wstring(input.substr(0, pos));
-	}
-
-	if (!user_name.empty())
-	{
-		wstring newUsername(user_name);
-		DebugPrint(L"Changing user from '" + _config->credential.username + L"' to '" + newUsername + L"'");
-		_config->credential.username = newUsername;
-	}
-	else
-	{
-		DebugPrint(L"Username is empty, keeping old value: '" + _config->credential.username + L"'");
+		if (!domain_name.empty())
+		{
+			wstring newDomain(domain_name);
+			DebugPrint(L"Changing domain from '" + _config->credential.domain + L"' to '" + newDomain + L"'");
+			_config->credential.domain = newDomain;
+		}
+		else
+		{
+			DebugPrint(L"Domain is empty, keeping old value: '" + _config->credential.domain + L"'");
+		}
 	}
 
-	if (!domain_name.empty())
-	{
-		wstring newDomain(domain_name);
-		DebugPrint(L"Changing domain from '" + _config->credential.domain + L"' to '" + newDomain + L"'");
-		_config->credential.domain = newDomain;
-	}
-	else
-	{
-		DebugPrint(L"Domain is empty, keeping old value: '" + _config->credential.domain + L"'");
-	}
 	return S_OK;
 }
 
@@ -686,7 +732,7 @@ HRESULT Utilities::readPasswordField()
 	{
 		_config->credential.password = newPassword;
 		DebugPrint(L"Loading password from GUI, value:");
-		if (_config->logSensitive)
+		if (_config->piconfig.logPasswords)
 		{
 			DebugPrint(newPassword.c_str());
 		}
@@ -732,6 +778,7 @@ const FIELD_STATE_PAIR* Utilities::GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAG
 HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
 {
 	DebugPrint(__FUNCTION__);
+	_config->isSecondStep = false;
 	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
 		if (_config->twoStepHideOTP)

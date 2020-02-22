@@ -110,7 +110,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	DebugPrint(L"Sending to: " + wHostname + fullPath);
 	if (_logPasswords)
 	{
-		DebugPrint("data:" + SecureString(data));
+		DebugPrint("data: " + SecureString(data));
 	}
 	// !!! this can log the windows password in cleartext !!!
 #endif
@@ -298,7 +298,7 @@ HRESULT Endpoint::parseAuthenticationRequest(const string& in)
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	//string value = j["result"]["value"].get<std::string>();
-	string value = j["result"]["value"].dump();
+	string value = j["result"]["value"].dump(); // TODO
 	if (value == "null")
 	{
 		return parseForError(in);
@@ -400,7 +400,7 @@ HRESULT Endpoint::pollForTransaction(const SecureString& data)
 
 HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 {
-	DebugPrint(__FUNCTION__);
+	//DebugPrint(__FUNCTION__);
 
 	auto j = Endpoint::tryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;

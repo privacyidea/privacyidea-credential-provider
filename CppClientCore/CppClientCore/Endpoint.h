@@ -39,7 +39,7 @@ public:
 
 	std::string connect(const std::string& endpoint, SecureString sdata, const RequestMethod& method);
 
-	// URL encodes both values and returns "key=value"
+	// URL encodes the value and returns "key=value"
 	SecureString encodePair(const std::string& key, const std::string& value);
 	SecureString encodePair(const std::string& key, const SecureString& value);
 	SecureString encodePair(const std::string& key, const SecureWString& value);

@@ -105,5 +105,7 @@ private:
 	HRESULT readPasswordField();
 
 	HRESULT readOTPField();
+
+	HRESULT readPasswordChangeFields();
 };
 
