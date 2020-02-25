@@ -22,7 +22,7 @@ The documentation can be found in ``/doc``.
 
 Build
 =====
-The Solution is built using the platform tools v140 (VS 2015)
+The Solution is built using the platform tools v142 (VS 2019)
 
 Dependencies
 ============
