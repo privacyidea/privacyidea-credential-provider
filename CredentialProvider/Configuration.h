@@ -31,8 +31,6 @@ public:
 
 	void printConfiguration();
 
-	void printState();
-
 	PICONFIG piconfig;
 
 	std::wstring loginText = L"";
@@ -60,6 +58,8 @@ public:
 	int winBuildNr = 0;
 
 	bool pushAuthenticationSuccessful = false;
+
+	bool isRemoteSession = false;
 
 	bool doAutoLogon = false;
 

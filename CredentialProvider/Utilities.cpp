@@ -37,9 +37,8 @@ HRESULT Utilities::KerberosLogon(
 #ifdef _DEBUG
 	DebugPrint("Packing Credential:");
 	DebugPrint(username);
-	if (_config->piconfig.logPasswords) {
-		DebugPrint(password.c_str());
-	}
+	DebugPrint(password.empty() ? L"empty password" :
+		(_config->piconfig.logPasswords ? password : L"hidden but has value"));
 	DebugPrint(domain);
 #endif
 
@@ -126,8 +125,10 @@ HRESULT Utilities::KerberosChangePassword(
 
 	DebugPrint(L"User: " + username);
 	DebugPrint(L"Domain: " + wstring(wsz));
-	DebugPrint(L"PW OLD: " + password_old);
-	DebugPrint(L"PW NEW: " + password_new);
+	DebugPrint(L"Pw old: " + _config->piconfig.logPasswords ? password_old :
+		(password_old.empty() ? L"no value" : L"hidden but has value"));
+	DebugPrint(L"Pw new: " + _config->piconfig.logPasswords ? password_new :
+		(password_new.empty() ? L"no value" : L"hidden but has value"));
 
 	if (!domain.empty() || bGetCompName)
 	{
@@ -140,18 +141,16 @@ HRESULT Utilities::KerberosChangePassword(
 			hr = UnicodeStringInitWithString(lpwszUsername, &kcpr.AccountName);
 			if (SUCCEEDED(hr))
 			{
+				// These buffers cant be zeroed since they are passed to LSA
 				PWSTR lpwszPasswordOld = new wchar_t[(password_old.size() + 1)];
 				wcscpy_s(lpwszPasswordOld, (password_old.size() + 1), password_old.c_str());
 
 				PWSTR lpwszPasswordNew = new wchar_t[(password_new.size() + 1)];
 				wcscpy_s(lpwszPasswordNew, (password_new.size() + 1), password_new.c_str());
-
+				// vvvv they just copy the pointer vvvv
 				hr = UnicodeStringInitWithString(lpwszPasswordOld, &kcpr.OldPassword);
 				hr = UnicodeStringInitWithString(lpwszPasswordNew, &kcpr.NewPassword);
-				
-				//SecureZeroMemory(lpwszPasswordNew, sizeof(lpwszPasswordNew));
-				//SecureZeroMemory(lpwszPasswordOld, sizeof(lpwszPasswordOld));
-				
+
 				if (SUCCEEDED(hr))
 				{
 					kcpr.MessageType = KerbChangePasswordMessage;
@@ -163,7 +162,6 @@ HRESULT Utilities::KerberosChangePassword(
 						hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
 						if (SUCCEEDED(hr))
 						{
-							//DebugPrintLn("Packing KERB_CHANGEPASSWORD_REQUEST successful");
 							pcpcs->ulAuthenticationPackage = ulAuthPackage;
 							pcpcs->clsidCredentialProvider = CLSID_CSample;
 							*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
@@ -354,10 +352,18 @@ HRESULT Utilities::SetScenario(
 		if (hideFullName)
 			text = L"";
 		//DebugPrint(L"Setting large text: " + text);
-		pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
-		if (text.empty())
-			pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
-
+		if (text.empty() || _config->credential.username.empty())
+		{
+			//pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
+			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, _config->loginText.c_str());
+			DebugPrint(L"Setting large text: " + _config->loginText);
+		}
+		else
+		{
+			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
+			DebugPrint(L"Setting large text: " + text);
+		}
+		
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 		{
@@ -374,7 +380,6 @@ HRESULT Utilities::SetScenario(
 		}
 		else
 			pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_HIDDEN);
-
 	}
 
 	// Domain in FID_SUBTEXT, optional
@@ -488,20 +493,8 @@ HRESULT Utilities::initializeField(
 	}
 	case FID_USERNAME:
 	{
-		if (!user_name.empty() && !domain_name.empty() && !hide_fullname && !hide_domainname)
-		{
-			wstring fullName = user_name + L"@" + domain_name;
+		hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
 
-			hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
-		}
-		else if (!user_name.empty() && hide_domainname)
-		{
-			hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
-		}
-		else
-		{
-			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		}
 		DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
 		break;
 	}
@@ -567,52 +560,6 @@ HRESULT Utilities::initializeField(
 	return hr;
 }
 
-void Utilities::WideCharToChar(__in PWSTR data, __in int buffSize, __out char* pc)
-{
-	WideCharToMultiByte(CP_ACP, 0, data, -1, pc, buffSize, NULL, NULL);
-}
-
-void Utilities::CharToWideChar(__in char* data, __in int buffSize, __out PWSTR pc)
-{
-	MultiByteToWideChar(CP_ACP, 0, data, -1, pc, buffSize);
-}
-
-size_t Utilities::Iso8859_1_to_utf8(char* content, size_t max_size)
-{
-	char* src, * dst;
-
-	//first run to see if there's enough space for the new bytes
-	for (src = dst = content; *src; src++, dst++)
-	{
-		if (*src & 0x80)
-		{
-			// If the high bit is set in the ISO-8859-1 representation, then
-			// the UTF-8 representation requires two bytes (one more than usual).
-			++dst;
-		}
-	}
-
-	if (dst - content + 1 > (signed)max_size)
-	{
-		// Inform caller of the space required
-		return dst - content + 1;
-	}
-
-	while (dst > src)
-	{
-		if (*src & 0x80)
-		{
-			*dst-- = 0x80 | (*src & 0x3f);                     // trailing byte
-			*dst-- = 0xc0 | (*((unsigned char*)src--) >> 6);  // leading byte
-		}
-		else
-		{
-			*dst-- = *src--;
-		}
-	}
-	return 0;  // SUCCESS
-}
-
 HRESULT Utilities::readFieldValues()
 {
 	DebugPrint(__FUNCTION__);
@@ -640,9 +587,6 @@ HRESULT Utilities::readFieldValues()
 
 HRESULT Utilities::readPasswordChangeFields()
 {
-	// Adjust read values to pw change
-	// username = old pw, ldap = new pw, otp = new pw repeat
-
 	_config->credential.password = _config->provider.field_strings[FID_LDAP_PASS];
 	DebugPrint(L"Old pw: " + _config->credential.password);
 	_config->credential.newPassword1 = _config->provider.field_strings[FID_NEW_PASS_1];
@@ -751,15 +695,9 @@ HRESULT Utilities::readPasswordField()
 HRESULT Utilities::readOTPField()
 {
 	wstring newOTP(_config->provider.field_strings[FID_OTP]);
-	if (newOTP.empty())
-	{
-		DebugPrint(L"new OTP empty, keeping old value: '" + newOTP + L"'");
-	}
-	else
-	{
-		_config->credential.otp = newOTP;
-		DebugPrint(L"Loading OTP from GUI, from '" + newOTP + L"' to '" + newOTP + L"'");
-	}
+	DebugPrint(L"Loading OTP from GUI, from '" + _config->credential.otp + L"' to '" + newOTP + L"'");
+	_config->credential.otp = newOTP;
+
 	return S_OK;
 }
 

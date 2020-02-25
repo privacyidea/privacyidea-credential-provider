@@ -91,15 +91,6 @@ HRESULT CProvider::SetUsageScenario(
 	{
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
-		/*
-		if (IsCurrentSessionRemoteable()) {
-			// if current session is remote, we need to get the OTP before the auth to pi, so we turn 2step on anyway
-			Configuration::Get()->two_step_hide_otp = 1;
-			Configuration::Get()->two_step_send_empty_password = 0;
-			Configuration::Get()->two_step_send_password = 0;
-			DebugPrintLn("remote session detected - turning on 2step on the server.");
-		}*/
-
 		hr = S_OK;
 		break;
 	case CPUS_CREDUI:
@@ -293,7 +284,7 @@ HRESULT CProvider::Advise(
 {
 	DebugPrint(__FUNCTION__);
 
-	if (_config->provider.pCredentialProviderEvents != NULL)
+	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
 		_config->provider.pCredentialProviderEvents->Release();
 	}
@@ -311,12 +302,12 @@ HRESULT CProvider::UnAdvise()
 {
 	DebugPrint(__FUNCTION__);
 
-	if (_config->provider.pCredentialProviderEvents != NULL)
+	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
 		_config->provider.pCredentialProviderEvents->Release();
 	}
 
-	_config->provider.pCredentialProviderEvents = NULL;
+	_config->provider.pCredentialProviderEvents = nullptr;
 	_config->provider.upAdviseContext = NULL;
 
 	return S_OK;
@@ -396,7 +387,8 @@ HRESULT CProvider::GetCredentialCount(
 	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
 	{
 		*pdwDefault = 0;
-		if (IsCurrentSessionRemoteable() && !_config->twoStepHideOTP)
+		_config->isRemoteSession = IsCurrentSessionRemoteable();
+		if (_config->isRemoteSession && !_config->twoStepHideOTP)
 		{
 			*pbAutoLogonWithDefault = FALSE;
 		}

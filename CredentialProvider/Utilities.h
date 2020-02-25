@@ -82,13 +82,7 @@ public:
 		LPWSTR* rgFieldStrings,
 		DWORD field_index
 	);
-
-	void WideCharToChar(__in PWSTR data, __in int buffSize, __out char* pc);
-
-	void CharToWideChar(__in char* data, __in int buffSize, __out PWSTR pc);
-
-	size_t Iso8859_1_to_utf8(char* content, size_t max_size);
-
+	
 	HRESULT readFieldValues();
 
 	static const std::string CPUtoString(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu);

@@ -107,7 +107,6 @@ private:
 	KERB_INTERACTIVE_UNLOCK_LOGON*          _pkiulSetSerialization;
 	DWORD                                   _dwSetSerializationCred; //index into rgpCredentials for the SetSerializationCred
 
-	//CCredential*							_pccCredential;
 	std::unique_ptr<CCredential>			_credential;
 
 	std::shared_ptr<Configuration>			_config;

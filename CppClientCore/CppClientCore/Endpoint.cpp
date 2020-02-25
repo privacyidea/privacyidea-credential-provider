@@ -297,17 +297,19 @@ HRESULT Endpoint::parseAuthenticationRequest(const string& in)
 	auto j = Endpoint::tryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
-	//string value = j["result"]["value"].get<std::string>();
-	string value = j["result"]["value"].dump(); // TODO
-	if (value == "null")
+	auto jValue = j["result"]["value"];
+	if (jValue.is_null())
 	{
 		return parseForError(in);
 	}
 	else
 	{
-		return (value == "true") ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE;
+		if (jValue.is_boolean())
+		{
+			return (jValue.get<boolean>() ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE);
+		}
+		return PI_AUTH_FAILURE;
 	}
-	return PI_AUTH_FAILURE;
 }
 
 HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)

@@ -44,10 +44,12 @@ Configuration::Configuration()
 
 	showDomainHint = rr.getBoolRegistry(L"show_domain_hint");
 	// Custom field texts: check if set, otherwise use defaults (from header)
-	loginText = rr.getRegistry(L"login_text");
-	otpFieldText = rr.getRegistry(L"otp_text");
+	wstring tmp = rr.getRegistry(L"login_text");
+	loginText = tmp.empty() ? L"privacyIDEA Login" : tmp;
+	tmp = rr.getRegistry(L"otp_text");
+	otpFieldText = tmp.empty() ? L"One-Time Password" : tmp;
 
-	wstring tmp = rr.getRegistry(L"otp_fail_text");
+	tmp = rr.getRegistry(L"otp_fail_text");
 	defaultOTPFailureText = tmp.empty() ? defaultOTPFailureText : tmp;
 
 	tmp = rr.getRegistry(L"default_otp_text");
@@ -169,35 +171,4 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.substr(0, tmp.size() - 2).c_str());
 
 	DebugPrint("-----------------------------");
-}
-
-void Configuration::printState()
-{
-	DebugPrint("--------- STATE ---------");
-	wstring tmp;
-	tmp = L"isSecondStep: " + b2ws(isSecondStep);
-	DebugPrint(tmp);
-	tmp = L"pushAuthenticationSuccessful:" + b2ws(pushAuthenticationSuccessful);
-	DebugPrint(tmp);
-	tmp = L"doAutoLogon:" + b2ws(doAutoLogon);
-	DebugPrint(tmp);
-	tmp = L"userCanceled:" + b2ws(userCanceled);
-	DebugPrint(tmp);
-	DebugPrint("Current Challenge:" + challenge.toString());
-	tmp = L"clearFields:" + b2ws(clearFields);
-	DebugPrint(tmp);
-	tmp = L"bypassPrivacyIDEA:" + b2ws(bypassPrivacyIDEA);
-	DebugPrint(tmp);
-	tmp = L"passwordMustChange:" + b2ws(credential.passwordMustChange);
-	DebugPrint(tmp);
-	tmp = L"passwordChanged:" + b2ws(credential.passwordChanged);
-	DebugPrint(tmp);
-	tmp = L"User:" + credential.username;
-	DebugPrint(tmp);
-	tmp = L"Domain:" + credential.domain;
-	DebugPrint(tmp);
-	SecureWString pw = L"Password:" +
-		(piconfig.logPasswords ? (credential.password.empty() ? L"empty" : L"hidden but has value") : credential.password);
-	DebugPrint(pw);
-	DebugPrint("-------------------------");
 }

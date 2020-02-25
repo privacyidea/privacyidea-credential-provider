@@ -160,217 +160,6 @@ HRESULT CCredential::UnAdvise()
 	return S_OK;
 }
 
-// Callback for the DialogBox
-INT_PTR CALLBACK CCredential::ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-
-	wchar_t lpszPassword_old[64];
-	wchar_t lpszPassword_new[64];
-	wchar_t lpszPassword_new_rep[64];
-	WORD cchPassword_new, cchPassword_new_rep, cchPassword_old;
-
-	switch (message)
-	{
-	case WM_INITDIALOG: {
-		DebugPrint("Init change password dialog - START");
-
-		// Get the bitmap to display on top of the dialog (same as the logo of the normal tile)
-		static HBITMAP hbmp;
-		// Check if custom bitmap was set and load that
-		std::string szBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath);
-		if (!szBitmapPath.empty())
-		{
-			DWORD dwAttrib = GetFileAttributesA(szBitmapPath.c_str());
-			if (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
-			{
-				hbmp = (HBITMAP)LoadImageA(NULL, szBitmapPath.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-				if (hbmp == NULL)
-				{
-					DebugPrint("Loading custom tile image for dialog failed:");
-					DebugPrint(GetLastError());
-				}
-			}
-		}
-		else {
-			// Load the default otherwise
-			hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
-		}
-		// Send the bitmap to the picture control
-		SendDlgItemMessage(hDlg, IDC_PICTURE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hbmp);
-
-		// Languagecode for German(Germany) is 1031
-		if (GetUserDefaultUILanguage() == 1031) {
-			// Set hints for inputs
-			SendDlgItemMessage(hDlg, IDC_EDIT_USERNAME, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Benutzer");
-			SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"altes Passwort");
-			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"neues Passwort");
-			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"neues Passwort wiederholen");
-			SetWindowText(hDlg, L"Passwort ändern");
-		}
-		else {
-			// Set hints for inputs
-			SendDlgItemMessage(hDlg, IDC_EDIT_USERNAME, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Username");
-			SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Old Password");
-			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"New Password");
-			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_SETCUEBANNER, (WPARAM)TRUE, (LPARAM)L"Retype New Password");
-			SetWindowText(hDlg, L"Change Password");
-		}
-		// Set focus to old password edit
-		PostMessage(hDlg, WM_SETFOCUS, 0, 0);
-
-		// concat domain\user and put it in the edit control
-		std::wstring domainWithUser = _config->credential.username + L"\\" + _config->credential.domain;
-
-		SetDlgItemText(hDlg, IDC_EDIT_USERNAME, domainWithUser.c_str());
-
-		// Set password character to " * "
-		SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_SETPASSWORDCHAR, (WPARAM)'*', (LPARAM)0);
-		SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_SETPASSWORDCHAR, (WPARAM)'*', (LPARAM)0);
-		SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_SETPASSWORDCHAR, (WPARAM)'*', (LPARAM)0);
-
-		// Set the default push button to "Cancel." 
-		SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDCANCEL, (LPARAM)0);
-
-		// Center the window
-		RECT rc, rcDlg, rcOwner;
-		HWND hwndOwner;
-		hwndOwner = GetDesktopWindow();
-
-		GetWindowRect(hwndOwner, &rcOwner);
-		GetWindowRect(hDlg, &rcDlg);
-		CopyRect(&rc, &rcOwner);
-
-		// Offset the owner and dialog box rectangles so that right and bottom values represent the width and height
-		// then offset the owner again to discard space taken up by the dialog box. 
-		OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
-		OffsetRect(&rc, -rc.left, -rc.top);
-		OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
-
-		// The new position is the sum of half the remaining space and the owner's original position. 
-		SetWindowPos(hDlg,
-			HWND_TOP,
-			rcOwner.left + (rc.right / 2),
-			rcOwner.top + (rc.bottom / 2),
-			0, 0,          // Ignores size arguments. 
-			SWP_NOSIZE);
-		DebugPrint("Init change password dialog - END");
-		return TRUE;
-	}
-	case WM_COMMAND: {
-		// Set the default push button to "OK" when the user enters text. 
-		if (HIWORD(wParam) == EN_CHANGE &&
-			LOWORD(wParam) == IDC_EDIT_NEW_PW)
-		{
-			SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDOK, (LPARAM)0);
-		}
-		switch (wParam)
-		{
-		case IDOK: {	// User pressed OK - evaluate the inputs
-			DebugPrint("Evaluate change password dialog - START");
-			// Get number of characters for each input
-			cchPassword_old = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
-			cchPassword_new = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
-			cchPassword_new_rep = (WORD)SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
-
-			if (cchPassword_new >= 64 || cchPassword_new_rep >= 64 || cchPassword_old >= 64)
-			{
-				if (GetUserDefaultUILanguage() == 1031) {
-					MessageBox(hDlg, L"Passwort zu lang.", L"Fehler", MB_OK);
-				}
-				else {
-					MessageBox(hDlg, L"Password too long.", L"Error", MB_OK);
-				}
-				return FALSE;
-			}
-			else if (cchPassword_new == 0 || cchPassword_new_rep == 0 || cchPassword_old == 0)
-			{
-				if (GetUserDefaultUILanguage() == 1031) {
-					MessageBox(hDlg, L"Bitte füllen Sie alle Felder aus.", L"Fehler", MB_OK);
-				}
-				else {
-					MessageBox(hDlg, L"Please fill the form entirely.", L"Error", MB_OK);
-				}
-				return FALSE;
-			}
-
-			// Put the number of characters into first word of buffer.
-			*((LPWORD)lpszPassword_old) = cchPassword_old;
-			*((LPWORD)lpszPassword_new) = cchPassword_new;
-			*((LPWORD)lpszPassword_new_rep) = cchPassword_new_rep;
-
-			// Get the characters from line 0 (wparam) into buffer lparam
-			SendDlgItemMessage(hDlg, IDC_EDIT_OLD_PW, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword_old);
-			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword_new);
-			SendDlgItemMessage(hDlg, IDC_EDIT_NEW_PW_REP, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword_new_rep);
-
-			// Null-terminate each string. 
-			lpszPassword_old[cchPassword_old] = 0;
-			lpszPassword_new[cchPassword_new] = 0;
-			lpszPassword_new_rep[cchPassword_new_rep] = 0;
-
-			// Compare new passwords
-			if (wcscmp(lpszPassword_new, lpszPassword_new_rep) != 0) {
-				if (GetUserDefaultUILanguage() == 1031) {
-					MessageBox(hDlg, L"Neue Passwörter stimmen nicht überein!", L"Fehler", MB_OK);
-				}
-				else {
-					MessageBox(hDlg, L"New Passwords do not match!", L"Error", MB_OK);
-				}
-				return FALSE;
-			}
-			// copy new password to password for auto-login
-			_config->credential.password = SecureWString(lpszPassword_new);
-
-			// pcpgsr and pcpcs are set in GetSerialization
-			const HRESULT hr = _util.KerberosChangePassword(
-				_config->provider.pcpgsr,
-				_config->provider.pcpcs,
-				_config->credential.username,
-				_config->credential.password,
-				SecureWString(lpszPassword_old),
-				_config->credential.domain);
-
-			if (SUCCEEDED(hr))
-			{
-				_config->credential.passwordMustChange = false;
-				_config->credential.passwordChanged = true;
-				_config->clearFields = false;
-			}
-			else
-			{
-				// TODO
-			}
-
-			_config->bypassPrivacyIDEA = true;
-
-			SecureZeroMemory(lpszPassword_new, 64);
-			SecureZeroMemory(lpszPassword_new_rep, 64);
-			SecureZeroMemory(lpszPassword_old, 64);
-
-			DebugPrint("Evaluate CHANGE PASSWORD DIALOG - END");
-			EndDialog(hDlg, TRUE);
-			return TRUE;
-		}
-		case IDCANCEL: {
-			// Dialog canceled, reset everything
-			DebugPrint("Exit change password dialog - CANCELED");
-
-			_config->credential.passwordMustChange = false;
-			_config->credential.passwordChanged = false;
-			_config->bypassPrivacyIDEA = false;
-			DebugPrint("Exit change password dialog - Data::General RESET ");
-			EndDialog(hDlg, TRUE);
-			_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
-			return TRUE;
-		}
-		}
-		return 0;
-	}
-	}
-	return FALSE;
-	UNREFERENCED_PARAMETER(lParam);
-}
-
 // LogonUI calls this function when our tile is selected (zoomed).
 // If you simply want fields to show/hide based on the selected state,
 // there's no need to do anything here - you can set that up in the 
@@ -400,13 +189,13 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
 	}
 
- 	if (_config->credential.passwordMustChange)
+	if (_config->credential.passwordMustChange)
 	{
 		_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::CHANGE_PASSWORD);
 		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 		{
 			_config->bypassPrivacyIDEA = true;
-		} 
+		}
 	}
 
 	if (_config->credential.passwordChanged)
@@ -851,7 +640,7 @@ HRESULT CCredential::GetSerialization(
 			_util.ResetScenario(this, _pCredProvCredentialEvents);
 			retVal = S_FALSE;
 		}
-	}	
+	}
 
 	if (_config->clearFields)
 	{
@@ -1006,24 +795,21 @@ HRESULT CCredential::ReportResult(
 	// only print interesting statuses
 	if (ntsStatus != 0)
 	{
-		DebugPrint("ntsStatus:");
 		std::stringstream ss;
 		ss << std::hex << ntsStatus;
-		DebugPrint(ss.str());
+		DebugPrint("ntsStatus: " + ss.str());
 	}
 	if (ntsSubstatus != 0)
 	{
-		DebugPrint("ntsSubstatus:");
 		std::stringstream ss;
 		ss << std::hex << ntsSubstatus;
-		DebugPrint(ss.str());
+		DebugPrint("ntsSubstatus: " + ss.str());
 	}
 #endif
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
-	
-	// TODO vvvv
+
 	if (_config->credential.passwordMustChange && ntsStatus == 0 && ntsSubstatus == 0)
 	{
 		// Password change was successful, set this so SetSelected knows to autologon
@@ -1040,7 +826,7 @@ HRESULT CCredential::ReportResult(
 		DebugPrint("Status: Password must change");
 		return S_OK;
 	}
-
+	
 	// check if the password update was NOT successfull
 	// these two are for new passwords not conform to password policies
 	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD);
