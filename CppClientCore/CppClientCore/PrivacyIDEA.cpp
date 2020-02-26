@@ -28,7 +28,7 @@ HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 	{
 		UNREFERENCED_PARAMETER(e);
 		// no mapping - if default domain exists use that
-		if (_defaultRealm.empty())
+		if (!_defaultRealm.empty())
 		{
 			realm = _defaultRealm;
 		}

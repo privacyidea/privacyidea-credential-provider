@@ -70,12 +70,11 @@ Configuration::Configuration()
 	// Realm Mapping
 	piconfig.defaultRealm = rr.getRegistry(L"default_realm");
 
-	map<wstring, wstring> realmMap = map<wstring, wstring>();
-
-	if (!rr.getAll(registryRealmPath, realmMap))
+	//map<wstring, wstring> realmMap = map<wstring, wstring>();
+	if (!rr.getAll(registryRealmPath, piconfig.realmMap))
 	{
 		//DebugPrint("No realm mapping found!");
-		realmMap.clear();
+		piconfig.realmMap.clear();
 	}
 
 	// Validate that only one of hideDomainName OR hideFullName is active
@@ -106,7 +105,7 @@ Configuration::Configuration()
 }
 
 // for printing
-wstring b2ws(bool b) {
+inline wstring b2ws(bool b) {
 	return b ? wstring(L"true") : wstring(L"false");
 }
 
