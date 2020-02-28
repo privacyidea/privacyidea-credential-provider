@@ -39,7 +39,7 @@ class CCredential : public IConnectableCredentialProviderCredential
 {
 public:
 	// IUnknown
-	IFACEMETHODIMP_(ULONG) AddRef()
+	IFACEMETHODIMP_(ULONG) AddRef() noexcept
 	{
 		return ++_cRef;
 	}

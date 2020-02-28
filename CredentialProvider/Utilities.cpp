@@ -391,7 +391,7 @@ HRESULT Utilities::SetScenario(
 			}
 			else
 			{
-				pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->defaultOTPText.c_str());
+				pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->defaultOTPHintText.c_str());
 			}
 		}
 		else

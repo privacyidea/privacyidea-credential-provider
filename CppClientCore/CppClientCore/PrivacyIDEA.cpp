@@ -313,17 +313,3 @@ SecureWString PrivacyIDEA::ss2sws(const SecureString& ss)
 
 	return ret;
 }
-
-#pragma optimize( "", off )
-void PrivacyIDEA::clearString(std::wstring& ws)
-{
-	std::fill_n(&ws[0], ws.capacity(), 0xff);
-}
-#pragma optimize( "", on )
-
-#pragma optimize( "", off )
-void PrivacyIDEA::clearString(std::string& s)
-{
-	std::fill_n(&s[0], s.capacity(), 0xff);
-}
-#pragma optimize( "", on )

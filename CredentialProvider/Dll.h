@@ -26,5 +26,5 @@
 extern HINSTANCE g_hinst;
 #define HINST_THISDLL g_hinst
 
-void DllAddRef();
-void DllRelease();
+void DllAddRef() noexcept;
+void DllRelease() noexcept;

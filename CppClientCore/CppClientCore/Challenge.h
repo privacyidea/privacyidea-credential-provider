@@ -45,4 +45,3 @@ public:
 private:
 	std::string ttaToString(TTA tta);
 };
-

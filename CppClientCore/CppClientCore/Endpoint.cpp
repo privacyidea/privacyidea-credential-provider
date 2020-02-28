@@ -231,7 +231,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 			}
 
 			// Allocate space for the buffer.
-			pszOutBuffer = new char[dwSize + 1];
+			pszOutBuffer = new char[ULONGLONG(dwSize) + 1];
 			if (!pszOutBuffer)
 			{
 				ReleaseDebugPrint("WinHttpReadData out of memory: " + to_string(GetLastError()));
@@ -241,7 +241,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 			else
 			{
 				// Read the data.
-				ZeroMemory(pszOutBuffer, dwSize + 1);
+				ZeroMemory(pszOutBuffer, (ULONGLONG)dwSize + 1);
 				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
 				{
 					ReleaseDebugPrint("WinHttpReadData error: " + to_string(GetLastError()));

@@ -47,8 +47,7 @@ Configuration::Configuration()
 	wstring tmp = rr.getRegistry(L"login_text");
 	loginText = tmp.empty() ? L"privacyIDEA Login" : tmp;
 
-	tmp = rr.getRegistry(L"otp_text");
-	otpFieldText = tmp.empty() ? L"One-Time Password" : tmp;
+	otpFieldText = rr.getRegistry(L"otp_text");
 
 	tmp = rr.getRegistry(L"otp_fail_text");
 	defaultOTPFailureText = tmp.empty() ? defaultOTPFailureText : tmp;

@@ -83,10 +83,6 @@ public:
 
 	static SecureWString ss2sws(const SecureString& ss);
 
-	static void clearString(std::wstring& ws);
-
-	static void clearString(std::string& s);
-
 private:
 	HRESULT appendRealm(std::wstring domain, SecureString& data);
 

@@ -23,7 +23,7 @@
 #include "Dll.h"
 
 static LONG g_cRef = 0;   // global dll reference count
-HINSTANCE g_hinst = NULL; // global dll hinstance
+HINSTANCE g_hinst = nullptr; // global dll hinstance
 
 extern HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv);
 EXTERN_C GUID CLSID_CSample;
@@ -37,7 +37,7 @@ public:
 
     // IUnknown
 	#pragma warning( disable : 4838 )
-    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void **ppv)
+    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void **ppv) noexcept
     {
         static const QITAB qit[] = 
         {
@@ -47,14 +47,14 @@ public:
         return QISearch(this, qit, riid, ppv);
     }
 
-    IFACEMETHODIMP_(ULONG) AddRef()
+    IFACEMETHODIMP_(ULONG) AddRef() noexcept
     {
         return InterlockedIncrement(&_cRef);
     }
 
-    IFACEMETHODIMP_(ULONG) Release()
+    IFACEMETHODIMP_(ULONG) Release() noexcept
     {
-        LONG cRef = InterlockedDecrement(&_cRef);
+        LONG const cRef = InterlockedDecrement(&_cRef);
         if (!cRef)
             delete this;
         return cRef;
@@ -70,7 +70,7 @@ public:
         }
         else
         {
-            *ppv = NULL;
+            *ppv = nullptr;
             hr = CLASS_E_NOAGGREGATION;
         }
         return hr;
@@ -98,7 +98,7 @@ private:
 
 HRESULT CClassFactory_CreateInstance(__in REFCLSID rclsid, __in REFIID riid, __deref_out void **ppv)
 {
-    *ppv = NULL;
+    *ppv = nullptr;
 
     HRESULT hr;
 
@@ -122,12 +122,12 @@ HRESULT CClassFactory_CreateInstance(__in REFCLSID rclsid, __in REFIID riid, __d
     return hr;
 }
 
-void DllAddRef()
+void DllAddRef() noexcept
 {
     InterlockedIncrement(&g_cRef);
 }
 
-void DllRelease()
+void DllRelease() noexcept
 {
     InterlockedDecrement(&g_cRef);
 }

@@ -336,7 +336,7 @@ char* OfflineHandler::UnicodeToCodePage(int codePage, const wchar_t* src)
 		return 0;
 	}
 
-	char* x = new char[requiredSize + 1];
+	char* x = new char[(LONGLONG)requiredSize + 1];
 	x[requiredSize] = 0;
 
 	int retval = WideCharToMultiByte(codePage,
@@ -415,7 +415,7 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 	if (status == 0) // STATUS_SUCCESS
 	{
 		// Compare the bytes
-		if (cbDerivedKey == bufLenStored)
+		if (cbDerivedKey == (ULONG)bufLenStored)
 		{
 			while (cbDerivedKey--)
 			{

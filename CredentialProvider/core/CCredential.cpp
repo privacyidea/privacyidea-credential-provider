@@ -137,7 +137,7 @@ HRESULT CCredential::Advise(
 {
 	//DebugPrintLn(__FUNCTION__);
 
-	if (_pCredProvCredentialEvents != NULL)
+	if (_pCredProvCredentialEvents != nullptr)
 	{
 		_pCredProvCredentialEvents->Release();
 	}
@@ -683,6 +683,7 @@ void CCredential::pushAuthenticationCallback(bool success)
 HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	DebugPrint(__FUNCTION__);
+	UNREFERENCED_PARAMETER(pqcws);
 
 	_config->provider.pCredProvCredential = this;
 	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
@@ -719,10 +720,6 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				_config->challenge = c;
 				if (!c.transaction_id.empty())
 				{
-					// Set a message in any case
-					//pqcws->SetStatusMessage(c.message.empty() ?
-					//	_config->defaultChallengeText.c_str() : c.message.c_str());
-
 					// Always show the OTP field, if push was triggered, start polling in background
 					if (c.tta == TTA::BOTH || c.tta == TTA::PUSH)
 					{
@@ -806,12 +803,11 @@ HRESULT CCredential::ReportResult(
 		// Password change was successful, set this so SetSelected knows to autologon
 		_config->credential.passwordMustChange = false;
 		_config->credential.passwordChanged = true;
-		//_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::)
 		_util.ResetScenario(this, _pCredProvCredentialEvents);
 		return S_OK;
 	}
 
-	bool pwMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
+	bool const pwMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
 	if (pwMustChange /* && !_config->credential.passwordMustChange*/)
 	{
 		_config->credential.passwordMustChange = true;

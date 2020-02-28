@@ -15,7 +15,7 @@ template <typename T> struct allocator {
 	template <class U> constexpr allocator(const allocator<U>&) noexcept {}
 
 	static T* allocate(std::size_t n) { return std::allocator<T>{}.allocate(n); }
-	static void deallocate(T* p, std::size_t n) noexcept {
+	static void deallocate(T* p, std::size_t n) {
 		SecureZeroMemory(p, n * sizeof * p);
 		std::allocator<T>{}.deallocate(p, n);
 	}

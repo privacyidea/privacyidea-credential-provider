@@ -1,3 +1,15 @@
+# Version 3.0.0, TBD
+
+## Features
+ * Support realms by configuring a realm mapping in the registry
+ * Support of Push Token
+ * Support offline authentication
+
+## Enhancements
+
+## Fixes
+
+
 # Version 2.5.2, 2019-08-02
 
 ## Fixes
