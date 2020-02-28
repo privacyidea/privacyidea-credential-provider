@@ -120,7 +120,7 @@ static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
 // The first field is the index of the field.
 // The second is the type of the field.
 // The third is the name of the field, NOT the value which will appear in the field.
-static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors[] =
+static CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors[] =
 {
 	{ FID_LOGO, CPFT_TILE_IMAGE, L"privacyIDEA Login" },
 	{ FID_LARGE_TEXT, CPFT_LARGE_TEXT, L"LargeText" },
@@ -129,7 +129,7 @@ static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescr
 	{ FID_LDAP_PASS, CPFT_PASSWORD_TEXT, L"Password" },
 	{ FID_OTP, CPFT_PASSWORD_TEXT, L"One-Time Password" },
 	{ FID_NEW_PASS_1, CPFT_PASSWORD_TEXT, L"New Password" },
-	{ FID_NEW_PASS_2, CPFT_PASSWORD_TEXT, L"Repeat New Password" },
+	{ FID_NEW_PASS_2, CPFT_PASSWORD_TEXT, L"Confirm password" },
 	{ FID_SUBMIT_BUTTON, CPFT_SUBMIT_BUTTON, L"Submit" },
-	{ FID_SUBTEXT, CPFT_SMALL_TEXT, L"DomainText"},
+	{ FID_SUBTEXT, CPFT_SMALL_TEXT, L"Sign in to: "},
 };

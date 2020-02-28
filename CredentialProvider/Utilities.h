@@ -30,6 +30,9 @@ class Utilities
 public:
 	Utilities(std::shared_ptr<Configuration> c) noexcept;
 
+	// Returns the text for the id in english or german, depending on GetUserDefaultUILanguage
+	static std::wstring getTranslatedText(int id);
+
 	HRESULT KerberosLogon(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
@@ -101,5 +104,17 @@ private:
 	HRESULT readOTPField();
 
 	HRESULT readPasswordChangeFields();
+
+#define TEXT_USERNAME 0
+#define TEXT_PASSWORD 1
+#define TEXT_OLD_PASSWORD 2
+#define TEXT_NEW_PASSWORD 3
+#define TEXT_CONFIRM_PASSWORD 4
+#define TEXT_DOMAIN_HINT 5
+#define TEXT_OTP 6
+#define TEXT_WRONG_OTP 7
+#define TEXT_WRONG_PASSWORD 8
+
+	const static std::wstring texts[10][2];
 };
 

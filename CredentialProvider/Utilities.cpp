@@ -12,6 +12,24 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 	_config = c;
 }
 
+const std::wstring Utilities::texts[10][2] = {
+		{L"Username", L"Benutzername"},
+		{L"Password", L"Kennwort"},
+		{L"Old Password", L"Altes Kennwort"},
+		{L"New Password", L"Neues Kennwort"},
+		{L"Confirm password", L"Kennwort bestätigen"},
+		{L"Sign in to: ", L"Anmelden an: "},
+		{L"One-Time Password", L"Einmalpassword"},
+		{L"Wrong One-Time Password", L"Falsches Einmalpasswort"},
+		{L"Wrong password", L"Das Kennwort ist falsch. Wiederholen Sie den Vorgang."}
+};
+
+std::wstring Utilities::getTranslatedText(int id)
+{
+	const int inGerman = GetUserDefaultUILanguage() == 1031; // 1031 is german
+	return texts[id][inGerman];
+}
+
 HRESULT Utilities::KerberosLogon(
 	__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
 	__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
@@ -330,9 +348,7 @@ HRESULT Utilities::SetScenario(
 
 	if (_config->credential.passwordMustChange)
 	{
-		// Disable small text, show username in large text, prefill old password
-		//pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
-		//pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
+		// Show username in large text, prefill old password
 		pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, _config->credential.username.c_str());
 		pCPCE->SetFieldString(pCredential, FID_LDAP_PASS, _config->credential.password.c_str());
 	}
@@ -363,7 +379,7 @@ HRESULT Utilities::SetScenario(
 			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
 			DebugPrint(L"Setting large text: " + text);
 		}
-		
+
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 		{
@@ -385,8 +401,7 @@ HRESULT Utilities::SetScenario(
 	// Domain in FID_SUBTEXT, optional
 	if (_config->showDomainHint)
 	{
-		wstring domaintext{ L"Current Domain: " };
-		domaintext += _config->credential.domain;
+		wstring domaintext = getTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
 		pCPCE->SetFieldString(pCredential, FID_SUBTEXT, domaintext.c_str());
 	}
 	else
@@ -461,6 +476,7 @@ HRESULT Utilities::SetFieldStatePairBatch(
 
 	return hr;
 }
+
 // can be removed, SetScenario does the same
 HRESULT Utilities::initializeField(
 	LPWSTR* rgFieldStrings,
@@ -485,8 +501,10 @@ HRESULT Utilities::initializeField(
 		break;
 	case FID_SUBTEXT:
 	{
-		wstring text(L"Current Domain: ");
-		text += _config->credential.domain;
+		wstring text = L"";
+		if (_config->showDomainHint)
+			text = getTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;;
+
 		hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
 
 		break;

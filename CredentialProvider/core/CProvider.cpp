@@ -81,7 +81,7 @@ HRESULT CProvider::SetUsageScenario(
 	_config->printConfiguration();
 #endif
 	HRESULT hr = E_INVALIDARG;
-	
+
 	_config->provider.credPackFlags = dwFlags;
 	_config->provider.cpu = cpus;
 
@@ -337,14 +337,41 @@ HRESULT CProvider::GetFieldDescriptorAt(
 )
 {
 	//DebugPrintLn(__FUNCTION__);
-	HRESULT hr;
+	HRESULT hr = E_FAIL;
 	if (!_config->provider.cpu) return E_FAIL;
 
 	// Verify dwIndex is a valid field.
 	if ((dwIndex < FID_NUM_FIELDS) && ppcpfd)
 	{
+		// Adjust the FieldDescriptor to copy depending on language and config
+		wstring label = L"";
+		switch (dwIndex)
+		{
+		case FID_USERNAME:
+			label = Utilities::getTranslatedText(TEXT_USERNAME);
+			break;
+		case FID_LDAP_PASS:
+			label = Utilities::getTranslatedText(TEXT_PASSWORD);
+			break;
+		case FID_NEW_PASS_1:
+			label = Utilities::getTranslatedText(TEXT_NEW_PASSWORD);
+			break;
+		case FID_NEW_PASS_2:
+			label = Utilities::getTranslatedText(TEXT_CONFIRM_PASSWORD);
+			break;
+		case FID_OTP:
+			label = _config->otpFieldText;
+			if (label.empty())
+				label = Utilities::getTranslatedText(TEXT_OTP);
+			break;
+		default: break;
+		}
+
+		if (!label.empty())
+			s_rgScenarioCredProvFieldDescriptors[dwIndex].pszLabel = const_cast<LPWSTR>(label.c_str());
+
 		hr = FieldDescriptorCoAllocCopy(s_rgScenarioCredProvFieldDescriptors[dwIndex],
-			ppcpfd, _config->otpFieldText);
+			ppcpfd);
 	}
 	else
 	{
@@ -381,7 +408,6 @@ HRESULT CProvider::GetCredentialCount(
 	{
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
 	}
-
 
 	// if serialized creds are available, try using them to logon
 	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
@@ -482,7 +508,8 @@ HRESULT CProvider::GetCredentialAt(
 
 		_credential = std::make_unique<CCredential>(_config);
 
-		hr = _credential->Initialize(s_rgScenarioCredProvFieldDescriptors,
+		hr = _credential->Initialize(
+			s_rgScenarioCredProvFieldDescriptors,
 			Utilities::GetFieldStatePairFor(usage_scenario, _config->twoStepHideOTP),
 			serializedUser, serializedDomain, serializedPass);
 	}

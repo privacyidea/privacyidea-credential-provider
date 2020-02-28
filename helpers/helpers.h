@@ -37,8 +37,7 @@
 //makes a copy of a field descriptor using CoTaskMemAlloc
 HRESULT FieldDescriptorCoAllocCopy(
 	__in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& rcpfd,
-	__deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd,
-	__in std::wstring otpFieldText
+	__deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd
 );
 
 //makes a copy of a field descriptor on the normal heap

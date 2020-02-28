@@ -70,10 +70,8 @@ Configuration::Configuration()
 	// Realm Mapping
 	piconfig.defaultRealm = rr.getRegistry(L"default_realm");
 
-	//map<wstring, wstring> realmMap = map<wstring, wstring>();
 	if (!rr.getAll(registryRealmPath, piconfig.realmMap))
 	{
-		//DebugPrint("No realm mapping found!");
 		piconfig.realmMap.clear();
 	}
 

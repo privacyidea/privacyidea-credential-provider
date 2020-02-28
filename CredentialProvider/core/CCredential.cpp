@@ -217,20 +217,11 @@ HRESULT CCredential::SetDeselected()
 
 	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
 
-	//// CONCRETE
 	_util.ResetScenario(this, _pCredProvCredentialEvents);
-	////
 
 	// Reset password changing in case another user wants to log in
-	if (_config->credential.passwordChanged)
-	{
-		_config->credential.passwordChanged = false;
-	}
-	// If its not UNLOCK_WORKSTATION we keep this status to keep the info to sign out first
-	if (_config->credential.passwordMustChange && (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION))
-	{
-		_config->credential.passwordMustChange = false;
-	}
+	_config->credential.passwordChanged = false;
+	_config->credential.passwordMustChange = false;
 
 	return hr;
 }
@@ -245,7 +236,7 @@ HRESULT CCredential::GetFieldState(
 {
 	//DebugPrintLn(__FUNCTION__);
 
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	// Validate paramters.
 	if (dwFieldID < FID_NUM_FIELDS && pcpfs && pcpfis)
@@ -272,7 +263,7 @@ HRESULT CCredential::GetStringValue(
 {
 	//DebugPrintLn(__FUNCTION__);
 
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	// Check to make sure dwFieldID is a legitimate index.
 	if (dwFieldID < FID_NUM_FIELDS && ppwsz)
@@ -815,7 +806,8 @@ HRESULT CCredential::ReportResult(
 		// Password change was successful, set this so SetSelected knows to autologon
 		_config->credential.passwordMustChange = false;
 		_config->credential.passwordChanged = true;
-
+		//_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::)
+		_util.ResetScenario(this, _pCredProvCredentialEvents);
 		return S_OK;
 	}
 
@@ -826,7 +818,7 @@ HRESULT CCredential::ReportResult(
 		DebugPrint("Status: Password must change");
 		return S_OK;
 	}
-	
+
 	// check if the password update was NOT successfull
 	// these two are for new passwords not conform to password policies
 	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD);

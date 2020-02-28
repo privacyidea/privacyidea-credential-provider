@@ -128,6 +128,9 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
 
+	// Set timeouts in ms
+	WinHttpSetTimeouts(hSession, 2000, 2000, 2000, 10000);
+
 	// Specify an HTTP server.
 	if (hSession)
 	{
