@@ -68,7 +68,7 @@ public:
 	Challenge challenge;
 	std::wstring defaultOTPFailureText = L"Wrong One-Time-Password!";
 	std::wstring defaultChallengeText = L"Please confirm the authentication!";
-	std::wstring defaultOTPText = L"Please enter your second factor!";
+	std::wstring defaultOTPHintText = L"Please enter your second factor!";
 
 	std::wstring registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
 	std::wstring registryRealmPath = registryPath + L"realm-mapping";

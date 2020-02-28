@@ -46,14 +46,15 @@ Configuration::Configuration()
 	// Custom field texts: check if set, otherwise use defaults (from header)
 	wstring tmp = rr.getRegistry(L"login_text");
 	loginText = tmp.empty() ? L"privacyIDEA Login" : tmp;
+
 	tmp = rr.getRegistry(L"otp_text");
 	otpFieldText = tmp.empty() ? L"One-Time Password" : tmp;
 
 	tmp = rr.getRegistry(L"otp_fail_text");
 	defaultOTPFailureText = tmp.empty() ? defaultOTPFailureText : tmp;
 
-	tmp = rr.getRegistry(L"default_otp_text");
-	defaultOTPText = tmp.empty() ? defaultOTPText : tmp;
+	tmp = rr.getRegistry(L"otp_hint_text");
+	defaultOTPHintText = tmp.empty() ? defaultOTPHintText : tmp;
 
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.getRegistry(L"hostname");

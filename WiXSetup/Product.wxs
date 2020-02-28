@@ -66,7 +66,7 @@
     <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='DISK #1' />
     <Property Id='DiskPrompt' Value="$(var.ProductName) Setup [1]" />
 
-    <Binary Id='WiXCustomActions' SourceFile='$(var.WiXCustomActions.TargetPath)' />
+    <!--<Binary Id='WiXCustomActions' SourceFile='$(var.WiXCustomActions.TargetPath)' />-->
     
     <Binary Id='InfoIcon' SourceFile='$(var.SolutionDir)info.ico' />
     <Binary Id='HelpIcon' SourceFile='$(var.SolutionDir)help.ico' />
@@ -147,15 +147,15 @@
       <!-- Visual Studio C++ Redistributable -->
       <?if $(var.Configuration) = Debug ?>
         <?if $(var.Platform) = x64 ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC140_DebugCRT_x64.msm" DiskId="1" Language="0"/>
+          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_DebugCRT_x64.msm" DiskId="1" Language="0"/>
         <?else ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC140_DebugCRT_x86.msm" DiskId="1" Language="0"/>
+          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_DebugCRT_x86.msm" DiskId="1" Language="0"/>
         <?endif ?>
       <?else ?>
         <?if $(var.Platform) = x64 ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC140_CRT_x64.msm" DiskId="1" Language="0"/>
+          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_CRT_x64.msm" DiskId="1" Language="0"/>
         <?else ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC140_CRT_x86.msm" DiskId="1" Language="0"/>
+          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_CRT_x86.msm" DiskId="1" Language="0"/>
         <?endif ?>
       <?endif ?>
       <!-- END Visual Studio C++ Redistributable -->
@@ -291,7 +291,7 @@
       </Feature>
 
       <!-- These are installed anyway: -->
-      <Feature Id="VCRedist" Title="Visual C++ 12.0 Runtime" AllowAdvertise="no" Display="hidden" Level="1">
+      <Feature Id="VCRedist" Title="Visual C++ Runtime" AllowAdvertise="no" Display="hidden" Level="1">
         <MergeRef Id='VCRedist'/>
       </Feature>
       
