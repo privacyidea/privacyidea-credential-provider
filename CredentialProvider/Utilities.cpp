@@ -12,7 +12,7 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 	_config = c;
 }
 
-const std::wstring Utilities::texts[10][2] = {
+const std::wstring Utilities::texts[11][2] = {
 		{L"Username", L"Benutzername"},
 		{L"Password", L"Kennwort"},
 		{L"Old Password", L"Altes Kennwort"},
@@ -20,8 +20,9 @@ const std::wstring Utilities::texts[10][2] = {
 		{L"Confirm password", L"Kennwort bestätigen"},
 		{L"Sign in to: ", L"Anmelden an: "},
 		{L"One-Time Password", L"Einmalpassword"},
-		{L"Wrong One-Time Password", L"Falsches Einmalpasswort"},
-		{L"Wrong password", L"Das Kennwort ist falsch. Wiederholen Sie den Vorgang."}
+		{L"Wrong One-Time Password!", L"Falsches Einmalpasswort!"},
+		{L"Wrong password", L"Das Kennwort ist falsch. Wiederholen Sie den Vorgang."},
+		{L"Please enter your second factor!", L"Bitte geben Sie ihren zweiten Faktor ein!"}
 };
 
 std::wstring Utilities::getTranslatedText(int id)

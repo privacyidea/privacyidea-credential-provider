@@ -50,10 +50,10 @@ Configuration::Configuration()
 	otpFieldText = rr.getRegistry(L"otp_text");
 
 	tmp = rr.getRegistry(L"otp_fail_text");
-	defaultOTPFailureText = tmp.empty() ? defaultOTPFailureText : tmp;
+	defaultOTPFailureText = tmp.empty() ? Utilities::getTranslatedText(TEXT_WRONG_OTP) : tmp;
 
 	tmp = rr.getRegistry(L"otp_hint_text");
-	defaultOTPHintText = tmp.empty() ? defaultOTPHintText : tmp;
+	defaultOTPHintText = tmp.empty() ? Utilities::getTranslatedText(TEXT_DEFAULT_OTP_HINT) : tmp;
 
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.getRegistry(L"hostname");

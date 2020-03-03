@@ -114,6 +114,7 @@ private:
 #define TEXT_OTP 6
 #define TEXT_WRONG_OTP 7
 #define TEXT_WRONG_PASSWORD 8
+#define TEXT_DEFAULT_OTP_HINT 9
 
 	const static std::wstring texts[10][2];
 };
