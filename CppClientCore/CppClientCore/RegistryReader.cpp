@@ -17,6 +17,7 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 #include "RegistryReader.h"
+#include "PrivacyIDEA.h"
 #include <Windows.h>
 #include <tchar.h>
 
@@ -90,7 +91,7 @@ bool RegistryReader::getAll(const std::wstring& path, std::map<std::wstring, std
 				NULL);
 			if (retCode == ERROR_SUCCESS)
 			{
-				wstring value(achValue);
+				wstring value = PrivacyIDEA::toUpperCase(achValue);
 				// Get the data for the value
 				const DWORD SIZE = 1024;
 				TCHAR szData[SIZE] = _T("");

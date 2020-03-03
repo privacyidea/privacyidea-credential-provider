@@ -83,6 +83,8 @@ public:
 
 	static SecureWString ss2sws(const SecureString& ss);
 
+	static std::wstring toUpperCase(std::wstring s);
+
 private:
 	HRESULT appendRealm(std::wstring domain, SecureString& data);
 

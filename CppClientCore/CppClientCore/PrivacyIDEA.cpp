@@ -22,7 +22,7 @@ HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 	wstring realm = L"";
 	try
 	{
-		realm = _realmMap.at(domain);
+		realm = _realmMap.at(toUpperCase(domain));
 	}
 	catch (const std::out_of_range & e)
 	{
@@ -312,4 +312,10 @@ SecureWString PrivacyIDEA::ss2sws(const SecureString& ss)
 	delete[] outBuf;
 
 	return ret;
+}
+
+std::wstring PrivacyIDEA::toUpperCase(std::wstring s)
+{
+	std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+	return s;
 }

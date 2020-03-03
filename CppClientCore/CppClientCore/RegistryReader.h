@@ -27,7 +27,7 @@ public:
 
 	std::wstring wpath;
 
-	// puts all keys and values from the current path into a map
+	// puts all keys and values from the current path into a map, the keys will be converted to uppercase
 	bool getAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map);
 
 	std::wstring getRegistry(std::wstring name);
