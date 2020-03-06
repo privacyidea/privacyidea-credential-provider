@@ -410,17 +410,13 @@ HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 	auto j = Endpoint::tryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
-	//string value = j["result"]["value"].get<std::string>(); // TODO
-	string value = j["result"]["value"].dump();
-	if (value.empty())
+	auto jValue = j["result"]["value"];
+	if (!jValue.is_boolean())
 	{
 		return parseForError(in);
 	}
-	else
-	{
-		return (value == "true") ? PI_TRANSACTION_SUCCESS : PI_TRANSACTION_FAILURE;
-	}
-	return PI_TRANSACTION_FAILURE;
+
+	return jValue.get<bool>() ? PI_TRANSACTION_SUCCESS : PI_TRANSACTION_FAILURE;
 }
 
 HRESULT Endpoint::finalizePolling(const std::string& user, const std::string& transaction_id)

@@ -12,7 +12,7 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 	_config = c;
 }
 
-const std::wstring Utilities::texts[11][2] = {
+const std::wstring Utilities::texts[10][2] = {
 		{L"Username", L"Benutzername"},
 		{L"Password", L"Kennwort"},
 		{L"Old Password", L"Altes Kennwort"},
