@@ -146,7 +146,7 @@ is added to the request.
 Specify a default realm. If set, it is appended to every request that has no other matching mapping.
 
 
-The mapping is done in the sub key ``realm-mapping`` (=> HKEY_LOCAL_MACHINE\SOFTWARE\Netknights GmbH\PrivacyIDEA-CP\realm-mapping).
+The mapping is done in the sub key ``realm-mapping`` (=> HKEY_LOCAL_MACHINE\\SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping).
 Here you can specify the Windows domains as the names and the privacyIDEA realms as data of REG_SZ entries.
 
 
