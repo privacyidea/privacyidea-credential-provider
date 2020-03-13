@@ -27,3 +27,12 @@ doc/_build/
 !/lib/openssl/#version
 Thumbs.db
 .vs/*
+CredentialProviderFilter/RC*
+DvlErrLog.txt
+Dll/
+old files/
+Tests/x64/
+x64/
+*.ipch
+pi-cpp-client-core/CppClientCore/.vs/
+nlohmann/json.hpp

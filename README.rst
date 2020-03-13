@@ -22,9 +22,8 @@ The documentation can be found in ``/doc``.
 
 Build
 =====
-The Solution is built using the platform tools v140 (VS 2015)
+The Solution is built using the platform tools v142 (VS 2019)
 
 Dependencies
 ============
-This project uses *rapidjson*. Copy it to the ``/lib`` directory.
-You can get it from https://github.com/Tencent/rapidjson/.
+This project requires *json.hpp* from https://github.com/nlohmann/json, put it in ``CppClientCore/nlohmann/json.hpp``.

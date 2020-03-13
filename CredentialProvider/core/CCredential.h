@@ -1,38 +1,37 @@
-/* * * * * * * * * * * * * * * * * * * * *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2012 Dominik Pretzsch
-** 
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
+**
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
 **    You may obtain a copy of the License at
-** 
+**
 **        http://www.apache.org/licenses/LICENSE-2.0
-** 
+**
 **    Unless required by applicable law or agreed to in writing, software
 **    distributed under the License is distributed on an "AS IS" BASIS,
 **    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 **    See the License for the specific language governing permissions and
 **    limitations under the License.
 **
-** * * * * * * * * * * * * * * * * * * */
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _CCREDENTIAL_H
-#define _CCREDENTIAL_H
-
-#include <unknwn.h>
-#include <helpers.h>
+#pragma once
 
 #include "Dll.h"
 #include "common.h"
+#include "Utilities.h"
+#include "Configuration.h"
+#include "PrivacyIDEA.h"
 
-#include "config.h"
-#include "hooks.h"
-#include "general.h"
-#include "data.h"
-#include "helper.h"
-
-#include "endpoint.h"
-#include "EndpointObserver.h"
+#include <unknwn.h>
+#include <helpers.h>
+#include <string>
+#include <map>
 
 #define TIMEOUT_TEXT L"Timeout: %i secs."
 
@@ -40,22 +39,23 @@ class CCredential : public IConnectableCredentialProviderCredential
 {
 public:
 	// IUnknown
-	IFACEMETHODIMP_(ULONG) AddRef()
+	IFACEMETHODIMP_(ULONG) AddRef() noexcept
 	{
 		return ++_cRef;
 	}
 
-	IFACEMETHODIMP_(ULONG) Release()
+	IFACEMETHODIMP_(ULONG) Release() noexcept
 	{
 		LONG cRef = --_cRef;
 		if (!cRef)
 		{
-			delete this;
+			//delete this;
+			//this->~CCredential();
 		}
 		return cRef;
 	}
 
-	#pragma warning( disable : 4838 )
+#pragma warning( disable : 4838 )
 	IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv)
 	{
 		static const QITAB qit[] =
@@ -90,7 +90,7 @@ public:
 	IFACEMETHODIMP SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked);
 	IFACEMETHODIMP SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem);
 	IFACEMETHODIMP CommandLinkClicked(__in DWORD dwFieldID);
-	
+
 	IFACEMETHODIMP GetSerialization(__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
@@ -100,17 +100,14 @@ public:
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
 		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon);
 
-	// IConnectableCredentialProviderCredential 
+
 public:
-	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus *pqcws);
+	// IConnectableCredentialProviderCredential 
+	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus* pqcws);
 	IFACEMETHODIMP Disconnect();
 
-	// Default
-	CCredential();
-
+	CCredential(std::shared_ptr<Configuration> c);
 	virtual ~CCredential();
-
-	///////////////////////////////////
 
 public:
 	HRESULT Initialize(//__in CProvider* pProvider,
@@ -120,43 +117,36 @@ public:
 		__in_opt PWSTR domain_name,
 		__in_opt PWSTR password);
 
-	HRESULT EndpointCallback(__in DWORD dwFlag);
+private:
 
-	///////////////////////////////////
+	void showErrorMessage(const std::wstring& message, const HRESULT& code);
 
-private: ////////////// FUNCS
-	// Endpoint funcs
-	
-	// END
+	void pushAuthenticationCallback(bool success);
 
-private: ////////////// VARS
-	// Default vars
 	LONG									_cRef;
 
-	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[MAX_NUM_FIELDS];	// An array holding the type and 
+	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[FID_NUM_FIELDS];	// An array holding the type and 
 																							// name of each field in the tile.
 
-	FIELD_STATE_PAIR						_rgFieldStatePairs[MAX_NUM_FIELDS];          // An array holding the state of 
+	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];          // An array holding the state of 
 																						 // each field in the tile.
 
-	wchar_t*								_rgFieldStrings[MAX_NUM_FIELDS];             // An array holding the string 
+	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];			 // An array holding the string 
 																						 // value of each field. This is 
 																						 // different from the name of 
 																						 // the field held in 
 																						 // _rgCredProvFieldDescriptors.
-	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
+	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
 
 	DWORD                                   _dwComboIndex;                               // Tracks the current index 
 																						 // of our combobox.
 
-	// END
-	// General vars
+	PrivacyIDEA								_privacyIDEA;
 
-	// END
+	std::shared_ptr<Configuration>			_config;
+
+	Utilities								_util;
+
+	HRESULT									_piStatus = E_FAIL;
+
 };
-
-#endif
-
-INT_PTR CALLBACK ChangePasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-
-HRESULT copyNewVals(wchar_t* val);

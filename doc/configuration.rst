@@ -87,12 +87,23 @@ You can also change the look and feel of the privacyIDEA Credential Provider.
 
 **login_text**
 
-Specify the text, that is displayed underneath the credential provider logo.
+Specify the text that is displayed underneath the credential logo and on the right side where available credentials are listed. 
+The default is "privacyIDEA Login".
 
 **otp_text**
 
-Speficy the text, that is displayed in the OTP input field. Usually this is "One-Time Password", but you can
+Speficy the text that is displayed in the OTP input field. Usually this is "One-Time Password", but you can
 change it to any other value you like.
+
+**otp_hint_text**
+
+Speficy the text that is displayed when prompted to enter the OTP in the second step.
+The default is "Please enter your second factor!".
+
+**otp_fail_text**
+
+Specify a custom text that is shown when the OTP verification failed. The default is "Wrong One-Time Password!".
+NOTE: An error on either the client or server side overwrites this message.
 
 **hide_domainname**
 
@@ -113,6 +124,35 @@ of 128x128 pixels.
 
 Add this registry entry and set it ``1`` to not have the privacyIDEA Credential Provider selected by default when logging in.
 
+**show_domain_hint**
+
+Set this to ``1`` to show the Domain that is currently used to log in.
+
+**offline_file**
+
+Specify the **absolute** path to where the offline file should be saved. The default is C:\offlineFile.json.
+NOTE: Either txt or json file type is recommended.
+
+**offline_try_window**
+
+Specify how many offline values shall be compared to the input at max. Default is 10. A value of 0 equals the default.
+
+
+
+Realms
+~~~~~~
+
+Realms are implemented by mapping Windows domains to privacyIDEA realms. When a matching mapping exists, the &realm=... parameter
+is added to the request. 
+
+**default_realm**
+
+Specify a default realm. If set, it is appended to every request that has no other matching mapping.
+
+
+The mapping is done in the sub key ``realm-mapping`` (=> HKEY_LOCAL_MACHINE\\SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping).
+Here you can specify the Windows domains as the names and the privacyIDEA realms as data of REG_SZ entries.
+
 
 Log file
 ~~~~~~~~
@@ -128,11 +168,3 @@ The log file of the debug version contains more detailed information and is loca
 In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. By default sensitive data is not logged. 
 To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a logfile.
 NOTE: This only affects the *debug* versions of the privacyIDEA Credential Provider.
-
-
-Other
-~~~~~
-
-**sleep**
-On some windows machines the credential provider freezes after the first step when using *only* the *two_step_hide_otp* configuration. 
-Adding this key with a value of ``1`` solves this issue.

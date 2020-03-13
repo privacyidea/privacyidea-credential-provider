@@ -1,6 +1,10 @@
-/* * * * * * * * * * * * * * * * * * * * *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2012 Dominik Pretzsch
+** Copyright	2012 Dominik Pretzsch
+**				2017 NetKnights GmbH
+**
+** Author		Dominik Pretzsch
+**				Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
@@ -14,7 +18,7 @@
 **    See the License for the specific language governing permissions and
 **    limitations under the License.
 **
-** * * * * * * * * * * * * * * * * * * */
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #ifndef _CPROVIDER_H
 #define _CPROVIDER_H
@@ -29,8 +33,6 @@
 
 #include "CCredential.h"
 
-#include "dependencies.h"
-
 #define MAX_CREDENTIALS 3
 #define MAX_DWORD   0xffffffff        // maximum DWORD
 
@@ -40,9 +42,6 @@ enum SERIALIZATION_AVAILABLE_FOR
 	SAF_PASSWORD,
 	SAF_DOMAIN
 };
-
-
-BOOL IsCurrentSessionRemoteable();
 
 class CProvider : public ICredentialProvider
 {
@@ -75,22 +74,19 @@ public:
 	}
 
 public:
-	//void Redraw();
+	IFACEMETHODIMP SetUsageScenario(__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, __in DWORD dwFlags) override;
+	IFACEMETHODIMP SetSerialization(__in const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs) override;
 
-	IFACEMETHODIMP SetUsageScenario(__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, __in DWORD dwFlags);
-	IFACEMETHODIMP SetSerialization(__in const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs);
+	IFACEMETHODIMP Advise(__in ICredentialProviderEvents* pcpe, __in UINT_PTR upAdviseContext) override;
+	IFACEMETHODIMP UnAdvise() override;
 
-	IFACEMETHODIMP Advise(__in ICredentialProviderEvents* pcpe, __in UINT_PTR upAdviseContext);
-	IFACEMETHODIMP UnAdvise();
+	IFACEMETHODIMP GetFieldDescriptorCount(__out DWORD* pdwCount) override;
+	IFACEMETHODIMP GetFieldDescriptorAt(__in DWORD dwIndex, __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd) override;
 
-	IFACEMETHODIMP GetFieldDescriptorCount(__out DWORD* pdwCount);
-	IFACEMETHODIMP GetFieldDescriptorAt(__in DWORD dwIndex, __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd);
+	IFACEMETHODIMP GetCredentialCount(__out DWORD* pdwCount, __out_range(<, *pdwCount) DWORD* pdwDefault,
+		__out BOOL* pbAutoLogonWithDefault) override;
 
-	IFACEMETHODIMP GetCredentialCount(__out DWORD* pdwCount,
-		__out_range(<, *pdwCount) DWORD* pdwDefault,
-		__out BOOL* pbAutoLogonWithDefault);
-	IFACEMETHODIMP GetCredentialAt(__in DWORD dwIndex,
-		__deref_out ICredentialProviderCredential** ppcpc);
+	IFACEMETHODIMP GetCredentialAt(__in DWORD dwIndex, __deref_out ICredentialProviderCredential** ppcpc) override;
 
 	friend HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv);
 	
@@ -99,15 +95,6 @@ protected:
 	__override ~CProvider();
 
 private:
-
-	HRESULT _EnumerateOneCredential(__in DWORD dwCredientialIndex,
-		__in PCWSTR pwzUsername);
-	//HRESULT _EnumerateSetSerialization();
-
-	// Create/free enumerated credentials.
-	//HRESULT _EnumerateCredentials(__in_opt PWSTR user_name, __in_opt PWSTR domain_name);
-
-	void _ReleaseEnumeratedCredentials();
 	void _CleanupSetSerialization();
 
 	void _GetSerializedCredentials(PWSTR *username, PWSTR *password, PWSTR *domain);
@@ -116,19 +103,15 @@ private:
 
 private:
 	LONG									_cRef;
-	//CCredential								*_rgpCredentials[MAX_CREDENTIALS];  // Pointers to the credentials which will be enumerated by 
 
-	// this Provider.
-	//DWORD                                   _dwNumCreds;
 	KERB_INTERACTIVE_UNLOCK_LOGON*          _pkiulSetSerialization;
 	DWORD                                   _dwSetSerializationCred; //index into rgpCredentials for the SetSerializationCred
-	bool                                    _bAutoSubmitSetSerializationCred;
-	//CREDENTIAL_PROVIDER_USAGE_SCENARIO      _cpus;
 
-	//ICredentialProviderEvents*				_pcpe;
-	//UINT_PTR								_upAdviseContext;
+	std::unique_ptr<CCredential>			_credential;
 
-	CCredential*							_pccCredential;
+	std::shared_ptr<Configuration>			_config;
+
+	BOOL IsCurrentSessionRemoteable();
 };
 
 #endif
