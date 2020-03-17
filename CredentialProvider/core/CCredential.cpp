@@ -592,6 +592,7 @@ HRESULT CCredential::GetSerialization(
 				{
 					showErrorMessage(_privacyIDEA.getLastErrorMessage(), _privacyIDEA.getLastErrorCode());
 				}
+				_util.ResetScenario(this, _config->provider.pCredProvCredentialEvents);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
