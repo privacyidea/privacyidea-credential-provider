@@ -79,7 +79,7 @@ nlohmann::json Endpoint::tryParseJSON(const std::string& in)
 		j = json::parse(in);
 		return j;
 	}
-	catch (const json::parse_error & e)
+	catch (const json::parse_error& e)
 	{
 		DebugPrint(e.what());
 		return nullptr;
@@ -124,16 +124,22 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 
 	// Use WinHttpOpen to obtain a session handle.
 	hSession = WinHttpOpen(L"privacyidea-cp",
-		WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+		WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
-
-	// Set timeouts in ms
-	WinHttpSetTimeouts(hSession, 2000, 2000, 2000, 10000);
 
 	// Specify an HTTP server.
 	if (hSession)
 	{
+		int hSessionTimeout = 10000;
+		// Set timeouts in ms
+		if (WinHttpSetTimeouts(hSession, hSessionTimeout, hSessionTimeout, hSessionTimeout, hSessionTimeout)) {
+			DebugPrint("Setting timeout on hSession: " +  to_string(hSessionTimeout));
+		}
+		else {
+			DebugPrint("Cant set timeout on hSession: " + to_string(GetLastError()));
+		}
+
 		int port = (_customPort != 0) ? _customPort : INTERNET_DEFAULT_HTTPS_PORT;
 		hConnect = WinHttpConnect(hSession, wHostname.c_str(), port, 0);
 	}
@@ -142,6 +148,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 		ReleaseDebugPrint("WinHttpOpen failure: " + to_string(GetLastError()));
 		return "";//ENDPOINT_ERROR_SETUP_ERROR;
 	}
+
 	// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 	if (hConnect)
 	{
@@ -152,8 +159,21 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	}
 	else
 	{
-		ReleaseDebugPrint("WinHttpOpenRequest failure: " + to_string(GetLastError()));
+		ReleaseDebugPrint("WinHttpConnect failure: " + to_string(GetLastError()));
 		return "";
+	}
+
+	if (!hRequest) {
+		DebugPrint("WinHttpOpenRequest failure: " + to_string(GetLastError()));
+	}
+
+	// Set timeouts in ms
+	int hRequestTimeout = 4000;
+	if (WinHttpSetTimeouts(hRequest, hRequestTimeout, hRequestTimeout, hRequestTimeout, hRequestTimeout)) {
+		DebugPrint("Setting timeout on hRequest: " + to_string(hRequestTimeout));
+	}
+	else {
+		DebugPrint("Cant set timeout on hRequest: " + to_string(GetLastError()));
 	}
 
 	// Set Option Security Flags to start TLS
