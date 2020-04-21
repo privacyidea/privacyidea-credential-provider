@@ -79,7 +79,7 @@ nlohmann::json Endpoint::tryParseJSON(const std::string& in)
 		j = json::parse(in);
 		return j;
 	}
-	catch (const json::parse_error & e)
+	catch (const json::parse_error& e)
 	{
 		DebugPrint(e.what());
 		return nullptr;
@@ -107,12 +107,16 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
 #ifdef _DEBUG
-	DebugPrint(L"Sending to: " + wHostname + fullPath);
-	if (_logPasswords)
+	if (endpoint != PI_ENDPOINT_POLL_TX)
 	{
-		DebugPrint("data: " + SecureString(data));
+		DebugPrint(L"Sending to: " + wHostname + fullPath);
+		if (_logPasswords)
+		{
+			DebugPrint("data: " + SecureString(data));
+		}
+		// !!! this can log the windows password in cleartext !!!
 	}
-	// !!! this can log the windows password in cleartext !!!
+
 #endif
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
@@ -124,12 +128,12 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 
 	// Use WinHttpOpen to obtain a session handle.
 	hSession = WinHttpOpen(L"privacyidea-cp",
-		WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+		WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
 
 	// Set timeouts in ms
-	WinHttpSetTimeouts(hSession, 2000, 2000, 2000, 10000);
+	//WinHttpSetTimeouts(hSession, 2000, 2000, 2000, 10000);
 
 	// Specify an HTTP server.
 	if (hSession)
@@ -209,7 +213,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	{
 		ReleaseDebugPrint("WinHttpSendRequest failure: " + to_string(GetLastError()));
 		_lastErrorCode = GetLastError();
-		_lastErrorMessage = "Server unreachable.";
+		_lastErrorMessage = "Server unreachable!";
 		return ""; //ENDPOINT_ERROR_CONNECT_ERROR;
 	}
 
@@ -248,7 +252,9 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 					response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 				}
 				else
+				{
 					response = response + string(pszOutBuffer);
+				}
 				// Free the memory allocated to the buffer.
 				delete[] pszOutBuffer;
 			}
@@ -270,10 +276,24 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 #ifdef _DEBUG
 	if (std::find(_excludedEndpoints.begin(), _excludedEndpoints.end(), endpoint) == _excludedEndpoints.end())
 	{
-		auto j = nlohmann::json::parse(response);
-		DebugPrint(j.dump(4));
+		if (!response.empty()) {
+			try {
+				auto j = nlohmann::json::parse(response);
+				DebugPrint(j.dump(4));
+			}
+			catch (json::exception& e) {
+				DebugPrint("JSON parse exception: " + string(e.what()) + ", response was: " + response);
+			}
+		}
+		else
+			DebugPrint("Response was empty.");
 	}
 #endif
+
+	if (response.empty())
+	{
+		_lastErrorMessage = "Server unreachable!";
+	}
 
 	return response;
 }

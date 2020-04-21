@@ -243,6 +243,9 @@ bool PrivacyIDEA::isOfflineDataAvailable(const std::wstring& username)
 	return _offlineHandler.isDataVailable(ws2s(username)) == S_OK;
 }
 
+// TODO this is not that great to pass to endpoint error code, error arising in validate check are not considered
+// TODO merge error handling from endpoint::connect in privacyidea::validatecheck
+// This is queried from the Credential in case of PI_AUTH_ERROR
 HRESULT PrivacyIDEA::getLastErrorCode()
 {
 	return _endpoint.getLastErrorCode();
@@ -252,7 +255,7 @@ std::wstring PrivacyIDEA::getLastErrorMessage()
 {
 	return s2ws(_endpoint.getLastErrorMessage());
 }
-
+// END TODO
 Challenge PrivacyIDEA::getCurrentChallenge()
 {
 	return _currentChallenge;

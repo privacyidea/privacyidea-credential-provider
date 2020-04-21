@@ -591,6 +591,7 @@ HRESULT CCredential::GetSerialization(
 				else if (_piStatus == PI_AUTH_ERROR)
 				{
 					showErrorMessage(_privacyIDEA.getLastErrorMessage(), _privacyIDEA.getLastErrorCode());
+					// 
 				}
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
