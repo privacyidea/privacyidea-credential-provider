@@ -95,7 +95,7 @@ HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string&
 						break;
 					}
 				}
-				catch (const std::out_of_range & e)
+				catch (const std::out_of_range& e)
 				{
 					UNREFERENCED_PARAMETER(e);
 					// TODO handle missing offline otps -> ignore
@@ -157,6 +157,7 @@ HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std
 // Check an authentication reponse from privacyIDEA if it contains the inital data for offline
 HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 {
+	DebugPrint(__FUNCTION__);
 	auto j = Endpoint::tryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
@@ -175,15 +176,39 @@ HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 
 	for (const auto& item : jOffline)
 	{
-		OfflineData d(item.dump());
-		d.serial = serial;
-		dataSets.push_back(d);
+		// Build the object
+		OfflineData toAdd(item.dump());
+		toAdd.serial = serial;
+
+		// Check if the user already has data first, then add
+		bool done = false;
+		for (auto& existing : dataSets)
+		{
+			if (existing.user == toAdd.user || existing.username == toAdd.username)
+			{
+				//DebugPrint("found exsisting user data.");
+				existing.refilltoken = toAdd.refilltoken;
+				
+				for (const auto& newOTP : toAdd.offlineOTPs)
+				{
+					existing.offlineOTPs.try_emplace(newOTP.first, newOTP.second);
+				}
+				done = true;
+			}
+		}
+
+		if (!done)
+		{
+			dataSets.push_back(toAdd);
+			//DebugPrint("did not find exsisting user data, adding new");
+		}
 	}
 	return S_OK;
 }
 
 HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::string& username)
 {
+	DebugPrint(__FUNCTION__);
 	auto jIn = Endpoint::tryParseJSON(in);
 	if (jIn == nullptr) return PI_JSON_PARSE_ERROR;
 	// Set the new refill token
@@ -192,7 +217,7 @@ HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::st
 	{
 		offline = jIn["auth_items"]["offline"].at(0);
 	}
-	catch (const std::exception & e)
+	catch (const std::exception& e)
 	{
 		DebugPrint(e.what());
 		return PI_JSON_FORMAT_ERROR;
@@ -299,7 +324,7 @@ HRESULT OfflineHandler::loadFromFile()
 			}
 		}
 	}
-	catch (const json::parse_error & e)
+	catch (const json::parse_error& e)
 	{
 		DebugPrint(e.what());
 		return PI_JSON_PARSE_ERROR;
@@ -365,7 +390,7 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 	{
 		iterations = stoi(getNextValue(storedValue));
 	}
-	catch (const invalid_argument & e)
+	catch (const invalid_argument& e)
 	{
 		DebugPrint(e.what());
 	}

@@ -137,10 +137,14 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	}
 	else if (res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 	{
+		DebugPrint("No offline OTPs left for the user.");
 		// Also refill and continue?
+		// TODO does not work because 
+		/*
 		res = tryOfflineRefill(strUsername, sws2ss(otp));
 		if (res != S_OK)
 			DebugPrint("Offline refill failed: " + to_string(res));
+			*/
 	}
 
 	// Connect with the privacyIDEA Server
