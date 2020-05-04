@@ -27,3 +27,4 @@ The Solution is built using the platform tools v142 (VS 2019)
 Dependencies
 ============
 This project requires *json.hpp* from https://github.com/nlohmann/json, put it in ``CppClientCore/nlohmann/json.hpp``.
+To build the installer, the VC142 merge modules are required to be in ``lib/merge``.
