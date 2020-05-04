@@ -7,13 +7,11 @@ CppClientCore/CppClientCore/Release/
 CppClientCore/CppClientCore/x64/
 CredentialProvider/bin/
 CredentialProvider/obj/
-CredentialProviderFilter/RCb08984
-CredentialProviderFilter/
+CredentialProviderFilter/*
 x64/
 WiXSetup/obj/
 Tests/Tests.vcxproj.user
-nlohmann/json.hpp
-lib/
 CppClientCore/nlohmann/json.hpp
 *.user
 *.wixpdb
+*.msm
