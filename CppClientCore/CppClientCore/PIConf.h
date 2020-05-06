@@ -32,4 +32,10 @@ struct PICONFIG
 	bool logPasswords = false;
 	std::wstring offlineFilePath = L"C:\\offlineFile.json";
 	int offlineTryWindow = 10;
+
+	// optionals
+	int resolveTimeoutMS = 0;
+	int connectTimeoutMS = 0;
+	int sendTimeoutMS = 0;
+	int receiveTimeoutMS = 0;
 };

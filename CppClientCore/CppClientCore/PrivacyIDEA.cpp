@@ -2,6 +2,7 @@
 #include "Challenge.h"
 #include <codecvt>
 #include <thread>
+#include <sstream>
 
 using namespace std;
 
@@ -24,7 +25,7 @@ HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 	{
 		realm = _realmMap.at(toUpperCase(domain));
 	}
-	catch (const std::out_of_range & e)
+	catch (const std::out_of_range& e)
 	{
 		UNREFERENCED_PARAMETER(e);
 		// no mapping - if default domain exists use that
@@ -69,7 +70,7 @@ void PrivacyIDEA::pollThread(const std::string& transaction_id, const std::strin
 			HRESULT result = _endpoint.finalizePolling(username, transaction_id);
 			callback((result == PI_AUTH_SUCCESS));
 		}
-		catch (const std::out_of_range & e)
+		catch (const std::out_of_range& e)
 		{
 			UNREFERENCED_PARAMETER(e);
 			DebugPrint("Could not get transaction id to finialize");
@@ -108,46 +109,41 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	const SecureWString& otp, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
-	HRESULT res = E_FAIL, ret = PI_AUTH_FAILURE;
+	HRESULT piStatus = E_FAIL;
+	HRESULT ret = PI_AUTH_FAILURE;
+	HRESULT offlineStatus = E_FAIL;
 
 	string strUsername = ws2s(username);
 
 	// Check if offline otp available first
-	res = _offlineHandler.isDataVailable(strUsername);
-	if (res == S_OK)
+	if (_offlineHandler.isDataVailable(strUsername) == S_OK)
 	{
 		DebugPrint("Offline data available");
-		res = _offlineHandler.verifyOfflineOTP(otp, strUsername);
-		if (res == S_OK)
+		offlineStatus = _offlineHandler.verifyOfflineOTP(otp, strUsername);
+		if (offlineStatus == S_OK)
 		{
 			// try refill then return
 			DebugPrint("Offline authentication successful");
-			res = tryOfflineRefill(strUsername, sws2ss(otp));
-			if (res != S_OK)
+			offlineStatus = tryOfflineRefill(strUsername, sws2ss(otp));
+			if (offlineStatus != S_OK)
 			{
-				DebugPrint("Offline refill failed: " + to_string(res));
+				ReleaseDebugPrint("Offline refill failed: " + longToHexString(offlineStatus));
 			}
 			return PI_AUTH_SUCCESS;	// Still return SUCCESS because offline authentication was successful
 		}
 		else
 		{
 			// Continue with other steps
-			DebugPrint("Offline authenticiation failed");
+			offlineStatus = PI_OFFLINE_WRONG_OTP;
+			ReleaseDebugPrint("Offline data was available, but authenticiation failed");
 		}
 	}
-	else if (res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
+	else if (offlineStatus == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 	{
 		DebugPrint("No offline OTPs left for the user.");
-		// Also refill and continue?
-		// TODO does not work because 
-		/*
-		res = tryOfflineRefill(strUsername, sws2ss(otp));
-		if (res != S_OK)
-			DebugPrint("Offline refill failed: " + to_string(res));
-			*/
 	}
 
-	// Connect with the privacyIDEA Server
+	// Connect to the privacyIDEA Server
 	SecureString data = _endpoint.encodePair("user", ws2s(username)) + "&" + _endpoint.encodePair("pass", otp);
 
 	if (!transaction_id.empty())
@@ -157,20 +153,32 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 
 	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
 
+	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
 	{
-		DebugPrint("Received empty response from server.");
+		HRESULT epCode = _endpoint.getLastErrorCode();
+		DebugPrint("Response was empty. Endpoint error: " + longToHexString(epCode));
+		// If offline was available, give the hint that the entered OTP might be wrong
+		if (offlineStatus == PI_OFFLINE_WRONG_OTP && epCode == PI_ENDPOINT_SERVER_UNAVAILABLE)
+			return PI_WRONG_OFFLINE_SERVER_UNAVAILABLE;
 
+		// otherwise return PI_ENDPOINT_SERVER_UNAVAILABLE or PI_ENDPOINT_SETUP_ERROR
+		return epCode;
+	}
+
+	// Check if the response contains an error, message and code will be set
+	if (_endpoint.parseForError(response, _lastErrorMessage, _lastError) == PI_JSON_ERROR_CONTAINED)
+	{
 		return PI_AUTH_ERROR;
 	}
 
 	// Check for initial offline OTP data
-	res = _offlineHandler.parseForOfflineData(response);
-	if (res == S_OK) // Data was found
+	piStatus = _offlineHandler.parseForOfflineData(response);
+	if (piStatus == S_OK) // Data was found
 	{
 		// Continue
 	}
-	else if (res == PI_OFFLINE_NO_OFFLINE_DATA)
+	else if (piStatus == PI_OFFLINE_NO_OFFLINE_DATA)
 	{
 		// Continue
 	}
@@ -180,8 +188,8 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	}
 	// Check for triggered challenge response transactions
 	Challenge c;
-	res = _endpoint.parseTriggerRequest(response, c);
-	if (res == PI_TRIGGERED_CHALLENGE)
+	piStatus = _endpoint.parseTriggerRequest(response, c);
+	if (piStatus == PI_TRIGGERED_CHALLENGE)
 	{
 		// Check the challenge data 
 		if (c.serial.empty() || c.transaction_id.empty() || c.tta == TTA::NOT_SET)
@@ -197,8 +205,8 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	} // else if (res == PI_NO_CHALLENGE) {}
 
 	// Check for normal success
-	res = _endpoint.parseAuthenticationRequest(response);
-	if (res == PI_AUTH_SUCCESS)
+	piStatus = _endpoint.parseAuthenticationRequest(response);
+	if (piStatus == PI_AUTH_SUCCESS)
 	{
 		ret = PI_AUTH_SUCCESS;
 	}
@@ -207,10 +215,10 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 		// If a challenge was triggered, parsing for authentication fails, so check here if a challenge was triggered
 		if (ret != PI_TRIGGERED_CHALLENGE)
 		{
-			if (res == PI_JSON_ERROR_CONTAINED)
+			if (piStatus == PI_JSON_ERROR_CONTAINED)
 				ret = PI_AUTH_ERROR;
 
-			else if (res == PI_AUTH_FAILURE)
+			else if (piStatus == PI_AUTH_FAILURE)
 				ret = PI_AUTH_FAILURE;
 		}
 	}
@@ -247,19 +255,6 @@ bool PrivacyIDEA::isOfflineDataAvailable(const std::wstring& username)
 	return _offlineHandler.isDataVailable(ws2s(username)) == S_OK;
 }
 
-// TODO this is not that great to pass to endpoint error code, error arising in validate check are not considered
-// TODO merge error handling from endpoint::connect in privacyidea::validatecheck
-// This is queried from the Credential in case of PI_AUTH_ERROR
-HRESULT PrivacyIDEA::getLastErrorCode()
-{
-	return _endpoint.getLastErrorCode();
-}
-
-std::wstring PrivacyIDEA::getLastErrorMessage()
-{
-	return s2ws(_endpoint.getLastErrorMessage());
-}
-// END TODO
 Challenge PrivacyIDEA::getCurrentChallenge()
 {
 	return _currentChallenge;
@@ -325,4 +320,21 @@ std::wstring PrivacyIDEA::toUpperCase(std::wstring s)
 {
 	std::transform(s.begin(), s.end(), s.begin(), ::toupper);
 	return s;
+}
+
+std::string PrivacyIDEA::longToHexString(long in)
+{
+	std::stringstream ss;
+	ss << "0x" << std::hex << in;
+	return std::string(ss.str());
+}
+
+int PrivacyIDEA::getLastError()
+{
+	return _lastError;
+}
+
+std::wstring PrivacyIDEA::getLastErrorMessage()
+{
+	return s2ws(_lastErrorMessage);
 }
