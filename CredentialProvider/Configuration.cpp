@@ -67,6 +67,11 @@ Configuration::Configuration()
 	piconfig.offlineFilePath = rr.getRegistry(L"offline_file");
 	piconfig.offlineTryWindow = rr.getIntRegistry(L"offline_try_window");
 
+	piconfig.resolveTimeoutMS = rr.getIntRegistry(L"resolve_timeout");
+	piconfig.connectTimeoutMS = rr.getIntRegistry(L"connect_timeout");
+	piconfig.sendTimeoutMS = rr.getIntRegistry(L"send_timeout");
+	piconfig.receiveTimeoutMS = rr.getIntRegistry(L"receive_timeout");
+
 	// Realm Mapping
 	piconfig.defaultRealm = rr.getRegistry(L"default_realm");
 
@@ -121,7 +126,15 @@ void Configuration::printConfiguration()
 	DebugPrint(tmp.c_str());
 	tmp = L"Path: " + piconfig.path;
 	DebugPrint(tmp.c_str());
-	tmp = L"Custom port:" + to_wstring(piconfig.customPort);
+	tmp = L"Custom port: " + to_wstring(piconfig.customPort);
+	DebugPrint(tmp.c_str());
+	tmp = L"Resolve timeout: " + to_wstring(piconfig.resolveTimeoutMS);
+	DebugPrint(tmp.c_str());
+	tmp = L"Connect timeout: " + to_wstring(piconfig.connectTimeoutMS);
+	DebugPrint(tmp.c_str());
+	tmp = L"Send timeout: " + to_wstring(piconfig.sendTimeoutMS);
+	DebugPrint(tmp.c_str());
+	tmp = L"Receive timeout: " + to_wstring(piconfig.receiveTimeoutMS);
 	DebugPrint(tmp.c_str());
 	tmp = L"Login text: " + loginText;
 	DebugPrint(tmp.c_str());

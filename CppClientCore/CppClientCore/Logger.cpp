@@ -27,7 +27,7 @@
 
 using namespace std;
 
-void Logger::logS(const string &message, const char* file, int line, bool logInProduction)
+void Logger::logS(const string& message, const char* file, int line, bool logInProduction)
 {
 #ifdef _DEBUG
 	UNREFERENCED_PARAMETER(logInProduction);

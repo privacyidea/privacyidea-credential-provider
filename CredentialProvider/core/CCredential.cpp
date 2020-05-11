@@ -583,16 +583,35 @@ HRESULT CCredential::GetSerialization(
 			}
 			else
 			{
-				// Failed authentication or error
+				// Failed authentication or error section
+				// Create a message depending on the error
+				int errorCode = 0;
+				wstring errorMessage;
+				bool isGerman = GetUserDefaultUILanguage() == 1031;
 				if (_piStatus == PI_AUTH_FAILURE)
 				{
-					showErrorMessage(_config->defaultOTPFailureText, 0);
+					errorMessage = _config->defaultOTPFailureText;
 				}
+				// In this case the error is contained in a valid response from PI
 				else if (_piStatus == PI_AUTH_ERROR)
 				{
-					showErrorMessage(_privacyIDEA.getLastErrorMessage(), _privacyIDEA.getLastErrorCode());
-					// 
+					errorMessage = _privacyIDEA.getLastErrorMessage();
+					errorCode = _privacyIDEA.getLastError();
 				}
+				else if (_piStatus == PI_WRONG_OFFLINE_SERVER_UNAVAILABLE)
+				{
+					errorMessage = isGerman ? L"Server nicht erreichbar oder falsches offline OTP!" :
+						L"Server unreachable or wrong offline OTP!";
+				}
+				else if (_piStatus == PI_ENDPOINT_SERVER_UNAVAILABLE)
+				{
+					errorMessage = isGerman ? L"Server nicht erreichbar!" : L"Server unreachable!";
+				}
+				else if (_piStatus == PI_ENDPOINT_SETUP_ERROR)
+				{
+					errorMessage = isGerman ? L"Fehler beim Verbindungsaufbau!" : L"Error while setting up the connection!";
+				}
+				showErrorMessage(errorMessage, errorCode);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}

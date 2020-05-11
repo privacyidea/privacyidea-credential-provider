@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Challenge.h"
+#include "PIConf.h"
 #include <string>
 #include <map>
 #include <Windows.h>
@@ -33,9 +34,7 @@ enum class RequestMethod {
 class Endpoint
 {
 public:
-	Endpoint(std::wstring& hostname, std::wstring& path, int customPort, bool ignoreInvalidCN, bool ignoreUnknownCA, bool logPasswords) :
-		_hostname(std::move(hostname)), _path(std::move(path)), _customPort(customPort), _ignoreInvalidCN(ignoreInvalidCN),
-		_ignoreUnknownCA(ignoreUnknownCA), _logPasswords(logPasswords) {};
+	Endpoint(PICONFIG conf);
 
 	std::string connect(const std::string& endpoint, SecureString sdata, const RequestMethod& method);
 
@@ -59,12 +58,11 @@ public:
 	HRESULT parseTriggerRequest(const std::string& in, Challenge& c);
 
 	// Check the response for error code and message
-	// returns PI_JSON_ERROR_CONTAINED if there was an error or S_OK if not
-	HRESULT parseForError(const std::string& in);
+	// returns PI_JSON_ERROR_CONTAINED if there was an error and the message and code in the provided parameters
+	// or PI_JSON_PARSE_ERROR or S_OK if there was no error
+	HRESULT parseForError(const std::string& in, std::string& errMsg, int& errCode);
 
-	const int& getLastErrorCode();
-
-	const std::string& getLastErrorMessage();
+	const HRESULT& getLastErrorCode();
 
 	static nlohmann::json tryParseJSON(const std::string& in);
 
@@ -84,7 +82,12 @@ private:
 
 	bool _logPasswords = false;
 
-	std::string _lastErrorMessage = "";
-	int _lastErrorCode = 0;
+	HRESULT _lastErrorCode = 0;
+
+	// These are the default values for WinHttpSetTimeouts
+	int _resolveTimeout = 0; // = infinite
+	int _connectTimeout = 60;
+	int _sendTimeout = 30;
+	int _receiveTimeout = 30;
 };
 

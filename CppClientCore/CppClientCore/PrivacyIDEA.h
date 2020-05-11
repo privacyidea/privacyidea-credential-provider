@@ -37,12 +37,11 @@
 class PrivacyIDEA
 {
 public:
-	PrivacyIDEA(PICONFIG conf)
-		:
+	PrivacyIDEA(PICONFIG conf) :
 		_realmMap(conf.realmMap),
 		_defaultRealm(conf.defaultRealm),
 		_logPasswords(conf.logPasswords),
-		_endpoint(conf.hostname, conf.path, conf.customPort, conf.ignoreInvalidCN, conf.ignoreUnknownCA, conf.logPasswords),
+		_endpoint(conf),
 		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
 	{};
 
@@ -51,10 +50,8 @@ public:
 	// Tries to verify with offline otp first. If there is none,
 	// sends the parameters to privacyIDEA and checks the response for
 	// 1. Offline otp data, 2. Triggered challenges, 3. Authentication success
-	// <returns> PI_AUTH_SUCCESS, PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_ERROR </returns>
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp, const std::string& transaction_id);
-
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp);
+	// <returns> PI_AUTH_SUCCESS, PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_ERROR, PI_ENDPOINT_SETUP_ERROR, PI_WRONG_OFFLINE_SERVER_UNAVAILABLE </returns>
+	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp, const std::string& transaction_id = std::string());
 
 	bool stopPoll();
 
@@ -69,10 +66,6 @@ public:
 
 	bool isOfflineDataAvailable(const std::wstring& username);
 
-	HRESULT getLastErrorCode();
-
-	std::wstring getLastErrorMessage();
-
 	Challenge getCurrentChallenge();
 
 	static std::wstring s2ws(const std::string& s);
@@ -84,6 +77,12 @@ public:
 	static SecureWString ss2sws(const SecureString& ss);
 
 	static std::wstring toUpperCase(std::wstring s);
+
+	static std::string longToHexString(long in);
+
+	int getLastError();
+
+	std::wstring getLastErrorMessage();
 
 private:
 	HRESULT appendRealm(std::wstring domain, SecureString& data);
@@ -103,5 +102,8 @@ private:
 	HRESULT tryOfflineRefill(std::string username, SecureString lastOTP);
 
 	std::atomic<bool> _runPoll = false;
+
+	int _lastError;
+	std::string _lastErrorMessage;
 };
 
