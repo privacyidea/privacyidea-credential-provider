@@ -51,9 +51,7 @@ public:
 	// sends the parameters to privacyIDEA and checks the response for
 	// 1. Offline otp data, 2. Triggered challenges, 3. Authentication success
 	// <returns> PI_AUTH_SUCCESS, PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_ERROR, PI_ENDPOINT_SETUP_ERROR, PI_WRONG_OFFLINE_SERVER_UNAVAILABLE </returns>
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp, const std::string& transaction_id);
-
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp);
+	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp, const std::string& transaction_id = std::string());
 
 	bool stopPoll();
 

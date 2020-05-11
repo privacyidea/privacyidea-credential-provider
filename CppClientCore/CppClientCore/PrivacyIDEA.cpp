@@ -226,11 +226,6 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	return ret;
 }
 
-HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp)
-{
-	return validateCheck(username, domain, otp, string());
-}
-
 bool PrivacyIDEA::stopPoll()
 {
 	DebugPrint("Stopping poll thread...");
