@@ -38,4 +38,5 @@ struct PICONFIG
 	int connectTimeoutMS = 0;
 	int sendTimeoutMS = 0;
 	int receiveTimeoutMS = 0;
+	std::wstring excludedAccount = L""; // domain\username or just username
 };

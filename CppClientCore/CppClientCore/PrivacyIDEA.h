@@ -42,7 +42,8 @@ public:
 		_defaultRealm(conf.defaultRealm),
 		_logPasswords(conf.logPasswords),
 		_endpoint(conf),
-		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
+		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow),
+		_excludedAccount(conf.excludedAccount)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA);
@@ -89,7 +90,13 @@ private:
 
 	void pollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback);
 
+	HRESULT tryOfflineRefill(std::string username, SecureString lastOTP);
+
 	std::map<std::wstring, std::wstring> _realmMap;
+
+	std::wstring _defaultRealm = L"";
+
+	std::wstring _excludedAccount = L"";
 
 	Endpoint _endpoint;
 	OfflineHandler _offlineHandler;
@@ -97,13 +104,10 @@ private:
 	Challenge _currentChallenge;
 
 	bool _logPasswords = false;
-	std::wstring _defaultRealm = L"";
-
-	HRESULT tryOfflineRefill(std::string username, SecureString lastOTP);
 
 	std::atomic<bool> _runPoll = false;
 
-	int _lastError;
+	int _lastError = 0;
 	std::string _lastErrorMessage;
 };
 
