@@ -43,7 +43,8 @@ public:
 		_logPasswords(conf.logPasswords),
 		_endpoint(conf),
 		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow),
-		_excludedAccount(conf.excludedAccount)
+		_excludedAccount(conf.excludedAccount),
+		_lastError(0)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA);
