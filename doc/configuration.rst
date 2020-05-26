@@ -51,6 +51,11 @@ This entry is not there by default. You can add it to declare a custom port. The
 
 NOTE: By default the port is the default https port, which is 443.
 
+**resolve_timeout, connect_timeout, send_timeout, receive_timeout**
+
+With these entries you can specify the timeout (in ms) for the corresponding phase. This might be interesting if the offline feature
+is used. The default timeouts are infinite / 60s / 30s / 30s.
+
 Login behaviour
 ~~~~~~~~~~~~~~~
 
