@@ -612,6 +612,7 @@ HRESULT CCredential::GetSerialization(
 					errorMessage = isGerman ? L"Fehler beim Verbindungsaufbau!" : L"Error while setting up the connection!";
 				}
 				showErrorMessage(errorMessage, errorCode);
+				_util.ResetScenario(this, _pCredProvCredentialEvents);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
