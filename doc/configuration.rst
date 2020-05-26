@@ -18,6 +18,9 @@ The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
 
 
+NOTE: Not all registry entries listed below will be generated from installing the credential provider. 
+Those have to be added manually.
+
 Connection Settings
 ~~~~~~~~~~~~~~~~~~~
 
@@ -76,6 +79,11 @@ Set to ``1`` if the privacyIDEA Credential Provider should send an empty passwor
 
 NOTE: If both **two_step_send_password** and **two_step_send_empty_password** are set to ``1``, the privacyIDEA Credential Provider will send an empty password to the privacyIDEA Authentication Service.
 NOTE: Sending the windows or an empty password can be used to trigger token types like SMS or Email.
+
+**excluded_account**
+
+Specify an account that should be excluded from 2FA. The format is required to be domain\username or computername\username.
+
 
 Recommended setup for remote desktop scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

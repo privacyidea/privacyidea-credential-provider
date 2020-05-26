@@ -72,6 +72,9 @@ Configuration::Configuration()
 	piconfig.sendTimeoutMS = rr.getIntRegistry(L"send_timeout");
 	piconfig.receiveTimeoutMS = rr.getIntRegistry(L"receive_timeout");
 
+	// format domain\username or computername\username
+	piconfig.excludedAccount = rr.getRegistry(L"excluded_account");
+
 	// Realm Mapping
 	piconfig.defaultRealm = rr.getRegistry(L"default_realm");
 
