@@ -43,7 +43,6 @@ public:
 		_logPasswords(conf.logPasswords),
 		_endpoint(conf),
 		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow),
-		_excludedAccount(conf.excludedAccount),
 		_lastError(0)
 	{};
 
@@ -96,8 +95,6 @@ private:
 	std::map<std::wstring, std::wstring> _realmMap;
 
 	std::wstring _defaultRealm = L"";
-
-	std::wstring _excludedAccount = L"";
 
 	Endpoint _endpoint;
 	OfflineHandler _offlineHandler;

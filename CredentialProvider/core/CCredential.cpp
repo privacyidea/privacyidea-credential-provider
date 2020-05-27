@@ -711,6 +711,23 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.readFieldValues();
 
+
+	// Check if the user is the excluded account
+	if (!_config->excludedAccount.empty())
+	{
+		wstring toCompare;
+		if (!_config->credential.domain.empty()) {
+			toCompare.append(_config->credential.domain).append(L"\\");
+		}
+		toCompare.append(_config->credential.username);
+		if (PrivacyIDEA::toUpperCase(toCompare) == PrivacyIDEA::toUpperCase(_config->excludedAccount)) {
+			DebugPrint("Login data matches excluded account, skipping 2FA...");
+			// Simulate 2FA success so the logic in GetSerialization can stay the same
+			_piStatus = PI_AUTH_SUCCESS;
+			return S_OK;
+		}
+	}
+
 	if (_config->bypassPrivacyIDEA)
 	{
 		DebugPrint("Bypassing privacyIDEA...");

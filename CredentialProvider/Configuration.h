@@ -72,6 +72,8 @@ public:
 	std::wstring registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
 	std::wstring registryRealmPath = registryPath + L"realm-mapping";
 
+	std::wstring excludedAccount = L"";
+
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
