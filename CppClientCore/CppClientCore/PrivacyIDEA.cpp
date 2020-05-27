@@ -14,7 +14,6 @@ PrivacyIDEA& PrivacyIDEA::operator=(const PrivacyIDEA& privacyIDEA)
 	this->_logPasswords = privacyIDEA._logPasswords;
 	this->_offlineHandler = privacyIDEA._offlineHandler;
 	this->_realmMap = privacyIDEA._realmMap;
-	this->_excludedAccount = privacyIDEA._excludedAccount;
 	return *this;
 }
 
@@ -115,17 +114,6 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	HRESULT offlineStatus = E_FAIL;
 
 	string strUsername = ws2s(username);
-
-	// Check if the user is the excluded account
-	wstring toCompare;
-	if (!domain.empty()) {
-		toCompare.append(domain).append(L"\\");
-	}
-	toCompare.append(username);
-	if (toUpperCase(toCompare) == toUpperCase(_excludedAccount)) {
-		DebugPrint("Login data matches excluded account, skipping 2FA...");
-		return PI_AUTH_SUCCESS;
-	}
 
 	// Check if offline otp available
 	if (_offlineHandler.isDataVailable(strUsername) == S_OK)

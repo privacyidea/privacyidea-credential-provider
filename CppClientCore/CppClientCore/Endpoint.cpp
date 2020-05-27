@@ -409,11 +409,7 @@ HRESULT Endpoint::parseForError(const std::string& in, std::string& errMsg, int&
 			return PI_JSON_ERROR_CONTAINED;
 		}
 	}
-	else
-	{
-		ReleaseDebugPrint("Received unknown reponse from server:" + in);
-	}
-	return E_INVALIDARG;
+	return E_FAIL;
 }
 
 const HRESULT& Endpoint::getLastErrorCode()
