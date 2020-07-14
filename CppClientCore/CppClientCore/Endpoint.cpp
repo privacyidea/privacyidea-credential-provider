@@ -137,9 +137,22 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 		hConnect = nullptr,
 		hRequest = nullptr;
 
+	// Check the windows version to decide which access type flag to set
+	DWORD dwAccessType = WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY;
+	OSVERSIONINFOEX info;
+	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
+	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	GetVersionEx((LPOSVERSIONINFO)&info);
+
+	if (info.dwMajorVersion == 6 && info.dwMinorVersion <= 2)
+	{
+		dwAccessType = WINHTTP_ACCESS_TYPE_DEFAULT_PROXY;
+		DebugPrint("Setting access type to WINHTTP_ACCESS_TYPE_DEFAULT_PROXY");
+	}
+
 	// Use WinHttpOpen to obtain a session handle.
 	hSession = WinHttpOpen(L"privacyidea-cp",
-		WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+		dwAccessType,
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
 
