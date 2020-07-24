@@ -1,9 +1,11 @@
 #include "Utilities.h"
 #include "helpers.h"
 #include "SecureString.h"
+#include "RegistryReader.h"
 #include <string>
 #include <Shlwapi.h>
 #include <codecvt>
+#include <tchar.h>
 
 using namespace std;
 
@@ -25,7 +27,7 @@ const std::wstring Utilities::texts[10][2] = {
 		{L"Please enter your second factor!", L"Bitte geben Sie ihren zweiten Faktor ein!"}
 };
 
-std::wstring Utilities::getTranslatedText(int id)
+std::wstring Utilities::GetTranslatedText(int id)
 {
 	const int inGerman = GetUserDefaultUILanguage() == 1031; // 1031 is german
 	return texts[id][inGerman];
@@ -402,7 +404,7 @@ HRESULT Utilities::SetScenario(
 	// Domain in FID_SUBTEXT, optional
 	if (_config->showDomainHint)
 	{
-		wstring domaintext = getTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
+		wstring domaintext = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
 		pCPCE->SetFieldString(pCredential, FID_SUBTEXT, domaintext.c_str());
 	}
 	else
@@ -479,7 +481,7 @@ HRESULT Utilities::SetFieldStatePairBatch(
 }
 
 // can be removed, SetScenario does the same
-HRESULT Utilities::initializeField(
+HRESULT Utilities::InitializeField(
 	LPWSTR* rgFieldStrings,
 	DWORD field_index)
 {
@@ -504,7 +506,7 @@ HRESULT Utilities::initializeField(
 	{
 		wstring text = L"";
 		if (_config->showDomainHint)
-			text = getTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;;
+			text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;;
 
 		hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
 
@@ -579,7 +581,7 @@ HRESULT Utilities::initializeField(
 	return hr;
 }
 
-HRESULT Utilities::readFieldValues()
+HRESULT Utilities::ReadFieldValues()
 {
 	DebugPrint(__FUNCTION__);
 	//HRESULT ret = S_OK;
@@ -591,12 +593,12 @@ HRESULT Utilities::readFieldValues()
 	{
 		if (!_config->credential.passwordMustChange)
 		{
-			readUserField();
-			readPasswordField();
-			readOTPField();
+			ReadUserField();
+			ReadPasswordField();
+			ReadOTPField();
 		}
 		else
-			readPasswordChangeFields();
+			ReadPasswordChangeFields();
 		break;
 	}
 
@@ -604,7 +606,7 @@ HRESULT Utilities::readFieldValues()
 	return S_OK;
 }
 
-HRESULT Utilities::readPasswordChangeFields()
+HRESULT Utilities::ReadPasswordChangeFields()
 {
 	_config->credential.password = _config->provider.field_strings[FID_LDAP_PASS];
 	DebugPrint(L"Old pw: " + _config->credential.password);
@@ -615,28 +617,7 @@ HRESULT Utilities::readPasswordChangeFields()
 	return S_OK;
 }
 
-const std::string Utilities::CPUtoString(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu)
-{
-	switch (cpu)
-	{
-	case CPUS_LOGON:
-		return "CPUS_LOGON";
-	case CPUS_UNLOCK_WORKSTATION:
-		return "CPUS_UNLOCK_WORKSTATION";
-	case CPUS_CREDUI:
-		return "CPUS_CREDUI";
-	case CPUS_CHANGE_PASSWORD:
-		return "CPUS_CHANGE_PASSWORD";
-	case CPUS_PLAP:
-		return "CPUS_PLAP";
-	case CPUS_INVALID:
-		return "CPUS_INVALID";
-	default:
-		return ("Unknown CPU: " + to_string(cpu));
-	}
-}
-
-HRESULT Utilities::readUserField()
+HRESULT Utilities::ReadUserField()
 {
 	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
 	{
@@ -683,7 +664,7 @@ HRESULT Utilities::readUserField()
 	return S_OK;
 }
 
-HRESULT Utilities::readPasswordField()
+HRESULT Utilities::ReadPasswordField()
 {
 	SecureWString newPassword(_config->provider.field_strings[FID_LDAP_PASS]);
 
@@ -711,7 +692,7 @@ HRESULT Utilities::readPasswordField()
 	return S_OK;
 }
 
-HRESULT Utilities::readOTPField()
+HRESULT Utilities::ReadOTPField()
 {
 	wstring newOTP(_config->provider.field_strings[FID_OTP]);
 	DebugPrint(L"Loading OTP from GUI, from '" + _config->credential.otp + L"' to '" + newOTP + L"'");

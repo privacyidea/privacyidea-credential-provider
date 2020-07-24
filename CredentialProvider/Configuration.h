@@ -27,6 +27,10 @@
 class Configuration
 {
 public:
+
+	static const std::wstring registryPath;// = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
+	static const std::wstring registryRealmPath;// = registryPath + L"realm-mapping";
+
 	Configuration();
 
 	void printConfiguration();
@@ -68,9 +72,6 @@ public:
 	Challenge challenge;
 	std::wstring defaultOTPFailureText = L"";
 	std::wstring defaultOTPHintText = L"";
-
-	std::wstring registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
-	std::wstring registryRealmPath = registryPath + L"realm-mapping";
 
 	std::wstring excludedAccount = L"";
 

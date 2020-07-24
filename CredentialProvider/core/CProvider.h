@@ -111,7 +111,6 @@ private:
 
 	std::shared_ptr<Configuration>			_config;
 
-	BOOL IsCurrentSessionRemoteable();
 };
 
 #endif

@@ -25,6 +25,8 @@
 #include "Logger.h"
 #include "Configuration.h"
 #include "scenario.h"
+#include "RegistryReader.h"
+#include "../../Shared/Shared.h"
 #include <credentialprovider.h>
 #include <tchar.h>
 
@@ -77,7 +79,7 @@ HRESULT CProvider::SetUsageScenario(
 )
 {
 #ifdef _DEBUG
-	DebugPrint(string(__FUNCTION__) + ": " + Utilities::CPUtoString(cpus));
+	DebugPrint(string(__FUNCTION__) + ": " + Shared::CPUStoString(cpus));
 	_config->printConfiguration();
 #endif
 	HRESULT hr = E_INVALIDARG;
@@ -87,100 +89,36 @@ HRESULT CProvider::SetUsageScenario(
 
 	// Decide which scenarios to support here. Returning E_NOTIMPL simply tells the caller
 	// that we're not designed for that scenario.
+
 	switch (cpus)
 	{
 	case CPUS_LOGON:
 	case CPUS_UNLOCK_WORKSTATION:
-		hr = S_OK;
-		break;
 	case CPUS_CREDUI:
-		// turn off two step in case of CredUI
-		_config->twoStepHideOTP = 0;
-		_config->twoStepSendEmptyPassword = 0;
-		_config->twoStepSendPassword = 0;
 		hr = S_OK;
 		break;
-
 	case CPUS_CHANGE_PASSWORD:
 	case CPUS_PLAP:
 	case CPUS_INVALID:
 		hr = E_NOTIMPL;
 		break;
-
 	default:
-		hr = E_INVALIDARG;
+		return E_INVALIDARG;
+	}
+
+	if (hr == S_OK)
+	{
+		if (!Shared::IsRequiredForScenario(cpus, PROVIDER))
+		{
+			DebugPrint("CP is not enumerated because of the configuration for this scenario.");
+			hr = E_NOTIMPL;
+		}
 	}
 
 	DebugPrint("SetScenario result:");
 	DebugPrint(hr);
 
 	return hr;
-}
-
-#define TERMINAL_SERVER_KEY _T("SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\")
-#define GLASS_SESSION_ID    _T("GlassSessionId")
-
-BOOL CProvider::IsCurrentSessionRemoteable()
-{
-	BOOL fIsRemoteable = FALSE;
-	DebugPrint("check for remote session...");
-	if (GetSystemMetrics(SM_REMOTESESSION))
-	{
-		fIsRemoteable = TRUE;
-	}
-	else
-	{
-		HKEY hRegKey = nullptr;
-		LONG lResult;
-
-		lResult = RegOpenKeyEx(
-			HKEY_LOCAL_MACHINE,
-			TERMINAL_SERVER_KEY,
-			0, // ulOptions
-			KEY_READ,
-			&hRegKey
-		);
-
-		if (lResult == ERROR_SUCCESS)
-		{
-			DWORD dwGlassSessionId = 0;
-			DWORD cbGlassSessionId = sizeof(dwGlassSessionId);
-			DWORD dwType = 0;
-
-			lResult = RegQueryValueEx(
-				hRegKey,
-				GLASS_SESSION_ID,
-				NULL, // lpReserved
-				&dwType,
-				(BYTE*)&dwGlassSessionId,
-				&cbGlassSessionId
-			);
-
-			if (lResult == ERROR_SUCCESS)
-			{
-				DWORD dwCurrentSessionId;
-
-				if (ProcessIdToSessionId(GetCurrentProcessId(), &dwCurrentSessionId))
-				{
-					fIsRemoteable = (dwCurrentSessionId != dwGlassSessionId);
-				}
-			}
-		}
-
-		if (hRegKey)
-		{
-			RegCloseKey(hRegKey);
-		}
-	}
-	if (fIsRemoteable)
-	{
-		DebugPrint("... returning - is remote session!");
-	}
-	else
-	{
-		DebugPrint("... returning - is not remote session!");
-	}
-	return fIsRemoteable;
 }
 
 // SetSerialization takes the kind of buffer that you would normally return to LogonUI for
@@ -348,21 +286,21 @@ HRESULT CProvider::GetFieldDescriptorAt(
 		switch (dwIndex)
 		{
 		case FID_USERNAME:
-			label = Utilities::getTranslatedText(TEXT_USERNAME);
+			label = Utilities::GetTranslatedText(TEXT_USERNAME);
 			break;
 		case FID_LDAP_PASS:
-			label = Utilities::getTranslatedText(TEXT_PASSWORD);
+			label = Utilities::GetTranslatedText(TEXT_PASSWORD);
 			break;
 		case FID_NEW_PASS_1:
-			label = Utilities::getTranslatedText(TEXT_NEW_PASSWORD);
+			label = Utilities::GetTranslatedText(TEXT_NEW_PASSWORD);
 			break;
 		case FID_NEW_PASS_2:
-			label = Utilities::getTranslatedText(TEXT_CONFIRM_PASSWORD);
+			label = Utilities::GetTranslatedText(TEXT_CONFIRM_PASSWORD);
 			break;
 		case FID_OTP:
 			label = _config->otpFieldText;
 			if (label.empty())
-				label = Utilities::getTranslatedText(TEXT_OTP);
+				label = Utilities::GetTranslatedText(TEXT_OTP);
 			break;
 		default: break;
 		}
@@ -413,7 +351,7 @@ HRESULT CProvider::GetCredentialCount(
 	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
 	{
 		*pdwDefault = 0;
-		_config->isRemoteSession = IsCurrentSessionRemoteable();
+		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
 		if (_config->isRemoteSession && !_config->twoStepHideOTP)
 		{
 			*pbAutoLogonWithDefault = FALSE;
