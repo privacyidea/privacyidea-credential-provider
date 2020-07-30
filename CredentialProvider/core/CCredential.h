@@ -49,8 +49,7 @@ public:
 		LONG cRef = --_cRef;
 		if (!cRef)
 		{
-			//delete this;
-			//this->~CCredential();
+			// The Credential is owned by the Provider object
 		}
 		return cRef;
 	}

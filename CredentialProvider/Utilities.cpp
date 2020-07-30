@@ -1,11 +1,7 @@
 #include "Utilities.h"
 #include "helpers.h"
 #include "SecureString.h"
-#include "RegistryReader.h"
-#include <string>
 #include <Shlwapi.h>
-#include <codecvt>
-#include <tchar.h>
 
 using namespace std;
 

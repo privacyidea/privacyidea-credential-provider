@@ -18,9 +18,10 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "Shared.h"
-#include "../CppClientCore/CppClientCore/Logger.h"
-#include "../CppClientCore/CppClientCore/RegistryReader.h"
+#include "Logger.h"
+#include "RegistryReader.h"
 #include <tchar.h>
+
 namespace Shared {
 	bool IsRequiredForScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, int caller)
 	{
