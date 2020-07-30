@@ -26,7 +26,7 @@ namespace Shared {
 	bool IsRequiredForScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, int caller)
 	{
 		DebugPrint(__FUNCTION__);
-		if (caller > FILTER)
+		if (caller != FILTER && caller != PROVIDER)
 		{
 			DebugPrint("Invalid argument for caller: " + std::to_string(caller));
 			return false;

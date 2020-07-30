@@ -26,8 +26,8 @@
 #endif
 #include "CCredentialProviderFilter.h"
 #include "guid.h"
-#include "../CppClientCore/CppClientCore/Logger.h"
-#include "../Shared/Shared.h"
+#include "Logger.h"
+#include "Shared.h"
 #include <unknwn.h>
 
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
@@ -76,10 +76,12 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 
 	for (DWORD i = 0; i < cProviders; i++)
 	{
-		if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON)) {
+		if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON)) 
+		{
 			rgbAllow[i] = TRUE;
 		}
-		else {
+		else 
+		{
 			rgbAllow[i] = FALSE;
 		}
 	}
