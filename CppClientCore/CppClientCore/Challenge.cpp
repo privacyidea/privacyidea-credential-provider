@@ -25,9 +25,9 @@ std::string Challenge::toString()
 			+ ", message=" + PrivacyIDEA::ws2s(message);
 }
 
-std::string Challenge::ttaToString(TTA tta)
+std::string Challenge::ttaToString(TTA in)
 {
-	switch (tta)
+	switch (in)
 	{
 	case TTA::NOT_SET: return "NOT_SET";
 	case TTA::OTP: return "OTP";

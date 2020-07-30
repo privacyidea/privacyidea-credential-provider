@@ -24,73 +24,89 @@
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
 #endif
-#include <unknwn.h>
 #include "CCredentialProviderFilter.h"
 #include "guid.h"
+#include "Logger.h"
+#include "Shared.h"
+#include <unknwn.h>
 
-// Boilerplate code to create our provider.
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
-    HRESULT hr;
+	DebugPrint(__FUNCTION__);
+	HRESULT hr;
 
-    CCredentialProviderFilter* pProvider = new CCredentialProviderFilter();
+	CCredentialProviderFilter* pProvider = new CCredentialProviderFilter();
 
-    if (pProvider)
-    {
-        hr = pProvider->QueryInterface(riid, ppv);
-        pProvider->Release();
-    }
-    else
-    {
-        hr = E_OUTOFMEMORY;
-    }
-    
-    return hr;
+	if (pProvider)
+	{
+		hr = pProvider->QueryInterface(riid, ppv);
+		pProvider->Release();
+	}
+	else
+	{
+		hr = E_OUTOFMEMORY;
+	}
+
+	return hr;
 }
 
-
-HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,DWORD dwFlags,GUID* rgclsidProviders,BOOL* rgbAllow,DWORD cProviders)
+HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, DWORD dwFlags, GUID* rgclsidProviders,
+	BOOL* rgbAllow, DWORD cProviders)
 {
-	switch (cpus) 
-    { 
-        case CPUS_LOGON: 
-		case CPUS_UNLOCK_WORKSTATION:
-			for (DWORD i = 0; i < cProviders; i++) 
-            { 
-				if ( i < dwFlags )
-				{ } 
-				if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON)) {
-					rgbAllow[i] = TRUE; 
-				} else {
-					rgbAllow[i] = FALSE; 
-				}
-            }
-            return S_OK; 
-			break;         
-        case CPUS_CREDUI: 
-        case CPUS_CHANGE_PASSWORD: 
-            return E_NOTIMPL; 
-        default: 
-            return E_INVALIDARG; 
-    }     
+	UNREFERENCED_PARAMETER(dwFlags);
+	DebugPrint(std::string(__FUNCTION__) + " :" + Shared::CPUStoString(cpus));
+
+	switch (cpus)
+	{
+	case CPUS_LOGON:
+	case CPUS_UNLOCK_WORKSTATION:
+	case CPUS_CREDUI:
+		break;
+	case CPUS_CHANGE_PASSWORD:
+		return E_NOTIMPL; // TODO 
+	default:
+		return E_INVALIDARG;
+	}
+
+	if (!Shared::IsRequiredForScenario(cpus, FILTER))
+	{
+		DebugPrint("Filter is configured to be disabled for this scenario.");
+		return S_OK;
+	}
+
+	for (DWORD i = 0; i < cProviders; i++)
+	{
+		if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON)) 
+		{
+			rgbAllow[i] = TRUE;
+		}
+		else 
+		{
+			rgbAllow[i] = FALSE;
+		}
+	}
+
+	return S_OK;
 }
 
-CCredentialProviderFilter::CCredentialProviderFilter():
-    _cRef(1)
+CCredentialProviderFilter::CCredentialProviderFilter() :
+	_cRef(1)
 {
-    DllAddRef();
+	DebugPrint(__FUNCTION__);
+	DllAddRef();
 }
 
 CCredentialProviderFilter::~CCredentialProviderFilter()
 {
+	DebugPrint(__FUNCTION__);
 	DllRelease();
 }
 
-HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION *pcpcsIn, CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION *pcpcsOut)
+HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcsIn, CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcsOut)
 {
 	//UNREFERENCED_PARAMETER(pcpsIn);
 	//UNREFERENCED_PARAMETER(pcpcsOut);
-
+	DebugPrint(__FUNCTION__);
 	if (!pcpcsIn) // no point continuing as there are no credentials
 		return E_NOTIMPL;
 

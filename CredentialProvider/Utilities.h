@@ -31,7 +31,7 @@ public:
 	Utilities(std::shared_ptr<Configuration> c) noexcept;
 
 	// Returns the text for the id in english or german, depending on GetUserDefaultUILanguage
-	static std::wstring getTranslatedText(int id);
+	static std::wstring GetTranslatedText(int id);
 
 	HRESULT KerberosLogon(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
@@ -81,14 +81,12 @@ public:
 		__in const FIELD_STATE_PAIR* pFSP
 	);
 
-	HRESULT initializeField(
+	HRESULT InitializeField(
 		LPWSTR* rgFieldStrings,
 		DWORD field_index
 	);
 	
-	HRESULT readFieldValues();
-
-	static const std::string CPUtoString(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu);
+	HRESULT ReadFieldValues();
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 
@@ -97,13 +95,13 @@ public:
 private:
 	std::shared_ptr<Configuration> _config;
 
-	HRESULT readUserField();
+	HRESULT ReadUserField();
 
-	HRESULT readPasswordField();
+	HRESULT ReadPasswordField();
 
-	HRESULT readOTPField();
+	HRESULT ReadOTPField();
 
-	HRESULT readPasswordChangeFields();
+	HRESULT ReadPasswordChangeFields();
 
 #define TEXT_USERNAME 0
 #define TEXT_PASSWORD 1

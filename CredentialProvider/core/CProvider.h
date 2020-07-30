@@ -98,8 +98,8 @@ private:
 	void _CleanupSetSerialization();
 
 	void _GetSerializedCredentials(PWSTR *username, PWSTR *password, PWSTR *domain);
+	
 	bool _SerializationAvailable(SERIALIZATION_AVAILABLE_FOR checkFor);
-
 
 private:
 	LONG									_cRef;
@@ -111,7 +111,6 @@ private:
 
 	std::shared_ptr<Configuration>			_config;
 
-	BOOL IsCurrentSessionRemoteable();
 };
 
 #endif

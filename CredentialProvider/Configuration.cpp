@@ -25,6 +25,9 @@
 
 using namespace std;
 
+const wstring Configuration::registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
+const wstring Configuration::registryRealmPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping";
+
 Configuration::Configuration()
 {
 	RegistryReader rr(registryPath);
@@ -50,10 +53,10 @@ Configuration::Configuration()
 	otpFieldText = rr.getRegistry(L"otp_text");
 
 	tmp = rr.getRegistry(L"otp_fail_text");
-	defaultOTPFailureText = tmp.empty() ? Utilities::getTranslatedText(TEXT_WRONG_OTP) : tmp;
+	defaultOTPFailureText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_WRONG_OTP) : tmp;
 
 	tmp = rr.getRegistry(L"otp_hint_text");
-	defaultOTPHintText = tmp.empty() ? Utilities::getTranslatedText(TEXT_DEFAULT_OTP_HINT) : tmp;
+	defaultOTPHintText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_DEFAULT_OTP_HINT) : tmp;
 
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.getRegistry(L"hostname");
@@ -118,64 +121,37 @@ inline wstring b2ws(bool b) {
 void Configuration::printConfiguration()
 {
 	DebugPrint("-----------------------------");
-	string version(VER_FILE_VERSION_STR);
-	string stmp = "CP Version: " + version;
-	DebugPrint(stmp.c_str());
-	wstring tmp = L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
-		+ L"." + to_wstring(winBuildNr);
-	DebugPrint(tmp.c_str());
+	DebugPrint("CP Version: " + string(VER_FILE_VERSION_STR));
+	DebugPrint(L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
+		+ L"." + to_wstring(winBuildNr));
 	DebugPrint("------- Configuration -------");
-	tmp = L"Hostname: " + piconfig.hostname;
-	DebugPrint(tmp.c_str());
-	tmp = L"Path: " + piconfig.path;
-	DebugPrint(tmp.c_str());
-	tmp = L"Custom port: " + to_wstring(piconfig.customPort);
-	DebugPrint(tmp.c_str());
-	tmp = L"Resolve timeout: " + to_wstring(piconfig.resolveTimeoutMS);
-	DebugPrint(tmp.c_str());
-	tmp = L"Connect timeout: " + to_wstring(piconfig.connectTimeoutMS);
-	DebugPrint(tmp.c_str());
-	tmp = L"Send timeout: " + to_wstring(piconfig.sendTimeoutMS);
-	DebugPrint(tmp.c_str());
-	tmp = L"Receive timeout: " + to_wstring(piconfig.receiveTimeoutMS);
-	DebugPrint(tmp.c_str());
-	tmp = L"Login text: " + loginText;
-	DebugPrint(tmp.c_str());
-	tmp = L"OTP field text: " + otpFieldText;
-	DebugPrint(tmp.c_str());
-	tmp = L"OTP failure text: " + defaultOTPFailureText;
-	DebugPrint(tmp.c_str());
-	tmp = L"Hide domain only: " + b2ws(hideDomainName);
-	DebugPrint(tmp.c_str());
-	tmp = L"Hide full name: " + b2ws(hideFullName);
-	DebugPrint(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreUnknownCA);
-	DebugPrint(tmp.c_str());
-	tmp = L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreInvalidCN);
-	DebugPrint(tmp.c_str());
-	tmp = L"2step hide OTP: " + b2ws(twoStepHideOTP);
-	DebugPrint(tmp.c_str());
-	tmp = L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword);
-	DebugPrint(tmp.c_str());
-	tmp = L"2step send domain PW: " + b2ws(twoStepSendPassword);
-	DebugPrint(tmp.c_str());
-	tmp = L"Release Log: " + b2ws(releaseLog);
-	DebugPrint(tmp.c_str());
-	tmp = L"Log sensitive data: " + b2ws(piconfig.logPasswords);
-	DebugPrint(tmp.c_str());
-	tmp = L"No default: " + b2ws(noDefault);
-	DebugPrint(tmp.c_str());
-	tmp = L"Show domain hint: " + b2ws(showDomainHint);
-	DebugPrint(tmp.c_str());
-	tmp = L"Bitmap path: " + bitmapPath;
-	DebugPrint(tmp.c_str());
-	tmp = L"Offline file path: " + piconfig.offlineFilePath;
-	DebugPrint(tmp.c_str());
-	tmp = L"Offline try window: " + to_wstring(piconfig.offlineTryWindow);
-	DebugPrint(tmp.c_str());
-	tmp = L"Default realm: " + piconfig.defaultRealm;
-	DebugPrint(tmp.c_str());
-	tmp = L"";
+	DebugPrint(L"Hostname: " + piconfig.hostname);
+	DebugPrint(L"Path: " + piconfig.path);
+	DebugPrint(L"Custom port: " + to_wstring(piconfig.customPort));
+	DebugPrint(L"Resolve timeout: " + to_wstring(piconfig.resolveTimeoutMS));
+	DebugPrint(L"Connect timeout: " + to_wstring(piconfig.connectTimeoutMS));
+	DebugPrint(L"Send timeout: " + to_wstring(piconfig.sendTimeoutMS));
+	DebugPrint(L"Receive timeout: " + to_wstring(piconfig.receiveTimeoutMS));
+	DebugPrint(L"Login text: " + loginText);
+	DebugPrint(L"OTP field text: " + otpFieldText);
+	DebugPrint(L"OTP failure text: " + defaultOTPFailureText);
+	DebugPrint(L"Hide domain only: " + b2ws(hideDomainName));
+	DebugPrint(L"Hide full name: " + b2ws(hideFullName));
+	DebugPrint(L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreUnknownCA));
+	DebugPrint(L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreInvalidCN));
+	DebugPrint(L"2step hide OTP: " + b2ws(twoStepHideOTP));
+	DebugPrint(L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword));
+	DebugPrint(L"2step send domain PW: " + b2ws(twoStepSendPassword));
+	DebugPrint(L"Release Log: " + b2ws(releaseLog));
+	DebugPrint(L"Log sensitive data: " + b2ws(piconfig.logPasswords));
+	DebugPrint(L"No default: " + b2ws(noDefault));
+	DebugPrint(L"Show domain hint: " + b2ws(showDomainHint));
+	DebugPrint(L"Bitmap path: " + bitmapPath);
+	DebugPrint(L"Offline file path: " + piconfig.offlineFilePath);
+	DebugPrint(L"Offline try window: " + to_wstring(piconfig.offlineTryWindow));
+	DebugPrint(L"Default realm: " + piconfig.defaultRealm);
+
+	wstring tmp;
 	for (const auto& item : piconfig.realmMap)
 	{
 		tmp += item.first + L"=" + item.second + L", ";

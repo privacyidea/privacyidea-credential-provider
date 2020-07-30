@@ -34,7 +34,6 @@ like  *yourserver.example.com* without any additional path information.
 
 **path**
 
-Optional. 
 The path to the privacyIDEA Authentication Service if there is.
 E.g. */test/path/pi*
 
@@ -84,6 +83,19 @@ NOTE: Sending the windows or an empty password can be used to trigger token type
 
 Specify an account that should be excluded from 2FA. The format is required to be domain\username or computername\username.
 
+
+Disabling for specific scenarios
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to configure both the Credential Provider and the Filter for each of the scenarios.
+To do so, add a registry with the corresponding name of **cpus_logon**, **cpus_unlock** or **cpus_credui**.
+The following values are possible:
+- **0e / 0d** : The CP will be enumerated for both remote and non-remote sessions. The filter is **e**nabled/**d**isabled.
+- **1e / 1d** : The CP will only be enumerated for remote sessions.
+- **2e / 2d** : The CP will only be enumerated for non-remote sessions.
+- **3d** : The CP is disabled and the Filter disabled aswell.
+
+If there is no entry of a scenario, the default is assumed: The CP will be enumerated and the Filter will be active, if installed.
 
 Recommended setup for remote desktop scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

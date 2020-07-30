@@ -49,8 +49,7 @@ public:
 		LONG cRef = --_cRef;
 		if (!cRef)
 		{
-			//delete this;
-			//this->~CCredential();
+			// The Credential is owned by the Provider object
 		}
 		return cRef;
 	}
@@ -119,9 +118,9 @@ public:
 
 private:
 
-	void showErrorMessage(const std::wstring& message, const HRESULT& code);
+	void ShowErrorMessage(const std::wstring& message, const HRESULT& code);
 
-	void pushAuthenticationCallback(bool success);
+	void PushAuthenticationCallback(bool success);
 
 	LONG									_cRef;
 

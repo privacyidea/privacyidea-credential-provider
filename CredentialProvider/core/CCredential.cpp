@@ -118,7 +118,7 @@ HRESULT CCredential::Initialize(
 		if (FAILED(hr))
 			break;
 
-		_util.initializeField(_rgFieldStrings, i);
+		_util.InitializeField(_rgFieldStrings, i);
 	}
 
 	DebugPrint("Init result:");
@@ -547,7 +547,7 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			// not finished
-			showErrorMessage(L"New passwords don't match!", 0);
+			ShowErrorMessage(L"New passwords don't match!", 0);
 			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			_config->clearFields = false;
 		}
@@ -611,7 +611,7 @@ HRESULT CCredential::GetSerialization(
 				{
 					errorMessage = isGerman ? L"Fehler beim Verbindungsaufbau!" : L"Error while setting up the connection!";
 				}
-				showErrorMessage(errorMessage, errorCode);
+				ShowErrorMessage(errorMessage, errorCode);
 				_util.ResetScenario(this, _pCredProvCredentialEvents);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
@@ -646,7 +646,7 @@ HRESULT CCredential::GetSerialization(
 		}
 		else
 		{
-			showErrorMessage(L"Unexpected error", 0);
+			ShowErrorMessage(L"Unexpected error", 0);
 
 			// Jump to the first login window
 			_util.ResetScenario(this, _pCredProvCredentialEvents);
@@ -678,7 +678,7 @@ HRESULT CCredential::GetSerialization(
 }
 
 // if code == 0, the code won't be displayed
-void CCredential::showErrorMessage(const std::wstring& message, const HRESULT& code)
+void CCredential::ShowErrorMessage(const std::wstring& message, const HRESULT& code)
 {
 	*_config->provider.status_icon = CPSI_ERROR;
 	wstring errorMessage = message;
@@ -687,7 +687,7 @@ void CCredential::showErrorMessage(const std::wstring& message, const HRESULT& c
 }
 
 // If push is successful, reset the credential to do autologin
-void CCredential::pushAuthenticationCallback(bool success)
+void CCredential::PushAuthenticationCallback(bool success)
 {
 	DebugPrint(__FUNCTION__);
 	if (success)
@@ -709,7 +709,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	_config->provider.pCredProvCredential = this;
 	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
 	_config->provider.field_strings = _rgFieldStrings;
-	_util.readFieldValues();
+	_util.ReadFieldValues();
 
 
 	// Check if the user is the excluded account
@@ -763,7 +763,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					{
 						// When polling finishes, pushAuthenticationCallback is invoked with the finialization success value
 						_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
-							std::bind(&CCredential::pushAuthenticationCallback, this, std::placeholders::_1));
+							std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
 					}
 				}
 				else
@@ -860,7 +860,7 @@ HRESULT CCredential::ReportResult(
 	{
 		DebugPrint("Status: Password update failed: Not conform to policies");
 	}
-	// this catches the wrong old password, 
+	// this catches the wrong old password 
 	pwNotUpdated = pwNotUpdated || ((ntsStatus == STATUS_LOGON_FAILURE) && (ntsSubstatus == STATUS_INTERNAL_ERROR));
 
 	if (pwNotUpdated)
@@ -869,10 +869,12 @@ HRESULT CCredential::ReportResult(
 		_config->credential.passwordMustChange = true;
 		_config->credential.passwordChanged = false;
 	}
-
+	/*
 	if (ntsStatus == STATUS_LOGON_FAILURE && !pwNotUpdated)
 	{
 		_util.ResetScenario(this, _pCredProvCredentialEvents);
 	}
+	*/
+	_util.ResetScenario(this, _pCredProvCredentialEvents);
 	return S_OK;
 }

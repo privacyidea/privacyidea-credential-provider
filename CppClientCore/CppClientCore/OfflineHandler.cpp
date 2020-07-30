@@ -446,9 +446,6 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 			{
 				if (pbDerivedKey[cbDerivedKey] != bufStored[cbDerivedKey])
 				{
-					/*CoTaskMemFree(pbDerivedKey);
-					CoTaskMemFree(bufStored);
-					return false; */
 					goto Exit;
 				}
 			}
@@ -457,9 +454,10 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 	}
 	else
 	{
-		printf("Error: %x", status);
+		DebugPrint("PBKDF2 Error: " + to_string(status));
 		isValid = false;
 	}
+
 Exit:
 	SecureZeroMemory(prepPassword, sizeof(prepPassword));
 	SecureZeroMemory(prepPasswordBytes, sizeof(prepPasswordBytes));
