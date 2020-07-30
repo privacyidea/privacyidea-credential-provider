@@ -26,7 +26,7 @@
 #include "Configuration.h"
 #include "scenario.h"
 #include "RegistryReader.h"
-#include "../../Shared/Shared.h"
+#include "Shared.h"
 #include <credentialprovider.h>
 #include <tchar.h>
 
