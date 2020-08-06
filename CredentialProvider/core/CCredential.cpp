@@ -29,6 +29,7 @@
 #include "Configuration.h"
 #include "Logger.h"
 #include "json.hpp"
+#include <resource.h>
 #include <string>
 #include <thread>
 #include <future>
@@ -72,20 +73,25 @@ HRESULT CCredential::Initialize(
 	SecureWString wstrPassword;
 
 	if (NOT_EMPTY(user_name))
+	{
 		wstrUsername = wstring(user_name);
-
+	}
 	if (NOT_EMPTY(domain_name))
+	{
 		wstrDomainname = wstring(domain_name);
-
+	}
 	if (NOT_EMPTY(password))
+	{
 		wstrPassword = SecureWString(password);
-
+	}
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
 	DebugPrint(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
 	DebugPrint(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
 	if (_config->piconfig.logPasswords)
+	{
 		DebugPrint(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
+	}
 #endif
 	HRESULT hr = S_OK;
 
@@ -116,16 +122,22 @@ HRESULT CCredential::Initialize(
 		hr = FieldDescriptorCopy(rgcpfd[i], &_rgCredProvFieldDescriptors[i]);
 
 		if (FAILED(hr))
+		{
 			break;
+		}
 
 		_util.InitializeField(_rgFieldStrings, i);
 	}
 
 	DebugPrint("Init result:");
 	if (SUCCEEDED(hr))
+	{
 		DebugPrint("OK");
+	}
 	else
+	{
 		DebugPrint("FAIL");
+	}
 
 	return hr;
 }
@@ -178,7 +190,8 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		_config->doAutoLogon = false;
 	}
 
-	if (_config->credential.passwordMustChange && _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
+	if (_config->credential.passwordMustChange
+		&& _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
 		&& _config->winVerMajor != 10)
 	{
 		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does

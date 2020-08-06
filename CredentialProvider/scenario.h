@@ -1,7 +1,7 @@
 #pragma once
 
 // The indexes of each of the fields in our credential provider's appended tiles.
-enum LOGON_PUSH_FIELD_ID
+enum FIELD_ID
 {
 	FID_LOGO = 0,
 	FID_LARGE_TEXT = 1,

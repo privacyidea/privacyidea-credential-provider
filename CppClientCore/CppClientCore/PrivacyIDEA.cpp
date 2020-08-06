@@ -6,17 +6,6 @@
 
 using namespace std;
 
-PrivacyIDEA& PrivacyIDEA::operator=(const PrivacyIDEA& privacyIDEA)
-{
-	this->_currentChallenge = privacyIDEA._currentChallenge;
-	this->_defaultRealm = privacyIDEA._defaultRealm;
-	this->_endpoint = privacyIDEA._endpoint;
-	this->_logPasswords = privacyIDEA._logPasswords;
-	this->_offlineHandler = privacyIDEA._offlineHandler;
-	this->_realmMap = privacyIDEA._realmMap;
-	return *this;
-}
-
 // Check if there is a mapping for the given domain or - if not - a default realm is set
 HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 {
@@ -43,7 +32,10 @@ HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 	return S_OK;
 }
 
-void PrivacyIDEA::pollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback)
+void PrivacyIDEA::pollThread(
+	const std::string& transaction_id,
+	const std::string& username,
+	std::function<void(bool)> callback)
 {
 	DebugPrint("Starting poll thread...");
 	HRESULT res = E_FAIL;
@@ -147,7 +139,9 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	SecureString data = _endpoint.encodePair("user", ws2s(username)) + "&" + _endpoint.encodePair("pass", otp);
 
 	if (!transaction_id.empty())
+	{
 		data += "&" + _endpoint.encodePair("transaction_id", transaction_id);
+	}
 
 	appendRealm(domain, data);
 
@@ -160,7 +154,9 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 		DebugPrint("Response was empty. Endpoint error: " + longToHexString(epCode));
 		// If offline was available, give the hint that the entered OTP might be wrong
 		if (offlineStatus == PI_OFFLINE_WRONG_OTP && epCode == PI_ENDPOINT_SERVER_UNAVAILABLE)
+		{
 			return PI_WRONG_OFFLINE_SERVER_UNAVAILABLE;
+		}
 
 		// otherwise return PI_ENDPOINT_SERVER_UNAVAILABLE or PI_ENDPOINT_SETUP_ERROR
 		return epCode;
@@ -216,10 +212,13 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 		if (ret != PI_TRIGGERED_CHALLENGE)
 		{
 			if (piStatus == PI_JSON_ERROR_CONTAINED)
+			{
 				ret = PI_AUTH_ERROR;
-
+			}
 			else if (piStatus == PI_AUTH_FAILURE)
+			{
 				ret = PI_AUTH_FAILURE;
+			}
 		}
 	}
 
@@ -281,10 +280,13 @@ SecureString PrivacyIDEA::sws2ss(const SecureWString& sws)
 
 	SecureString ret;
 	if (outSize > 0)
+	{
 		ret = SecureString(outBuf);
+	}
 	else
+	{
 		ret = SecureString();
-
+	}
 	SecureZeroMemory(outBuf, size);
 	delete[] outBuf;
 
@@ -301,10 +303,13 @@ SecureWString PrivacyIDEA::ss2sws(const SecureString& ss)
 
 	SecureWString ret;
 	if (outSize > 0)
+	{
 		ret = SecureWString(outBuf);
+	}
 	else
+	{
 		ret = SecureWString();
-
+	}
 	SecureZeroMemory(outBuf, size);
 	delete[] outBuf;
 

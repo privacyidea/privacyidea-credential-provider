@@ -192,7 +192,9 @@ HRESULT CProvider::SetSerialization(
 					nativeSerializationSize = pcpcs->cbSerialization;
 
 					if (!nativeSerialization)
+					{
 						return E_OUTOFMEMORY;
+					}
 
 					CopyMemory(nativeSerialization, pcpcs->rgbSerialization, pcpcs->cbSerialization);
 				}
@@ -200,7 +202,9 @@ HRESULT CProvider::SetSerialization(
 				KerbInteractiveUnlockLogonUnpackInPlace((KERB_INTERACTIVE_UNLOCK_LOGON*)nativeSerialization, nativeSerializationSize);
 
 				if (_pkiulSetSerialization)
+				{
 					LocalFree(_pkiulSetSerialization);
+				}
 
 				_pkiulSetSerialization = (KERB_INTERACTIVE_UNLOCK_LOGON*)nativeSerialization;
 
@@ -276,7 +280,10 @@ HRESULT CProvider::GetFieldDescriptorAt(
 {
 	//DebugPrintLn(__FUNCTION__);
 	HRESULT hr = E_FAIL;
-	if (!_config->provider.cpu) return E_FAIL;
+	if (!_config->provider.cpu)
+	{
+		return E_FAIL;
+	}
 
 	// Verify dwIndex is a valid field.
 	if ((dwIndex < FID_NUM_FIELDS) && ppcpfd)
@@ -306,7 +313,9 @@ HRESULT CProvider::GetFieldDescriptorAt(
 		}
 
 		if (!label.empty())
+		{
 			s_rgScenarioCredProvFieldDescriptors[dwIndex].pszLabel = const_cast<LPWSTR>(label.c_str());
+		}
 
 		hr = FieldDescriptorCoAllocCopy(s_rgScenarioCredProvFieldDescriptors[dwIndex],
 			ppcpfd);
@@ -533,7 +542,9 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 			CopyMemory(*username, _pkiulSetSerialization->Logon.UserName.Buffer, _pkiulSetSerialization->Logon.UserName.Length);
 		}
 		else
+		{
 			*username = NULL;
+		}
 	}
 
 	if (password)
@@ -544,7 +555,9 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 			CopyMemory(*password, _pkiulSetSerialization->Logon.Password.Buffer, _pkiulSetSerialization->Logon.Password.Length);
 		}
 		else
+		{
 			*password = NULL;
+		}
 	}
 
 	if (domain)
@@ -555,7 +568,9 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 			CopyMemory(*domain, _pkiulSetSerialization->Logon.LogonDomainName.Buffer, _pkiulSetSerialization->Logon.LogonDomainName.Length);
 		}
 		else
+		{
 			*domain = NULL;
+		}
 	}
 }
 
@@ -569,7 +584,8 @@ bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE_FOR checkFor)
 	{
 		DebugPrint("No serialized creds set");
 	}
-	else {
+	else
+	{
 		switch (checkFor)
 		{
 		case SAF_USERNAME:

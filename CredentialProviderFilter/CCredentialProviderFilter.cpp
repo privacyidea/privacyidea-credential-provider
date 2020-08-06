@@ -54,7 +54,7 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 	BOOL* rgbAllow, DWORD cProviders)
 {
 	UNREFERENCED_PARAMETER(dwFlags);
-	DebugPrint(std::string(__FUNCTION__) + " :" + Shared::CPUStoString(cpus));
+	DebugPrint(std::string(__FUNCTION__) + ": " + Shared::CPUStoString(cpus));
 
 	switch (cpus)
 	{
@@ -76,11 +76,11 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 
 	for (DWORD i = 0; i < cProviders; i++)
 	{
-		if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON)) 
+		if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON))
 		{
 			rgbAllow[i] = TRUE;
 		}
-		else 
+		else
 		{
 			rgbAllow[i] = FALSE;
 		}
@@ -107,8 +107,12 @@ HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVI
 	//UNREFERENCED_PARAMETER(pcpsIn);
 	//UNREFERENCED_PARAMETER(pcpcsOut);
 	DebugPrint(__FUNCTION__);
-	if (!pcpcsIn) // no point continuing as there are no credentials
+	
+	if (!pcpcsIn) 
+	{
+		// no point continuing as there are no credentials
 		return E_NOTIMPL;
+	}
 
 	// copy contents from pcpcsIn to pcpcsOut
 	pcpcsOut->ulAuthenticationPackage = pcpcsIn->ulAuthenticationPackage;
@@ -125,5 +129,7 @@ HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVI
 		return S_OK;
 	}
 	else
+	{
 		return E_NOTIMPL;
+	}
 }
