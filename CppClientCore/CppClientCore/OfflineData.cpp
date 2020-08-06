@@ -134,7 +134,7 @@ int OfflineData::getLowestKey()
 	return lowestKey;
 }
 
-int OfflineData::getOfflineOTPsLeft() noexcept
+size_t OfflineData::getOfflineOTPsLeft() noexcept
 {
 	return offlineOTPs.size();
 }

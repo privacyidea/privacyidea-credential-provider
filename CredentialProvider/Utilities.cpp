@@ -1,6 +1,8 @@
 #include "Utilities.h"
 #include "helpers.h"
 #include "SecureString.h"
+#include "scenario.h"
+#include "guid.h"
 #include <Shlwapi.h>
 
 using namespace std;
@@ -46,10 +48,13 @@ HRESULT Utilities::KerberosLogon(
 	BOOL  bGetCompName = false;
 
 	if (domain.empty())
+	{
 		bGetCompName = GetComputerNameW(wsz, &cch);
-
+	}
 	if (bGetCompName)
+	{
 		domain = wstring(wsz, cch);
+	}
 
 #ifdef _DEBUG
 	DebugPrint("Packing Credential:");
@@ -136,9 +141,13 @@ HRESULT Utilities::KerberosChangePassword(
 	BOOL  bGetCompName = true;
 
 	if (!domain.empty())
+	{
 		wcscpy_s(wsz, ARRAYSIZE(wsz), domain.c_str());
+	}
 	else
+	{
 		bGetCompName = GetComputerNameW(wsz, &cch);
+	}
 
 	DebugPrint(L"User: " + username);
 	DebugPrint(L"Domain: " + wstring(wsz));
@@ -209,7 +218,8 @@ HRESULT Utilities::CredPackAuthentication(
 #ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
 	DebugPrint(username);
-	if (_config->piconfig.logPasswords) {
+	if (_config->piconfig.logPasswords) 
+	{
 		DebugPrint(password.c_str());
 	}
 	DebugPrint(domain);
@@ -224,10 +234,13 @@ HRESULT Utilities::CredPackAuthentication(
 	BOOL  bGetCompName = false;
 
 	if (domain.empty())
+	{
 		bGetCompName = GetComputerNameW(wsz, &cch);
-
+	}
 	if (bGetCompName)
+	{
 		domain = wsz;
+	}
 
 	if (SUCCEEDED(hr))
 	{
@@ -363,9 +376,13 @@ HRESULT Utilities::SetScenario(
 		// Large text
 		wstring text = _config->credential.username + L"@" + _config->credential.domain;
 		if (hideDomain)
+		{
 			text = _config->credential.username;
+		}
 		if (hideFullName)
+		{
 			text = L"";
+		}
 		//DebugPrint(L"Setting large text: " + text);
 		if (text.empty() || _config->credential.username.empty())
 		{
@@ -394,7 +411,9 @@ HRESULT Utilities::SetScenario(
 			}
 		}
 		else
+		{
 			pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_HIDDEN);
+		}
 	}
 
 	// Domain in FID_SUBTEXT, optional
@@ -404,8 +423,9 @@ HRESULT Utilities::SetScenario(
 		pCPCE->SetFieldString(pCredential, FID_SUBTEXT, domaintext.c_str());
 	}
 	else
+	{
 		pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
-	//
+	}
 
 	return hr;
 }
@@ -443,10 +463,13 @@ HRESULT Utilities::Clear(
 			hr = SHStrDupW(L"", &field_strings[i]);
 
 			if (pcpce)
+			{
 				pcpce->SetFieldString(pcpc, i, field_strings[i]);
-
+			}
 			if (clear == CLEAR_FIELDS_ALL_DESTROY)
+			{
 				CoTaskMemFree(pcpfd[i].pszLabel);
+			}
 		}
 	}
 
@@ -463,14 +486,18 @@ HRESULT Utilities::SetFieldStatePairBatch(
 	HRESULT hr = S_OK;
 
 	if (!pCPCE || !self)
+	{
 		return E_INVALIDARG;
+	}
 
 	for (unsigned int i = 0; i < FID_NUM_FIELDS && SUCCEEDED(hr); i++)
 	{
 		hr = pCPCE->SetFieldState(self, i, pFSP[i].cpfs);
 
 		if (SUCCEEDED(hr))
+		{
 			hr = pCPCE->SetFieldInteractiveState(self, i, pFSP[i].cpfis);
+		}
 	}
 
 	return hr;
@@ -502,8 +529,9 @@ HRESULT Utilities::InitializeField(
 	{
 		wstring text = L"";
 		if (_config->showDomainHint)
+		{
 			text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;;
-
+		}
 		hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
 
 		break;
@@ -594,7 +622,9 @@ HRESULT Utilities::ReadFieldValues()
 			ReadOTPField();
 		}
 		else
+		{
 			ReadPasswordChangeFields();
+		}
 		break;
 	}
 
@@ -679,9 +709,13 @@ HRESULT Utilities::ReadPasswordField()
 		else
 		{
 			if (newPassword.empty())
+			{
 				DebugPrint("[Hidden] empty value");
+			}
 			else
+			{
 				DebugPrint("[Hidden] has value");
+			}
 		}
 
 	}
@@ -697,7 +731,9 @@ HRESULT Utilities::ReadOTPField()
 	return S_OK;
 }
 
-const FIELD_STATE_PAIR* Utilities::GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP)
+const FIELD_STATE_PAIR* Utilities::GetFieldStatePairFor(
+	CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
+	bool twoStepHideOTP)
 {
 	if (cpus == CPUS_UNLOCK_WORKSTATION)
 	{
@@ -709,10 +745,16 @@ const FIELD_STATE_PAIR* Utilities::GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAG
 	}
 }
 
-HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
+HRESULT Utilities::ResetScenario(
+	ICredentialProviderCredential* pSelf,
+	ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
 {
 	DebugPrint(__FUNCTION__);
+	// 2 step progress is reset aswell, therefore put the submit button next to the password field again
 	_config->isSecondStep = false;
+	_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(
+		_config->provider.pCredProvCredential, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
+
 	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
 		if (_config->twoStepHideOTP)
@@ -725,7 +767,6 @@ HRESULT Utilities::ResetScenario(ICredentialProviderCredential* pSelf, ICredenti
 			SetScenario(pSelf, pCredProvCredentialEvents,
 				SCENARIO::UNLOCK_BASE);
 		}
-
 	}
 	else if (_config->provider.cpu == CPUS_LOGON)
 	{

@@ -23,17 +23,20 @@
 #pragma once
 
 #include "Dll.h"
-#include "common.h"
 #include "Utilities.h"
 #include "Configuration.h"
 #include "PrivacyIDEA.h"
-
+#include <scenario.h>
 #include <unknwn.h>
 #include <helpers.h>
 #include <string>
 #include <map>
 
-#define TIMEOUT_TEXT L"Timeout: %i secs."
+#define NOT_EMPTY(NAME) \
+	(NAME != NULL && NAME[0] != NULL)
+
+#define ZERO(NAME) \
+	SecureZeroMemory(NAME, sizeof(NAME))
 
 class CCredential : public IConnectableCredentialProviderCredential
 {

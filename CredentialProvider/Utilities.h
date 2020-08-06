@@ -1,7 +1,7 @@
 #pragma once
 #include "Configuration.h"
 #include "Logger.h"
-#include "core/common.h"
+#include <scenario.h>
 #include <memory>
 #include <Windows.h>
 #include <wincred.h>

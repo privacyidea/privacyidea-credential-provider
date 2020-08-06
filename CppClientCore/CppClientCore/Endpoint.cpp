@@ -45,7 +45,7 @@ Endpoint::Endpoint(PICONFIG conf)
 	_ignoreUnknownCA = conf.ignoreUnknownCA;
 
 	_resolveTimeout = conf.resolveTimeoutMS; // 0 (not set) is valid and the default
-	// If timeout values are set use them, otherwise keep the default from header
+	// If timeout values are set use them, otherwise keep the default
 	_connectTimeout = conf.connectTimeoutMS == 0 ? _connectTimeout : conf.connectTimeoutMS;
 	_sendTimeout = conf.sendTimeoutMS == 0 ? _sendTimeout : conf.sendTimeoutMS;
 	_receiveTimeout = conf.receiveTimeoutMS == 0 ? _receiveTimeout : conf.receiveTimeoutMS;
@@ -62,7 +62,7 @@ SecureString Endpoint::escapeUrl(const SecureString& in)
 	{
 		return in;
 	}
-	const DWORD maxLen = (in.size() * 3);
+	const size_t maxLen = (in.size() * 3);
 	DWORD* pdwWritten = nullptr;
 	LPSTR buf = (char*)malloc(sizeof(char) * maxLen);
 	if (buf == nullptr)
@@ -72,10 +72,14 @@ SecureString Endpoint::escapeUrl(const SecureString& in)
 	}
 	SecureString ret;
 
-	if (AtlEscapeUrl(in.c_str(), buf, pdwWritten, maxLen, (DWORD)NULL))
+	if (AtlEscapeUrl(in.c_str(), buf, pdwWritten, (DWORD)maxLen, (DWORD)NULL))
+	{
 		ret = SecureString(buf);
+	}
 	else
+	{
 		ReleaseDebugPrint("AtlEscapeUrl Failure");
+	}
 
 	SecureZeroMemory(buf, (sizeof(char) * maxLen));
 	free(buf);
@@ -100,9 +104,9 @@ nlohmann::json Endpoint::tryParseJSON(const std::string& in)
 wstring Endpoint::get_utf16(const std::string& str, int codepage)
 {
 	if (str.empty()) return wstring();
-	int sz = MultiByteToWideChar(codepage, 0, &str[0], str.size(), 0, 0);
+	int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
 	wstring res(sz, 0);
-	MultiByteToWideChar(codepage, 0, &str[0], str.size(), &res[0], sz);
+	MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), &res[0], sz);
 	return res;
 }
 
@@ -114,7 +118,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	wstring fullPath = get_utf16((PrivacyIDEA::ws2s(_path) + endpoint), CP_UTF8);
 
 	LPSTR data = _strdup(sdata.c_str());
-	const DWORD data_len = strnlen_s(sdata.c_str(), MAXDWORD32);
+	const DWORD data_len = (DWORD)strnlen_s(sdata.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
 #ifdef _DEBUG
@@ -160,7 +164,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	if (hSession)
 	{
 		int port = (_customPort != 0) ? _customPort : INTERNET_DEFAULT_HTTPS_PORT;
-		hConnect = WinHttpConnect(hSession, wHostname.c_str(), port, 0);
+		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)port, 0);
 	}
 	else
 	{
@@ -229,10 +233,14 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 
 	// Send a request.
 	if (hRequest)
-		bResults = WinHttpSendRequest(hRequest,
-			additionalHeaders, (DWORD)-1,
-			(LPVOID)data, data_len,
-			data_len, 0);
+		bResults = WinHttpSendRequest(
+			hRequest,
+			additionalHeaders,
+			(DWORD)-1,
+			(LPVOID)data,
+			data_len,
+			data_len,
+			0);
 
 	if (!bResults)
 	{
@@ -244,7 +252,9 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 
 	// End the request.
 	if (bResults)
+	{
 		bResults = WinHttpReceiveResponse(hRequest, NULL);
+	}
 
 	// Keep checking for data until there is nothing left.
 	string response;
@@ -311,12 +321,16 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 			}
 		}
 		else
+		{
 			DebugPrint("Response was empty.");
+		}
 	}
 #endif
 
 	if (response.empty())
+	{
 		_lastErrorCode = PI_ENDPOINT_SERVER_UNAVAILABLE;
+	}
 
 	return response;
 }

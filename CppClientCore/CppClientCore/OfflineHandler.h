@@ -34,8 +34,6 @@ public:
 
 	HRESULT verifyOfflineOTP(const SecureWString& otp, const std::string& username);
 
-	int getOfflineValuesLeft(const std::string& username);
-
 	HRESULT getRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial);
 
 	HRESULT parseForOfflineData(const std::string& in);

@@ -35,7 +35,7 @@ public:
 
 	int getLowestKey();
 
-	int getOfflineOTPsLeft() noexcept;
+	size_t getOfflineOTPsLeft() noexcept;
 
 	std::string user = "";
 	std::string username = "";

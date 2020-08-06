@@ -46,7 +46,7 @@ public:
 		_lastError(0)
 	{};
 
-	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA);
+	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA) = delete;
 
 	// Tries to verify with offline otp first. If there is none,
 	// sends the parameters to privacyIDEA and checks the response for

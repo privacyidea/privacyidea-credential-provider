@@ -55,7 +55,9 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
 	}
 	else
+	{
 		DebugPrint("Offline data loaded successfully!");
+	}
 }
 
 OfflineHandler::~OfflineHandler()
@@ -68,7 +70,9 @@ OfflineHandler::~OfflineHandler()
 			DebugPrint(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
 		}
 		else
+		{
 			DebugPrint("Offline data saved successfully!");
+		}
 	}
 }
 
@@ -117,21 +121,6 @@ HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string&
 	}
 
 	return success;
-}
-
-int OfflineHandler::getOfflineValuesLeft(const std::string& username)
-{
-	if (dataSets.empty()) return -1;
-
-	for (const auto& item : dataSets)
-	{
-		if (item.user == username || item.username == username)
-		{
-			return item.offlineOTPs.size();
-		}
-	}
-
-	return -1;
 }
 
 HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial)
@@ -188,7 +177,7 @@ HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 			{
 				//DebugPrint("found exsisting user data.");
 				existing.refilltoken = toAdd.refilltoken;
-				
+
 				for (const auto& newOTP : toAdd.offlineOTPs)
 				{
 					existing.offlineOTPs.try_emplace(newOTP.first, newOTP.second);
@@ -344,7 +333,7 @@ std::string OfflineHandler::getNextValue(std::string& in)
 char* OfflineHandler::UnicodeToCodePage(int codePage, const wchar_t* src)
 {
 	if (!src) return 0;
-	int srcLen = wcslen(src);
+	int srcLen = (int)wcslen(src);
 	if (!srcLen)
 	{
 		char* x = new char[1];
@@ -400,24 +389,30 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 	// Salt is in adapted abase64 encoding of passlib where [./+] is substituted
 	base64toabase64(salt);
 
-	int bufLen = Base64DecodeGetRequiredLength(salt.size() + 1);
+	int bufLen = Base64DecodeGetRequiredLength((int)(salt.size() + 1));
 	BYTE* bufSalt = (BYTE*)CoTaskMemAlloc(bufLen);
-	if (bufSalt == nullptr) return false;
-	Base64Decode(salt.c_str(), (salt.size() + 1), bufSalt, &bufLen);
+	if (bufSalt == nullptr)
+	{
+		return false;
+	}
+	Base64Decode(salt.c_str(), (int)(salt.size() + 1), bufSalt, &bufLen);
 
 	// The password is encoded into UTF-8 from Unicode
 	char* prepPassword = UnicodeToCodePage(65001, password.c_str());
-	const int prepPasswordSize = strlen(prepPassword);
+	const int prepPasswordSize = (int)strnlen_s(prepPassword, INT_MAX);
 
 	BYTE* prepPasswordBytes = reinterpret_cast<unsigned char*>(prepPassword);
 
 	// Get the size of the output from the stored value, which is also in abase64 encoding
 	base64toabase64(storedOTP);
 
-	int bufLenStored = Base64DecodeGetRequiredLength(storedOTP.size() + 1);
+	int bufLenStored = Base64DecodeGetRequiredLength((int)(storedOTP.size() + 1));
 	BYTE* bufStored = (BYTE*)CoTaskMemAlloc(bufLenStored);
-	if (bufStored == nullptr) return false;
-	Base64Decode(storedOTP.c_str(), storedOTP.size() + 1, bufStored, &bufLenStored);
+	if (bufStored == nullptr)
+	{
+		return false;
+	}
+	Base64Decode(storedOTP.c_str(), (int)(storedOTP.size() + 1), bufStored, &bufLenStored);
 
 	// Do PBKDF2
 	const ULONGLONG cIterations = iterations;
