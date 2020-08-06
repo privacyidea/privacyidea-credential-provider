@@ -1,3 +1,14 @@
+# Version 3.1.0, TBD
+
+## Features
+ * The behavior of the CP and Filter can be modified for each scenario separately (see docs).
+
+## Enhancements
+
+## Fixes
+ * Fix missing Submit button upon failure when 2step is enabled.
+
+
 # Version 3.0.0, 2020-05-28
 
 ## Features

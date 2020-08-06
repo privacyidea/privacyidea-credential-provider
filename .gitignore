@@ -16,3 +16,4 @@ CppClientCore/nlohmann/json.hpp
 *.wixpdb
 *.msm
 *.aps
+Shared/Release/
