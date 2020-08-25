@@ -18,7 +18,7 @@ The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
 
 
-NOTE: Not all registry entries listed below will be generated from installing the credential provider. 
+NOTE: Not all registry entries listed below will be generated from installing the credential provider.
 Those have to be added manually.
 
 Connection Settings
@@ -87,15 +87,46 @@ Specify an account that should be excluded from 2FA. The format is required to b
 Disabling for specific scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to configure both the Credential Provider and the Filter for each of the scenarios.
-To do so, add a registry with the corresponding name of **cpus_logon**, **cpus_unlock** or **cpus_credui**.
-The following values are possible:
-- **0e / 0d** : The CP will be enumerated for both remote and non-remote sessions. The filter is **e**nabled/**d**isabled.
-- **1e / 1d** : The CP will only be enumerated for remote sessions.
-- **2e / 2d** : The CP will only be enumerated for non-remote sessions.
-- **3d** : The CP is disabled and the Filter disabled aswell.
+There different *credential provider usage scenarios* ("cpus"). The available
+scenarios are **logon**, **unlock** and **credui**.
 
-If there is no entry of a scenario, the default is assumed: The CP will be enumerated and the Filter will be active, if installed.
+It is possible to configure both the Credential Provider and the Filter [#f1]_ for each of the scenarios.
+This way the administrator can define a different behaviour if a users either logs in or
+unlocks his desktop.
+
+The behaviour in each scenario can be configured via the corresponding registry
+entry named **cpus_logon**, **cpus_unlock** and **cpus_credui**.
+
+These entries expext a *REG_SZ*, that consist of a digit 0, 1, 2, 3 and a
+character "e" or "d".
+
+* 0: relevant for *remote* (RDP) and *local* operation
+* 1: relevant for *remote* operation
+* 2: relevant for *local* operation
+* 3: relevent for *remote* and *local* operation - but privacyIDEA
+  Credential Provider completely disabled.
+
+The characters stand for:
+
+* "e": Only the privacyIDEA Credential Provider is available. All other
+  credential providers are not available.
+* "d": In addition all other credential providers are available.
+
+E.g. This would result in:
+
+* ``cpus_logon = 0e``: Only the privacyIDEA Credential Provider is available for
+  Logon via remote and locally. (0d would be the contrary.)
+* ``cpus_unlock = 1d``: Remotely the locked destop can be unlocked with all
+  available credential providers. (1e would be the contrary.)
+* ``cpus_unlock = 2e``: Locally unlocking the desktop is only possible with the
+  privacyIDEA Credential Provider. (2d would be the contrary.)
+* ``cred_ui = 3d``: For credui scenarios the privacyIDEA Credential Provider
+  is completely disabled, no matter if remotely or locally. Only the other
+  credential providers are available.
+  (Note: "3e" does not exist)
+
+If there is no entry for a scenario, the default is assumed:
+The privacyIDEA Credential Provider will be available and the Filter will be active, if installed.
 
 Recommended setup for remote desktop scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,7 +143,7 @@ You can also change the look and feel of the privacyIDEA Credential Provider.
 
 **login_text**
 
-Specify the text that is displayed underneath the credential logo and on the right side where available credentials are listed. 
+Specify the text that is displayed underneath the credential logo and on the right side where available credentials are listed.
 The default is "privacyIDEA Login".
 
 **otp_text**
@@ -141,7 +172,7 @@ Instead only the contents of the *login_text* settings will be displayed.
 
 **v1_bitmap_path**
 
-The complete path and filename of a bitmap image. This is a customized 
+The complete path and filename of a bitmap image. This is a customized
 login image. The image must be a version 3 Windows BMP file with a resolution
 of 128x128 pixels.
 
@@ -168,7 +199,7 @@ Realms
 ~~~~~~
 
 Realms are implemented by mapping Windows domains to privacyIDEA realms. When a matching mapping exists, the &realm=... parameter
-is added to the request. 
+is added to the request.
 
 **default_realm**
 
@@ -190,6 +221,11 @@ The log file of the debug version contains more detailed information and is loca
 
 **log_sensitive**
 
-In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. By default sensitive data is not logged. 
+In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. By default sensitive data is not logged.
 To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a logfile.
 NOTE: This only affects the *debug* versions of the privacyIDEA Credential Provider.
+
+.. rubric:: Footnotes
+
+.. [#f1] The Filter is the component that defines, if only the privacyIDEA Credential Provider is be available for login. If the
+         Filter is not installed, then the privacyIDEA Credential Provider and all other credential providers are available.
