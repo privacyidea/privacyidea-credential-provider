@@ -97,7 +97,7 @@ unlocks his desktop.
 The behaviour in each scenario can be configured via the corresponding registry
 entry named **cpus_logon**, **cpus_unlock** and **cpus_credui**.
 
-These entries expext a *REG_SZ*, that consist of a digit 0, 1, 2, 3 and a
+These entries expect a *REG_SZ*, that consist of a digit 0, 1, 2, 3 and a
 character "e" or "d".
 
 * 0: relevant for *remote* (RDP) and *local* operation
