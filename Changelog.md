@@ -1,4 +1,4 @@
-# Version 3.1.0, TBD
+# Version 3.1.0, 2020-09-29
 
 ## Features
  * The behavior of the CP and Filter can be modified for each scenario separately (see docs).

@@ -17,3 +17,5 @@ CppClientCore/nlohmann/json.hpp
 *.msm
 *.aps
 Shared/Release/
+CppClientCore/CppClientCore/Win32/
+Release/
