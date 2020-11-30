@@ -10,11 +10,17 @@ The Credential Provider communicates with the privacyIDEA authentication
 system via a REST API.
 
 privacyIDEA is an open source two factor authentication system. 
+
 https://github.com/privacyidea/privacyidea
+
 https://privacyidea.org
 
-For more information on the privacyIDEA Credential Provider see
-https://netknights.it/en/produkte/privacyidea-credential-provider/
+Test Version
+============
+
+If you just want to test the software, an MSI is available in the release section as well as a test subscription.
+
+For Enterprise Support or an extended Subscription please check https://netknights.it/en/produkte/privacyidea-credential-provider/
 
 Documentation
 =============
