@@ -81,7 +81,7 @@ NOTE: Sending the windows or an empty password can be used to trigger token type
 
 **excluded_account**
 
-Specify an account that should be excluded from 2FA. The format is required to be domain\username or computername\username.
+Specify an account that should be excluded from 2FA. The format is required to be ``domain\username`` or ``computername\username``.
 
 
 Disabling for specific scenarios
