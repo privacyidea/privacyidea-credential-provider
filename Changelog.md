@@ -1,3 +1,12 @@
+# Version 3.1.1, TBD
+
+## Features
+ * Added "prefill_username" configuration setting to prefill the username field with the last user that logged on
+
+## Fixes
+ * Fix loading custom bitmaps as custom tile picture.
+ * Fix WinHttp default timeouts
+
 # Version 3.1.0, 2020-09-29
 
 ## Features

@@ -184,6 +184,10 @@ Add this registry entry and set it ``1`` to not have the privacyIDEA Credential 
 
 Set this to ``1`` to show the Domain that is currently used to log in.
 
+**prefill_username**
+
+Set this to ``1`` to have the username field prefilled with the user that last logged on.
+
 **offline_file**
 
 Specify the **absolute** path to where the offline file should be saved. The default is C:\offlineFile.json.

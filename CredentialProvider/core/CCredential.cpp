@@ -34,6 +34,7 @@
 #include <thread>
 #include <future>
 #include <sstream>
+#include <RegistryReader.h>
 
 using namespace std;
 
@@ -211,6 +212,15 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		}
 	}
 
+	if (_config->prefillUsername)
+	{
+		wstring wszRegPath = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI";
+		RegistryReader rr(wszRegPath.c_str());
+		wstring wszEntry = rr.getRegistry(L"LastLoggedOnUser");
+		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
+		_pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
+	}
+
 	if (_config->credential.passwordChanged)
 	{
 		*pbAutoLogon = TRUE;
@@ -307,7 +317,8 @@ HRESULT CCredential::GetBitmapValue(
 	if ((FID_LOGO == dwFieldID) && phbmp)
 	{
 		HBITMAP hbmp = nullptr;
-		LPCSTR lpszBitmapPath = PrivacyIDEA::ws2s(_config->bitmapPath).c_str();
+		string szPath = PrivacyIDEA::ws2s(_config->bitmapPath);
+		LPCSTR lpszBitmapPath = szPath.c_str();
 		DebugPrint(lpszBitmapPath);
 
 		if (NOT_EMPTY(lpszBitmapPath))

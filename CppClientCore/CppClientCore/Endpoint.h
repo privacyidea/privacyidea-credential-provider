@@ -86,8 +86,8 @@ private:
 
 	// These are the default values for WinHttpSetTimeouts
 	int _resolveTimeout = 0; // = infinite
-	int _connectTimeout = 60;
-	int _sendTimeout = 30;
-	int _receiveTimeout = 30;
+	int _connectTimeout = 60000;
+	int _sendTimeout = 30000;
+	int _receiveTimeout = 30000;
 };
 
