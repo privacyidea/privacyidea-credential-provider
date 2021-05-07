@@ -58,6 +58,8 @@ Configuration::Configuration()
 	tmp = rr.getRegistry(L"otp_hint_text");
 	defaultOTPHintText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_DEFAULT_OTP_HINT) : tmp;
 
+	prefillUsername = rr.getBoolRegistry(L"prefill_username");
+
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.getRegistry(L"hostname");
 	// Check if the path contains the placeholder, if so replace with nothing

@@ -51,6 +51,8 @@ public:
 
 	bool showDomainHint = false;
 
+	bool prefillUsername = false;
+
 	bool releaseLog = false;
 
 	bool noDefault = false;
