@@ -1,4 +1,4 @@
-# Version 3.1.1, TBD
+# Version 3.1.1, 2021-05-07
 
 ## Features
  * Added "prefill_username" configuration setting to prefill the username field with the last user that logged on
