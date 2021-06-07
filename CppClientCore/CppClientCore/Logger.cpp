@@ -18,7 +18,6 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "Logger.h"
-
 #include <Windows.h>
 #include <chrono>
 #include <fstream>
@@ -27,20 +26,13 @@
 
 using namespace std;
 
-void Logger::logS(const string& message, const char* file, int line, bool logInProduction)
+void Logger::LogS(const string& message, const char* file, int line, bool isDebugMessage)
 {
-#ifdef _DEBUG
-	UNREFERENCED_PARAMETER(logInProduction);
-#endif
-	// Check if it should be logged first and to which file
-	string outfilePath = logfilePathDebug;
-#ifndef _DEBUG
-	if (!logInProduction || !this->releaseLog)
+	// Do not log debug messages if it is not enabled
+	if (!logDebug && isDebugMessage)
 	{
 		return;
 	}
-	outfilePath = logfilePathProduction;
-#endif // !_DEBUG
 
 	// Format: [Time] [file:line]  message
 	time_t rawtime = NULL;
@@ -62,9 +54,8 @@ void Logger::logS(const string& message, const char* file, int line, bool logInP
 	string fullMessage = "[" + string(buffer) + "] [" + string(file) + ":" + to_string(line) + "] " + message;
 
 	ofstream os;
-	os.open(outfilePath.c_str(), std::ios_base::app);
+	os.open(logfilePath.c_str(), std::ios_base::app);
 	os << fullMessage << endl;
-
 
 #ifndef _OUTPUT_TO_COUT
 	OutputDebugStringA(fullMessage.c_str());
@@ -74,55 +65,64 @@ void Logger::logS(const string& message, const char* file, int line, bool logInP
 #endif // !_OUTPUT_TO_COUT
 }
 
-void Logger::logW(const wstring& message, const char* file, int line, bool logInProduction)
+void Logger::LogW(const wstring& message, const char* file, int line, bool isDebugMessage)
 {
 	using convert_typeX = std::codecvt_utf8<wchar_t>;
 	std::wstring_convert<convert_typeX, wchar_t> converterX;
 
 	string conv = converterX.to_bytes(message);
-	logS(conv, file, line, logInProduction);
+	LogS(conv, file, line, isDebugMessage);
 }
 
-void Logger::log(const char* message, const char* file, int line, bool logInProduction)
+void Logger::Log(const char* message, const char* file, int line, bool isDebugMessage)
 {
 	string msg = "";
-	if (message != nullptr && message[0] != NULL) {
+	if (message != nullptr && message[0] != NULL)
+	{
 		msg = string(message);
 	}
-	logS(msg, file, line, logInProduction);
+	LogS(msg, file, line, isDebugMessage);
 }
 
-void Logger::log(const wchar_t* message, const char* file, int line, bool logInProduction)
+void Logger::Log(const wchar_t* message, const char* file, int line, bool isDebugMessage)
 {
 	wstring msg = L"";
-	if (message != nullptr && message[0] != NULL) {
+	if (message != nullptr && message[0] != NULL)
+	{
 		msg = wstring(message);
 	}
-	logW(msg, file, line, logInProduction);
+	LogW(msg, file, line, isDebugMessage);
 }
-
-void Logger::log(const int message, const char* file, int line, bool logInProduction)
+/*
+void Logger::log(const int message, const char* file, int line, bool isDebugMessage)
 {
 	string i = "(int) " + to_string(message);
-	logS(i, file, line, logInProduction);
+	logS(i, file, line, isDebugMessage);
+}
+*/
+void Logger::Log(const long message, const char* file, int line, bool isDebugMessage)
+{
+	string i = "(long) " + to_string(message);
+	LogS(i, file, line, isDebugMessage);
 }
 
-void Logger::log(const std::string& message, const char* file, int line, bool logInProduction)
+void Logger::Log(const std::string& message, const char* file, int line, bool isDebugMessage)
 {
-	logS(message, file, line, logInProduction);
+	LogS(message, file, line, isDebugMessage);
 }
 
-void Logger::log(const std::wstring& message, const char* file, int line, bool logInProduction)
+void Logger::Log(const std::wstring& message, const char* file, int line, bool isDebugMessage)
 {
-	logW(message, file, line, logInProduction);
+	LogW(message, file, line, isDebugMessage);
+}
+/*
+void Logger::log(const std::string& message, const char* file, int line, bool isDebugMessage)
+{
+	logS(message.c_str(), file, line, isDebugMessage);
 }
 
-void Logger::log(const SecureString& message, const char* file, int line, bool logInProduction)
+void Logger::log(const std::wstring& message, const char* file, int line, bool isDebugMessage)
 {
-	logS(message.c_str(), file, line, logInProduction);
+	logW(message.c_str(), file, line, isDebugMessage);
 }
-
-void Logger::log(const SecureWString& message, const char* file, int line, bool logInProduction)
-{
-	logW(message.c_str(), file, line, logInProduction);
-}
+*/

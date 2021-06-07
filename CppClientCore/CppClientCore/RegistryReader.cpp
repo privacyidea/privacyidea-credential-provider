@@ -26,21 +26,17 @@ using namespace std;
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 1024
 
-RegistryReader::RegistryReader(const std::wstring& pathToKey)
+RegistryReader::RegistryReader(const std::wstring& pathToKey) noexcept
 {
 	wpath = pathToKey;
 }
 
-bool RegistryReader::getAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map)
+bool RegistryReader::GetAllEntries(const std::wstring& path, std::map<std::wstring, std::wstring>& map) noexcept
 {
 	// Open handle to realm-mapping key
 	HKEY hKey = nullptr;
 
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-		path.c_str(),
-		0,
-		KEY_READ,
-		&hKey) != ERROR_SUCCESS)
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
 	{
 		return false;
 	}
@@ -91,7 +87,7 @@ bool RegistryReader::getAll(const std::wstring& path, std::map<std::wstring, std
 				NULL);
 			if (retCode == ERROR_SUCCESS)
 			{
-				wstring value = PrivacyIDEA::toUpperCase(achValue);
+				wstring value = PrivacyIDEA::UpperCase(achValue);
 				// Get the data for the value
 				const DWORD SIZE = 1024;
 				TCHAR szData[SIZE] = _T("");
@@ -121,7 +117,7 @@ bool RegistryReader::getAll(const std::wstring& path, std::map<std::wstring, std
 	return true;
 }
 
-std::wstring RegistryReader::getRegistry(std::wstring name)
+std::wstring RegistryReader::GetWStringRegistry(std::wstring name) noexcept
 {
 	DWORD dwRet = NULL;
 	HKEY hKey = nullptr;
@@ -161,13 +157,13 @@ std::wstring RegistryReader::getRegistry(std::wstring name)
 	return wstring(szValue);
 }
 
-bool RegistryReader::getBoolRegistry(std::wstring name)
+bool RegistryReader::GetBoolRegistry(std::wstring name) noexcept
 {
 	// Non existing keys evaluate to false.
-	return getRegistry(name) == L"1";
+	return GetWStringRegistry(name) == L"1";
 }
 
-int RegistryReader::getIntRegistry(std::wstring name)
+int RegistryReader::GetIntRegistry(std::wstring name) noexcept
 {
-	return _wtoi(getRegistry(name).c_str()); // Invalid parameter returns 0
+	return _wtoi(GetWStringRegistry(name).c_str()); // Invalid parameter returns 0
 }

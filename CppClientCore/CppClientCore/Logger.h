@@ -17,20 +17,19 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "SecureString.h"
+
 #include <string>
 
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
-#define ReleaseDebugPrint(message)	Logger::Get().log(message, __FILENAME__, __LINE__, true)
-#define DebugPrint(message)			Logger::Get().log(message, __FILENAME__, __LINE__, false)
+#define Print(message)				Logger::Get().Log(message, __FILENAME__, __LINE__, false)
+#define DebugPrint(message)			Logger::Get().Log(message, __FILENAME__, __LINE__, true)
 
 // Singleton logger class that writes to a file on C: and to OutputDebugString
 class Logger
 {
 public:
-	std::string logfilePathDebug = "C:\\PICredentialProviderDebugLog.txt";
-	std::string logfilePathProduction = "C:\\PICredentialProviderLog.txt";
+	std::string logfilePath = "C:\\PICredentialProviderLog.txt";
 
 	Logger(Logger const&) = delete;
 	void operator=(Logger const&) = delete;
@@ -40,26 +39,22 @@ public:
 		return instance;
 	}
 
-	void log(const char* message, const char* file, int line, bool logInProduction);
+	void Log(const char* message, const char* file, int line, bool isDebugMessage);
 
-	void log(const wchar_t* message, const char* file, int line, bool logInProduction);
+	void Log(const wchar_t* message, const char* file, int line, bool isDebugMessage);
 
-	void log(const int message, const char* file, int line, bool logInProduction);
+	void Log(const long message, const char* file, int line, bool isDebugMessage);
 
-	void log(const std::string& message, const char* file, int line, bool logInProduction);
+	void Log(const std::string& message, const char* file, int line, bool isDebugMessage);
 
-	void log(const std::wstring& message, const char* file, int line, bool logInProduction);
+	void Log(const std::wstring& message, const char* file, int line, bool isDebugMessage);
 
-	void log(const SecureString& message, const char* file, int line, bool logInProduction);
-
-	void log(const SecureWString& message, const char* file, int line, bool logInProduction);
-
-	bool releaseLog = false;
+	bool logDebug = false;
 
 private:
 	Logger() = default;
 
-	void logS(const std::string& message, const char* file, int line, bool logInProduction);
+	void LogS(const std::string& message, const char* file, int line, bool isDebugMessage);
 
-	void logW(const std::wstring& message, const char* file, int line, bool logInProduction);
+	void LogW(const std::wstring& message, const char* file, int line, bool isDebugMessage);
 };

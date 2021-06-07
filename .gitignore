@@ -19,3 +19,4 @@ CppClientCore/nlohmann/json.hpp
 Shared/Release/
 CppClientCore/CppClientCore/Win32/
 Release/
+Credential_Provider_Technical_Reference.xps

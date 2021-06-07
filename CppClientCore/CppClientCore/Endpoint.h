@@ -21,11 +21,11 @@
 
 #include "Challenge.h"
 #include "PIConf.h"
-#include <string>
 #include <map>
 #include <Windows.h>
 
-enum class RequestMethod {
+enum class RequestMethod
+{
 	GET,
 	POST
 };
@@ -36,43 +36,40 @@ class Endpoint
 public:
 	Endpoint(PICONFIG conf);
 
-	std::string connect(const std::string& endpoint, SecureString sdata, const RequestMethod& method);
+	std::string SendRequest(const std::string& endpoint, std::string sdata, const RequestMethod& method);
 
 	// URL encodes the value and returns "key=value"
-	SecureString encodePair(const std::string& key, const std::string& value);
-	SecureString encodePair(const std::string& key, const SecureString& value);
-	SecureString encodePair(const std::string& key, const SecureWString& value);
+	std::string EncodePair(const std::string& key, const std::string& value);
+	std::string EncodePair(const std::string& key, const std::wstring& value);
 
-	HRESULT pollForTransaction(const SecureString& data);
+	HRESULT PollForTransaction(const std::string& data);
 
-	HRESULT finalizePolling(const std::string& user, const std::string& transaction_id);
+	HRESULT FinalizePolling(const std::string& user, const std::string& transaction_id);
 
 	// <returns> EP_STATUS_TX_SUCCESS, EP_STATUS_TX_FAILURE or error from <seealso cref="Endpoint::parseError/> </returns>
-	HRESULT parseForTransactionSuccess(const std::string& in);
+	HRESULT ParseForTransactionSuccess(const std::string& in);
 
-	HRESULT parseAuthenticationRequest(const std::string& in);
+	HRESULT ParseAuthenticationRequest(const std::string& in);
 
 	// Checks the server's response for triggered challenges, collect data in c
 	// <returns> EP_TRIGGERED_CHALLENGE if data for CR was found,
 	//			 EP_NO_CHALLENGE if no data was found or the error from <seealso cref="Endpoint::parseError"/> </returns>
-	HRESULT parseTriggerRequest(const std::string& in, Challenge& c);
+	HRESULT ParseTriggerRequest(const std::string& in, Challenge& c);
 
 	// Check the response for error code and message
 	// returns PI_JSON_ERROR_CONTAINED if there was an error and the message and code in the provided parameters
 	// or PI_JSON_PARSE_ERROR or S_OK if there was no error
-	HRESULT parseForError(const std::string& in, std::string& errMsg, int& errCode);
+	HRESULT ParseForError(const std::string& in, std::string& errMsg, int& errCode);
 
-	const HRESULT& getLastErrorCode();
+	const HRESULT& GetLastErrorCode();
 
-	static nlohmann::json tryParseJSON(const std::string& in);
+	static nlohmann::json TryParseJSON(const std::string& in);
 
 private:
 
-	std::wstring get_utf16(const std::string& str, int codepage);
+	std::wstring Get_utf16(const std::string& str, int codepage);
 
-	SecureString escapeUrl(const std::string& in);
-
-	SecureString escapeUrl(const SecureString& in);
+	std::string EscapeUrl(const std::string& in);
 
 	bool _ignoreInvalidCN = false;
 	bool _ignoreUnknownCA = false;

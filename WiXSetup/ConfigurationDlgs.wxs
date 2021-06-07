@@ -122,7 +122,7 @@
         <Control Id="OTPTextLabel" Type="Text" X="45" Y="152" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
         <Control Id="OTPTextEdit" Type="Edit" X="45" Y="164" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
 
-        <Control Id="ReleaseVersionLog" Type="CheckBox" X="45" Y="185" Width="220" Height="17" Property="RELEASE_LOG" CheckBoxValue="1" Text="Create Logfile in productive use." />
+        <Control Id="DebugLog" Type="CheckBox" X="45" Y="185" Width="220" Height="17" Property="DEBUG_LOG" CheckBoxValue="1" Text="Create a detailed logfile. Use this for debugging." />
         
         <!-- Bottom Controls -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
