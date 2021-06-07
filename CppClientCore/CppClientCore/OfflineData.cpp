@@ -93,7 +93,7 @@ OfflineData::OfflineData(std::string json_string)
 	}
 }
 
-nlohmann::json OfflineData::toJSON()
+nlohmann::json OfflineData::ToJSON()
 {
 	json j;
 	j["count"] = to_string(count);
@@ -114,7 +114,7 @@ nlohmann::json OfflineData::toJSON()
 	return j;
 }
 
-int OfflineData::getLowestKey()
+int OfflineData::GetLowestKey()
 {
 	int lowestKey = INT_MAX;
 
@@ -134,7 +134,7 @@ int OfflineData::getLowestKey()
 	return lowestKey;
 }
 
-size_t OfflineData::getOfflineOTPsLeft() noexcept
+size_t OfflineData::GetOfflineOTPsLeft() noexcept
 {
 	return offlineOTPs.size();
 }

@@ -58,14 +58,14 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 
 	switch (cpus)
 	{
-	case CPUS_LOGON:
-	case CPUS_UNLOCK_WORKSTATION:
-	case CPUS_CREDUI:
-		break;
-	case CPUS_CHANGE_PASSWORD:
-		return E_NOTIMPL; // TODO 
-	default:
-		return E_INVALIDARG;
+		case CPUS_LOGON:
+		case CPUS_UNLOCK_WORKSTATION:
+		case CPUS_CREDUI:
+			break;
+		case CPUS_CHANGE_PASSWORD:
+			return E_NOTIMPL; // TODO 
+		default:
+			return E_INVALIDARG;
 	}
 
 	if (!Shared::IsRequiredForScenario(cpus, FILTER))
@@ -107,8 +107,8 @@ HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVI
 	//UNREFERENCED_PARAMETER(pcpsIn);
 	//UNREFERENCED_PARAMETER(pcpcsOut);
 	DebugPrint(__FUNCTION__);
-	
-	if (!pcpcsIn) 
+
+	if (!pcpcsIn)
 	{
 		// no point continuing as there are no credentials
 		return E_NOTIMPL;

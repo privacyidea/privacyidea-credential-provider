@@ -49,7 +49,7 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 	// Load the offline file on startup
 	_filePath = filePath.empty() ? _filePath : filePath;
 	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
-	const HRESULT res = loadFromFile();
+	const HRESULT res = LoadFromFile();
 	if (res != S_OK)
 	{
 		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
@@ -64,7 +64,7 @@ OfflineHandler::~OfflineHandler()
 {
 	if (!dataSets.empty())
 	{
-		const HRESULT res = saveToFile();
+		const HRESULT res = SaveToFile();
 		if (res != S_OK)
 		{
 			DebugPrint(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
@@ -76,7 +76,7 @@ OfflineHandler::~OfflineHandler()
 	}
 }
 
-HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string& username)
+HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& username)
 {
 	HRESULT success = E_FAIL;
 
@@ -84,7 +84,7 @@ HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string&
 	{
 		if (item.user == username || item.username == username)
 		{
-			const int lowestKey = item.getLowestKey();
+			const int lowestKey = item.GetLowestKey();
 			int matchingKey = lowestKey;
 
 			for (int i = lowestKey; i < (lowestKey + _tryWindow); i++)
@@ -92,7 +92,7 @@ HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string&
 				try
 				{
 					string storedValue = item.offlineOTPs.at(to_string(i));
-					if (pbkdf2_sha512_verify(otp, storedValue))
+					if (Pbkdf2_sha512_verify(otp, storedValue))
 					{
 						matchingKey = i;
 						success = S_OK;
@@ -123,7 +123,7 @@ HRESULT OfflineHandler::verifyOfflineOTP(const SecureWString& otp, const string&
 	return success;
 }
 
-HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial)
+HRESULT OfflineHandler::GetRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial)
 {
 	if (dataSets.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 
@@ -144,10 +144,10 @@ HRESULT OfflineHandler::getRefillTokenAndSerial(const std::string& username, std
 }
 
 // Check an authentication reponse from privacyIDEA if it contains the inital data for offline
-HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
+HRESULT OfflineHandler::ParseForOfflineData(const std::string& in)
 {
 	DebugPrint(__FUNCTION__);
-	auto j = Endpoint::tryParseJSON(in);
+	auto j = Endpoint::TryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	auto jAuth_items = j["auth_items"];
@@ -195,10 +195,10 @@ HRESULT OfflineHandler::parseForOfflineData(const std::string& in)
 	return S_OK;
 }
 
-HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::string& username)
+HRESULT OfflineHandler::ParseRefillResponse(const std::string& in, const std::string& username)
 {
 	DebugPrint(__FUNCTION__);
-	auto jIn = Endpoint::tryParseJSON(in);
+	auto jIn = Endpoint::TryParseJSON(in);
 	if (jIn == nullptr) return PI_JSON_PARSE_ERROR;
 	// Set the new refill token
 	json offline;
@@ -242,7 +242,7 @@ HRESULT OfflineHandler::parseRefillResponse(const std::string& in, const std::st
 	return E_FAIL;
 }
 
-HRESULT OfflineHandler::isDataVailable(const std::string& username)
+HRESULT OfflineHandler::DataVailable(const std::string& username)
 {
 	// Check is usable data available for the given username
 	for (auto& item : dataSets)
@@ -256,7 +256,7 @@ HRESULT OfflineHandler::isDataVailable(const std::string& username)
 	return PI_OFFLINE_DATA_USER_NOT_FOUND;
 }
 
-HRESULT OfflineHandler::saveToFile()
+HRESULT OfflineHandler::SaveToFile()
 {
 	ofstream o;
 	o.open(_filePath, ios_base::out); // Destroy contents | create new
@@ -267,7 +267,7 @@ HRESULT OfflineHandler::saveToFile()
 
 	for (auto& item : dataSets)
 	{
-		jArr.push_back(item.toJSON());
+		jArr.push_back(item.ToJSON());
 	}
 
 	json j;
@@ -278,7 +278,7 @@ HRESULT OfflineHandler::saveToFile()
 	return S_OK;
 }
 
-HRESULT OfflineHandler::loadFromFile()
+HRESULT OfflineHandler::LoadFromFile()
 {
 	// Check for the file, load if exists
 	string fileContent = "";
@@ -323,7 +323,7 @@ HRESULT OfflineHandler::loadFromFile()
 }
 
 // Returns the outer right value of the passlib format and cuts it off the input string including the $
-std::string OfflineHandler::getNextValue(std::string& in)
+std::string OfflineHandler::GetNextValue(std::string& in)
 {
 	string tmp = in.substr(in.find_last_of('$') + 1);
 	in = in.substr(0, in.find_last_of('$'));
@@ -365,29 +365,29 @@ char* OfflineHandler::UnicodeToCodePage(int codePage, const wchar_t* src)
 	return x;
 }
 
-bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string storedValue)
+bool OfflineHandler::Pbkdf2_sha512_verify(std::wstring password, std::string storedValue)
 {
 	bool isValid = false;
 	// Format of stored values (passlib):
 	// $algorithm$iteratons$salt$checksum
-	string storedOTP = getNextValue(storedValue);
+	string storedOTP = GetNextValue(storedValue);
 	// $algorithm$iteratons$salt
-	string salt = getNextValue(storedValue);
+	string salt = GetNextValue(storedValue);
 	// $algorithm$iteratons
 	int iterations = 10000;
 	try
 	{
-		iterations = stoi(getNextValue(storedValue));
+		iterations = stoi(GetNextValue(storedValue));
 	}
 	catch (const invalid_argument& e)
 	{
 		DebugPrint(e.what());
 	}
 	// $algorithm
-	string algorithm = getNextValue(storedValue);
+	string algorithm = GetNextValue(storedValue);
 
 	// Salt is in adapted abase64 encoding of passlib where [./+] is substituted
-	base64toabase64(salt);
+	Base64toabase64(salt);
 
 	int bufLen = Base64DecodeGetRequiredLength((int)(salt.size() + 1));
 	BYTE* bufSalt = (BYTE*)CoTaskMemAlloc(bufLen);
@@ -404,7 +404,7 @@ bool OfflineHandler::pbkdf2_sha512_verify(SecureWString password, std::string st
 	BYTE* prepPasswordBytes = reinterpret_cast<unsigned char*>(prepPassword);
 
 	// Get the size of the output from the stored value, which is also in abase64 encoding
-	base64toabase64(storedOTP);
+	Base64toabase64(storedOTP);
 
 	int bufLenStored = Base64DecodeGetRequiredLength((int)(storedOTP.size() + 1));
 	BYTE* bufStored = (BYTE*)CoTaskMemAlloc(bufLenStored);
@@ -463,7 +463,7 @@ Exit:
 }
 
 // Replaces '.' with '+' in the input string.
-void OfflineHandler::base64toabase64(std::string& in)
+void OfflineHandler::Base64toabase64(std::string& in)
 {
 	std::replace(in.begin(), in.end(), '.', '+');
 }

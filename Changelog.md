@@ -1,3 +1,15 @@
+# Version 3.1.2, TBD
+
+## Features
+ * Added "enable_reset" configuration setting to show a clickable text at the bottom that resets the login.
+ * Added "debug_log" configuration setting to create a detailed log file. This setting replaces "release_log", real errors are always written to the log file. This setting also removes the need to install the debug version to create a detailed log.
+ * Added status callback to WinHttp to get more detailed information about certain failures.
+ 
+ ## Fixes
+ * Fixed crash when deselecting the Credential Provider tile.
+ * Fixed missing lookup of "no_default" setting.
+ * The installer now writes all possible configuration keys to the registry. The configurable parts in the installer are unchanged.
+
 # Version 3.1.1, 2021-05-07
 
 ## Features

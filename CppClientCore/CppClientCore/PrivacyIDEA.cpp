@@ -7,12 +7,12 @@
 using namespace std;
 
 // Check if there is a mapping for the given domain or - if not - a default realm is set
-HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
+HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::string& data)
 {
 	wstring realm = L"";
 	try
 	{
-		realm = _realmMap.at(toUpperCase(domain));
+		realm = _realmMap.at(UpperCase(domain));
 	}
 	catch (const std::out_of_range& e)
 	{
@@ -26,13 +26,13 @@ HRESULT PrivacyIDEA::appendRealm(std::wstring domain, SecureString& data)
 
 	if (!realm.empty())
 	{
-		data += "&" + _endpoint.encodePair("realm", ws2s(realm));
+		data += "&" + _endpoint.EncodePair("realm", ws2s(realm));
 	}
 
 	return S_OK;
 }
 
-void PrivacyIDEA::pollThread(
+void PrivacyIDEA::PollThread(
 	const std::string& transaction_id,
 	const std::string& username,
 	std::function<void(bool)> callback)
@@ -40,11 +40,11 @@ void PrivacyIDEA::pollThread(
 	DebugPrint("Starting poll thread...");
 	HRESULT res = E_FAIL;
 	bool success = false;
-	SecureString data = _endpoint.encodePair("transaction_id", transaction_id);
+	std::string data = _endpoint.EncodePair("transaction_id", transaction_id);
 	while (_runPoll.load())
 	{
-		string response = _endpoint.connect(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
-		res = _endpoint.parseForTransactionSuccess(response);
+		string response = _endpoint.SendRequest(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
+		res = _endpoint.ParseForTransactionSuccess(response);
 		if (res == PI_TRANSACTION_SUCCESS)
 		{
 			success = true;
@@ -59,7 +59,7 @@ void PrivacyIDEA::pollThread(
 		try
 		{
 			DebugPrint("Finalizing transaction...");
-			HRESULT result = _endpoint.finalizePolling(username, transaction_id);
+			HRESULT result = _endpoint.FinalizePolling(username, transaction_id);
 			callback((result == PI_AUTH_SUCCESS));
 		}
 		catch (const std::out_of_range& e)
@@ -71,20 +71,20 @@ void PrivacyIDEA::pollThread(
 	}
 }
 
-HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, SecureString lastOTP)
+HRESULT PrivacyIDEA::TryOfflineRefill(std::string username, std::string lastOTP)
 {
-	SecureString data = _endpoint.encodePair("pass", lastOTP);
+	std::string data = _endpoint.EncodePair("pass", lastOTP);
 	string refilltoken, serial;
-	HRESULT hr = _offlineHandler.getRefillTokenAndSerial(username, refilltoken, serial);
+	HRESULT hr = _offlineHandler.GetRefillTokenAndSerial(username, refilltoken, serial);
 	if (hr != S_OK)
 	{
 		DebugPrint("Failed to get parameters for offline refill!");
 		return E_FAIL;
 	}
 
-	data += "&" + _endpoint.encodePair("refilltoken", refilltoken)
-		+ "&" + _endpoint.encodePair("serial", serial);
-	string response = _endpoint.connect(PI_ENDPOINT_OFFLINE_REFILL, data, RequestMethod::POST);
+	data += "&" + _endpoint.EncodePair("refilltoken", refilltoken)
+		+ "&" + _endpoint.EncodePair("serial", serial);
+	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, data, RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -92,34 +92,34 @@ HRESULT PrivacyIDEA::tryOfflineRefill(std::string username, SecureString lastOTP
 		return E_FAIL;
 	}
 
-	HRESULT res = _offlineHandler.parseRefillResponse(response, username);
+	HRESULT res = _offlineHandler.ParseRefillResponse(response, username);
 
 	return res;
 }
 
-HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstring& domain,
-	const SecureWString& otp, const std::string& transaction_id)
+HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstring& domain,
+	const std::wstring& otp, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
 	HRESULT piStatus = E_FAIL;
 	HRESULT ret = PI_AUTH_FAILURE;
 	HRESULT offlineStatus = E_FAIL;
-
+	std::wstring otp2(otp.c_str());
 	string strUsername = ws2s(username);
 
 	// Check if offline otp available
-	if (_offlineHandler.isDataVailable(strUsername) == S_OK)
+	if (_offlineHandler.DataVailable(strUsername) == S_OK)
 	{
 		DebugPrint("Offline data available");
-		offlineStatus = _offlineHandler.verifyOfflineOTP(otp, strUsername);
+		offlineStatus = _offlineHandler.VerifyOfflineOTP(otp, strUsername);
 		if (offlineStatus == S_OK)
 		{
 			// try refill then return
 			DebugPrint("Offline authentication successful");
-			offlineStatus = tryOfflineRefill(strUsername, sws2ss(otp));
+			offlineStatus = TryOfflineRefill(strUsername, ws2s(otp));
 			if (offlineStatus != S_OK)
 			{
-				ReleaseDebugPrint("Offline refill failed: " + longToHexString(offlineStatus));
+				Print("Offline refill failed: " + LongToHexString(offlineStatus));
 			}
 			return PI_AUTH_SUCCESS;	// Still return SUCCESS because offline authentication was successful
 		}
@@ -127,7 +127,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 		{
 			// Continue with other steps
 			offlineStatus = PI_OFFLINE_WRONG_OTP;
-			ReleaseDebugPrint("Offline data was available, but authenticiation failed");
+			Print("Offline data was available, but authenticiation failed");
 		}
 	}
 	else if (offlineStatus == PI_OFFLINE_DATA_NO_OTPS_LEFT)
@@ -136,22 +136,22 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	}
 
 	// Connect to the privacyIDEA Server
-	SecureString data = _endpoint.encodePair("user", ws2s(username)) + "&" + _endpoint.encodePair("pass", otp);
+	std::string data = _endpoint.EncodePair("user", ws2s(username)) + "&" + _endpoint.EncodePair("pass", otp);
 
 	if (!transaction_id.empty())
 	{
-		data += "&" + _endpoint.encodePair("transaction_id", transaction_id);
+		data += "&" + _endpoint.EncodePair("transaction_id", transaction_id);
 	}
 
-	appendRealm(domain, data);
+	AppendRealm(domain, data);
 
-	string response = _endpoint.connect(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
+	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
 	{
-		HRESULT epCode = _endpoint.getLastErrorCode();
-		DebugPrint("Response was empty. Endpoint error: " + longToHexString(epCode));
+		HRESULT epCode = _endpoint.GetLastErrorCode();
+		DebugPrint("Response was empty. Endpoint error: " + LongToHexString(epCode));
 		// If offline was available, give the hint that the entered OTP might be wrong
 		if (offlineStatus == PI_OFFLINE_WRONG_OTP && epCode == PI_ENDPOINT_SERVER_UNAVAILABLE)
 		{
@@ -163,13 +163,13 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	}
 
 	// Check if the response contains an error, message and code will be set
-	if (_endpoint.parseForError(response, _lastErrorMessage, _lastError) == PI_JSON_ERROR_CONTAINED)
+	if (_endpoint.ParseForError(response, _lastErrorMessage, _lastError) == PI_JSON_ERROR_CONTAINED)
 	{
 		return PI_AUTH_ERROR;
 	}
 
 	// Check for initial offline OTP data
-	piStatus = _offlineHandler.parseForOfflineData(response);
+	piStatus = _offlineHandler.ParseForOfflineData(response);
 	if (piStatus == S_OK) // Data was found
 	{
 		// Continue
@@ -184,7 +184,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	}
 	// Check for triggered challenge response transactions
 	Challenge c;
-	piStatus = _endpoint.parseTriggerRequest(response, c);
+	piStatus = _endpoint.ParseTriggerRequest(response, c);
 	if (piStatus == PI_TRIGGERED_CHALLENGE)
 	{
 		// Check the challenge data 
@@ -201,7 +201,7 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	} // else if (res == PI_NO_CHALLENGE) {}
 
 	// Check for normal success
-	piStatus = _endpoint.parseAuthenticationRequest(response);
+	piStatus = _endpoint.ParseAuthenticationRequest(response);
 	if (piStatus == PI_AUTH_SUCCESS)
 	{
 		ret = PI_AUTH_SUCCESS;
@@ -225,31 +225,31 @@ HRESULT PrivacyIDEA::validateCheck(const std::wstring& username, const std::wstr
 	return ret;
 }
 
-bool PrivacyIDEA::stopPoll()
+bool PrivacyIDEA::StopPoll()
 {
 	DebugPrint("Stopping poll thread...");
 	_runPoll.store(false);
 	return true;
 }
 
-void PrivacyIDEA::asyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback)
+void PrivacyIDEA::AsyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback)
 {
 	_runPoll.store(true);
-	std::thread t(&PrivacyIDEA::pollThread, this, transaction_id, username, callback);
+	std::thread t(&PrivacyIDEA::PollThread, this, transaction_id, username, callback);
 	t.detach();
 }
 
-HRESULT PrivacyIDEA::pollTransaction(std::string transaction_id)
+HRESULT PrivacyIDEA::PollTransaction(std::string transaction_id)
 {
-	return _endpoint.pollForTransaction(_endpoint.encodePair("transaction_id", transaction_id));
+	return _endpoint.PollForTransaction(_endpoint.EncodePair("transaction_id", transaction_id));
 }
 
-bool PrivacyIDEA::isOfflineDataAvailable(const std::wstring& username)
+bool PrivacyIDEA::OfflineDataAvailable(const std::wstring& username)
 {
-	return _offlineHandler.isDataVailable(ws2s(username)) == S_OK;
+	return _offlineHandler.DataVailable(ws2s(username)) == S_OK;
 }
 
-Challenge PrivacyIDEA::getCurrentChallenge()
+Challenge PrivacyIDEA::GetCurrentChallenge()
 {
 	return _currentChallenge;
 }
@@ -270,71 +270,25 @@ std::string PrivacyIDEA::ws2s(const std::wstring& ws)
 	return converterX.to_bytes(ws);
 }
 
-SecureString PrivacyIDEA::sws2ss(const SecureWString& sws)
-{
-	size_t outSize = 0;
-	size_t size = sws.size() + 1;
-	char* outBuf = new char[size];
-
-	wcstombs_s(&outSize, outBuf, size, sws.c_str(), (size - 1));
-
-	SecureString ret;
-	if (outSize > 0)
-	{
-		ret = SecureString(outBuf);
-	}
-	else
-	{
-		ret = SecureString();
-	}
-	SecureZeroMemory(outBuf, size);
-	delete[] outBuf;
-
-	return ret;
-}
-
-SecureWString PrivacyIDEA::ss2sws(const SecureString& ss)
-{
-	size_t outSize = 0;
-	size_t size = ss.size() + 1;
-	wchar_t* outBuf = new wchar_t[size];
-
-	mbstowcs_s(&outSize, outBuf, size, ss.c_str(), (size - 1));
-
-	SecureWString ret;
-	if (outSize > 0)
-	{
-		ret = SecureWString(outBuf);
-	}
-	else
-	{
-		ret = SecureWString();
-	}
-	SecureZeroMemory(outBuf, size);
-	delete[] outBuf;
-
-	return ret;
-}
-
-std::wstring PrivacyIDEA::toUpperCase(std::wstring s)
+std::wstring PrivacyIDEA::UpperCase(std::wstring s)
 {
 	std::transform(s.begin(), s.end(), s.begin(), ::toupper);
 	return s;
 }
 
-std::string PrivacyIDEA::longToHexString(long in)
+std::string PrivacyIDEA::LongToHexString(long in)
 {
 	std::stringstream ss;
 	ss << "0x" << std::hex << in;
 	return std::string(ss.str());
 }
 
-int PrivacyIDEA::getLastError()
+int PrivacyIDEA::GetLastError()
 {
 	return _lastError;
 }
 
-std::wstring PrivacyIDEA::getLastErrorMessage()
+std::wstring PrivacyIDEA::GetLastErrorMessage()
 {
 	return s2ws(_lastErrorMessage);
 }

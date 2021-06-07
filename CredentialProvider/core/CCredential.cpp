@@ -70,8 +70,10 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR password
 )
 {
+	DebugPrint(__FUNCTION__);
+
 	wstring wstrUsername, wstrDomainname;
-	SecureWString wstrPassword;
+	std::wstring wstrPassword;
 
 	if (NOT_EMPTY(user_name))
 	{
@@ -83,17 +85,15 @@ HRESULT CCredential::Initialize(
 	}
 	if (NOT_EMPTY(password))
 	{
-		wstrPassword = SecureWString(password);
+		wstrPassword = std::wstring(password);
 	}
-#ifdef _DEBUG
-	DebugPrint(__FUNCTION__);
+
 	DebugPrint(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
 	DebugPrint(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
 	if (_config->piconfig.logPasswords)
 	{
 		DebugPrint(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 	}
-#endif
 	HRESULT hr = S_OK;
 
 	if (!wstrUsername.empty())
@@ -117,8 +117,8 @@ HRESULT CCredential::Initialize(
 
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
 	{
-		//DebugPrintLn("Copy field #:");
-		//DebugPrintLn(i + 1);
+		//DebugPrint("Copy field #:");
+		//DebugPrint(i + 1);
 		_rgFieldStatePairs[i] = rgfsp[i];
 		hr = FieldDescriptorCopy(rgcpfd[i], &_rgCredProvFieldDescriptors[i]);
 
@@ -205,7 +205,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 
 	if (_config->credential.passwordMustChange)
 	{
-		_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::CHANGE_PASSWORD);
+		hr = _util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::CHANGE_PASSWORD);
 		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 		{
 			_config->bypassPrivacyIDEA = true;
@@ -214,11 +214,15 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 
 	if (_config->prefillUsername)
 	{
-		wstring wszRegPath = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI";
-		RegistryReader rr(wszRegPath.c_str());
-		wstring wszEntry = rr.getRegistry(L"LastLoggedOnUser");
+		RegistryReader rr(LAST_USER_REGISTRY_PATH);
+		wstring wszEntry = rr.GetWStringRegistry(L"LastLoggedOnUser");
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
-		_pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
+		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
+	}
+
+	if (!_config->showResetLink)
+	{
+		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
 	}
 
 	if (_config->credential.passwordChanged)
@@ -238,9 +242,9 @@ HRESULT CCredential::SetDeselected()
 
 	HRESULT hr = S_OK;
 
-	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
+	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
 
-	_util.ResetScenario(this, _pCredProvCredentialEvents);
+	hr = _util.ResetScenario(this, _pCredProvCredentialEvents);
 
 	// Reset password changing in case another user wants to log in
 	_config->credential.passwordChanged = false;
@@ -507,6 +511,7 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
 	DebugPrint(__FUNCTION__);
+	_util.ResetScenario(this, _pCredProvCredentialEvents);
 	return S_OK;
 }
 
@@ -619,8 +624,8 @@ HRESULT CCredential::GetSerialization(
 				// In this case the error is contained in a valid response from PI
 				else if (_piStatus == PI_AUTH_ERROR)
 				{
-					errorMessage = _privacyIDEA.getLastErrorMessage();
-					errorCode = _privacyIDEA.getLastError();
+					errorMessage = _privacyIDEA.GetLastErrorMessage();
+					errorCode = _privacyIDEA.GetLastError();
 				}
 				else if (_piStatus == PI_WRONG_OFFLINE_SERVER_UNAVAILABLE)
 				{
@@ -645,7 +650,7 @@ HRESULT CCredential::GetSerialization(
 			// Reset the authentication
 			_piStatus = PI_STATUS_NOT_SET;
 			_config->pushAuthenticationSuccessful = false;
-			_privacyIDEA.stopPoll();
+			_privacyIDEA.StopPoll();
 
 			// Pack credentials for logon
 			if (_config->provider.cpu == CPUS_CREDUI)
@@ -687,7 +692,6 @@ HRESULT CCredential::GetSerialization(
 		_config->clearFields = true; // it's a one-timer...
 	}
 
-#ifdef _DEBUG
 	if (pcpgsr)
 	{
 		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_FINISHED"); }
@@ -697,7 +701,6 @@ HRESULT CCredential::GetSerialization(
 	}
 	else { DebugPrint("pcpgsr is a nullpointer!"); }
 	DebugPrint("CCredential::GetSerialization - END");
-#endif //_DEBUG
 	return retVal;
 }
 
@@ -744,7 +747,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			toCompare.append(_config->credential.domain).append(L"\\");
 		}
 		toCompare.append(_config->credential.username);
-		if (PrivacyIDEA::toUpperCase(toCompare) == PrivacyIDEA::toUpperCase(_config->excludedAccount)) {
+		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount)) {
 			DebugPrint("Login data matches excluded account, skipping 2FA...");
 			// Simulate 2FA success so the logic in GetSerialization can stay the same
 			_piStatus = PI_AUTH_SUCCESS;
@@ -771,14 +774,14 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		else
 		{
 			// Send either empty pass or the windows password in first step
-			SecureWString toSend = L"";
+			std::wstring toSend = L"";
 			if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
 				toSend = _config->credential.password;
 
-			_piStatus = _privacyIDEA.validateCheck(_config->credential.username, _config->credential.domain, toSend);
+			_piStatus = _privacyIDEA.ValidateCheck(_config->credential.username, _config->credential.domain, toSend);
 			if (_piStatus == PI_TRIGGERED_CHALLENGE)
 			{
-				Challenge c = _privacyIDEA.getCurrentChallenge();
+				Challenge c = _privacyIDEA.GetCurrentChallenge();
 				_config->challenge = c;
 				if (!c.transaction_id.empty())
 				{
@@ -786,7 +789,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					if (c.tta == TTA::BOTH || c.tta == TTA::PUSH)
 					{
 						// When polling finishes, pushAuthenticationCallback is invoked with the finialization success value
-						_privacyIDEA.asyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
+						_privacyIDEA.AsyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
 							std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
 					}
 				}
@@ -805,19 +808,19 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	else if (_config->twoStepHideOTP && _config->isSecondStep)
 	{
 		// Send with optional transaction_id from first step
-		_piStatus = _privacyIDEA.validateCheck(
+		_piStatus = _privacyIDEA.ValidateCheck(
 			_config->credential.username,
 			_config->credential.domain,
-			SecureWString(_config->credential.otp.c_str()),
+			std::wstring(_config->credential.otp.c_str()),
 			_config->challenge.transaction_id);
 	}
 	//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 	else
 	{
-		_piStatus = _privacyIDEA.validateCheck(
+		_piStatus = _privacyIDEA.ValidateCheck(
 			_config->credential.username,
 			_config->credential.domain,
-			SecureWString(_config->credential.otp.c_str()));
+			std::wstring(_config->credential.otp.c_str()));
 	}
 
 	DebugPrint("Connect - END");
@@ -840,7 +843,6 @@ HRESULT CCredential::ReportResult(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
-#ifdef _DEBUG
 	DebugPrint(__FUNCTION__);
 	// only print interesting statuses
 	if (ntsStatus != 0)
@@ -855,7 +857,6 @@ HRESULT CCredential::ReportResult(
 		ss << std::hex << ntsSubstatus;
 		DebugPrint("ntsSubstatus: " + ss.str());
 	}
-#endif
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);

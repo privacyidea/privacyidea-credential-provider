@@ -130,18 +130,18 @@ private:
 	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[FID_NUM_FIELDS];	// An array holding the type and 
 																							// name of each field in the tile.
 
-	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];          // An array holding the state of 
-																						 // each field in the tile.
+	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];				// An array holding the state of 
+																							// each field in the tile.
 
-	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];			 // An array holding the string 
-																						 // value of each field. This is 
-																						 // different from the name of 
-																						 // the field held in 
-																						 // _rgCredProvFieldDescriptors.
+	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];												// An array holding the string 
+																							// value of each field. This is 
+																							// different from the name of 
+																							// the field held in 
+																							// _rgCredProvFieldDescriptors.
 	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
 
-	DWORD                                   _dwComboIndex;                               // Tracks the current index 
-																						 // of our combobox.
+	DWORD                                   _dwComboIndex;									// Tracks the current index 
+																							// of our combobox.
 
 	PrivacyIDEA								_privacyIDEA;
 

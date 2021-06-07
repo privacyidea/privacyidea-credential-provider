@@ -51,12 +51,7 @@ Endpoint::Endpoint(PICONFIG conf)
 	_receiveTimeout = conf.receiveTimeoutMS == 0 ? _receiveTimeout : conf.receiveTimeoutMS;
 }
 
-SecureString Endpoint::escapeUrl(const std::string& in)
-{
-	return escapeUrl(SecureString(in.c_str())).c_str();
-}
-
-SecureString Endpoint::escapeUrl(const SecureString& in)
+std::string Endpoint::EscapeUrl(const std::string& in)
 {
 	if (in.empty())
 	{
@@ -70,15 +65,15 @@ SecureString Endpoint::escapeUrl(const SecureString& in)
 		DebugPrint("malloc fail");
 		return "";
 	}
-	SecureString ret;
+	std::string ret;
 
 	if (AtlEscapeUrl(in.c_str(), buf, pdwWritten, (DWORD)maxLen, (DWORD)NULL))
 	{
-		ret = SecureString(buf);
+		ret = std::string(buf);
 	}
 	else
 	{
-		ReleaseDebugPrint("AtlEscapeUrl Failure");
+		Print("AtlEscapeUrl Failure");
 	}
 
 	SecureZeroMemory(buf, (sizeof(char) * maxLen));
@@ -86,7 +81,7 @@ SecureString Endpoint::escapeUrl(const SecureString& in)
 	return ret;
 }
 
-nlohmann::json Endpoint::tryParseJSON(const std::string& in)
+nlohmann::json Endpoint::TryParseJSON(const std::string& in)
 {
 	json j;
 	try
@@ -101,7 +96,7 @@ nlohmann::json Endpoint::tryParseJSON(const std::string& in)
 	}
 }
 
-wstring Endpoint::get_utf16(const std::string& str, int codepage)
+wstring Endpoint::Get_utf16(const std::string& str, int codepage)
 {
 	if (str.empty()) return wstring();
 	int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
@@ -110,29 +105,82 @@ wstring Endpoint::get_utf16(const std::string& str, int codepage)
 	return res;
 }
 
-string Endpoint::connect(const string& endpoint, SecureString sdata, const RequestMethod& method)
+void CALLBACK WinHttpStatusCallback(
+	__in  HINTERNET hInternet,
+	__in  DWORD_PTR dwContext,
+	__in  DWORD dwInternetStatus,
+	__in  LPVOID lpvStatusInformation,
+	__in  DWORD dwStatusInformationLength
+)
+{
+	long lStatus = 0;
+	if (lpvStatusInformation != nullptr)
+	{
+		lStatus = *(long*)lpvStatusInformation;
+	}
+	string strInternetStatus = to_string(dwInternetStatus);
+	// Since this method is called multiple times for each request, log the extended info only for 12175 WINHTTP_CALLBACK_STATUS_SECURE_FAILURE
+	//DebugPrint("WinHttpStatusCallback - InternetStatus: " + strInternetStatus + ", StatusInformation: " + to_string(lStatus));
+	switch (dwInternetStatus)
+	{
+		case WINHTTP_CALLBACK_STATUS_SECURE_FAILURE:
+			// Log more detailed information for this error case
+			// https://docs.microsoft.com/en-us/windows/win32/api/winhttp/nc-winhttp-winhttp_status_callback#winhttp_callback_status_shutdown_complete
+			if (lpvStatusInformation && dwStatusInformationLength == sizeof(ULONG))
+			{
+				string strDetail;
+				switch (lStatus)
+				{
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR";
+						break;
+				}
+
+				Print("SECURE_FAILURE with status info: " + strDetail);
+			}
+			break;
+	}
+}
+
+string Endpoint::SendRequest(const string& endpoint, std::string sdata, const RequestMethod& method)
 {
 	// Prepare the parameters
-	wstring wHostname = get_utf16(PrivacyIDEA::ws2s(_hostname), CP_UTF8);
+	wstring wHostname = Get_utf16(PrivacyIDEA::ws2s(_hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
-	wstring fullPath = get_utf16((PrivacyIDEA::ws2s(_path) + endpoint), CP_UTF8);
+	wstring fullPath = Get_utf16((PrivacyIDEA::ws2s(_path) + endpoint), CP_UTF8);
 
 	LPSTR data = _strdup(sdata.c_str());
 	const DWORD data_len = (DWORD)strnlen_s(sdata.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
-#ifdef _DEBUG
 	if (endpoint != PI_ENDPOINT_POLL_TX)
 	{
 		DebugPrint(L"Sending to: " + wHostname + fullPath);
 		if (_logPasswords)
 		{
-			DebugPrint("data: " + SecureString(data));
+			DebugPrint("data: " + std::string(data));
 		}
 		// !!! this can log the windows password in cleartext !!!
 	}
 
-#endif
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
 	LPSTR pszOutBuffer = nullptr;
@@ -142,6 +190,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 		hRequest = nullptr;
 
 	// Check the windows version to decide which access type flag to set
+	// TODO config already has this info, add shared_ptr to this class
 	DWORD dwAccessType = WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY;
 	OSVERSIONINFOEX info;
 	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
@@ -163,12 +212,19 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	// Specify an HTTP server.
 	if (hSession)
 	{
+		// Install the status callback function.
+
+		WINHTTP_STATUS_CALLBACK isCallback = WinHttpSetStatusCallback(hSession,
+			(WINHTTP_STATUS_CALLBACK)WinHttpStatusCallback,
+			WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,
+			NULL);
+
 		int port = (_customPort != 0) ? _customPort : INTERNET_DEFAULT_HTTPS_PORT;
 		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)port, 0);
 	}
 	else
 	{
-		ReleaseDebugPrint("WinHttpOpen failure: " + to_string(GetLastError()));
+		Print("WinHttpOpen failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
 		return "";//ENDPOINT_ERROR_SETUP_ERROR;
 	}
@@ -180,41 +236,46 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	}
 	else
 	{
-		ReleaseDebugPrint("WinHttpOpenRequest failure: " + to_string(GetLastError()));
+		Print("WinHttpOpenRequest failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
 		return "";
 	}
 
 	// Set Option Security Flags to start TLS
 	DWORD dwReqOpts = 0;
-	if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwReqOpts, sizeof(DWORD))) {
+	if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwReqOpts, sizeof(DWORD)))
+	{
 	}
 	else
 	{
-		ReleaseDebugPrint("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
+		Print("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
 		return "";//ENDPOINT_ERROR_SETUP_ERROR;
 	}
 
 	/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
 	DWORD dwSSLFlags = 0;
-	if (_ignoreUnknownCA) {
+	if (_ignoreUnknownCA)
+	{
 		dwSSLFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA;
-		//DebugPrintLn("SSL ignore unknown CA flag set");
+		//DebugPrint("SSL ignore unknown CA flag set");
 	}
 
-	if (_ignoreInvalidCN) {
+	if (_ignoreInvalidCN)
+	{
 		dwSSLFlags = dwSSLFlags | SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
-		//DebugPrintLn("SSL ignore invalid CN flag set");
+		//DebugPrint("SSL ignore invalid CN flag set");
 	}
 
-	if (_ignoreUnknownCA || _ignoreInvalidCN) {
-		if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD))) {
+	if (_ignoreUnknownCA || _ignoreInvalidCN)
+	{
+		if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD)))
+		{
 			//DebugPrintLn("WinHttpOption flags set to ignore SSL errors");
 		}
 		else
 		{
-			ReleaseDebugPrint("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
+			Print("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
 			_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
 			return ""; //ENDPOINT_ERROR_SETUP_ERROR;
 		}
@@ -224,7 +285,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	// Set timeouts on the request handle
 	if (!WinHttpSetTimeouts(hRequest, _resolveTimeout, _connectTimeout, _sendTimeout, _receiveTimeout))
 	{
-		ReleaseDebugPrint("Failed to set timeouts on hRequest: " + to_string(GetLastError()));
+		Print("Failed to set timeouts on hRequest: " + to_string(GetLastError()));
 		// Continue with defaults
 	}
 
@@ -245,7 +306,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	if (!bResults)
 	{
 		// This happens in case of timeout using offline OTP vvv will be 120002
-		ReleaseDebugPrint("WinHttpSendRequest failure: " + to_string(GetLastError()));
+		Print("WinHttpSendRequest failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ENDPOINT_SERVER_UNAVAILABLE;
 		return "";
 	}
@@ -264,8 +325,9 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 		{
 			// Check for available data.
 			dwSize = 0;
-			if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
-				ReleaseDebugPrint("WinHttpQueryDataAvailable failure: " + to_string(GetLastError()));
+			if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
+			{
+				Print("WinHttpQueryDataAvailable failure: " + to_string(GetLastError()));
 				response = ""; //ENDPOINT_ERROR_RESPONSE_ERROR;
 			}
 
@@ -273,7 +335,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 			pszOutBuffer = new char[ULONGLONG(dwSize) + 1];
 			if (!pszOutBuffer)
 			{
-				ReleaseDebugPrint("WinHttpReadData out of memory: " + to_string(GetLastError()));
+				Print("WinHttpReadData out of memory: " + to_string(GetLastError()));
 				response = ""; // ENDPOINT_ERROR_RESPONSE_ERROR;
 				dwSize = 0;
 			}
@@ -283,7 +345,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 				ZeroMemory(pszOutBuffer, (ULONGLONG)dwSize + 1);
 				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
 				{
-					ReleaseDebugPrint("WinHttpReadData error: " + to_string(GetLastError()));
+					Print("WinHttpReadData error: " + to_string(GetLastError()));
 					response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 				}
 				else
@@ -298,7 +360,7 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	// Report any errors.
 	if (!bResults)
 	{
-		ReleaseDebugPrint("WinHttp Result error: " + to_string(GetLastError()));
+		Print("WinHttp Result error: " + to_string(GetLastError()));
 		response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 	}
 	// Close any open handles.
@@ -308,15 +370,17 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 
 	SecureZeroMemory(data, data_len);
 
-#ifdef _DEBUG
 	if (std::find(_excludedEndpoints.begin(), _excludedEndpoints.end(), endpoint) == _excludedEndpoints.end())
 	{
-		if (!response.empty()) {
-			try {
+		if (!response.empty())
+		{
+			try
+			{
 				auto j = nlohmann::json::parse(response);
 				DebugPrint(j.dump(4));
 			}
-			catch (json::exception& e) {
+			catch (json::exception& e)
+			{
 				DebugPrint("JSON parse exception: " + string(e.what()) + ", response was: " + response);
 			}
 		}
@@ -325,7 +389,6 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 			DebugPrint("Response was empty.");
 		}
 	}
-#endif
 
 	if (response.empty())
 	{
@@ -335,26 +398,21 @@ string Endpoint::connect(const string& endpoint, SecureString sdata, const Reque
 	return response;
 }
 
-SecureString Endpoint::encodePair(const std::string& key, const std::string& value)
+std::string Endpoint::EncodePair(const std::string& key, const std::string& value)
 {
-	return SecureString(key.c_str()) + "=" + escapeUrl(value);
+	return std::string(key.c_str()) + "=" + EscapeUrl(value);
 }
 
-SecureString Endpoint::encodePair(const std::string& key, const SecureString& value)
+std::string Endpoint::EncodePair(const std::string& key, const std::wstring& value)
 {
-	return SecureString(key.c_str()) + "=" + escapeUrl(value);
+	return EncodePair(key, PrivacyIDEA::ws2s(value));
 }
 
-SecureString Endpoint::encodePair(const std::string& key, const SecureWString& value)
-{
-	return encodePair(key, PrivacyIDEA::sws2ss(value));
-}
-
-HRESULT Endpoint::parseAuthenticationRequest(const string& in)
+HRESULT Endpoint::ParseAuthenticationRequest(const string& in)
 {
 	DebugPrint(__FUNCTION__);
 
-	auto j = Endpoint::tryParseJSON(in);
+	auto j = Endpoint::TryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	auto jValue = j["result"]["value"];
@@ -366,11 +424,11 @@ HRESULT Endpoint::parseAuthenticationRequest(const string& in)
 	return PI_AUTH_FAILURE;
 }
 
-HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
+HRESULT Endpoint::ParseTriggerRequest(const std::string& in, Challenge& c)
 {
 	DebugPrint(__FUNCTION__);
 
-	auto j = Endpoint::tryParseJSON(in);
+	auto j = Endpoint::TryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	json multiChallenge = j["detail"]["multi_challenge"];
@@ -393,7 +451,8 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 		string txid = j2["transaction_id"].get<std::string>();
 		string serial = j2["serial"].get<std::string>();
 
-		if (!type.empty()) {
+		if (!type.empty())
+		{
 
 			if (type == "push")
 			{
@@ -416,10 +475,10 @@ HRESULT Endpoint::parseTriggerRequest(const std::string& in, Challenge& c)
 	return PI_TRIGGERED_CHALLENGE;
 }
 
-HRESULT Endpoint::parseForError(const std::string& in, std::string& errMsg, int& errCode)
+HRESULT Endpoint::ParseForError(const std::string& in, std::string& errMsg, int& errCode)
 {
 	DebugPrint(__FUNCTION__);
-	auto j = Endpoint::tryParseJSON(in);
+	auto j = Endpoint::TryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	// Check for error code and message
@@ -439,22 +498,22 @@ HRESULT Endpoint::parseForError(const std::string& in, std::string& errMsg, int&
 	return E_FAIL;
 }
 
-const HRESULT& Endpoint::getLastErrorCode()
+const HRESULT& Endpoint::GetLastErrorCode()
 {
 	return _lastErrorCode;
 }
 
-HRESULT Endpoint::pollForTransaction(const SecureString& data)
+HRESULT Endpoint::PollForTransaction(const std::string& data)
 {
-	string response = connect(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
-	return parseForTransactionSuccess(response);
+	string response = SendRequest(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
+	return ParseForTransactionSuccess(response);
 }
 
-HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
+HRESULT Endpoint::ParseForTransactionSuccess(const std::string& in)
 {
 	//DebugPrint(__FUNCTION__);
 
-	auto j = Endpoint::tryParseJSON(in);
+	auto j = Endpoint::TryParseJSON(in);
 	if (j == nullptr) return PI_JSON_PARSE_ERROR;
 
 	auto jValue = j["result"]["value"];
@@ -465,11 +524,11 @@ HRESULT Endpoint::parseForTransactionSuccess(const std::string& in)
 	return PI_TRANSACTION_FAILURE;
 }
 
-HRESULT Endpoint::finalizePolling(const std::string& user, const std::string& transaction_id)
+HRESULT Endpoint::FinalizePolling(const std::string& user, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
 	// Finalize with empty pass
-	SecureString data = encodePair("user", user) + "&" + encodePair("transaction_id", transaction_id) + "&pass=";
-	string response = connect(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
-	return parseAuthenticationRequest(response);
+	std::string data = EncodePair("user", user) + "&" + EncodePair("transaction_id", transaction_id) + "&pass=";
+	string response = SendRequest(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
+	return ParseAuthenticationRequest(response);
 }
