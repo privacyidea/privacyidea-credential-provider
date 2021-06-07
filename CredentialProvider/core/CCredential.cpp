@@ -221,9 +221,9 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
 	}
 
-	if (_config->showResetLink)
+	if (!_config->showResetLink)
 	{
-
+		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
 	}
 
 	if (_config->credential.passwordChanged)
