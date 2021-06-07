@@ -23,9 +23,7 @@
 #include "Endpoint.h"
 #include "PIConf.h"
 #include "Codes.h"
-#include "SecureString.h"
 #include <Windows.h>
-#include <string>
 #include <map>
 #include <functional>
 #include <atomic>
@@ -52,45 +50,41 @@ public:
 	// sends the parameters to privacyIDEA and checks the response for
 	// 1. Offline otp data, 2. Triggered challenges, 3. Authentication success
 	// <returns> PI_AUTH_SUCCESS, PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_ERROR, PI_ENDPOINT_SETUP_ERROR, PI_WRONG_OFFLINE_SERVER_UNAVAILABLE </returns>
-	HRESULT validateCheck(const std::wstring& username, const std::wstring& domain, const SecureWString& otp, const std::string& transaction_id = std::string());
+	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, const std::string& transaction_id = std::string());
 
-	bool stopPoll();
+	bool StopPoll();
 
 	// Poll for the given transaction asynchronously. When polling returns success, the transaction is finalized
 	// according to https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
 	// After that, the callback function is called with the result
-	void asyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback);
+	void AsyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback);
 
 	// Poll for a transaction once. Can be used if the plugin wants to control the looping
 	// <returns> PI_TRANSACTION_SUCCESS or PI_TRANSACTION_FAILURE </returns>
-	HRESULT pollTransaction(std::string transaction_id);
+	HRESULT PollTransaction(std::string transaction_id);
 
-	bool isOfflineDataAvailable(const std::wstring& username);
+	bool OfflineDataAvailable(const std::wstring& username);
 
-	Challenge getCurrentChallenge();
+	Challenge GetCurrentChallenge();
 
 	static std::wstring s2ws(const std::string& s);
 
 	static std::string ws2s(const std::wstring& ws);
 
-	static SecureString sws2ss(const SecureWString& sws);
+	static std::wstring UpperCase(std::wstring s);
 
-	static SecureWString ss2sws(const SecureString& ss);
+	static std::string LongToHexString(long in);
 
-	static std::wstring toUpperCase(std::wstring s);
+	int GetLastError();
 
-	static std::string longToHexString(long in);
-
-	int getLastError();
-
-	std::wstring getLastErrorMessage();
+	std::wstring GetLastErrorMessage();
 
 private:
-	HRESULT appendRealm(std::wstring domain, SecureString& data);
+	HRESULT AppendRealm(std::wstring domain, std::string& data);
 
-	void pollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback);
+	void PollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback);
 
-	HRESULT tryOfflineRefill(std::string username, SecureString lastOTP);
+	HRESULT TryOfflineRefill(std::string username, std::string lastOTP);
 
 	std::map<std::wstring, std::wstring> _realmMap;
 

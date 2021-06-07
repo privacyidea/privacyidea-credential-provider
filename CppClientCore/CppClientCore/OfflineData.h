@@ -21,7 +21,6 @@
 #include "Logger.h"
 #include "../nlohmann/json.hpp"
 
-#include <string>
 #include <map>
 
 #define JSON_DUMP_INDENTATION 4
@@ -31,11 +30,11 @@ class OfflineData
 public:
 	OfflineData(std::string json_string);
 
-	nlohmann::json toJSON();
+	nlohmann::json ToJSON();
 
-	int getLowestKey();
+	int GetLowestKey();
 
-	size_t getOfflineOTPsLeft() noexcept;
+	size_t GetOfflineOTPsLeft() noexcept;
 
 	std::string user = "";
 	std::string username = "";

@@ -20,20 +20,14 @@
 #pragma once
 #include "PIConf.h"
 #include "Challenge.h"
-#include "SecureString.h"
-#include <string>
 #include <credentialprovider.h>
 
 class Configuration
 {
 public:
+	void Load();
 
-	static const std::wstring registryPath;// = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
-	static const std::wstring registryRealmPath;// = registryPath + L"realm-mapping";
-
-	Configuration();
-
-	void printConfiguration();
+	void LogConfig();
 
 	PICONFIG piconfig;
 
@@ -50,14 +44,12 @@ public:
 	bool hideDomainName = false;
 
 	bool showDomainHint = false;
-
 	bool prefillUsername = false;
+	bool showResetLink = false;
 
-	bool releaseLog = false;
+	bool debugLog = false;
 
 	bool noDefault = false;
-
-	int hide_otp_sleep_s = 0;
 
 	int winVerMajor = 0;
 	int winVerMinor = 0;
@@ -104,14 +96,14 @@ public:
 	{
 		std::wstring username = L"";
 		std::wstring domain = L"";
-		SecureWString password = L"";
+		std::wstring password = L"";
 		std::wstring otp = L"";
 
 		bool passwordMustChange = false;
 		bool passwordChanged = false;
 
 		// ChangePassword
-		SecureWString newPassword1 = L"";
-		SecureWString newPassword2 = L"";
+		std::wstring newPassword1 = L"";
+		std::wstring newPassword2 = L"";
 	} credential;
 };

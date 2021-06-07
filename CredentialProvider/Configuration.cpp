@@ -25,65 +25,66 @@
 
 using namespace std;
 
-const wstring Configuration::registryPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\";
-const wstring Configuration::registryRealmPath = L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping";
-
-Configuration::Configuration()
+void Configuration::Load()
 {
-	RegistryReader rr(registryPath);
+	RegistryReader rr(CONFIG_REGISTRY_PATH);
 
 	// Credential Provider specific config
-	bitmapPath = rr.getRegistry(L"v1_bitmap_path");
-	hideDomainName = rr.getBoolRegistry(L"hide_domainname");
-	hideFullName = rr.getBoolRegistry(L"hide_fullname");
-	hide_otp_sleep_s = rr.getIntRegistry(L"hide_otp_sleep_s");
+	bitmapPath = rr.GetWStringRegistry(L"v1_bitmap_path");
+	hideDomainName = rr.GetBoolRegistry(L"hide_domainname");
+	hideFullName = rr.GetBoolRegistry(L"hide_fullname");
+	noDefault = rr.GetBoolRegistry(L"no_default");
+	twoStepHideOTP = rr.GetBoolRegistry(L"two_step_hide_otp");
+	twoStepSendEmptyPassword = rr.GetBoolRegistry(L"two_step_send_empty_password");
+	twoStepSendPassword = rr.GetBoolRegistry(L"two_step_send_password");
 
-	twoStepHideOTP = rr.getBoolRegistry(L"two_step_hide_otp");
-	twoStepSendEmptyPassword = rr.getBoolRegistry(L"two_step_send_empty_password");
-	twoStepSendPassword = rr.getBoolRegistry(L"two_step_send_password");
+	piconfig.logPasswords = rr.GetBoolRegistry(L"log_sensitive");
+	debugLog = rr.GetBoolRegistry(L"debug_log");
+#ifdef _DEBUG
+	// Always on for debug builds
+	debugLog = true;
+#endif // _DEBUG
 
-	piconfig.logPasswords = rr.getBoolRegistry(L"log_sensitive");
-	releaseLog = rr.getBoolRegistry(L"release_log");
-
-	showDomainHint = rr.getBoolRegistry(L"show_domain_hint");
+	showDomainHint = rr.GetBoolRegistry(L"show_domain_hint");
 	// Custom field texts: check if set, otherwise use defaults (from header)
-	wstring tmp = rr.getRegistry(L"login_text");
+	wstring tmp = rr.GetWStringRegistry(L"login_text");
 	loginText = tmp.empty() ? L"privacyIDEA Login" : tmp;
 
-	otpFieldText = rr.getRegistry(L"otp_text");
+	otpFieldText = rr.GetWStringRegistry(L"otp_text");
 
-	tmp = rr.getRegistry(L"otp_fail_text");
+	tmp = rr.GetWStringRegistry(L"otp_fail_text");
 	defaultOTPFailureText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_WRONG_OTP) : tmp;
 
-	tmp = rr.getRegistry(L"otp_hint_text");
+	tmp = rr.GetWStringRegistry(L"otp_hint_text");
 	defaultOTPHintText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_DEFAULT_OTP_HINT) : tmp;
 
-	prefillUsername = rr.getBoolRegistry(L"prefill_username");
+	prefillUsername = rr.GetBoolRegistry(L"prefill_username");
+	showResetLink = rr.GetBoolRegistry(L"enable_reset");
 
 	// Config for PrivacyIDEA
-	piconfig.hostname = rr.getRegistry(L"hostname");
-	// Check if the path contains the placeholder, if so replace with nothing
-	tmp = rr.getRegistry(L"path");
+	piconfig.hostname = rr.GetWStringRegistry(L"hostname");
+	// Check if the path contains the placeholder, if so set path to empty string
+	tmp = rr.GetWStringRegistry(L"path");
 	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
 
-	piconfig.ignoreUnknownCA = rr.getBoolRegistry(L"ssl_ignore_unknown_ca");
-	piconfig.ignoreInvalidCN = rr.getBoolRegistry(L"ssl_ignore_invalid_cn");
-	piconfig.customPort = rr.getIntRegistry(L"custom_port");
-	piconfig.offlineFilePath = rr.getRegistry(L"offline_file");
-	piconfig.offlineTryWindow = rr.getIntRegistry(L"offline_try_window");
+	piconfig.ignoreUnknownCA = rr.GetBoolRegistry(L"ssl_ignore_unknown_ca");
+	piconfig.ignoreInvalidCN = rr.GetBoolRegistry(L"ssl_ignore_invalid_cn");
+	piconfig.customPort = rr.GetIntRegistry(L"custom_port");
+	piconfig.offlineFilePath = rr.GetWStringRegistry(L"offline_file");
+	piconfig.offlineTryWindow = rr.GetIntRegistry(L"offline_try_window");
 
-	piconfig.resolveTimeoutMS = rr.getIntRegistry(L"resolve_timeout");
-	piconfig.connectTimeoutMS = rr.getIntRegistry(L"connect_timeout");
-	piconfig.sendTimeoutMS = rr.getIntRegistry(L"send_timeout");
-	piconfig.receiveTimeoutMS = rr.getIntRegistry(L"receive_timeout");
+	piconfig.resolveTimeoutMS = rr.GetIntRegistry(L"resolve_timeout");
+	piconfig.connectTimeoutMS = rr.GetIntRegistry(L"connect_timeout");
+	piconfig.sendTimeoutMS = rr.GetIntRegistry(L"send_timeout");
+	piconfig.receiveTimeoutMS = rr.GetIntRegistry(L"receive_timeout");
 
 	// format domain\username or computername\username
-	excludedAccount = rr.getRegistry(L"excluded_account");
+	excludedAccount = rr.GetWStringRegistry(L"excluded_account");
 
 	// Realm Mapping
-	piconfig.defaultRealm = rr.getRegistry(L"default_realm");
+	piconfig.defaultRealm = rr.GetWStringRegistry(L"default_realm");
 
-	if (!rr.getAll(registryRealmPath, piconfig.realmMap))
+	if (!rr.GetAllEntries(REALM_MAPPING_REGISTRY_PATH, piconfig.realmMap))
 	{
 		piconfig.realmMap.clear();
 	}
@@ -116,11 +117,12 @@ Configuration::Configuration()
 }
 
 // for printing
-inline wstring b2ws(bool b) {
+inline wstring b2ws(bool b)
+{
 	return b ? wstring(L"true") : wstring(L"false");
 }
 
-void Configuration::printConfiguration()
+void Configuration::LogConfig()
 {
 	DebugPrint("-----------------------------");
 	DebugPrint("CP Version: " + string(VER_FILE_VERSION_STR));
@@ -144,7 +146,7 @@ void Configuration::printConfiguration()
 	DebugPrint(L"2step hide OTP: " + b2ws(twoStepHideOTP));
 	DebugPrint(L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword));
 	DebugPrint(L"2step send domain PW: " + b2ws(twoStepSendPassword));
-	DebugPrint(L"Release Log: " + b2ws(releaseLog));
+	DebugPrint(L"Release Log: " + b2ws(debugLog));
 	DebugPrint(L"Log sensitive data: " + b2ws(piconfig.logPasswords));
 	DebugPrint(L"No default: " + b2ws(noDefault));
 	DebugPrint(L"Show domain hint: " + b2ws(showDomainHint));

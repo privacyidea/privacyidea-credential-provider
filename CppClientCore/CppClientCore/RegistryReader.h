@@ -20,20 +20,25 @@
 #include <string>
 #include <map>
 
+#define CONFIG_REGISTRY_PATH	L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\"
+#define REALM_MAPPING_REGISTRY_PATH	L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping"
+#define LAST_USER_REGISTRY_PATH L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI"
+
 class RegistryReader
 {
 public:
-	RegistryReader(const std::wstring& pathToKey);
+
+	RegistryReader(const std::wstring& pathToKey) noexcept;
 
 	std::wstring wpath;
 
 	// puts all keys and values from the current path into a map, the keys will be converted to uppercase
-	bool getAll(const std::wstring& path, std::map<std::wstring, std::wstring>& map);
+	bool GetAllEntries(const std::wstring& path, std::map<std::wstring, std::wstring>& map) noexcept;
 
-	std::wstring getRegistry(std::wstring name);
+	std::wstring GetWStringRegistry(std::wstring name) noexcept;
 
-	bool getBoolRegistry(std::wstring name);
+	bool GetBoolRegistry(std::wstring name) noexcept;
 
-	int getIntRegistry(std::wstring name);
+	int GetIntRegistry(std::wstring name) noexcept;
 };
 

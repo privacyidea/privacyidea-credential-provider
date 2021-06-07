@@ -131,7 +131,8 @@ The privacyIDEA Credential Provider will be available and the Filter will be act
 Recommended setup for remote desktop scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In scenarios where the privacyIDEA Credential Provider shall be used for RDP connections, it is recommended to install the privacyIDEA Credential Provider only on the RDP target together with the Filter.
+In scenarios where the privacyIDEA Credential Provider is to be used for RDP connections, it is recommended to install the privacyIDEA Credential Provider only on the RDP target.
+The Filter has to be enabled for RDP scenarios, otherwise Windows will use the System Credential Provider automatically!
 It is also recommended to use the *two_step_hide_otp* setting to skip entering the windows password a second time.
 
 
@@ -178,15 +179,19 @@ of 128x128 pixels.
 
 **no_default**
 
-Add this registry entry and set it ``1`` to not have the privacyIDEA Credential Provider selected by default when logging in.
+Add this registry entry and set it ``1`` to **not** have the privacyIDEA Credential Provider selected by default when logging in.
 
 **show_domain_hint**
 
-Set this to ``1`` to show the Domain that is currently used to log in.
+Set this to ``1`` to show the domain that is currently used to log in.
 
 **prefill_username**
 
 Set this to ``1`` to have the username field prefilled with the user that last logged on.
+
+**enable_reset**
+
+Set this to ``1`` to have a clickable text shown at the bottom which will reset the login.
 
 **offline_file**
 
@@ -217,17 +222,17 @@ Here you can specify the Windows domains as the names and the privacyIDEA realms
 Log file
 ~~~~~~~~
 
-**release_log**
+**debug_log**
 
-Set to ``1`` if you want the privacyIDEA Credential Provider to write a logfile in the release version. The log only contains errors and is located at C:\\privacyIDEAReleaseLogFile.txt.
-
-The log file of the debug version contains more detailed information and is located at C:\\privacyIDEADebugLogFile.txt
+Set to ``1`` if you want the privacyIDEA Credential Provider to write a detailed log file, which is helpful when reporting bugs.
+The log file is located at C:\\PICredentialProviderLog.txt.
+If this setting is disabled, actual errors are still written to the log file.
 
 **log_sensitive**
 
-In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. By default sensitive data is not logged.
-To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a logfile.
-NOTE: This only affects the *debug* versions of the privacyIDEA Credential Provider.
+In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. 
+By default, sensitive data is not logged. Instead it is only logged if the password contains a value.
+To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a log file.
 
 .. rubric:: Footnotes
 

@@ -31,14 +31,14 @@ public:
 	Utilities(std::shared_ptr<Configuration> c) noexcept;
 
 	// Returns the text for the id in english or german, depending on GetUserDefaultUILanguage
-	static std::wstring GetTranslatedText(int id);
+	static std::wstring GetTranslatedText(int text_id);
 
 	HRESULT KerberosLogon(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
 		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 		__in std::wstring username,
-		__in SecureWString password,
+		__in std::wstring password,
 		__in std::wstring domain
 	);
 
@@ -46,8 +46,8 @@ public:
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__in std::wstring username,
-		__in SecureWString password_old,
-		__in SecureWString password_new,
+		__in std::wstring password_old,
+		__in std::wstring password_new,
 		__in std::wstring domain
 	);
 
@@ -56,7 +56,7 @@ public:
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*& pcpcs,
 		__in CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 		__in std::wstring username,
-		__in SecureWString password,
+		__in std::wstring password,
 		__in std::wstring domain
 	);
 
@@ -85,7 +85,7 @@ public:
 		LPWSTR* rgFieldStrings,
 		DWORD field_index
 	);
-	
+
 	HRESULT ReadFieldValues();
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
@@ -113,7 +113,8 @@ private:
 #define TEXT_WRONG_OTP 7
 #define TEXT_WRONG_PASSWORD 8
 #define TEXT_DEFAULT_OTP_HINT 9
+#define TEXT_RESET_LINK 10
 
-	const static std::wstring texts[10][2];
+	const static std::wstring texts[11][2];
 };
 

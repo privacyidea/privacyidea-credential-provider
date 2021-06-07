@@ -24,7 +24,7 @@
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <?include $(sys.CURRENTDIR)\Config.wxi?>
-  
+
   <!-- Preconditions and pre-setups -->
   <Product Id="*" Language="1033"
            Name="$(var.ProductName)"
@@ -37,44 +37,44 @@
              Description="$(var.ProductName) $(var.Version) Setup" />
 
     <MajorUpgrade AllowDowngrades="no" AllowSameVersionUpgrades="yes" MigrateFeatures="yes" DowngradeErrorMessage="A newer version is already installed!" />
-    
+
     <Property Id="ARPURLINFOABOUT" Value="$(var.AppURLInfoAbout)" />
     <!--
     <Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />-->
     <!-- Disable the modify button in software explorer -->
     <Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
-    
+
     <Condition Message="You need to be an administrator to install this product.">
       Privileged
     </Condition>
-   
+
     <!-- Custom action definitions -->
     <CustomAction Id='IsPrivileged' Error='You must be an admin to install this product' />
     <CustomAction Id="PreventDowngrading" Error="Newer version already installed." />
     <!-- END Custom action definitions-->
-    
+
     <InstallExecuteSequence>
       <Custom Action='IsPrivileged' Before='AppSearch'>
         Not Privileged
       </Custom>
     </InstallExecuteSequence>
-   
+
     <!-- Icons etc -->
     <Icon Id="icon.ico" SourceFile="$(var.SolutionDir)icon.ico"/>
     <Property Id="ARPPRODUCTICON" Value="icon.ico" />
-    
+
     <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='DISK #1' />
     <Property Id='DiskPrompt' Value="$(var.ProductName) Setup [1]" />
 
     <!--<Binary Id='WiXCustomActions' SourceFile='$(var.WiXCustomActions.TargetPath)' />-->
-    
+
     <Binary Id='InfoIcon' SourceFile='$(var.SolutionDir)info.ico' />
     <Binary Id='HelpIcon' SourceFile='$(var.SolutionDir)help.ico' />
     <Binary Id='ExclamIcon' SourceFile='$(var.SolutionDir)exclam.ico' />
     <!-- END  Icons etc -->
     <!-- END Preconditions and pre-setups -->
 
-    <!-- Get values from registry if available. (What if unattended/silent install?)-->
+    <!-- Get values for the UI from registry if available. (What if unattended/silent install?)-->
     <Property Id="HOSTNAME" Value = "hostname">
       <RegistrySearch Id="SearchHostname"              Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hostname"               Win64="$(var.Win64)" Type="raw"/>
     </Property>
@@ -106,7 +106,7 @@
     <Property Id="TWO_STEP_EMPTY_SEND_PASSWORD">
       <RegistrySearch Id="SearchTwoStepSendEmptyPassword"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_empty_password"           Win64="$(var.Win64)" Type="raw" />
     </Property>
-    
+
     <Property Id="SSL_IGNORE_UNKNOWN_CA">
       <RegistrySearch Id="SearchSSLIgnoreUnknownCA"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_ignore_unknown_ca"           Win64="$(var.Win64)" Type="raw" />
     </Property>
@@ -123,40 +123,26 @@
       <RegistrySearch Id="SearchHideDomainname"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_domainname"           Win64="$(var.Win64)" Type="raw" />
     </Property>
 
-    <Property Id="RELEASE_LOG">
-      <RegistrySearch Id="SearchProdLog"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="release_log"           Win64="$(var.Win64)" Type="raw" />
+    <Property Id="DEBUG_LOG">
+      <RegistrySearch Id="SearchProdLog"           Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="debug_log"           Win64="$(var.Win64)" Type="raw" />
     </Property>
-    
-    <!-- Disabled:
-    <Property Id="TIMEOUT">
-      <RegistrySearch Id="SearchTimeout"                Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="timeout"                  Win64="$(var.Win64)" Type="raw" />
-    </Property>    
-    -->
     <!-- END Get registry values -->
-    
-    <!-- Sanitize SOAP_TIMEOUT DWORD-value (e.g. #123 -> 123) -//->
-    <Property Id="SANITIZE_DWORD" Value="SOAP_TIMEOUT" />
-    <CustomAction Id='SanitizeSoapTimeoutDword' BinaryKey='WiXCustomActions' DllEntry='SanitizeDwordFromRegistry' Execute='firstSequence'/>
-    <InstallUISequence>
-      <Custom Action='SanitizeSoapTimeoutDword' After='CostFinalize'>Installed</Custom>
-    </InstallUISequence>
-    <!-//- END Sanitize SOAP_TIMEOUT DWORD-value -->
 
-    <!-- Directory definitions -->   
-    <Directory Id="TARGETDIR" Name="SourceDir">      
+    <!-- Directory definitions -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
       <!-- Visual Studio C++ Redistributable -->
       <?if $(var.Configuration) = Debug ?>
-        <?if $(var.Platform) = x64 ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_DebugCRT_x64.msm" DiskId="1" Language="0"/>
-        <?else ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_DebugCRT_x86.msm" DiskId="1" Language="0"/>
-        <?endif ?>
+      <?if $(var.Platform) = x64 ?>
+      <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_DebugCRT_x64.msm" DiskId="1" Language="0"/>
       <?else ?>
-        <?if $(var.Platform) = x64 ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_CRT_x64.msm" DiskId="1" Language="0"/>
-        <?else ?>
-          <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_CRT_x86.msm" DiskId="1" Language="0"/>
-        <?endif ?>
+      <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_DebugCRT_x86.msm" DiskId="1" Language="0"/>
+      <?endif ?>
+      <?else ?>
+      <?if $(var.Platform) = x64 ?>
+      <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_CRT_x64.msm" DiskId="1" Language="0"/>
+      <?else ?>
+      <Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC142_CRT_x86.msm" DiskId="1" Language="0"/>
+      <?endif ?>
       <?endif ?>
       <!-- END Visual Studio C++ Redistributable -->
 
@@ -164,7 +150,7 @@
       <Directory Id="$(var.PlatformProgramFilesFolder)">
         <Directory Id="CompanyFolder" Name="$(var.Publisher)">
           <Directory Id="INSTALLFOLDER" Name="$(var.ProductFolderName)">
-            
+
             <Component Id="DefaultFilesInProgrammFolder" Location="local" Guid="9d02dffe-1766-420c-97b5-755979b68205">
               <!-- Files -->
               <File Id="LicenseFile"
@@ -177,9 +163,9 @@
               <!-- Folders -->
               <RemoveFolder Id="RemoveInstallFolder" On="uninstall"/>
               <RemoveFolder Id="RemoveCompanyFolderIfEmpty" Directory="CompanyFolder" On="uninstall"/>
-              <!-- END Folders -->              
+              <!-- END Folders -->
             </Component>
-            
+
           </Directory>
         </Directory>
       </Directory>
@@ -187,8 +173,8 @@
 
       <!-- Directories/Components to be placed in System-folder -->
       <Directory Id="$(var.PlatformSystemFolder)">
-        
-        <!-- Core components -->   
+
+        <!-- Core components -->
         <Component Location="local" Guid="9944eca5-ac62-4a0e-82fa-5ec243a56b0d" Transitive="yes">
           <Condition>1</Condition>
           <!-- Files -->
@@ -213,36 +199,52 @@
           <RemoveRegistryKey Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}' Action='removeOnUninstall'/>
 
           <!-- Configuration values (from dialogs/registry/unattended) -->
-
           <RegistryKey Root='HKLM' Key='SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)' ForceCreateOnInstall='yes'>
-            <RegistryValue Name='hostname'              Type='string'  Value='[HOSTNAME]'           />
-            <RegistryValue Name='path'                  Type='string'  Value='[PATH]'           />
-            <RegistryValue Name='login_text'            Type='string'  Value='[LOGIN_TEXT]'           />
-            <RegistryValue Name='otp_text'              Type='string'  Value='[OTP_TEXT]'           />
-            
-            <RegistryValue Name='v1_bitmap_path'        Type='string'  Value='[V1_BITMAP_PATH]' />
-            
-            <RegistryValue Name='two_step_hide_otp'     Type ='string' Value='[TWO_STEP_HIDE_OTP]' />
-            <RegistryValue Name='two_step_send_password' Type='string' Value='[TWO_STEP_SEND_PASSWORD]' />
-            <RegistryValue Name='two_step_send_empty_password' Type='string' Value='[TWO_STEP_SEND_EMPTY_PASSWORD]' />
-            
-            <RegistryValue Name='ssl_ignore_unknown_ca' Type='string' Value='[SSL_IGNORE_UNKNOWN_CA]' />
-            <RegistryValue Name='ssl_ignore_invalid_cn' Type='string' Value='[SSL_IGNORE_INVALID_CN]' />
+            <!-- CONNECTION -->
+            <RegistryValue Name='hostname'                     Type='string' Value='[HOSTNAME]'/>
+            <RegistryValue Name='path'                         Type='string' Value='[PATH]'/>
+            <RegistryValue Name='ssl_ignore_unknown_ca'        Type='string' Value='[SSL_IGNORE_UNKNOWN_CA]'/>
+            <RegistryValue Name='ssl_ignore_invalid_cn'        Type='string' Value='[SSL_IGNORE_INVALID_CN]'/>
+            <RegistryValue Name='custom_port'                  Type='string' Value=''/>
+            <RegistryValue Name='resolve_timeout'              Type='string' Value=''/>
+            <RegistryValue Name='connect_timeout'              Type='string' Value=''/>
+            <RegistryValue Name='send_timeout'                 Type='string' Value=''/>
+            <RegistryValue Name='receive_timeout'              Type='string' Value=''/>
+            <!-- END CONNECTION -->
 
-            <RegistryValue Name='hide_fullname'       Type='string' Value='[HIDE_FULLNAME]' />
-            <RegistryValue Name='hide_domainname'     Type='string' Value='[HIDE_DOMAINNAME]' />
-            <RegistryValue Name='release_log'         Type='string' Value='[RELEASE_LOG]'           />
+            <!-- CUSTOMIZATION -->
+            <RegistryValue Name='login_text'                   Type='string' Value='[LOGIN_TEXT]'/>
+            <RegistryValue Name='otp_text'                     Type='string' Value='[OTP_TEXT]'/>
+            <RegistryValue Name='otp_fail_text'                Type='string' Value=''/>
+            <RegistryValue Name='otp_hint_text'                Type='string' Value=''/>
             
-            <!-- Disabled:
-            <RegistryValue Name='timeout'               Type='integer' Value='[TIMEOUT]' />
-            -->
+            <RegistryValue Name='v1_bitmap_path'               Type='string' Value='[V1_BITMAP_PATH]'/>
+            
+            <RegistryValue Name='two_step_hide_otp'            Type='string' Value='[TWO_STEP_HIDE_OTP]'/>
+            <RegistryValue Name='two_step_send_password'       Type='string' Value='[TWO_STEP_SEND_PASSWORD]'/>
+            <RegistryValue Name='two_step_send_empty_password' Type='string' Value='[TWO_STEP_SEND_EMPTY_PASSWORD]'/>
+
+            <RegistryValue Name='hide_fullname'                Type='string' Value='[HIDE_FULLNAME]'/>
+            <RegistryValue Name='hide_domainname'              Type='string' Value='[HIDE_DOMAINNAME]'/>
+            <RegistryValue Name='show_domain_hint'             Type='string' Value=''/>
+            <RegistryValue Name='prefill_username'             Type='string' Value=''/>
+            <RegistryValue Name='enable_reset'                 Type='string' Value=''/>
+            <!-- END CUSTOMIZATION -->
+
+            <!-- MISC -->
+            <RegistryValue Name='debug_log'                    Type='string' Value='[DEBUG_LOG]'/>
+            <RegistryValue Name='excluded_account'             Type='string' Value=''/>
+            <RegistryValue Name='log_sensitive'                Type='string' Value=''/>
+            <RegistryValue Name='default_realm'                Type='string' Value=''/>
+            <RegistryValue Name='offline_file'                 Type='string' Value=''/>
+            <RegistryValue Name='offline_try_window'           Type='string' Value=''/>
+            <!-- END MISC -->
           </RegistryKey>
           <!-- END Configuration values -->
           <!-- END Registry -->
-          
         </Component>
         <!-- END Core components -->
-        
+
         <!-- ProviderFilter component -->
         <Component Location="local" Guid="a6d595a6-58b4-4541-8171-65f3f364b58c">
           <!-- Files -->
@@ -261,7 +263,7 @@
               <RegistryValue Type='string' Value='PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)' />
               <RegistryValue Name='ThreadingModel' Type='string' Value='Apartment' />
             </RegistryKey>
-          </RegistryKey>         
+          </RegistryKey>
           <!-- END Registry -->
         </Component>
         <!-- END ProviderFilter component -->
@@ -272,10 +274,10 @@
           <RemoveRegistryKey Root='HKLM' Key='SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}' Action='removeOnUninstall'/>
         </Component>
         <!-- END Activate ProviderFilter component -->
-        
+
       </Directory>
       <!-- END Directories/Components to be placed in System-folder -->
-      
+
     </Directory>
     <!-- END Directory definitions -->
 
@@ -285,7 +287,7 @@
         <ComponentRef Id='CredentialProvider' />
         <ComponentRef Id='CredentialProviderFilter' />
       </Feature>
-      
+
       <Feature Id='InstallAsDefault' Title='Default provider' Description='Install $(var.ProductName) as default provider. No other provider will be allowed to be used for logon.' Level='1000' AllowAdvertise='no' InstallDefault="local">
         <ComponentRef Id='ActivateCredentialProviderFilter' />
       </Feature>
@@ -294,14 +296,14 @@
       <Feature Id="VCRedist" Title="Visual C++ Runtime" AllowAdvertise="no" Display="hidden" Level="1">
         <MergeRef Id='VCRedist'/>
       </Feature>
-      
+
       <ComponentRef Id='DefaultFilesInProgrammFolder' />
     </Feature>
     <!-- END Feature definitions -->
 
     <!-- WiX Configuration -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.SolutionDir)ApacheLicense.rtf" />
-    
+
     <WixVariable Id="WixUIBannerBmp" Value="$(var.SolutionDir)WixUIBannerBmp.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.SolutionDir)WixUIDialogBmp.bmp" />
     <!-- END WiX Configuration -->
@@ -326,5 +328,5 @@
     </UI>
     <!-- END UI Configuration -->
 
-    </Product>
+  </Product>
 </Wix>

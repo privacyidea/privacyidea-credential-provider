@@ -4,7 +4,7 @@
  * Added "enable_reset" configuration setting to show a clickable text at the bottom that resets the login.
  * Added "debug_log" configuration setting to create a detailed log file. This setting replaces "release_log", real errors are always written to the log file. This setting also removes the need to install the debug version to create a detailed log.
  * Added status callback to WinHttp to get more detailed information about certain failures.
-
+ 
  ## Fixes
  * Fixed crash when deselecting the Credential Provider tile.
  * Fixed missing lookup of "no_default" setting.
