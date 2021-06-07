@@ -214,8 +214,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 
 	if (_config->prefillUsername)
 	{
-		wstring wszRegPath = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI";
-		RegistryReader rr(wszRegPath.c_str());
+		RegistryReader rr(LAST_USER_REGISTRY_PATH);
 		wstring wszEntry = rr.GetWStringRegistry(L"LastLoggedOnUser");
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());

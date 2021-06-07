@@ -27,7 +27,7 @@ using namespace std;
 
 void Configuration::Load()
 {
-	RegistryReader rr(L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\");
+	RegistryReader rr(CONFIG_REGISTRY_PATH);
 
 	// Credential Provider specific config
 	bitmapPath = rr.GetWStringRegistry(L"v1_bitmap_path");
@@ -84,7 +84,7 @@ void Configuration::Load()
 	// Realm Mapping
 	piconfig.defaultRealm = rr.GetWStringRegistry(L"default_realm");
 
-	if (!rr.GetAllEntries(L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping", piconfig.realmMap))
+	if (!rr.GetAllEntries(REALM_MAPPING_REGISTRY_PATH, piconfig.realmMap))
 	{
 		piconfig.realmMap.clear();
 	}
