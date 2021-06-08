@@ -113,6 +113,9 @@ void CALLBACK WinHttpStatusCallback(
 	__in  DWORD dwStatusInformationLength
 )
 {
+	UNREFERENCED_PARAMETER(hInternet);
+	UNREFERENCED_PARAMETER(dwContext);
+
 	long lStatus = 0;
 	if (lpvStatusInformation != nullptr)
 	{
@@ -212,9 +215,9 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 	// Specify an HTTP server.
 	if (hSession)
 	{
-		// Install the status callback function.
-
-		WINHTTP_STATUS_CALLBACK isCallback = WinHttpSetStatusCallback(hSession,
+		// Set the callback and optionally a port other than default https
+		WINHTTP_STATUS_CALLBACK isCallback = WinHttpSetStatusCallback(
+			hSession,
 			(WINHTTP_STATUS_CALLBACK)WinHttpStatusCallback,
 			WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,
 			NULL);

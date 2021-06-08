@@ -422,6 +422,8 @@ HRESULT Utilities::SetScenario(
 	{
 		pCPCE->SetFieldState(pCredential, FID_SUBTEXT, CPFS_HIDDEN);
 	}
+	// Reset Link, optional
+	pCPCE->SetFieldState(pCredential, FID_COMMANDLINK, (_config->showResetLink ? CPFS_DISPLAY_IN_SELECTED_TILE : CPFS_HIDDEN));
 
 	return hr;
 }
