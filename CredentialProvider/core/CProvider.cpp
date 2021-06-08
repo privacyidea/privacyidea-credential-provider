@@ -117,7 +117,7 @@ HRESULT CProvider::SetUsageScenario(
 		}
 	}
 
-	DebugPrint("SetScenario result:");
+	DebugPrint("SetUsageScenario result:");
 	DebugPrint(hr);
 
 	return hr;
@@ -388,7 +388,6 @@ HRESULT CProvider::GetCredentialAt(
 
 	HRESULT hr = E_FAIL;
 	const CREDENTIAL_PROVIDER_USAGE_SCENARIO usage_scenario = _config->provider.cpu;
-
 
 	if (!_credential)
 	{

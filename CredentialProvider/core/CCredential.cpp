@@ -219,7 +219,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
 	}
-
+	
 	if (!_config->showResetLink)
 	{
 		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
@@ -512,6 +512,7 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 	UNREFERENCED_PARAMETER(dwFieldID);
 	DebugPrint(__FUNCTION__);
 	_util.ResetScenario(this, _pCredProvCredentialEvents);
+	_privacyIDEA.StopPoll();
 	return S_OK;
 }
 
