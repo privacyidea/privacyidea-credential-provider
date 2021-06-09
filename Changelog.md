@@ -1,4 +1,4 @@
-# Version 3.1.2, 2021-06-07
+# Version 3.1.2, 2021-06-09
 
 ## Features
  * Added "enable_reset" configuration setting to show a clickable text at the bottom that resets the login.
