@@ -120,7 +120,7 @@ E.g. This would result in:
   available credential providers. (1e would be the contrary.)
 * ``cpus_unlock = 2e``: Locally unlocking the desktop is only possible with the
   privacyIDEA Credential Provider. (2d would be the contrary.)
-* ``cred_ui = 3d``: For credui scenarios the privacyIDEA Credential Provider
+* ``cpus_credui = 3d``: For credui scenarios the privacyIDEA Credential Provider
   is completely disabled, no matter if remotely or locally. Only the other
   credential providers are available.
   (Note: "3e" does not exist)
