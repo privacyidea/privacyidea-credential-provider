@@ -103,8 +103,7 @@ character "e" or "d".
 * 0: relevant for *remote* (RDP) and *local* operation
 * 1: relevant for *remote* operation
 * 2: relevant for *local* operation
-* 3: relevent for *remote* and *local* operation - but privacyIDEA
-  Credential Provider completely disabled.
+* 3: the privacyIDEA Credential Provider will **not** be shown in *remote* and *local* operation.
 
 The characters stand for:
 
