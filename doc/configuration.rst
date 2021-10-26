@@ -127,6 +127,8 @@ E.g. This would result in:
 If there is no entry for a scenario, the default is assumed:
 The privacyIDEA Credential Provider will be available and the Filter will be active, if installed.
 
+**NOTE: Starting with Windows 10, CPUS_UNLOCK is not triggered by default anymore when unlocking the workstation. Instead, unlocking the workstation is considered CPUS_LOGON. If you need to differentiate the two scenarios, disabling fast user switching in the group policy editor restores the previous behavior. An example of how to do this can be found here:** https://support.waters.com/KB_Inf/Empower_Breeze/WKB47366_How_To_Enable_Disable_Fast_User_Switching_In_Windows_10
+
 Recommended setup for remote desktop scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
