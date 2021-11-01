@@ -87,6 +87,16 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
 	__deref_out PWSTR* ppwzProtectedPassword
 );
 
+HRESULT UnProtectIfNecessaryAndCopyPassword(
+	__in PCWSTR pwzPassword,
+	__deref_out PWSTR* ppwzUnProtectedPassword
+);
+
+HRESULT _UnProtectAndCopyString(
+	__in PCWSTR pwzToUnProtect,
+	__deref_out PWSTR* ppwzUnProtected
+);
+
 HRESULT KerbInteractiveUnlockLogonRepackNative(
 	__in_bcount(cbWow) BYTE* rgbWow,
 	__in DWORD cbWow,

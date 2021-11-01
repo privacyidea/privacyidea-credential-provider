@@ -83,8 +83,23 @@ HRESULT CCredential::Initialize(
 	{
 		wstrDomainname = wstring(domain_name);
 	}
+
 	if (NOT_EMPTY(password))
 	{
+		PWSTR pwzProtectedPassword;
+		HRESULT hr = SHStrDupW(password, &pwzProtectedPassword);
+		if (SUCCEEDED(hr))
+		{
+			// If the password is coming from a remote login, it is encrypted and has to be decrypted
+			// to be used e.g. for sending it to privacyIDEA prior to the OTP
+			// This function does nothing to unencrypted passwords
+			hr = UnProtectIfNecessaryAndCopyPassword(pwzProtectedPassword, &password);
+			if (FAILED(hr))
+			{
+				DebugPrint("Failed to decrypt password " + GetLastError());
+			}
+		}
+		CoTaskMemFree(pwzProtectedPassword);
 		wstrPassword = std::wstring(password);
 	}
 
@@ -219,7 +234,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
 	}
-	
+
 	if (!_config->showResetLink)
 	{
 		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
@@ -744,11 +759,13 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	if (!_config->excludedAccount.empty())
 	{
 		wstring toCompare;
-		if (!_config->credential.domain.empty()) {
+		if (!_config->credential.domain.empty())
+		{
 			toCompare.append(_config->credential.domain).append(L"\\");
 		}
 		toCompare.append(_config->credential.username);
-		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount)) {
+		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount))
+		{
 			DebugPrint("Login data matches excluded account, skipping 2FA...");
 			// Simulate 2FA success so the logic in GetSerialization can stay the same
 			_piStatus = PI_AUTH_SUCCESS;
