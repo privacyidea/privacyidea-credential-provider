@@ -49,7 +49,7 @@ void Logger::LogS(const string& message, const char* file, int line, bool isDebu
 	{
 		return;
 	}
-	strftime(buffer, sizeof(buffer), "%d-%m-%Y %I:%M:%S", timeinfo);
+	strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", timeinfo);
 	CoTaskMemFree(timeinfo);
 	string fullMessage = "[" + string(buffer) + "] [" + string(file) + ":" + to_string(line) + "] " + message;
 
