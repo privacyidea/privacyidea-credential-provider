@@ -501,7 +501,6 @@ HRESULT Utilities::SetFieldStatePairBatch(
 	return hr;
 }
 
-// can be removed, SetScenario does the same
 HRESULT Utilities::InitializeField(
 	LPWSTR* rgFieldStrings,
 	DWORD field_index)
@@ -518,11 +517,24 @@ HRESULT Utilities::InitializeField(
 	{
 		case FID_NEW_PASS_1:
 		case FID_NEW_PASS_2:
-		case FID_LDAP_PASS:
 		case FID_OTP:
 		case FID_SUBMIT_BUTTON:
+		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			break;
+		}
+		case FID_LDAP_PASS:
+		{
+			if (!_config->credential.password.empty())
+			{
+				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
+			}
+			else
+			{
+				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			}
+			break;
+		}
 		case FID_SUBTEXT:
 		{
 			wstring text = L"";
@@ -592,7 +604,7 @@ HRESULT Utilities::InitializeField(
 			DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
-		case FID_LOGO: 
+		case FID_LOGO:
 		{
 			hr = S_OK;
 			break;

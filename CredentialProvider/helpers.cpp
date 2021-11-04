@@ -610,10 +610,8 @@ HRESULT UnProtectIfNecessaryAndCopyPassword(
 }
 
 //
-// Return a copy of pwzToProtect decrypted with the CredProtect API.
-//
-// pwzToProtect must not be NULL or the empty string.
-//
+// Return a copy of pwzToUnProtect decrypted with the CredProtect API.
+// pwzToUnProtect must not be NULL or the empty string.
 HRESULT _UnProtectAndCopyString(
 	__in PCWSTR pwzToUnProtect,
 	__deref_out PWSTR* ppwzUnProtected
@@ -621,8 +619,6 @@ HRESULT _UnProtectAndCopyString(
 {
 	*ppwzUnProtected = NULL;
 
-	// pwzToProtect is const, but CredProtect takes a non-const string.
-	// So, make a copy that we know isn't const.
 	PWSTR pwzToUnProtectCopy;
 	HRESULT hr = SHStrDupW(pwzToUnProtect, &pwzToUnProtectCopy);
 	if (SUCCEEDED(hr))
@@ -630,8 +626,8 @@ HRESULT _UnProtectAndCopyString(
 		// The first call to CredProtect determines the length of the encrypted string.
 		// Because we pass a NULL output buffer, we expect the call to fail.
 		//
-		// Note that the third parameter to CredProtect, the number of characters of pwzToProtectCopy
-		// to encrypt, must include the NULL terminator!
+		// Note that the third parameter to CredProtect, the number of characters of pwzToUnProtectCopy
+		// to decrypt, must include the NULL terminator!
 		DWORD cchUnProtected = 0;
 		if (!CredUnprotectW(FALSE, pwzToUnProtectCopy, (DWORD)wcslen(pwzToUnProtectCopy) + 1, NULL, &cchUnProtected))
 		{
@@ -643,7 +639,7 @@ HRESULT _UnProtectAndCopyString(
 				PWSTR pwzUnProtected = (PWSTR)CoTaskMemAlloc(cchUnProtected * sizeof(WCHAR));
 				if (pwzUnProtected)
 				{
-					// The second call to CredProtect actually encrypts the string.
+					// The second call to CredUnProtect actually decrypts the string.
 					if (CredUnprotectW(FALSE, pwzToUnProtectCopy, (DWORD)wcslen(pwzToUnProtectCopy) + 1, pwzUnProtected, &cchUnProtected))
 					{
 						*ppwzUnProtected = pwzUnProtected;
