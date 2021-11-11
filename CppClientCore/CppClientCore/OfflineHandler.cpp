@@ -50,13 +50,17 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 	_filePath = filePath.empty() ? _filePath : filePath;
 	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
 	const HRESULT res = LoadFromFile();
-	if (res != S_OK)
+	if (res == S_OK)
 	{
-		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
+		DebugPrint("Offline data loaded successfully!");
+	}
+	else if (res == 2)
+	{
+		// File not found can be ignored as it expected when not using offline OTPs
 	}
 	else
 	{
-		DebugPrint("Offline data loaded successfully!");
+		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
 	}
 }
 
