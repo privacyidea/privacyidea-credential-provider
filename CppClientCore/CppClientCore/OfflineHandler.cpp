@@ -175,7 +175,7 @@ HRESULT OfflineHandler::ParseForOfflineData(const std::string& in)
 		{
 			if (existing.username == toAdd.username)
 			{
-				DebugPrint("found exsisting user data.");
+				//DebugPrint("found exsisting user data.");
 				existing.refilltoken = toAdd.refilltoken;
 
 				for (const auto& newOTP : toAdd.offlineOTPs)
@@ -189,7 +189,7 @@ HRESULT OfflineHandler::ParseForOfflineData(const std::string& in)
 		if (!done)
 		{
 			dataSets.push_back(toAdd);
-			DebugPrint("did not find exsisting user data, adding new");
+			//DebugPrint("did not find exsisting user data, adding new");
 		}
 	}
 	return S_OK;
