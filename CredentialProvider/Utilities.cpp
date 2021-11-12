@@ -307,6 +307,40 @@ HRESULT Utilities::CredPackAuthentication(
 	return hr;
 }
 
+HRESULT Utilities::SetLargeText()
+{
+	const int hideFullName = _config->hideFullName;
+	const int hideDomain = _config->hideDomainName;
+
+	// Fill the textfields with text depending on configuration
+	// Large text for username@domain, username or nothing
+	// Small text for transaction message or default OTP message
+
+	// Large text
+	wstring text = _config->credential.username + L"@" + _config->credential.domain;
+	if (hideDomain)
+	{
+		text = _config->credential.username;
+	}
+	if (hideFullName)
+	{
+		text = L"";
+	}
+	//DebugPrint(L"Setting large text: " + text);
+	if (text.empty() || _config->credential.username.empty())
+	{
+		_config->provider.pCredProvCredentialEvents->SetFieldString(_config->provider.pCredProvCredential, FID_LARGE_TEXT, _config->loginText.c_str());
+		//DebugPrint(L"Setting large text: " + _config->loginText);
+	}
+	else
+	{
+		_config->provider.pCredProvCredentialEvents->SetFieldString(_config->provider.pCredProvCredential, FID_LARGE_TEXT, text.c_str());
+		//DebugPrint(L"Setting large text: " + text);
+	}
+
+	return S_OK;
+}
+
 HRESULT Utilities::SetScenario(
 	__in ICredentialProviderCredential* pCredential,
 	__in ICredentialProviderCredentialEvents* pCPCE,
@@ -353,7 +387,6 @@ HRESULT Utilities::SetScenario(
 			break;
 	}
 
-
 	if (_config->credential.passwordMustChange)
 	{
 		// Show username in large text, prefill old password
@@ -370,7 +403,7 @@ HRESULT Utilities::SetScenario(
 		// Small text for transaction message or default OTP message
 
 		// Large text
-		wstring text = _config->credential.username + L"@" + _config->credential.domain;
+		/*wstring text = _config->credential.username + L"@" + _config->credential.domain;
 		if (hideDomain)
 		{
 			text = _config->credential.username;
@@ -382,15 +415,16 @@ HRESULT Utilities::SetScenario(
 		//DebugPrint(L"Setting large text: " + text);
 		if (text.empty() || _config->credential.username.empty())
 		{
-			//pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
 			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, _config->loginText.c_str());
-			DebugPrint(L"Setting large text: " + _config->loginText);
+			//DebugPrint(L"Setting large text: " + _config->loginText);
 		}
 		else
 		{
 			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
-			DebugPrint(L"Setting large text: " + text);
+			//DebugPrint(L"Setting large text: " + text);
 		}
+		*/
+		SetLargeText();
 
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
@@ -528,7 +562,7 @@ HRESULT Utilities::InitializeField(
 			wstring text = L"";
 			if (_config->showDomainHint)
 			{
-				text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;;
+				text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
 			}
 			hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
 
@@ -537,8 +571,7 @@ HRESULT Utilities::InitializeField(
 		case FID_USERNAME:
 		{
 			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
-
-			DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
+			//DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
 		case FID_LARGE_TEXT:
@@ -552,7 +585,7 @@ HRESULT Utilities::InitializeField(
 			{
 				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 			}
-			DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
+			//DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
 		case FID_SMALL_TEXT:
@@ -589,10 +622,10 @@ HRESULT Utilities::InitializeField(
 			{
 				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			}
-			DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
+			//DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
-		case FID_LOGO: 
+		case FID_LOGO:
 		{
 			hr = S_OK;
 			break;
@@ -600,7 +633,7 @@ HRESULT Utilities::InitializeField(
 		case FID_COMMANDLINK:
 		{
 			wstring wszCommandLinkText = Utilities::GetTranslatedText(TEXT_RESET_LINK).c_str();
-			DebugPrint(L"command link: " + wszCommandLinkText);
+			//DebugPrint(L"command link: " + wszCommandLinkText);
 			hr = SHStrDupW(wszCommandLinkText.c_str(), &rgFieldStrings[field_index]);
 			break;
 		}
@@ -657,7 +690,7 @@ HRESULT Utilities::ReadUserField()
 	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
 	{
 		wstring input(_config->provider.field_strings[FID_USERNAME]);
-		DebugPrint(L"Loading user/domain from GUI, raw: '" + input + L"'");
+		DebugPrint(L"Loading user\\domain from GUI: '" + input + L"'");
 		wstring user_name, domain_name;
 
 		auto const pos = input.find_first_of(L"\\", 0);
@@ -687,6 +720,10 @@ HRESULT Utilities::ReadUserField()
 		if (!domain_name.empty())
 		{
 			wstring newDomain(domain_name);
+			if (newDomain == L".")
+			{
+				newDomain = Utilities::ComputerName();
+			}
 			DebugPrint(L"Changing domain from '" + _config->credential.domain + L"' to '" + newDomain + L"'");
 			_config->credential.domain = newDomain;
 		}
@@ -789,4 +826,22 @@ HRESULT Utilities::ResetScenario(
 	}
 
 	return S_OK;
+}
+
+std::wstring Utilities::ComputerName()
+{
+	wstring ret;
+	WCHAR wsz[MAX_SIZE_DOMAIN];
+	DWORD cch = ARRAYSIZE(wsz);
+
+	const BOOL bGetCompName = GetComputerNameW(wsz, &cch);
+	if (bGetCompName)
+	{
+		ret = wstring(wsz, cch);
+	}
+	else
+	{
+		DebugPrint("Failed to retrieve computer name: " + to_string(GetLastError()));
+	}
+	return ret;
 }

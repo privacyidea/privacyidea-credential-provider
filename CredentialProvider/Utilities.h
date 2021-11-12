@@ -60,6 +60,8 @@ public:
 		__in std::wstring domain
 	);
 
+	HRESULT SetLargeText();
+
 	// Set all fields state depending on the scenario, then fill the fields depending on scenario and configuration
 	HRESULT SetScenario(
 		__in ICredentialProviderCredential* pCredential,
@@ -91,6 +93,8 @@ public:
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 
 	HRESULT ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents);
+
+	static std::wstring ComputerName();
 
 private:
 	std::shared_ptr<Configuration> _config;

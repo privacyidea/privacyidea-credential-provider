@@ -82,6 +82,7 @@ HRESULT CCredential::Initialize(
 	if (NOT_EMPTY(domain_name))
 	{
 		wstrDomainname = wstring(domain_name);
+		_initialDomain = wstrDomainname;
 	}
 	if (NOT_EMPTY(password))
 	{
@@ -219,7 +220,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
 	}
-	
+
 	if (!_config->showResetLink)
 	{
 		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
@@ -323,7 +324,6 @@ HRESULT CCredential::GetBitmapValue(
 		HBITMAP hbmp = nullptr;
 		string szPath = PrivacyIDEA::ws2s(_config->bitmapPath);
 		LPCSTR lpszBitmapPath = szPath.c_str();
-		DebugPrint(lpszBitmapPath);
 
 		if (NOT_EMPTY(lpszBitmapPath))
 		{
@@ -396,25 +396,53 @@ HRESULT CCredential::SetStringValue(
 	__in PCWSTR pwz
 )
 {
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	// Validate parameters.
-	if (dwFieldID < FID_NUM_FIELDS &&
-		(CPFT_EDIT_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft ||
-			CPFT_PASSWORD_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft))
+	const CREDENTIAL_PROVIDER_FIELD_TYPE fieldType = _rgCredProvFieldDescriptors[dwFieldID].cpft;
+	if (dwFieldID < FID_NUM_FIELDS && (CPFT_EDIT_TEXT == fieldType || CPFT_PASSWORD_TEXT == fieldType))
 	{
 		PWSTR* ppwszStored = &_rgFieldStrings[dwFieldID];
 		CoTaskMemFree(*ppwszStored);
 		hr = SHStrDupW(pwz, ppwszStored);
+
+		// Check if new domain was entered or reset to default domain
+		if (dwFieldID == FID_USERNAME)
+		{
+			wstring input(pwz);
+			const size_t pos = input.find(L'\\');
+			if (pos != std::string::npos)
+			{
+				SetDomainHint(input.substr(0, pos));
+			}
+			else
+			{
+				SetDomainHint(_initialDomain);
+				_config->credential.domain = _initialDomain;
+			}
+		}
 	}
 	else
 	{
 		hr = E_INVALIDARG;
 	}
 
-	//DebugPrintLn(hr);
-
 	return hr;
+}
+
+HRESULT CCredential::SetDomainHint(std::wstring domain)
+{
+	if (_config->showDomainHint && !domain.empty())
+	{
+		wstring actualDomain = domain;
+		if (domain == L".")
+		{
+			actualDomain = Utilities::ComputerName();
+		}
+		wstring text = Utilities::GetTranslatedText(TEXT_DOMAIN_HINT) + actualDomain;
+		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, text.c_str());
+	}
+	return S_OK;
 }
 
 // Returns the number of items to be included in the combobox (pcItems), as well as the 
@@ -744,11 +772,13 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	if (!_config->excludedAccount.empty())
 	{
 		wstring toCompare;
-		if (!_config->credential.domain.empty()) {
+		if (!_config->credential.domain.empty())
+		{
 			toCompare.append(_config->credential.domain).append(L"\\");
 		}
 		toCompare.append(_config->credential.username);
-		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount)) {
+		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount))
+		{
 			DebugPrint("Login data matches excluded account, skipping 2FA...");
 			// Simulate 2FA success so the logic in GetSerialization can stay the same
 			_piStatus = PI_AUTH_SUCCESS;
@@ -845,7 +875,7 @@ HRESULT CCredential::ReportResult(
 )
 {
 	DebugPrint(__FUNCTION__);
-	// only print interesting statuses
+	// only print interesting status
 	if (ntsStatus != 0)
 	{
 		std::stringstream ss;

@@ -89,6 +89,7 @@ public:
 	IFACEMETHODIMP GetSubmitButtonValue(__in DWORD dwFieldID, __out DWORD* pdwAdjacentTo);
 
 	IFACEMETHODIMP SetStringValue(__in DWORD dwFieldID, __in PCWSTR pwz);
+	HRESULT SetDomainHint(std::wstring domain);
 	IFACEMETHODIMP SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked);
 	IFACEMETHODIMP SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem);
 	IFACEMETHODIMP CommandLinkClicked(__in DWORD dwFieldID);
@@ -151,4 +152,5 @@ private:
 
 	HRESULT									_piStatus = E_FAIL;
 
+	std::wstring							_initialDomain;
 };
