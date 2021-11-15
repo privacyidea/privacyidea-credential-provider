@@ -54,7 +54,7 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 	{
 		DebugPrint("Offline data loaded successfully!");
 	}
-	else if (res == 2)
+	else if (res == ERROR_FILE_NOT_FOUND)
 	{
 		// File not found can be ignored as it expected when not using offline OTPs
 	}
