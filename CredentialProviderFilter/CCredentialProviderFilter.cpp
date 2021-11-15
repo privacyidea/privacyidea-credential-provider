@@ -63,7 +63,7 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 		case CPUS_CREDUI:
 			break;
 		case CPUS_CHANGE_PASSWORD:
-			return E_NOTIMPL; // TODO 
+			return E_NOTIMPL;
 		default:
 			return E_INVALIDARG;
 	}
