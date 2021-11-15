@@ -20,9 +20,9 @@
 #include <string>
 #include <map>
 
-#define CONFIG_REGISTRY_PATH	L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\"
-#define REALM_MAPPING_REGISTRY_PATH	L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping"
-#define LAST_USER_REGISTRY_PATH L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI"
+#define CONFIG_REGISTRY_PATH			L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\"
+#define REALM_MAPPING_REGISTRY_PATH		L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping"
+#define LAST_USER_REGISTRY_PATH			L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI"
 
 class RegistryReader
 {

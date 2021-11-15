@@ -592,7 +592,7 @@ HRESULT Utilities::InitializeField(
 			DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
-		case FID_LOGO: 
+		case FID_LOGO:
 		{
 			hr = S_OK;
 			break;

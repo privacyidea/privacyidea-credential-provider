@@ -348,20 +348,18 @@ HRESULT CProvider::GetCredentialCount(
 {
 	DebugPrint(__FUNCTION__);
 
-	HRESULT hr = S_OK;
-
-	*pdwCount = 1; //_dwNumCreds;
+	*pdwCount = 1;
 	*pdwDefault = 0; // this means we want to be the default
 	*pbAutoLogonWithDefault = FALSE;
+
 	if (_config->noDefault)
 	{
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
 	}
 
 	// if serialized creds are available, try using them to logon
-	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
+	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD) && _config->provider.cpu != CPUS_CREDUI)
 	{
-		*pdwDefault = 0;
 		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
 		if (_config->isRemoteSession && !_config->twoStepHideOTP)
 		{
@@ -369,12 +367,11 @@ HRESULT CProvider::GetCredentialCount(
 		}
 		else
 		{
+			*pdwDefault = 0;
 			*pbAutoLogonWithDefault = TRUE;
 		}
 	}
-
-	DebugPrint(hr);
-	return hr;
+	return S_OK;
 }
 
 // Returns the credential at the index specified by dwIndex. This function is called by logonUI to enumerate
@@ -495,7 +492,6 @@ HRESULT CProvider::GetCredentialAt(
 		{
 			DebugPrint("Non-CredUI: returning an IID_IConnectableCredentialProviderCredential");
 			hr = _credential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
-			//hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void **>(ppcpc));
 		}
 	}
 	else

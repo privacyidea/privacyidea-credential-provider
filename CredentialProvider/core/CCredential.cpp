@@ -219,7 +219,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
 	}
-	
+
 	if (!_config->showResetLink)
 	{
 		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
@@ -397,7 +397,6 @@ HRESULT CCredential::SetStringValue(
 )
 {
 	HRESULT hr;
-
 	// Validate parameters.
 	if (dwFieldID < FID_NUM_FIELDS &&
 		(CPFT_EDIT_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft ||
@@ -744,11 +743,13 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	if (!_config->excludedAccount.empty())
 	{
 		wstring toCompare;
-		if (!_config->credential.domain.empty()) {
+		if (!_config->credential.domain.empty())
+		{
 			toCompare.append(_config->credential.domain).append(L"\\");
 		}
 		toCompare.append(_config->credential.username);
-		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount)) {
+		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount))
+		{
 			DebugPrint("Login data matches excluded account, skipping 2FA...");
 			// Simulate 2FA success so the logic in GetSerialization can stay the same
 			_piStatus = PI_AUTH_SUCCESS;
