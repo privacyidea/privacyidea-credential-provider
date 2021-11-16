@@ -60,8 +60,6 @@ public:
 		__in std::wstring domain
 	);
 
-	HRESULT SetLargeText();
-
 	// Set all fields state depending on the scenario, then fill the fields depending on scenario and configuration
 	HRESULT SetScenario(
 		__in ICredentialProviderCredential* pCredential,
@@ -84,7 +82,7 @@ public:
 	);
 
 	HRESULT InitializeField(
-		LPWSTR* rgFieldStrings,
+		LPWSTR rgFieldStrings[11],
 		DWORD field_index
 	);
 
