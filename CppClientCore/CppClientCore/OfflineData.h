@@ -36,7 +36,6 @@ public:
 
 	size_t GetOfflineOTPsLeft() noexcept;
 
-	std::string user = "";
 	std::string username = "";
 	std::string serial = "";
 	std::string refilltoken = "";
