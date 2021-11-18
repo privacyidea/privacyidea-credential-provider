@@ -567,6 +567,110 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
 }
 
 //
+// If pwzPassword should be decrypted, return a copy decrypted with CredProtect.
+// If not, just return a copy.
+HRESULT UnProtectIfNecessaryAndCopyPassword(
+	__in PCWSTR pwzPassword,
+	__deref_out PWSTR* ppwzUnProtectedPassword
+)
+{
+	*ppwzUnProtectedPassword = nullptr;
+	HRESULT hr = E_FAIL;
+
+	if (pwzPassword && *pwzPassword)
+	{
+		PWSTR pwzPasswordCopy;
+		hr = SHStrDupW(pwzPassword, &pwzPasswordCopy);
+		if (SUCCEEDED(hr))
+		{
+			CRED_PROTECTION_TYPE protectionType;
+
+			// Check if the password is encrypted
+			if (CredIsProtectedW(pwzPasswordCopy, &protectionType))
+			{
+				if (CredUnprotected == protectionType)
+				{
+					hr = SHStrDupW(pwzPasswordCopy, ppwzUnProtectedPassword);
+				}
+				else
+				{
+					hr = _UnProtectAndCopyString(pwzPasswordCopy, ppwzUnProtectedPassword);
+				}
+			}
+
+			CoTaskMemFree(pwzPasswordCopy);
+		}
+	}
+	else
+	{
+		hr = SHStrDupW(L"", ppwzUnProtectedPassword);
+	}
+
+	return hr;
+}
+
+//
+// Return a copy of pwzToUnProtect decrypted with the CredProtect API.
+// pwzToUnProtect must not be NULL or the empty string.
+HRESULT _UnProtectAndCopyString(
+	__in PCWSTR pwzToUnProtect,
+	__deref_out PWSTR* ppwzUnProtected
+)
+{
+	*ppwzUnProtected = NULL;
+
+	PWSTR pwzToUnProtectCopy;
+	HRESULT hr = SHStrDupW(pwzToUnProtect, &pwzToUnProtectCopy);
+	if (SUCCEEDED(hr))
+	{
+		// The first call to CredProtect determines the length of the encrypted string.
+		// Because we pass a NULL output buffer, we expect the call to fail.
+		//
+		// Note that the third parameter to CredProtect, the number of characters of pwzToUnProtectCopy
+		// to decrypt, must include the NULL terminator!
+		DWORD cchUnProtected = 0;
+		if (!CredUnprotectW(FALSE, pwzToUnProtectCopy, (DWORD)wcslen(pwzToUnProtectCopy) + 1, NULL, &cchUnProtected))
+		{
+			DWORD dwErr = GetLastError();
+
+			if ((ERROR_INSUFFICIENT_BUFFER == dwErr) && (0 < cchUnProtected))
+			{
+				// Allocate a buffer long enough for the encrypted string.
+				PWSTR pwzUnProtected = (PWSTR)CoTaskMemAlloc(cchUnProtected * sizeof(WCHAR));
+				if (pwzUnProtected)
+				{
+					// The second call to CredUnProtect actually decrypts the string.
+					if (CredUnprotectW(FALSE, pwzToUnProtectCopy, (DWORD)wcslen(pwzToUnProtectCopy) + 1, pwzUnProtected, &cchUnProtected))
+					{
+						*ppwzUnProtected = pwzUnProtected;
+						hr = S_OK;
+					}
+					else
+					{
+						CoTaskMemFree(pwzUnProtected);
+
+						dwErr = GetLastError();
+						hr = HRESULT_FROM_WIN32(dwErr);
+					}
+				}
+				else
+				{
+					hr = E_OUTOFMEMORY;
+				}
+			}
+			else
+			{
+				hr = HRESULT_FROM_WIN32(dwErr);
+			}
+		}
+
+		CoTaskMemFree(pwzToUnProtectCopy);
+	}
+
+	return hr;
+}
+
+//
 // Unpack a KERB_INTERACTIVE_UNLOCK_LOGON *in place*.  That is, reset the Buffers from being offsets to
 // being real pointers.  This means, of course, that passing the resultant struct across any sort of 
 // memory space boundary is not going to work -- repack it if necessary!

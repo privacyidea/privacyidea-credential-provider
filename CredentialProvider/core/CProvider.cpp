@@ -93,18 +93,18 @@ HRESULT CProvider::SetUsageScenario(
 
 	switch (cpus)
 	{
-		case CPUS_LOGON:
-		case CPUS_UNLOCK_WORKSTATION:
-		case CPUS_CREDUI:
-			hr = S_OK;
-			break;
-		case CPUS_CHANGE_PASSWORD:
-		case CPUS_PLAP:
-		case CPUS_INVALID:
-			hr = E_NOTIMPL;
-			break;
-		default:
-			return E_INVALIDARG;
+	case CPUS_LOGON:
+	case CPUS_UNLOCK_WORKSTATION:
+	case CPUS_CREDUI:
+		hr = S_OK;
+		break;
+	case CPUS_CHANGE_PASSWORD:
+	case CPUS_PLAP:
+	case CPUS_INVALID:
+		hr = E_NOTIMPL;
+		break;
+	default:
+		return E_INVALIDARG;
 	}
 
 	if (hr == S_OK)
@@ -293,24 +293,24 @@ HRESULT CProvider::GetFieldDescriptorAt(
 		wstring label = L"";
 		switch (dwIndex)
 		{
-			case FID_USERNAME:
-				label = Utilities::GetTranslatedText(TEXT_USERNAME);
-				break;
-			case FID_LDAP_PASS:
-				label = Utilities::GetTranslatedText(TEXT_PASSWORD);
-				break;
-			case FID_NEW_PASS_1:
-				label = Utilities::GetTranslatedText(TEXT_NEW_PASSWORD);
-				break;
-			case FID_NEW_PASS_2:
-				label = Utilities::GetTranslatedText(TEXT_CONFIRM_PASSWORD);
-				break;
-			case FID_OTP:
-				label = _config->otpFieldText;
-				if (label.empty())
-					label = Utilities::GetTranslatedText(TEXT_OTP);
-				break;
-			default: break;
+		case FID_USERNAME:
+			label = Utilities::GetTranslatedText(TEXT_USERNAME);
+			break;
+		case FID_LDAP_PASS:
+			label = Utilities::GetTranslatedText(TEXT_PASSWORD);
+			break;
+		case FID_NEW_PASS_1:
+			label = Utilities::GetTranslatedText(TEXT_NEW_PASSWORD);
+			break;
+		case FID_NEW_PASS_2:
+			label = Utilities::GetTranslatedText(TEXT_CONFIRM_PASSWORD);
+			break;
+		case FID_OTP:
+			label = _config->otpFieldText;
+			if (label.empty())
+				label = Utilities::GetTranslatedText(TEXT_OTP);
+			break;
+		default: break;
 		}
 
 		if (!label.empty())
@@ -346,11 +346,10 @@ HRESULT CProvider::GetCredentialCount(
 {
 	DebugPrint(__FUNCTION__);
 
-	HRESULT hr = S_OK;
-
-	*pdwCount = 1; //_dwNumCreds;
+	*pdwCount = 1;
 	*pdwDefault = 0; // this means we want to be the default
 	*pbAutoLogonWithDefault = FALSE;
+
 	if (_config->noDefault)
 	{
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
@@ -359,7 +358,6 @@ HRESULT CProvider::GetCredentialCount(
 	// if serialized creds are available, try using them to logon
 	if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_USERNAME) && _SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD))
 	{
-		*pdwDefault = 0;
 		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
 		if (_config->isRemoteSession && !_config->twoStepHideOTP)
 		{
@@ -367,12 +365,11 @@ HRESULT CProvider::GetCredentialCount(
 		}
 		else
 		{
+			*pdwDefault = 0;
 			*pbAutoLogonWithDefault = TRUE;
 		}
 	}
-
-	DebugPrint(hr);
-	return hr;
+	return S_OK;
 }
 
 // Returns the credential at the index specified by dwIndex. This function is called by logonUI to enumerate
@@ -493,7 +490,6 @@ HRESULT CProvider::GetCredentialAt(
 		{
 			DebugPrint("Non-CredUI: returning an IID_IConnectableCredentialProviderCredential");
 			hr = _credential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
-			//hr = _pccCredential->QueryInterface(IID_ICredentialProviderCredential, reinterpret_cast<void **>(ppcpc));
 		}
 	}
 	else

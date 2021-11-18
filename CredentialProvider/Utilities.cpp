@@ -504,11 +504,24 @@ HRESULT Utilities::InitializeField(
 	{
 		case FID_NEW_PASS_1:
 		case FID_NEW_PASS_2:
-		case FID_LDAP_PASS:
 		case FID_OTP:
 		case FID_SUBMIT_BUTTON:
+		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			break;
+		}
+		case FID_LDAP_PASS:
+		{
+			if (!_config->credential.password.empty())
+			{
+				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
+			}
+			else
+			{
+				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			}
+			break;
+		}
 		case FID_SUBTEXT:
 		{
 			wstring text = L"";

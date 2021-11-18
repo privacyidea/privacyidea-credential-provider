@@ -50,13 +50,17 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 	_filePath = filePath.empty() ? _filePath : filePath;
 	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
 	const HRESULT res = LoadFromFile();
-	if (res != S_OK)
+	if (res == S_OK)
 	{
-		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
+		DebugPrint("Offline data loaded successfully!");
+	}
+	else if (res == ERROR_FILE_NOT_FOUND)
+	{
+		// File not found can be ignored as it expected when not using offline OTPs
 	}
 	else
 	{
-		DebugPrint("Offline data loaded successfully!");
+		DebugPrint(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
 	}
 }
 
@@ -82,7 +86,7 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 
 	for (auto& item : dataSets)
 	{
-		if (item.user == username || item.username == username)
+		if (item.username == username)
 		{
 			const int lowestKey = item.GetLowestKey();
 			int matchingKey = lowestKey;
@@ -129,7 +133,7 @@ HRESULT OfflineHandler::GetRefillTokenAndSerial(const std::string& username, std
 
 	for (const auto& item : dataSets)
 	{
-		if (item.user == username || item.username == username)
+		if (item.username == username)
 		{
 			string iserial(item.serial);
 			string irefilltoken(item.refilltoken);
@@ -173,7 +177,7 @@ HRESULT OfflineHandler::ParseForOfflineData(const std::string& in)
 		bool done = false;
 		for (auto& existing : dataSets)
 		{
-			if (existing.user == toAdd.user || existing.username == toAdd.username)
+			if (existing.username == toAdd.username)
 			{
 				//DebugPrint("found exsisting user data.");
 				existing.refilltoken = toAdd.refilltoken;
@@ -216,7 +220,7 @@ HRESULT OfflineHandler::ParseRefillResponse(const std::string& in, const std::st
 
 	for (auto& item : dataSets)
 	{
-		if (item.user == username || item.username == username)
+		if (item.username == username)
 		{
 			// still adding the values we got
 			if (offline["refilltoken"].is_string())
@@ -244,10 +248,10 @@ HRESULT OfflineHandler::ParseRefillResponse(const std::string& in, const std::st
 
 HRESULT OfflineHandler::DataVailable(const std::string& username)
 {
-	// Check is usable data available for the given username
+	// Check if usable data available for the given username
 	for (auto& item : dataSets)
 	{
-		if (item.user == username || item.username == username)
+		if (item.username == username)
 		{
 			return (item.offlineOTPs.empty() ? PI_OFFLINE_DATA_NO_OTPS_LEFT : S_OK);
 		}

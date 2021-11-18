@@ -141,7 +141,7 @@ void Configuration::LogConfig()
 	DebugPrint(L"OTP failure text: " + defaultOTPFailureText);
 	DebugPrint(L"Hide domain only: " + b2ws(hideDomainName));
 	DebugPrint(L"Hide full name: " + b2ws(hideFullName));
-	DebugPrint(L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreUnknownCA));
+	DebugPrint(L"SSL ignore unknown CA: " + b2ws(piconfig.ignoreUnknownCA));
 	DebugPrint(L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreInvalidCN));
 	DebugPrint(L"2step hide OTP: " + b2ws(twoStepHideOTP));
 	DebugPrint(L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword));

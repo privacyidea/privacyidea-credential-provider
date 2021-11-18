@@ -65,11 +65,6 @@ OfflineData::OfflineData(std::string json_string)
 		refilltoken = j["refilltoken"].get<std::string>();
 	}
 
-	if (j["user"].is_string())
-	{
-		user = j["user"].get<std::string>();
-	}
-
 	if (j["username"].is_string())
 	{
 		username = j["username"].get<std::string>();
@@ -99,7 +94,6 @@ nlohmann::json OfflineData::ToJSON()
 	j["count"] = to_string(count);
 	j["refilltoken"] = refilltoken;
 	j["serial"] = serial;
-	j["user"] = user;
 	j["username"] = username;
 
 	json jResponse;

@@ -84,8 +84,23 @@ HRESULT CCredential::Initialize(
 		wstrDomainname = wstring(domain_name);
 		_initialDomain = wstrDomainname;
 	}
+
 	if (NOT_EMPTY(password))
 	{
+		PWSTR pwzProtectedPassword;
+		HRESULT hr = SHStrDupW(password, &pwzProtectedPassword);
+		if (SUCCEEDED(hr))
+		{
+			// If the password is coming from a remote login, it is encrypted and has to be decrypted
+			// to be used e.g. for sending it to privacyIDEA prior to the OTP
+			// This function does nothing to unencrypted passwords
+			hr = UnProtectIfNecessaryAndCopyPassword(pwzProtectedPassword, &password);
+			if (FAILED(hr))
+			{
+				DebugPrint("Failed to decrypt password " + GetLastError());
+			}
+		}
+		CoTaskMemFree(pwzProtectedPassword);
 		wstrPassword = std::wstring(password);
 	}
 
@@ -396,6 +411,7 @@ HRESULT CCredential::SetStringValue(
 	__in PCWSTR pwz
 )
 {
+
 	HRESULT hr = S_OK;
 
 	// Validate parameters.

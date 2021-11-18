@@ -22,7 +22,8 @@
 #include "RegistryReader.h"
 #include <tchar.h>
 
-namespace Shared {
+namespace Shared
+{
 	bool IsRequiredForScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, int caller)
 	{
 		DebugPrint(__FUNCTION__);
@@ -35,32 +36,33 @@ namespace Shared {
 		RegistryReader rr(L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\");
 		std::wstring entry;
 		const bool isRemote = Shared::IsCurrentSessionRemote();
-
 		switch (cpus)
 		{
-			case CPUS_LOGON:
-			{
-				entry = rr.GetWStringRegistry(L"cpus_logon");
-				break;
-			}
-			case CPUS_UNLOCK_WORKSTATION:
-			{
-				entry = rr.GetWStringRegistry(L"cpus_unlock");
-				break;
-			}
-			case CPUS_CREDUI:
-			{
-				entry = rr.GetWStringRegistry(L"cpus_credui");
-				break;
-			}
-			case CPUS_CHANGE_PASSWORD:
-			case CPUS_PLAP:
-			case CPUS_INVALID:
-				return false;
-			default:
-				return false;
+		case CPUS_LOGON:
+		{
+			entry = rr.GetWStringRegistry(L"cpus_logon");
+			break;
 		}
-
+		case CPUS_UNLOCK_WORKSTATION:
+		{
+			entry = rr.GetWStringRegistry(L"cpus_unlock");
+			break;
+		}
+		case CPUS_CREDUI:
+		{
+			entry = rr.GetWStringRegistry(L"cpus_credui");
+			break;
+		}
+		case CPUS_CHANGE_PASSWORD:
+		case CPUS_PLAP:
+		case CPUS_INVALID:
+			return false;
+		default:
+			return false;
+		}
+		std::string strCaller = (caller == 0 ? "Provider" : "Filter");
+		DebugPrint("Checking for " + strCaller + ", " + CPUStoString(cpus) + ", " + (isRemote ? "remote" : "local"));
+		DebugPrint(L"with registry entry: " + entry);
 		// default - no additional config found
 		if (entry.empty()) return true;
 
@@ -142,20 +144,20 @@ namespace Shared {
 	{
 		switch (cpus)
 		{
-			case CPUS_LOGON:
-				return "CPUS_LOGON";
-			case CPUS_UNLOCK_WORKSTATION:
-				return "CPUS_UNLOCK_WORKSTATION";
-			case CPUS_CREDUI:
-				return "CPUS_CREDUI";
-			case CPUS_CHANGE_PASSWORD:
-				return "CPUS_CHANGE_PASSWORD";
-			case CPUS_PLAP:
-				return "CPUS_PLAP";
-			case CPUS_INVALID:
-				return "CPUS_INVALID";
-			default:
-				return ("Unknown CPUS: " + std::to_string(cpus));
+		case CPUS_LOGON:
+			return "CPUS_LOGON";
+		case CPUS_UNLOCK_WORKSTATION:
+			return "CPUS_UNLOCK_WORKSTATION";
+		case CPUS_CREDUI:
+			return "CPUS_CREDUI";
+		case CPUS_CHANGE_PASSWORD:
+			return "CPUS_CHANGE_PASSWORD";
+		case CPUS_PLAP:
+			return "CPUS_PLAP";
+		case CPUS_INVALID:
+			return "CPUS_INVALID";
+		default:
+			return ("Unknown CPUS: " + std::to_string(cpus));
 		}
 	}
 }
