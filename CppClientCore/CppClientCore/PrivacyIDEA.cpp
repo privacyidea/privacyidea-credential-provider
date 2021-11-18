@@ -272,7 +272,7 @@ std::string PrivacyIDEA::ws2s(const std::wstring& ws)
 
 std::wstring PrivacyIDEA::UpperCase(std::wstring s)
 {
-	std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+	std::transform(s.begin(), s.end(), s.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::toupper(c)); });
 	return s;
 }
 

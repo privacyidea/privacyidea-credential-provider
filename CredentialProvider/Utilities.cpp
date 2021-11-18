@@ -16,13 +16,13 @@ const std::wstring Utilities::texts[11][2] = {
 		{L"Password", L"Kennwort"},
 		{L"Old Password", L"Altes Kennwort"},
 		{L"New Password", L"Neues Kennwort"},
-		{L"Confirm password", L"Kennwort bestätigen"},
+		{L"Confirm password", L"Kennwort bestÃ¤tigen"},
 		{L"Sign in to: ", L"Anmelden an: "},
 		{L"One-Time Password", L"Einmalpassword"},
 		{L"Wrong One-Time Password!", L"Falsches Einmalpasswort!"},
 		{L"Wrong password", L"Das Kennwort ist falsch. Wiederholen Sie den Vorgang."},
 		{L"Please enter your second factor!", L"Bitte geben Sie Ihren zweiten Faktor ein!"},
-		{L"Reset Login", L"Login Zurücksetzten"}
+		{L"Reset Login", L"Login ZurÃ¼cksetzten"}
 };
 
 std::wstring Utilities::GetTranslatedText(int id)
@@ -41,19 +41,11 @@ HRESULT Utilities::KerberosLogon(
 {
 	DebugPrint(__FUNCTION__);
 
-	HRESULT hr;
-
-	WCHAR wsz[MAX_SIZE_DOMAIN]; // actually MAX_COMPUTERNAME_LENGTH + 1 would be enough
-	DWORD cch = ARRAYSIZE(wsz);
-	BOOL  bGetCompName = false;
+	HRESULT hr = S_OK;
 
 	if (domain.empty())
 	{
-		bGetCompName = GetComputerNameW(wsz, &cch);
-	}
-	if (bGetCompName)
-	{
-		domain = wstring(wsz, cch);
+		domain = Utilities::ComputerName();
 	}
 
 	DebugPrint("Packing Credential:");
@@ -62,7 +54,7 @@ HRESULT Utilities::KerberosLogon(
 		(_config->piconfig.logPasswords ? password : L"hidden but has value"));
 	DebugPrint(domain);
 
-	if (!domain.empty() || bGetCompName)
+	if (!domain.empty())
 	{
 		PWSTR pwzProtectedPassword;
 
@@ -132,7 +124,7 @@ HRESULT Utilities::KerberosChangePassword(
 	KERB_CHANGEPASSWORD_REQUEST kcpr;
 	ZeroMemory(&kcpr, sizeof(kcpr));
 
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	WCHAR wsz[64];
 	DWORD cch = ARRAYSIZE(wsz);
@@ -149,10 +141,10 @@ HRESULT Utilities::KerberosChangePassword(
 
 	DebugPrint(L"User: " + username);
 	DebugPrint(L"Domain: " + wstring(wsz));
-	DebugPrint(L"Pw old: " + _config->piconfig.logPasswords ? password_old :
-		(password_old.empty() ? L"no value" : L"hidden but has value"));
-	DebugPrint(L"Pw new: " + _config->piconfig.logPasswords ? password_new :
-		(password_new.empty() ? L"no value" : L"hidden but has value"));
+	DebugPrint(L"Pw old: " + (_config->piconfig.logPasswords ? password_old :
+		(password_old.empty() ? L"no value" : L"hidden but has value")));
+	DebugPrint(L"Pw new: " + (_config->piconfig.logPasswords ? password_new :
+		(password_new.empty() ? L"no value" : L"hidden but has value")));
 
 	if (!domain.empty() || bGetCompName)
 	{
@@ -197,8 +189,7 @@ HRESULT Utilities::KerberosChangePassword(
 	}
 	else
 	{
-		DWORD dwErr = GetLastError();
-		hr = HRESULT_FROM_WIN32(dwErr);
+		hr = HRESULT_FROM_WIN32(GetLastError());
 	}
 
 	return hr;
@@ -328,15 +319,13 @@ HRESULT Utilities::SetScenario(
 		case SCENARIO::SECOND_STEP:
 			DebugPrint("SetScenario: SECOND_STEP");
 			// Set the submit button next to the OTP field for the second step
-			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(_config->provider.pCredProvCredential,
-				FID_SUBMIT_BUTTON, FID_OTP);
+			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_OTP);
 			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
 			break;
 		case SCENARIO::CHANGE_PASSWORD:
 			DebugPrint("SetScenario: CHANGE_PASSWORD");
 			// Set the submit button next to the repeat pw field
-			_config->provider.pCredProvCredentialEvents->SetFieldSubmitButton(_config->provider.pCredProvCredential,
-				FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
+			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
 			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
 			break;
 		case SCENARIO::UNLOCK_TWO_STEP:
@@ -352,7 +341,6 @@ HRESULT Utilities::SetScenario(
 		default:
 			break;
 	}
-
 
 	if (_config->credential.passwordMustChange)
 	{
@@ -382,14 +370,13 @@ HRESULT Utilities::SetScenario(
 		//DebugPrint(L"Setting large text: " + text);
 		if (text.empty() || _config->credential.username.empty())
 		{
-			//pCPCE->SetFieldState(pCredential, FID_LARGE_TEXT, CPFS_HIDDEN);
 			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, _config->loginText.c_str());
-			DebugPrint(L"Setting large text: " + _config->loginText);
+			//DebugPrint(L"Setting large text: " + _config->loginText);
 		}
 		else
 		{
 			pCPCE->SetFieldString(pCredential, FID_LARGE_TEXT, text.c_str());
-			DebugPrint(L"Setting large text: " + text);
+			//DebugPrint(L"Setting large text: " + text);
 		}
 
 		// Small text, use if 1step or in 2nd step of 2step
@@ -502,7 +489,7 @@ HRESULT Utilities::SetFieldStatePairBatch(
 }
 
 HRESULT Utilities::InitializeField(
-	LPWSTR* rgFieldStrings,
+	LPWSTR rgFieldStrings[11],
 	DWORD field_index)
 {
 	HRESULT hr = E_INVALIDARG;
@@ -540,7 +527,7 @@ HRESULT Utilities::InitializeField(
 			wstring text = L"";
 			if (_config->showDomainHint)
 			{
-				text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;;
+				text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
 			}
 			hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
 
@@ -549,8 +536,7 @@ HRESULT Utilities::InitializeField(
 		case FID_USERNAME:
 		{
 			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
-
-			DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
+			//DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
 		case FID_LARGE_TEXT:
@@ -564,7 +550,7 @@ HRESULT Utilities::InitializeField(
 			{
 				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 			}
-			DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
+			//DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
 		case FID_SMALL_TEXT:
@@ -601,7 +587,7 @@ HRESULT Utilities::InitializeField(
 			{
 				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			}
-			DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
+			//DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
 		case FID_LOGO:
@@ -612,7 +598,7 @@ HRESULT Utilities::InitializeField(
 		case FID_COMMANDLINK:
 		{
 			wstring wszCommandLinkText = Utilities::GetTranslatedText(TEXT_RESET_LINK).c_str();
-			DebugPrint(L"command link: " + wszCommandLinkText);
+			//DebugPrint(L"command link: " + wszCommandLinkText);
 			hr = SHStrDupW(wszCommandLinkText.c_str(), &rgFieldStrings[field_index]);
 			break;
 		}
@@ -669,7 +655,7 @@ HRESULT Utilities::ReadUserField()
 	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
 	{
 		wstring input(_config->provider.field_strings[FID_USERNAME]);
-		DebugPrint(L"Loading user/domain from GUI, raw: '" + input + L"'");
+		DebugPrint(L"Loading user\\domain from GUI: '" + input + L"'");
 		wstring user_name, domain_name;
 
 		auto const pos = input.find_first_of(L"\\", 0);
@@ -699,6 +685,10 @@ HRESULT Utilities::ReadUserField()
 		if (!domain_name.empty())
 		{
 			wstring newDomain(domain_name);
+			if (newDomain == L".")
+			{
+				newDomain = Utilities::ComputerName();
+			}
 			DebugPrint(L"Changing domain from '" + _config->credential.domain + L"' to '" + newDomain + L"'");
 			_config->credential.domain = newDomain;
 		}
@@ -801,4 +791,22 @@ HRESULT Utilities::ResetScenario(
 	}
 
 	return S_OK;
+}
+
+std::wstring Utilities::ComputerName()
+{
+	wstring ret;
+	WCHAR wsz[MAX_SIZE_DOMAIN];
+	DWORD cch = ARRAYSIZE(wsz);
+
+	const BOOL bGetCompName = GetComputerNameW(wsz, &cch);
+	if (bGetCompName)
+	{
+		ret = wstring(wsz, cch);
+	}
+	else
+	{
+		DebugPrint("Failed to retrieve computer name: " + to_string(GetLastError()));
+	}
+	return ret;
 }

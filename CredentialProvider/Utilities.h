@@ -82,7 +82,7 @@ public:
 	);
 
 	HRESULT InitializeField(
-		LPWSTR* rgFieldStrings,
+		LPWSTR rgFieldStrings[11],
 		DWORD field_index
 	);
 
@@ -91,6 +91,8 @@ public:
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 
 	HRESULT ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents);
+
+	static std::wstring ComputerName();
 
 private:
 	std::shared_ptr<Configuration> _config;
