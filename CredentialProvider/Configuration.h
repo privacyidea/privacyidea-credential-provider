@@ -81,14 +81,10 @@ public:
 		DWORD credPackFlags = 0;
 
 		// Possibly read-write
-		CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr = nullptr;
-		CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs = nullptr;
 		PWSTR* status_text = nullptr;
 		CREDENTIAL_PROVIDER_STATUS_ICON* status_icon = nullptr;
-		ICredentialProviderCredentialEvents* pCredProvCredentialEvents = nullptr;
 
 		// Read-only
-		ICredentialProviderCredential* pCredProvCredential = nullptr;
 		wchar_t** field_strings = nullptr;
 	} provider;
 

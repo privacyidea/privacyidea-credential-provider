@@ -42,12 +42,12 @@ class CCredential : public IConnectableCredentialProviderCredential
 {
 public:
 	// IUnknown
-	IFACEMETHODIMP_(ULONG) AddRef() noexcept
+	IFACEMETHODIMP_(ULONG) AddRef() noexcept override
 	{
 		return ++_cRef;
 	}
 
-	IFACEMETHODIMP_(ULONG) Release() noexcept
+	IFACEMETHODIMP_(ULONG) Release() noexcept override
 	{
 		LONG cRef = --_cRef;
 		if (!cRef)
@@ -58,7 +58,7 @@ public:
 	}
 
 #pragma warning( disable : 4838 )
-	IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv)
+	IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv) noexcept override
 	{
 		static const QITAB qit[] =
 		{
@@ -71,42 +71,42 @@ public:
 	}
 public:
 	// ICredentialProviderCredential
-	IFACEMETHODIMP Advise(__in ICredentialProviderCredentialEvents* pcpce);
-	IFACEMETHODIMP UnAdvise();
+	IFACEMETHODIMP Advise(__in ICredentialProviderCredentialEvents* pcpce) override;
+	IFACEMETHODIMP UnAdvise() override;
 
-	IFACEMETHODIMP SetSelected(__out BOOL* pbAutoLogon);
-	IFACEMETHODIMP SetDeselected();
+	IFACEMETHODIMP SetSelected(__out BOOL* pbAutoLogon) override;
+	IFACEMETHODIMP SetDeselected() override;
 
 	IFACEMETHODIMP GetFieldState(__in DWORD dwFieldID,
 		__out CREDENTIAL_PROVIDER_FIELD_STATE* pcpfs,
-		__out CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis);
+		__out CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis) override;
 
-	IFACEMETHODIMP GetStringValue(__in DWORD dwFieldID, __deref_out PWSTR* ppwsz);
-	IFACEMETHODIMP GetBitmapValue(__in DWORD dwFieldID, __out HBITMAP* phbmp);
-	IFACEMETHODIMP GetCheckboxValue(__in DWORD dwFieldID, __out BOOL* pbChecked, __deref_out PWSTR* ppwszLabel);
-	IFACEMETHODIMP GetComboBoxValueCount(__in DWORD dwFieldID, __out DWORD* pcItems, __out_range(< , *pcItems) DWORD* pdwSelectedItem);
-	IFACEMETHODIMP GetComboBoxValueAt(__in DWORD dwFieldID, __in DWORD dwItem, __deref_out PWSTR* ppwszItem);
-	IFACEMETHODIMP GetSubmitButtonValue(__in DWORD dwFieldID, __out DWORD* pdwAdjacentTo);
+	IFACEMETHODIMP GetStringValue(__in DWORD dwFieldID, __deref_out PWSTR* ppwsz) override;
+	IFACEMETHODIMP GetBitmapValue(__in DWORD dwFieldID, __out HBITMAP* phbmp) override;
+	IFACEMETHODIMP GetCheckboxValue(__in DWORD dwFieldID, __out BOOL* pbChecked, __deref_out PWSTR* ppwszLabel) override;
+	IFACEMETHODIMP GetComboBoxValueCount(__in DWORD dwFieldID, __out DWORD* pcItems, __out_range(< , *pcItems) DWORD* pdwSelectedItem) override;
+	IFACEMETHODIMP GetComboBoxValueAt(__in DWORD dwFieldID, __in DWORD dwItem, __deref_out PWSTR* ppwszItem) override;
+	IFACEMETHODIMP GetSubmitButtonValue(__in DWORD dwFieldID, __out DWORD* pdwAdjacentTo) override;
 
-	IFACEMETHODIMP SetStringValue(__in DWORD dwFieldID, __in PCWSTR pwz);
-	IFACEMETHODIMP SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked);
-	IFACEMETHODIMP SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem);
-	IFACEMETHODIMP CommandLinkClicked(__in DWORD dwFieldID);
+	IFACEMETHODIMP SetStringValue(__in DWORD dwFieldID, __in PCWSTR pwz) override;
+	IFACEMETHODIMP SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked) override;
+	IFACEMETHODIMP SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem) override;
+	IFACEMETHODIMP CommandLinkClicked(__in DWORD dwFieldID) override;
 
 	IFACEMETHODIMP GetSerialization(__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
-		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon);
+		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon) override;
+	
 	IFACEMETHODIMP ReportResult(__in NTSTATUS ntsStatus,
 		__in NTSTATUS ntsSubstatus,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
-		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon);
-
+		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon) override;
 
 public:
 	// IConnectableCredentialProviderCredential 
-	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus* pqcws);
-	IFACEMETHODIMP Disconnect();
+	IFACEMETHODIMP Connect(__in IQueryContinueWithStatus* pqcws) override;
+	IFACEMETHODIMP Disconnect() override;
 
 	CCredential(std::shared_ptr<Configuration> c);
 	virtual ~CCredential();
@@ -120,8 +120,8 @@ public:
 		__in_opt PWSTR password);
 
 private:
-
-	void ShowErrorMessage(const std::wstring& message, const HRESULT& code);
+	HRESULT SetDomainHint(std::wstring domain);
+	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
 	void PushAuthenticationCallback(bool success);
 
@@ -138,7 +138,7 @@ private:
 																							// different from the name of 
 																							// the field held in 
 																							// _rgCredProvFieldDescriptors.
-	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
+	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
 
 	DWORD                                   _dwComboIndex;									// Tracks the current index 
 																							// of our combobox.
@@ -151,4 +151,5 @@ private:
 
 	HRESULT									_piStatus = E_FAIL;
 
+	std::wstring							_initialDomain;
 };
