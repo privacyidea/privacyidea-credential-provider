@@ -216,7 +216,7 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 	if (hSession)
 	{
 		// Set the callback and optionally a port other than default https
-		WINHTTP_STATUS_CALLBACK isCallback = WinHttpSetStatusCallback(
+		WinHttpSetStatusCallback(
 			hSession,
 			(WINHTTP_STATUS_CALLBACK)WinHttpStatusCallback,
 			WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,

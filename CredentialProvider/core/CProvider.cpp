@@ -34,8 +34,7 @@ using namespace std;
 
 CProvider::CProvider() :
 	_cRef(1),
-	_pkiulSetSerialization(nullptr),
-	_dwSetSerializationCred(CREDENTIAL_PROVIDER_NO_DEFAULT)
+	_pkiulSetSerialization(nullptr)
 {
 	DllAddRef();
 
@@ -319,8 +318,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 			s_rgScenarioCredProvFieldDescriptors[dwIndex].pszLabel = const_cast<LPWSTR>(label.c_str());
 		}
 
-		hr = FieldDescriptorCoAllocCopy(s_rgScenarioCredProvFieldDescriptors[dwIndex],
-			ppcpfd);
+		hr = FieldDescriptorCoAllocCopy(s_rgScenarioCredProvFieldDescriptors[dwIndex], ppcpfd);
 	}
 	else
 	{
@@ -359,7 +357,7 @@ HRESULT CProvider::GetCredentialCount(
 	}
 
 	// if serialized creds are available, try using them to logon
-	if (_SerializationAvailable(SAF_USERNAME) && _SerializationAvailable(SAF_PASSWORD))
+	if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_USERNAME) && _SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD))
 	{
 		*pdwDefault = 0;
 		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
@@ -512,7 +510,7 @@ HRESULT CProvider::GetCredentialAt(
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
 	//DebugPrint(__FUNCTION__);
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	CProvider* pProvider = new CProvider();
 
@@ -537,7 +535,7 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 
 	if (username)
 	{
-		if (_SerializationAvailable(SAF_USERNAME))
+		if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_USERNAME))
 		{
 			*username = (PWSTR)LocalAlloc(LMEM_ZEROINIT, _pkiulSetSerialization->Logon.UserName.Length + sizeof(wchar_t));
 			CopyMemory(*username, _pkiulSetSerialization->Logon.UserName.Buffer, _pkiulSetSerialization->Logon.UserName.Length);
@@ -550,7 +548,7 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 
 	if (password)
 	{
-		if (_SerializationAvailable(SAF_PASSWORD))
+		if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD))
 		{
 			*password = (PWSTR)LocalAlloc(LMEM_ZEROINIT, _pkiulSetSerialization->Logon.Password.Length + sizeof(wchar_t));
 			CopyMemory(*password, _pkiulSetSerialization->Logon.Password.Buffer, _pkiulSetSerialization->Logon.Password.Length);
@@ -563,7 +561,7 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 
 	if (domain)
 	{
-		if (_SerializationAvailable(SAF_DOMAIN))
+		if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_DOMAIN))
 		{
 			*domain = (PWSTR)LocalAlloc(LMEM_ZEROINIT, _pkiulSetSerialization->Logon.LogonDomainName.Length + sizeof(wchar_t));
 			CopyMemory(*domain, _pkiulSetSerialization->Logon.LogonDomainName.Buffer, _pkiulSetSerialization->Logon.LogonDomainName.Length);
@@ -575,7 +573,7 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 	}
 }
 
-bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE_FOR checkFor)
+bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE checkFor)
 {
 	DebugPrint(__FUNCTION__);
 
@@ -589,13 +587,13 @@ bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE_FOR checkFor)
 	{
 		switch (checkFor)
 		{
-			case SAF_USERNAME:
+			case SERIALIZATION_AVAILABLE::FOR_USERNAME:
 				result = _pkiulSetSerialization->Logon.UserName.Length && _pkiulSetSerialization->Logon.UserName.Buffer;
 				break;
-			case SAF_PASSWORD:
+			case SERIALIZATION_AVAILABLE::FOR_PASSWORD:
 				result = _pkiulSetSerialization->Logon.Password.Length && _pkiulSetSerialization->Logon.Password.Buffer;
 				break;
-			case SAF_DOMAIN:
+			case SERIALIZATION_AVAILABLE::FOR_DOMAIN:
 				result = _pkiulSetSerialization->Logon.LogonDomainName.Length && _pkiulSetSerialization->Logon.LogonDomainName.Buffer;
 				break;
 		}

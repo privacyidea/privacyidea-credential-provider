@@ -36,23 +36,24 @@
 #define MAX_CREDENTIALS 3
 #define MAX_DWORD   0xffffffff        // maximum DWORD
 
-enum SERIALIZATION_AVAILABLE_FOR
+enum class SERIALIZATION_AVAILABLE
 {
-	SAF_USERNAME,
-	SAF_PASSWORD,
-	SAF_DOMAIN
+	// There are macros with the names 'DOMAIN' etc, therefore use prefix FOR
+	FOR_USERNAME,
+	FOR_PASSWORD,
+	FOR_DOMAIN
 };
 
 class CProvider : public ICredentialProvider
 {
 public:
 	// IUnknown
-	IFACEMETHODIMP_(ULONG) AddRef()
+	IFACEMETHODIMP_(ULONG) AddRef() noexcept override
 	{
 		return ++_cRef;
 	}
 
-	IFACEMETHODIMP_(ULONG) Release()
+	IFACEMETHODIMP_(ULONG) Release() noexcept override
 	{
 		LONG cRef = --_cRef;
 		if (!cRef)
@@ -63,7 +64,7 @@ public:
 	}
 
 	#pragma warning( disable : 4838 )
-	IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv)
+	IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv) noexcept override
 	{
 		static const QITAB qit[] =
 		{
@@ -99,18 +100,16 @@ private:
 
 	void _GetSerializedCredentials(PWSTR *username, PWSTR *password, PWSTR *domain);
 	
-	bool _SerializationAvailable(SERIALIZATION_AVAILABLE_FOR checkFor);
+	bool _SerializationAvailable(SERIALIZATION_AVAILABLE checkFor);
 
 private:
 	LONG									_cRef;
 
 	KERB_INTERACTIVE_UNLOCK_LOGON*          _pkiulSetSerialization;
-	DWORD                                   _dwSetSerializationCred; //index into rgpCredentials for the SetSerializationCred
 
 	std::unique_ptr<CCredential>			_credential;
 
 	std::shared_ptr<Configuration>			_config;
-
 };
 
 #endif

@@ -1,4 +1,4 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ï»¿/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
 ** Copyright	2012 Dominik Pretzsch
 **				2017 NetKnights GmbH
@@ -531,10 +531,6 @@ HRESULT CCredential::SetCheckboxValue(
 	return S_OK;
 }
 
-//------------- 
-// The following methods are for logonUI to get the values of various UI elements and then communicate
-// to the credential about what the user did in that field.  However, these methods are not implemented
-// because our tile doesn't contain these types of UI elements
 HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
@@ -543,8 +539,6 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 	_privacyIDEA.StopPoll();
 	return S_OK;
 }
-
-//------ end of methods for controls we don't have in our tile ----//
 
 // Collect the username and password into a serialized credential for the correct usage scenario 
 // (logon/unlock is what's demonstrated in this sample).  LogonUI then passes these credentials 
@@ -558,10 +552,7 @@ HRESULT CCredential::GetSerialization(
 {
 	DebugPrint(__FUNCTION__);
 
-	*pcpgsr = CPGSR_RETURN_NO_CREDENTIAL_FINISHED;
-
-	HRESULT hr = E_FAIL, retVal = S_OK;
-
+	HRESULT hr = S_OK;
 	/*
 	CPGSR_NO_CREDENTIAL_NOT_FINISHED
 	No credential was serialized because more information is needed.
@@ -570,7 +561,7 @@ HRESULT CCredential::GetSerialization(
 	This serialization response means that the Credential Provider has not serialized a credential but
 	it has completed its work. This response has multiple meanings.
 	It can mean that no credential was serialized and the user should not try again.
-	This response can also mean no credential was submitted but the credential’s work is complete.
+	This response can also mean no credential was submitted but the credentials work is complete.
 	For instance, in the Change Password scenario, this response implies success.
 
 	CPGSR_RETURN_CREDENTIAL_FINISHED
@@ -581,17 +572,10 @@ HRESULT CCredential::GetSerialization(
 	The difference between this value and CPGSR_NO_CREDENTIAL_FINISHED is that this flag
 	will force the logon UI to return, which will unadvise all the credential providers.
 	*/
-
-	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
-	_config->provider.pCredProvCredential = this;
-
-	_config->provider.pcpcs = pcpcs;
-	_config->provider.pcpgsr = pcpgsr;
+	* pcpgsr = CPGSR_RETURN_NO_CREDENTIAL_FINISHED;
 
 	_config->provider.status_icon = pcpsiOptionalStatusIcon;
 	_config->provider.status_text = ppwszOptionalStatusText;
-
-	_config->provider.field_strings = _rgFieldStrings;
 
 	// Do password change
 	if (_config->credential.passwordMustChange)
@@ -605,7 +589,7 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			// not finished
-			ShowErrorMessage(L"New passwords don't match!", 0);
+			ShowErrorMessage(L"New passwords don't match!");
 			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			_config->clearFields = false;
 		}
@@ -621,9 +605,8 @@ HRESULT CCredential::GetSerialization(
 	{
 		if (_config->userCanceled)
 		{
-			*_config->provider.status_icon = CPSI_ERROR;
-			*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
-			SHStrDupW(L"Logon cancelled", _config->provider.status_text);
+			*pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
+			ShowErrorMessage(L"Logon cancelled");
 			return S_FALSE;
 		}
 		// Check if we are pre 2nd step or failure
@@ -634,23 +617,20 @@ HRESULT CCredential::GetSerialization(
 				// Prepare for the second step (input only OTP)
 				_config->isSecondStep = true;
 				_config->clearFields = false;
-				_util.SetScenario(_config->provider.pCredProvCredential,
-					_config->provider.pCredProvCredentialEvents,
-					SCENARIO::SECOND_STEP);
-				*_config->provider.pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 			else
 			{
-				// Failed authentication or error section
-				// Create a message depending on the error
+				// Failed authentication or error section - create a message depending on the error
 				int errorCode = 0;
 				wstring errorMessage;
-				bool isGerman = GetUserDefaultUILanguage() == 1031;
+				const bool isGerman = GetUserDefaultUILanguage() == 1031;
 				if (_piStatus == PI_AUTH_FAILURE)
 				{
 					errorMessage = _config->defaultOTPFailureText;
 				}
-				// In this case the error is contained in a valid response from PI
+				// In this case, the error is contained in a valid response from PI
 				else if (_piStatus == PI_AUTH_ERROR)
 				{
 					errorMessage = _privacyIDEA.GetLastErrorMessage();
@@ -692,23 +672,14 @@ HRESULT CCredential::GetSerialization(
 				hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
 					_config->credential.username, _config->credential.password, _config->credential.domain);
 			}
-			if (SUCCEEDED(hr))
-			{
-				/* if (_config->credential.passwordChanged)
-					_config->credential.passwordChanged = false; */
-			}
-			else
-			{
-				retVal = S_FALSE;
-			}
 		}
 		else
 		{
-			ShowErrorMessage(L"Unexpected error", 0);
+			ShowErrorMessage(L"Unexpected error");
 
 			// Jump to the first login window
 			_util.ResetScenario(this, _pCredProvCredentialEvents);
-			retVal = S_FALSE;
+			hr = S_FALSE;
 		}
 	}
 
@@ -729,8 +700,9 @@ HRESULT CCredential::GetSerialization(
 		if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
 	}
 	else { DebugPrint("pcpgsr is a nullpointer!"); }
+	
 	DebugPrint("CCredential::GetSerialization - END");
-	return retVal;
+	return hr;
 }
 
 // if code == 0, the code won't be displayed
@@ -761,12 +733,9 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	DebugPrint(__FUNCTION__);
 	UNREFERENCED_PARAMETER(pqcws);
-
-	_config->provider.pCredProvCredential = this;
-	_config->provider.pCredProvCredentialEvents = _pCredProvCredentialEvents;
+	
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.ReadFieldValues();
-
 
 	// Check if the user is the excluded account
 	if (!_config->excludedAccount.empty())

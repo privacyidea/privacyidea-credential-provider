@@ -146,7 +146,7 @@ void Configuration::LogConfig()
 	DebugPrint(L"2step hide OTP: " + b2ws(twoStepHideOTP));
 	DebugPrint(L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword));
 	DebugPrint(L"2step send domain PW: " + b2ws(twoStepSendPassword));
-	DebugPrint(L"Release Log: " + b2ws(debugLog));
+	DebugPrint(L"Debug Log: " + b2ws(debugLog));
 	DebugPrint(L"Log sensitive data: " + b2ws(piconfig.logPasswords));
 	DebugPrint(L"No default: " + b2ws(noDefault));
 	DebugPrint(L"Show domain hint: " + b2ws(showDomainHint));
