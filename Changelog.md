@@ -1,6 +1,6 @@
 # Version 3.1.3, TBD
 
-## Fixes
+## Fixes (probably not complete yet)
  * Fixed a bug that prevented the offline feature to work for multiple users.
  * When using RDP, the incoming password is now properly decrypted so that "2step_send_password" works correctly in this scenario.
  * Fixed a bug that could cause an infinite loop in the CredUI scenario using an excluded account.
