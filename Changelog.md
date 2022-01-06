@@ -1,4 +1,4 @@
-# Version 3.1.3, 2021-11-29
+# Version 3.1.3, TBD
 
 ## Fixes
  * Fixed a bug that prevented the offline feature to work for multiple users.
