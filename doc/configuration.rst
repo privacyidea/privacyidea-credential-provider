@@ -87,7 +87,7 @@ Specify an account that should be excluded from 2FA. The format is required to b
 Disabling for specific scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There different *credential provider usage scenarios* ("cpus"). The available
+There are different *credential provider usage scenarios* ("cpus"). The available
 scenarios are **logon**, **unlock** and **credui**.
 
 It is possible to configure both the Credential Provider and the Filter [#f1]_ for each of the scenarios.
