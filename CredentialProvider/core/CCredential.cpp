@@ -426,15 +426,23 @@ HRESULT CCredential::SetStringValue(
 		if (dwFieldID == FID_USERNAME)
 		{
 			wstring input(pwz);
-			const size_t pos = input.find(L'\\');
+			size_t pos = input.find(L'\\');
 			if (pos != std::string::npos)
 			{
 				SetDomainHint(input.substr(0, pos));
 			}
 			else
 			{
-				SetDomainHint(_initialDomain);
-				_config->credential.domain = _initialDomain;
+				pos = input.find(L'@');
+				if (pos != std::string::npos)
+				{
+					SetDomainHint(input.substr(pos+1, input.length()));
+				}
+				else
+				{
+					SetDomainHint(_initialDomain);
+					_config->credential.domain = _initialDomain;
+				}
 			}
 		}
 	}
@@ -716,7 +724,7 @@ HRESULT CCredential::GetSerialization(
 		if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
 	}
 	else { DebugPrint("pcpgsr is a nullpointer!"); }
-	
+
 	DebugPrint("CCredential::GetSerialization - END");
 	return hr;
 }
@@ -749,7 +757,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	DebugPrint(__FUNCTION__);
 	UNREFERENCED_PARAMETER(pqcws);
-	
+
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.ReadFieldValues();
 
@@ -804,7 +812,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					// Always show the OTP field, if push was triggered, start polling in background
 					if (c.tta == TTA::BOTH || c.tta == TTA::PUSH)
 					{
-						// When polling finishes, pushAuthenticationCallback is invoked with the finialization success value
+						// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
 						_privacyIDEA.AsyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
 							std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
 					}
@@ -887,7 +895,7 @@ HRESULT CCredential::ReportResult(
 	}
 
 	bool const pwMustChange = (ntsStatus == STATUS_PASSWORD_MUST_CHANGE) || (ntsSubstatus == STATUS_PASSWORD_EXPIRED);
-	if (pwMustChange /* && !_config->credential.passwordMustChange*/)
+	if (pwMustChange)
 	{
 		_config->credential.passwordMustChange = true;
 		DebugPrint("Status: Password must change");
@@ -910,12 +918,7 @@ HRESULT CCredential::ReportResult(
 		_config->credential.passwordMustChange = true;
 		_config->credential.passwordChanged = false;
 	}
-	/*
-	if (ntsStatus == STATUS_LOGON_FAILURE && !pwNotUpdated)
-	{
-		_util.ResetScenario(this, _pCredProvCredentialEvents);
-	}
-	*/
+
 	_util.ResetScenario(this, _pCredProvCredentialEvents);
 	return S_OK;
 }

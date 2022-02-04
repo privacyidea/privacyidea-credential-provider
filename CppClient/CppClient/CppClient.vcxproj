@@ -15,7 +15,7 @@
     <ProjectGuid>{6DB4CA8D-7529-4310-A4CF-F3DED2D143CC}</ProjectGuid>
     <RootNamespace>PrivacyIDEACppClientCore</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>CppClientCore</ProjectName>
+    <ProjectName>CppClient</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -88,9 +88,11 @@
   <ItemGroup>
     <ClCompile Include="Challenge.cpp" />
     <ClCompile Include="Endpoint.cpp" />
+    <ClCompile Include="JsonParser.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="OfflineData.cpp" />
     <ClCompile Include="OfflineHandler.cpp" />
+    <ClCompile Include="PIResponse.cpp" />
     <ClCompile Include="PrivacyIDEA.cpp" />
     <ClCompile Include="RegistryReader.cpp" />
   </ItemGroup>
@@ -99,10 +101,12 @@
     <ClInclude Include="Challenge.h" />
     <ClInclude Include="Endpoint.h" />
     <ClInclude Include="Codes.h" />
+    <ClInclude Include="JsonParser.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="OfflineData.h" />
     <ClInclude Include="OfflineHandler.h" />
     <ClInclude Include="PIConf.h" />
+    <ClInclude Include="PIResponse.h" />
     <ClInclude Include="PrivacyIDEA.h" />
     <ClInclude Include="RegistryReader.h" />
   </ItemGroup>

@@ -45,14 +45,15 @@ HRESULT Utilities::KerberosLogon(
 
 	if (domain.empty())
 	{
+		DebugPrint("Domain is empty, getting ComputerName");
 		domain = Utilities::ComputerName();
 	}
 
-	DebugPrint("Packing Credential:");
-	DebugPrint(username);
-	DebugPrint(password.empty() ? L"empty password" :
-		(_config->piconfig.logPasswords ? password : L"hidden but has value"));
-	DebugPrint(domain);
+	DebugPrint("Packing Credential with");
+	DebugPrint(L"Username" + username);
+	DebugPrint(L"Password: " + (password.empty() ? L"empty password" :
+		(_config->piconfig.logPasswords ? password : L"hidden but has value")));
+	DebugPrint(L"Domain: " + domain);
 
 	if (!domain.empty())
 	{
@@ -205,12 +206,6 @@ HRESULT Utilities::CredPackAuthentication(
 {
 
 	DebugPrint(__FUNCTION__);
-	DebugPrint(username);
-	if (_config->piconfig.logPasswords)
-	{
-		DebugPrint(password.c_str());
-	}
-	DebugPrint(domain);
 
 	const DWORD credPackFlags = _config->provider.credPackFlags;
 	PWSTR pwzProtectedPassword;
@@ -222,6 +217,7 @@ HRESULT Utilities::CredPackAuthentication(
 
 	if (domain.empty())
 	{
+		DebugPrint("Domain is empty, getting ComputerName");
 		bGetCompName = GetComputerNameW(wsz, &cch);
 	}
 	if (bGetCompName)
@@ -233,9 +229,21 @@ HRESULT Utilities::CredPackAuthentication(
 	{
 		PWSTR domainUsername = NULL;
 		hr = DomainUsernameStringAlloc(domain.c_str(), username.c_str(), &domainUsername);
-		DebugPrint(domainUsername);
+
 		if (SUCCEEDED(hr))
 		{
+			DebugPrint(L"User and Domain:");
+			DebugPrint(domainUsername);
+			DebugPrint(L"Password:");
+			if (_config->piconfig.logPasswords)
+			{
+				DebugPrint(password.c_str());
+			}
+			else
+			{
+				DebugPrint("Logging of passwords is disabled.");
+			}
+
 			DWORD size = 0;
 			BYTE* rawbits = NULL;
 
@@ -308,38 +316,38 @@ HRESULT Utilities::SetScenario(
 
 	switch (scenario)
 	{
-		case SCENARIO::LOGON_BASE:
-			DebugPrint("SetScenario: LOGON_BASE");
-			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioDisplayAllFields);
-			break;
-		case SCENARIO::UNLOCK_BASE:
-			DebugPrint("SetScenario: UNLOCK_BASE");
-			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockPasswordOTP);
-			break;
-		case SCENARIO::SECOND_STEP:
-			DebugPrint("SetScenario: SECOND_STEP");
-			// Set the submit button next to the OTP field for the second step
-			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_OTP);
-			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
-			break;
-		case SCENARIO::CHANGE_PASSWORD:
-			DebugPrint("SetScenario: CHANGE_PASSWORD");
-			// Set the submit button next to the repeat pw field
-			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
-			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
-			break;
-		case SCENARIO::UNLOCK_TWO_STEP:
-			DebugPrint("SetScenario: UNLOCK_TWO_STEP");
-			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockFirstStepPassword);
-			break;
-		case SCENARIO::LOGON_TWO_STEP:
-			DebugPrint("SetScenario: LOGON_TWO_STEP");
-			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
-			break;
-		case SCENARIO::NO_CHANGE:
-			DebugPrint("SetScenario: NO_CHANGE");
-		default:
-			break;
+	case SCENARIO::LOGON_BASE:
+		DebugPrint("SetScenario: LOGON_BASE");
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioDisplayAllFields);
+		break;
+	case SCENARIO::UNLOCK_BASE:
+		DebugPrint("SetScenario: UNLOCK_BASE");
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockPasswordOTP);
+		break;
+	case SCENARIO::SECOND_STEP:
+		DebugPrint("SetScenario: SECOND_STEP");
+		// Set the submit button next to the OTP field for the second step
+		pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_OTP);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
+		break;
+	case SCENARIO::CHANGE_PASSWORD:
+		DebugPrint("SetScenario: CHANGE_PASSWORD");
+		// Set the submit button next to the repeat pw field
+		pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
+		break;
+	case SCENARIO::UNLOCK_TWO_STEP:
+		DebugPrint("SetScenario: UNLOCK_TWO_STEP");
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockFirstStepPassword);
+		break;
+	case SCENARIO::LOGON_TWO_STEP:
+		DebugPrint("SetScenario: LOGON_TWO_STEP");
+		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
+		break;
+	case SCENARIO::NO_CHANGE:
+		DebugPrint("SetScenario: NO_CHANGE");
+	default:
+		break;
 	}
 
 	if (_config->credential.passwordMustChange)
@@ -502,111 +510,111 @@ HRESULT Utilities::InitializeField(
 
 	switch (field_index)
 	{
-		case FID_NEW_PASS_1:
-		case FID_NEW_PASS_2:
-		case FID_OTP:
-		case FID_SUBMIT_BUTTON:
+	case FID_NEW_PASS_1:
+	case FID_NEW_PASS_2:
+	case FID_OTP:
+	case FID_SUBMIT_BUTTON:
+	{
+		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+		break;
+	}
+	case FID_LDAP_PASS:
+	{
+		if (!_config->credential.password.empty())
+		{
+			hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
+		}
+		else
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-			break;
 		}
-		case FID_LDAP_PASS:
+		break;
+	}
+	case FID_SUBTEXT:
+	{
+		wstring text = L"";
+		if (_config->showDomainHint)
 		{
-			if (!_config->credential.password.empty())
-			{
-				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
-			}
-			else
-			{
-				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-			}
-			break;
+			text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
 		}
-		case FID_SUBTEXT:
-		{
-			wstring text = L"";
-			if (_config->showDomainHint)
-			{
-				text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
-			}
-			hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
+		hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
 
-			break;
-		}
-		case FID_USERNAME:
+		break;
+	}
+	case FID_USERNAME:
+	{
+		hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
+		//DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
+		break;
+	}
+	case FID_LARGE_TEXT:
+	{
+		// This is the USERNAME field which is displayed in the list of users to the right
+		if (!loginText.empty())
 		{
-			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
-			//DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
-			break;
+			hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
 		}
-		case FID_LARGE_TEXT:
+		else
 		{
-			// This is the USERNAME field which is displayed in the list of users to the right
-			if (!loginText.empty())
-			{
-				hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
-			}
-			else
-			{
-				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
-			}
-			//DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
-			break;
+			hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
 		}
-		case FID_SMALL_TEXT:
+		//DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
+		break;
+	}
+	case FID_SMALL_TEXT:
+	{
+		// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
+		// and the name is displayed in this field instead (or hidden)
+		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
+			&& !hide_fullname && !hide_domainname)
 		{
-			// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
-			// and the name is displayed in this field instead (or hidden)
-			if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
-				&& !hide_fullname && !hide_domainname)
+			if (!domain_name.empty())
 			{
-				if (!domain_name.empty())
-				{
-					wstring fullName = user_name + L"@" + domain_name;
+				wstring fullName = user_name + L"@" + domain_name;
 
-					hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
-				}
-				else if (!user_name.empty())
-				{
-					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
-				}
-				else
-				{
-					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-				}
+				hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
 			}
-			else if (!user_name.empty() && hide_domainname && !hide_fullname)
+			else if (!user_name.empty())
 			{
 				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
 			}
-			else if (hide_fullname)
-			{
-				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-			}
 			else
 			{
 				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			}
-			//DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
-			break;
 		}
-		case FID_LOGO:
+		else if (!user_name.empty() && hide_domainname && !hide_fullname)
 		{
-			hr = S_OK;
-			break;
+			hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
 		}
-		case FID_COMMANDLINK:
-		{
-			wstring wszCommandLinkText = Utilities::GetTranslatedText(TEXT_RESET_LINK).c_str();
-			//DebugPrint(L"command link: " + wszCommandLinkText);
-			hr = SHStrDupW(wszCommandLinkText.c_str(), &rgFieldStrings[field_index]);
-			break;
-		}
-		default:
+		else if (hide_fullname)
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-			break;
 		}
+		else
+		{
+			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+		}
+		//DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
+		break;
+	}
+	case FID_LOGO:
+	{
+		hr = S_OK;
+		break;
+	}
+	case FID_COMMANDLINK:
+	{
+		wstring wszCommandLinkText = Utilities::GetTranslatedText(TEXT_RESET_LINK).c_str();
+		//DebugPrint(L"command link: " + wszCommandLinkText);
+		hr = SHStrDupW(wszCommandLinkText.c_str(), &rgFieldStrings[field_index]);
+		break;
+	}
+	default:
+	{
+		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+		break;
+	}
 	}
 	//DebugPrintLn(rgFieldStrings[field_index]);
 	return hr;
@@ -618,22 +626,22 @@ HRESULT Utilities::ReadFieldValues()
 	//HRESULT ret = S_OK;
 	switch (_config->provider.cpu)
 	{
-		case CPUS_LOGON:
-		case CPUS_UNLOCK_WORKSTATION:
-		case CPUS_CREDUI:
+	case CPUS_LOGON:
+	case CPUS_UNLOCK_WORKSTATION:
+	case CPUS_CREDUI:
+	{
+		if (!_config->credential.passwordMustChange)
 		{
-			if (!_config->credential.passwordMustChange)
-			{
-				ReadUserField();
-				ReadPasswordField();
-				ReadOTPField();
-			}
-			else
-			{
-				ReadPasswordChangeFields();
-			}
-			break;
+			ReadUserField();
+			ReadPasswordField();
+			ReadOTPField();
 		}
+		else
+		{
+			ReadPasswordChangeFields();
+		}
+		break;
+	}
 
 	}
 	return S_OK;
@@ -655,14 +663,23 @@ HRESULT Utilities::ReadUserField()
 	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
 	{
 		wstring input(_config->provider.field_strings[FID_USERNAME]);
-		DebugPrint(L"Loading user\\domain from GUI: '" + input + L"'");
+		DebugPrint(L"Loading user and domain from GUI: '" + input + L"'");
 		wstring user_name, domain_name;
 
-		auto const pos = input.find_first_of(L"\\", 0);
+		auto pos = input.find(L'\\');
 		if (pos == std::string::npos)
 		{
-			// only user input, copy string
-			user_name = wstring(input);
+			pos = input.find('@');
+			if (pos != std::string::npos)
+			{
+				user_name = input.substr(0, pos - 1);
+				domain_name = input.substr(pos + 1, input.length());
+			}
+			else
+			{
+				// only user input, copy string
+				user_name = wstring(input);
+			}
 		}
 		else
 		{
