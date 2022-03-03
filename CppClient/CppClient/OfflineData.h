@@ -19,22 +19,15 @@
 #pragma once
 
 #include "Logger.h"
-#include "../nlohmann/json.hpp"
-
 #include <map>
-
-#define JSON_DUMP_INDENTATION 4
 
 class OfflineData
 {
 public:
-	OfflineData(std::string json_string);
-
-	nlohmann::json ToJSON();
 
 	int GetLowestKey();
 
-	size_t GetOfflineOTPsLeft() noexcept;
+	size_t GetOfflineOTPCount() noexcept;
 
 	std::string username = "";
 	std::string serial = "";

@@ -22,6 +22,7 @@
 #include "version.h"
 #include "Logger.h"
 #include "RegistryReader.h"
+#include "Convert.h"
 
 using namespace std;
 
@@ -60,6 +61,7 @@ void Configuration::Load()
 
 	prefillUsername = rr.GetBoolRegistry(L"prefill_username");
 	showResetLink = rr.GetBoolRegistry(L"enable_reset");
+	offlineTreshold = rr.GetIntRegistry(L"offline_threshold");
 
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.GetWStringRegistry(L"hostname");
@@ -73,10 +75,10 @@ void Configuration::Load()
 	piconfig.offlineFilePath = rr.GetWStringRegistry(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetIntRegistry(L"offline_try_window");
 
-	piconfig.resolveTimeoutMS = rr.GetIntRegistry(L"resolve_timeout");
-	piconfig.connectTimeoutMS = rr.GetIntRegistry(L"connect_timeout");
-	piconfig.sendTimeoutMS = rr.GetIntRegistry(L"send_timeout");
-	piconfig.receiveTimeoutMS = rr.GetIntRegistry(L"receive_timeout");
+	piconfig.resolveTimeout = rr.GetIntRegistry(L"resolve_timeout");
+	piconfig.connectTimeout = rr.GetIntRegistry(L"connect_timeout");
+	piconfig.sendTimeout = rr.GetIntRegistry(L"send_timeout");
+	piconfig.receiveTimeout = rr.GetIntRegistry(L"receive_timeout");
 
 	// format domain\username or computername\username
 	excludedAccount = rr.GetWStringRegistry(L"excluded_account");
@@ -116,10 +118,25 @@ void Configuration::Load()
 	winBuildNr = info.dwBuildNumber;
 }
 
-// for printing
-inline wstring b2ws(bool b)
+void PrintIfIntIsNotValue(string message, int value, int comparable)
 {
-	return b ? wstring(L"true") : wstring(L"false");
+	if (value != comparable)
+	{
+		DebugPrint(message + ": " + to_string(value));
+	}
+}
+
+void PrintIfIntIsNotNull(string message, int value)
+{
+	PrintIfIntIsNotValue(message, value, 0);
+}
+
+void PrintIfStringNotEmpty(wstring message, wstring value)
+{
+	if (!value.empty())
+	{
+		DebugPrint(message + L": " + value);
+	}
 }
 
 void Configuration::LogConfig()
@@ -130,38 +147,44 @@ void Configuration::LogConfig()
 		+ L"." + to_wstring(winBuildNr));
 	DebugPrint("------- Configuration -------");
 	DebugPrint(L"Hostname: " + piconfig.hostname);
-	DebugPrint(L"Path: " + piconfig.path);
-	DebugPrint(L"Custom port: " + to_wstring(piconfig.customPort));
-	DebugPrint(L"Resolve timeout: " + to_wstring(piconfig.resolveTimeoutMS));
-	DebugPrint(L"Connect timeout: " + to_wstring(piconfig.connectTimeoutMS));
-	DebugPrint(L"Send timeout: " + to_wstring(piconfig.sendTimeoutMS));
-	DebugPrint(L"Receive timeout: " + to_wstring(piconfig.receiveTimeoutMS));
-	DebugPrint(L"Login text: " + loginText);
-	DebugPrint(L"OTP field text: " + otpFieldText);
-	DebugPrint(L"OTP failure text: " + defaultOTPFailureText);
-	DebugPrint(L"Hide domain only: " + b2ws(hideDomainName));
-	DebugPrint(L"Hide full name: " + b2ws(hideFullName));
-	DebugPrint(L"SSL ignore unknown CA: " + b2ws(piconfig.ignoreUnknownCA));
-	DebugPrint(L"SSL ignore invalid CN: " + b2ws(piconfig.ignoreInvalidCN));
-	DebugPrint(L"2step hide OTP: " + b2ws(twoStepHideOTP));
-	DebugPrint(L"2step send empty PW: " + b2ws(twoStepSendEmptyPassword));
-	DebugPrint(L"2step send domain PW: " + b2ws(twoStepSendPassword));
-	DebugPrint(L"Debug Log: " + b2ws(debugLog));
-	DebugPrint(L"Log sensitive data: " + b2ws(piconfig.logPasswords));
-	DebugPrint(L"No default: " + b2ws(noDefault));
-	DebugPrint(L"Show domain hint: " + b2ws(showDomainHint));
-	DebugPrint(L"Bitmap path: " + bitmapPath);
-	DebugPrint(L"Offline file path: " + piconfig.offlineFilePath);
-	DebugPrint(L"Offline try window: " + to_wstring(piconfig.offlineTryWindow));
-	DebugPrint(L"Default realm: " + piconfig.defaultRealm);
+	PrintIfStringNotEmpty(L"Path", piconfig.path);
+	PrintIfIntIsNotNull("Custom Port", piconfig.customPort);
 
-	wstring tmp;
-	for (const auto& item : piconfig.realmMap)
+	PrintIfIntIsNotNull("Resolve timeout", piconfig.resolveTimeout);
+	PrintIfIntIsNotNull("Connect timeout", piconfig.connectTimeout);
+	PrintIfIntIsNotNull("Send timeout", piconfig.sendTimeout);
+	PrintIfIntIsNotNull("Receive timeout", piconfig.receiveTimeout);
+
+	PrintIfStringNotEmpty(L"Login text", loginText);
+	PrintIfStringNotEmpty(L"OTP field text", otpFieldText);
+	PrintIfStringNotEmpty(L"OTP failure text", defaultOTPFailureText);
+
+	DebugPrint("Hide domain/full name: " + Convert::ToString(hideDomainName) + "/" + Convert::ToString(hideFullName));
+	DebugPrint("SSL ignore unknown CA/invalid CN: " + Convert::ToString(piconfig.ignoreUnknownCA) + "/" + Convert::ToString(piconfig.ignoreInvalidCN));
+
+	DebugPrint("2step enabled/send empty/domain password: " + Convert::ToString(twoStepHideOTP)
+		+ "/" + Convert::ToString(twoStepSendEmptyPassword) + "/" + Convert::ToString(twoStepSendPassword));
+	DebugPrint("Debug Log: " + Convert::ToString(debugLog));
+	DebugPrint("Log sensitive data: " + Convert::ToString(piconfig.logPasswords));
+	DebugPrint("No default: " + Convert::ToString(noDefault));
+	DebugPrint("Show domain hint: " + Convert::ToString(showDomainHint));
+
+	PrintIfStringNotEmpty(L"Bitmap path", bitmapPath);
+	PrintIfStringNotEmpty(L"Offline file path", piconfig.offlineFilePath);
+	PrintIfIntIsNotNull("Offline try window", piconfig.offlineTryWindow);
+	PrintIfIntIsNotValue("Offline refill threshold", offlineTreshold, 10);
+	PrintIfStringNotEmpty(L"Default realm", piconfig.defaultRealm);
+
+	if (piconfig.realmMap.size() > 0)
 	{
-		tmp += item.first + L"=" + item.second + L", ";
+		wstring tmp;
+		for (const auto& item : piconfig.realmMap)
+		{
+			tmp += item.first + L"=" + item.second + L", ";
+		}
+		DebugPrint("Realm mapping:");
+		DebugPrint(tmp.substr(0, tmp.size() - 2).c_str());
 	}
-	DebugPrint("Realm mapping:");
-	DebugPrint(tmp.substr(0, tmp.size() - 2).c_str());
 
 	DebugPrint("-----------------------------");
 }

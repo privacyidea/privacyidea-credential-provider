@@ -18,73 +18,83 @@
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
 
+#include "PIResponse.h"
+#include "JsonParser.h"
 #include "OfflineHandler.h"
 #include "Logger.h"
 #include "Endpoint.h"
-#include "PIConf.h"
-#include "Codes.h"
+#include "PIConfig.h"
 #include <Windows.h>
 #include <map>
 #include <functional>
 #include <atomic>
 
 #define PI_ENDPOINT_VALIDATE_CHECK					"/validate/check"
-#define PI_ENDPOINT_POLL_TX							"/validate/polltransaction"
+#define PI_ENDPOINT_POLLTRANSACTION					"/validate/polltransaction"
 #define PI_ENDPOINT_OFFLINE_REFILL					"/validate/offlinerefill"
 
 class PrivacyIDEA
 {
 public:
-	PrivacyIDEA(PICONFIG conf) :
+	PrivacyIDEA(PIConfig conf) :
 		_realmMap(conf.realmMap),
 		_defaultRealm(conf.defaultRealm),
 		_logPasswords(conf.logPasswords),
 		_endpoint(conf),
-		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow),
-		_lastError(0)
+		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA) = delete;
 
-	// Tries to verify with offline otp first. If there is none,
-	// sends the parameters to privacyIDEA and checks the response for
-	// 1. Offline otp data, 2. Triggered challenges, 3. Authentication success
-	// <returns> PI_AUTH_SUCCESS, PI_TRIGGERED_CHALLENGE, PI_AUTH_FAILURE, PI_AUTH_ERROR, PI_ENDPOINT_SETUP_ERROR, PI_WRONG_OFFLINE_SERVER_UNAVAILABLE </returns>
-	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, const std::string& transaction_id = std::string());
+	/// <summary>
+	/// Authenticate using the /validate/check endpoint. The server response is written to responseObj.
+	/// </summary>
+	/// <param name="username"></param>
+	/// <param name="domain"></param>
+	/// <param name="otp"></param>
+	/// <param name="responseObj">This will be filled with the response of the server if no error occurred</param>
+	/// <param name="transaction_id">Optional to reference a challenge that was triggered before</param>
+	/// <returns>S_OK if the request was processed correctly. Possible error codes: PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE, PI_JSON_PARSE_ERROR</returns>
+	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, PIResponse& responseObj, const std::string& transaction_id = std::string());
+
+	/// <summary>
+	/// Try to validate the given OTP value with the offline data for the user.
+	/// </summary>
+	/// <param name="username"></param>
+	/// <param name="otp"></param>
+	/// <returns>S_OK, E_FAIL, PI_OFFLINE_DATA_NO_OTPS_LEFT, PI_OFFLINE_NO_OFFLINE_DATA</returns>
+	HRESULT OfflineCheck(const std::wstring& username, const std::wstring& otp);
+
+	/// <summary>
+	/// Try to refill offline OTP values with a request to /validate/offlinerefill.
+	/// </summary>
+	/// <param name="username"></param>
+	/// <param name="lastOTP"></param>
+	/// <returns>S_OK, E_FAIL, PI_JSON_PARSE_ERROR, PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE</returns>
+	HRESULT OfflineRefill(std::wstring username, std::wstring lastOTP);
+
+	/// <summary>
+	/// Get the number of remaining offline OTPs for the user. 
+	/// </summary>
+	/// <param name="username"></param>
+	/// <returns>The number of remaining offline OTP values or -1 if no data is found</returns>
+	size_t GetOfflineOTPCount(const std::wstring& username);
 
 	bool StopPoll();
 
-	// Poll for the given transaction asynchronously. When polling returns success, the transaction is finalized
+	// Poll for the given transaction asynchronously. When polling returns success, the transaction is finalized automatically
 	// according to https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
 	// After that, the callback function is called with the result
-	void AsyncPollTransaction(std::string username, std::string transaction_id, std::function<void(bool)> callback);
+	void PollTransactionAsync(std::wstring username, std::wstring domain, std::string transaction_id, std::function<void(bool)> callback);
 
-	// Poll for a transaction once. Can be used if the plugin wants to control the looping
-	// <returns> PI_TRANSACTION_SUCCESS or PI_TRANSACTION_FAILURE </returns>
-	HRESULT PollTransaction(std::string transaction_id);
-
-	bool OfflineDataAvailable(const std::wstring& username);
-
-	Challenge GetCurrentChallenge();
-
-	static std::wstring s2ws(const std::string& s);
-
-	static std::string ws2s(const std::wstring& ws);
-
-	static std::wstring UpperCase(std::wstring s);
-
-	static std::string LongToHexString(long in);
-
-	int GetLastError();
-
-	std::wstring GetLastErrorMessage();
+	// Poll for a transaction_id. If this returns success, the transaction must be finalized by calling validate/check with the username, transaction_id and an EMPTY pass parameter.
+	// https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
+	bool PollTransaction(std::string transaction_id);
 
 private:
-	HRESULT AppendRealm(std::wstring domain, std::string& data);
+	HRESULT AppendRealm(std::wstring domain, std::map<std::string, std::string>& parameters);
 
-	void PollThread(const std::string& transaction_id, const std::string& username, std::function<void(bool)> callback);
-
-	HRESULT TryOfflineRefill(std::string username, std::string lastOTP);
+	void PollThread(const std::wstring& username, const std::wstring& domain, const std::string& transaction_id, std::function<void(bool)> callback);
 
 	std::map<std::wstring, std::wstring> _realmMap;
 
@@ -93,13 +103,10 @@ private:
 	Endpoint _endpoint;
 	OfflineHandler _offlineHandler;
 
-	Challenge _currentChallenge;
-
 	bool _logPasswords = false;
 
 	std::atomic<bool> _runPoll = false;
 
-	int _lastError = 0;
-	std::string _lastErrorMessage;
+	JsonParser _parser;
 };
 

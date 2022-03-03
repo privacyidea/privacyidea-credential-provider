@@ -18,30 +18,12 @@
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
 #include <string>
-#include <vector>
-
-// Token Type Available
-enum class TTA
-{
-	NOT_SET,
-	OTP,
-	PUSH,
-	BOTH
-};
 
 class Challenge
 {
 public:
-	std::string toString();
-
-	std::wstring message = L"";
-
-	std::string transaction_id = "";
-
-	std::string serial = "";
-
-	TTA tta = TTA::NOT_SET;
-
-private:
-	std::string ttaToString(TTA tta);
+	std::string message;
+	std::string transaction_id;
+	std::string serial;
+	std::string type;
 };

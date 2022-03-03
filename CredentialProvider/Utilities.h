@@ -86,7 +86,7 @@ public:
 		DWORD field_index
 	);
 
-	HRESULT ReadFieldValues();
+	HRESULT ReadInputsToConfig();
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 

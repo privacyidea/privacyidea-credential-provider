@@ -23,6 +23,13 @@
 #include <Windows.h>
 #include <vector>
 
+// 888090-2X OFFLINE
+#define PI_OFFLINE_DATA_NO_OTPS_LEFT				((HRESULT)0x88809020)
+#define PI_OFFLINE_NO_OFFLINE_DATA					((HRESULT)0x88809022) 
+#define PI_OFFLINE_FILE_DOES_NOT_EXIST				((HRESULT)0x88809023)
+#define PI_OFFLINE_FILE_EMPTY						((HRESULT)0x88809024)
+#define PI_OFFLINE_WRONG_OTP						((HRESULT)0x88809025)
+
 class OfflineHandler
 {
 public:
@@ -30,15 +37,39 @@ public:
 
 	~OfflineHandler();
 
+	/*!
+		Check if the given OTP matches with one of the offline OTPs in the configured window.
+		If the given OTP is not the first in the list, the values between the start of the list and the matching position are removed.
+
+		@param[in] OTP
+		@param[in] Username
+
+		@returns S_OK or E_FAIL
+	*/
 	HRESULT VerifyOfflineOTP(const std::wstring& otp, const std::string& username);
 
 	HRESULT GetRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial);
 
-	HRESULT ParseForOfflineData(const std::string& in);
+	/*!
+	Checks if offline data and OTPs are available for the given user.
+	Offline data is the association of a token with a username and a refill token.
 
-	HRESULT ParseRefillResponse(const std::string& in, const std::string& username);
+	@param[in] username Username
 
+	@return	S_OK if data and OTPs are available
+			PI_OFFLINE_DATA_NO_OTPS_LEFT if offline data is available but OTPs are empty
+			PI_OFFLINE_NO_OFFLINE_DATA if no data exists for the user
+	*/
 	HRESULT DataVailable(const std::string& username);
+
+	HRESULT AddOfflineData(const OfflineData& data);
+
+	/// <summary>
+	/// Get the number of remaining offline OTPs for the user. 
+	/// </summary>
+	/// <param name="username"></param>
+	/// <returns>The number of remaining offline OTP values or -1 if no data is found</returns>
+	size_t GetOfflineOTPCount(const std::string& username);
 
 private:
 	std::vector<OfflineData> dataSets = std::vector<OfflineData>();

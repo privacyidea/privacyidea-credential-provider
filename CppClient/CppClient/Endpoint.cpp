@@ -20,9 +20,7 @@
 #include "PrivacyIDEA.h"
 #include "Endpoint.h"
 #include "Logger.h"
-#include "Challenge.h"
-#include "../nlohmann/json.hpp"
-
+#include "Convert.h"
 #include <winhttp.h>
 #include <atlutil.h>
 
@@ -31,27 +29,15 @@
 #define PRINT_ENDPOINT_RESPONSES
 
 using namespace std;
-using json = nlohmann::json;
 
-vector<std::string> _excludedEndpoints = { PI_ENDPOINT_POLL_TX };
+vector<std::string> _excludedEndpoints = { PI_ENDPOINT_POLLTRANSACTION };
 
-Endpoint::Endpoint(PICONFIG conf)
+HRESULT Endpoint::GetLastErrorCode()
 {
-	_hostname = conf.hostname;
-	_path = conf.path;
-	_customPort = conf.customPort;
-	_logPasswords = conf.logPasswords;
-	_ignoreInvalidCN = conf.ignoreInvalidCN;
-	_ignoreUnknownCA = conf.ignoreUnknownCA;
-
-	_resolveTimeout = conf.resolveTimeoutMS; // 0 (not set) is valid and the default
-	// If timeout values are set use them, otherwise keep the default
-	_connectTimeout = conf.connectTimeoutMS == 0 ? _connectTimeout : conf.connectTimeoutMS;
-	_sendTimeout = conf.sendTimeoutMS == 0 ? _sendTimeout : conf.sendTimeoutMS;
-	_receiveTimeout = conf.receiveTimeoutMS == 0 ? _receiveTimeout : conf.receiveTimeoutMS;
+	return _lastErrorCode;
 }
 
-std::string Endpoint::EscapeUrl(const std::string& in)
+std::string Endpoint::URLEncode(const std::string& in)
 {
 	if (in.empty())
 	{
@@ -73,7 +59,7 @@ std::string Endpoint::EscapeUrl(const std::string& in)
 	}
 	else
 	{
-		Print("AtlEscapeUrl Failure");
+		Print("AtlEscapeUrl Failure " + to_string(GetLastError()));
 	}
 
 	SecureZeroMemory(buf, (sizeof(char) * maxLen));
@@ -81,22 +67,32 @@ std::string Endpoint::EscapeUrl(const std::string& in)
 	return ret;
 }
 
-nlohmann::json Endpoint::TryParseJSON(const std::string& in)
+std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::string>& parameters)
 {
-	json j;
-	try
+	DebugPrint("Request parameters:");
+	string ret;
+	for (auto& entry : parameters)
 	{
-		j = json::parse(in);
-		return j;
+		ret += entry.first + "=" + URLEncode(entry.second) + "&";
+		if (entry.first != "pass" || _config.logPasswords)
+		{
+			DebugPrint(entry.first + "=" + entry.second);
+		}
+		else
+		{
+			DebugPrint("pass parameter is not logged");
+		}
 	}
-	catch (const json::parse_error& e)
+
+	// Cut trailing &
+	if (ret.size() > 1)
 	{
-		DebugPrint(e.what());
-		return nullptr;
+		ret = ret.substr(0, ret.size() - 1);
 	}
+	return ret;
 }
 
-wstring Endpoint::Get_utf16(const std::string& str, int codepage)
+wstring Endpoint::EncodeUTF16(const std::string& str, int codepage)
 {
 	if (str.empty()) return wstring();
 	int sz = MultiByteToWideChar(codepage, 0, &str[0], (int)str.size(), 0, 0);
@@ -163,33 +159,25 @@ void CALLBACK WinHttpStatusCallback(
 	}
 }
 
-string Endpoint::SendRequest(const string& endpoint, std::string sdata, const RequestMethod& method)
+string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const RequestMethod& method)
 {
+	DebugPrint(string(__FUNCTION__) + " to " + endpoint);
 	// Prepare the parameters
-	wstring wHostname = Get_utf16(PrivacyIDEA::ws2s(_hostname), CP_UTF8);
+	wstring wHostname = EncodeUTF16(Convert::ToString(_config.hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
-	wstring fullPath = Get_utf16((PrivacyIDEA::ws2s(_path) + endpoint), CP_UTF8);
+	wstring fullPath = EncodeUTF16((Convert::ToString(_config.path) + endpoint), CP_UTF8);
 
-	LPSTR data = _strdup(sdata.c_str());
-	const DWORD data_len = (DWORD)strnlen_s(sdata.c_str(), MAXDWORD32);
+	string strData = EncodeRequestParameters(parameters);
+
+	LPSTR data = _strdup(strData.c_str());
+	const DWORD data_len = (DWORD)strnlen_s(strData.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
-
-	if (endpoint != PI_ENDPOINT_POLL_TX)
-	{
-		DebugPrint(L"Sending to: " + wHostname + fullPath);
-		if (_logPasswords)
-		{
-			DebugPrint("data: " + std::string(data));
-		}
-	}
 
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
 	LPSTR pszOutBuffer = nullptr;
 	BOOL  bResults = FALSE;
-	HINTERNET  hSession = nullptr,
-		hConnect = nullptr,
-		hRequest = nullptr;
+	HINTERNET  hSession = nullptr, hConnect = nullptr, hRequest = nullptr;
 
 	// Check the windows version to decide which access type flag to set
 	// TODO config already has this info, add shared_ptr to this class
@@ -221,14 +209,14 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 			WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,
 			NULL);
 
-		int port = (_customPort != 0) ? _customPort : INTERNET_DEFAULT_HTTPS_PORT;
+		int port = (_config.customPort != 0) ? _config.customPort : INTERNET_DEFAULT_HTTPS_PORT;
 		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)port, 0);
 	}
 	else
 	{
 		Print("WinHttpOpen failure: " + to_string(GetLastError()));
-		_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
-		return "";//ENDPOINT_ERROR_SETUP_ERROR;
+		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
+		return "";
 	}
 	// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 	if (hConnect)
@@ -239,7 +227,7 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 	else
 	{
 		Print("WinHttpOpenRequest failure: " + to_string(GetLastError()));
-		_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
+		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
 		return "";
 	}
 
@@ -251,25 +239,25 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 	else
 	{
 		Print("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
-		_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
-		return "";//ENDPOINT_ERROR_SETUP_ERROR;
+		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
+		return "";
 	}
 
 	/////////// SET THE FLAGS TO IGNORE SSL ERRORS, IF SPECIFIED /////////////////
 	DWORD dwSSLFlags = 0;
-	if (_ignoreUnknownCA)
+	if (_config.ignoreUnknownCA)
 	{
 		dwSSLFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA;
 		//DebugPrint("SSL ignore unknown CA flag set");
 	}
 
-	if (_ignoreInvalidCN)
+	if (_config.ignoreInvalidCN)
 	{
 		dwSSLFlags = dwSSLFlags | SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
 		//DebugPrint("SSL ignore invalid CN flag set");
 	}
 
-	if (_ignoreUnknownCA || _ignoreInvalidCN)
+	if (_config.ignoreUnknownCA || _config.ignoreInvalidCN)
 	{
 		if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwSSLFlags, sizeof(DWORD)))
 		{
@@ -278,14 +266,14 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 		else
 		{
 			Print("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
-			_lastErrorCode = PI_ENDPOINT_SETUP_ERROR;
-			return ""; //ENDPOINT_ERROR_SETUP_ERROR;
+			_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
+			return "";
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////
 
 	// Set timeouts on the request handle
-	if (!WinHttpSetTimeouts(hRequest, _resolveTimeout, _connectTimeout, _sendTimeout, _receiveTimeout))
+	if (!WinHttpSetTimeouts(hRequest, _config.resolveTimeout, _config.connectTimeout, _config.sendTimeout, _config.receiveTimeout))
 	{
 		Print("Failed to set timeouts on hRequest: " + to_string(GetLastError()));
 		// Continue with defaults
@@ -309,7 +297,7 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 	{
 		// This happens in case of timeout using offline OTP vvv will be 120002
 		Print("WinHttpSendRequest failure: " + to_string(GetLastError()));
-		_lastErrorCode = PI_ENDPOINT_SERVER_UNAVAILABLE;
+		_lastErrorCode = PI_ERROR_SERVER_UNAVAILABLE;
 		return "";
 	}
 
@@ -376,15 +364,7 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 	{
 		if (!response.empty())
 		{
-			try
-			{
-				auto j = nlohmann::json::parse(response);
-				DebugPrint(j.dump(4));
-			}
-			catch (json::exception& e)
-			{
-				DebugPrint("JSON parse exception: " + string(e.what()) + ", response was: " + response);
-			}
+			DebugPrint(JsonParser::PrettyFormatJson(response));
 		}
 		else
 		{
@@ -394,22 +374,13 @@ string Endpoint::SendRequest(const string& endpoint, std::string sdata, const Re
 
 	if (response.empty())
 	{
-		_lastErrorCode = PI_ENDPOINT_SERVER_UNAVAILABLE;
+		_lastErrorCode = PI_ERROR_SERVER_UNAVAILABLE;
 	}
 
 	return response;
 }
 
-std::string Endpoint::EncodePair(const std::string& key, const std::string& value)
-{
-	return std::string(key.c_str()) + "=" + EscapeUrl(value);
-}
-
-std::string Endpoint::EncodePair(const std::string& key, const std::wstring& value)
-{
-	return EncodePair(key, PrivacyIDEA::ws2s(value));
-}
-
+/*
 HRESULT Endpoint::ParseAuthenticationRequest(const string& in)
 {
 	DebugPrint(__FUNCTION__);
@@ -425,7 +396,9 @@ HRESULT Endpoint::ParseAuthenticationRequest(const string& in)
 	}
 	return PI_AUTH_FAILURE;
 }
+*/
 
+/*
 HRESULT Endpoint::ParseTriggerRequest(const std::string& in, Challenge& c)
 {
 	DebugPrint(__FUNCTION__);
@@ -476,7 +449,8 @@ HRESULT Endpoint::ParseTriggerRequest(const std::string& in, Challenge& c)
 	}
 	return PI_TRIGGERED_CHALLENGE;
 }
-
+*/
+/*
 HRESULT Endpoint::ParseForError(const std::string& in, std::string& errMsg, int& errCode)
 {
 	DebugPrint(__FUNCTION__);
@@ -499,33 +473,31 @@ HRESULT Endpoint::ParseForError(const std::string& in, std::string& errMsg, int&
 	}
 	return E_FAIL;
 }
+*/
 
-const HRESULT& Endpoint::GetLastErrorCode()
-{
-	return _lastErrorCode;
-}
-
+/*
 HRESULT Endpoint::PollForTransaction(const std::string& data)
 {
-	string response = SendRequest(PI_ENDPOINT_POLL_TX, data, RequestMethod::GET);
+	string response = SendRequest(PI_ENDPOINT_POLLTRANSACTION, data, RequestMethod::GET);
 	return ParseForTransactionSuccess(response);
 }
-
+*/
+/*
 HRESULT Endpoint::ParseForTransactionSuccess(const std::string& in)
 {
 	//DebugPrint(__FUNCTION__);
-
 	auto j = Endpoint::TryParseJSON(in);
-	if (j == nullptr) return PI_JSON_PARSE_ERROR;
+	if (j == nullptr) return false;
 
-	auto jValue = j["result"]["value"];
+	auto& jValue = j["result"]["value"];
 	if (jValue.is_boolean())
 	{
-		return jValue.get<bool>() ? PI_TRANSACTION_SUCCESS : PI_TRANSACTION_FAILURE;
+		return jValue.get<bool>();
 	}
-	return PI_TRANSACTION_FAILURE;
+	return false;
 }
-
+*/
+/*
 HRESULT Endpoint::FinalizePolling(const std::string& user, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
@@ -534,3 +506,4 @@ HRESULT Endpoint::FinalizePolling(const std::string& user, const std::string& tr
 	string response = SendRequest(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
 	return ParseAuthenticationRequest(response);
 }
+*/

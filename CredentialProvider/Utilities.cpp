@@ -3,6 +3,8 @@
 #include "scenario.h"
 #include "guid.h"
 #include <Shlwapi.h>
+#include <PrivacyIDEA.h>
+#include <Convert.h>
 
 using namespace std;
 
@@ -39,7 +41,7 @@ HRESULT Utilities::KerberosLogon(
 	__in std::wstring password,
 	__in std::wstring domain)
 {
-	DebugPrint(__FUNCTION__);
+	DebugPrint(string(__FUNCTION__) + " - Packing Credential with: ");
 
 	HRESULT hr = S_OK;
 
@@ -49,8 +51,7 @@ HRESULT Utilities::KerberosLogon(
 		domain = Utilities::ComputerName();
 	}
 
-	DebugPrint("Packing Credential with");
-	DebugPrint(L"Username" + username);
+	DebugPrint(L"Username: " + username);
 	DebugPrint(L"Password: " + (password.empty() ? L"empty password" :
 		(_config->piconfig.logPasswords ? password : L"hidden but has value")));
 	DebugPrint(L"Domain: " + domain);
@@ -89,7 +90,6 @@ HRESULT Utilities::KerberosLogon(
 					{
 						pcpcs->ulAuthenticationPackage = ulAuthPackage;
 						pcpcs->clsidCredentialProvider = CLSID_CSample;
-						//DebugPrintLn("Packing of KERB_INTERACTIVE_UNLOCK_LOGON successful");
 						// At self point the credential has created the serialized credential used for logon
 						// By setting self to CPGSR_RETURN_CREDENTIAL_FINISHED we are letting logonUI know
 						// that we have all the information we need and it should attempt to submit the 
@@ -232,8 +232,7 @@ HRESULT Utilities::CredPackAuthentication(
 
 		if (SUCCEEDED(hr))
 		{
-			DebugPrint(L"User and Domain:");
-			DebugPrint(domainUsername);
+			DebugPrint(L"User and Domain:" + wstring(domainUsername));
 			DebugPrint(L"Password:");
 			if (_config->piconfig.logPasswords)
 			{
@@ -390,10 +389,11 @@ HRESULT Utilities::SetScenario(
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 		{
-			if (!_config->challenge.message.empty())
+			if (!_config->lastResponse.message.empty())
 			{
+				wstring wszMessage = Convert::ToWString(_config->lastResponse.message);
 				//DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
-				pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, _config->challenge.message.c_str());
+				pCPCE->SetFieldString(pCredential, FID_SMALL_TEXT, wszMessage.c_str());
 				pCPCE->SetFieldState(pCredential, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
 			}
 			else
@@ -620,10 +620,10 @@ HRESULT Utilities::InitializeField(
 	return hr;
 }
 
-HRESULT Utilities::ReadFieldValues()
+HRESULT Utilities::ReadInputsToConfig()
 {
 	DebugPrint(__FUNCTION__);
-	//HRESULT ret = S_OK;
+	// Currently, no real fine tuning is required
 	switch (_config->provider.cpu)
 	{
 	case CPUS_LOGON:
@@ -786,13 +786,11 @@ HRESULT Utilities::ResetScenario(
 	{
 		if (_config->twoStepHideOTP)
 		{
-			SetScenario(pSelf, pCredProvCredentialEvents,
-				SCENARIO::UNLOCK_TWO_STEP);
+			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_TWO_STEP);
 		}
 		else
 		{
-			SetScenario(pSelf, pCredProvCredentialEvents,
-				SCENARIO::UNLOCK_BASE);
+			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_BASE);
 		}
 	}
 	else if (_config->provider.cpu == CPUS_LOGON)

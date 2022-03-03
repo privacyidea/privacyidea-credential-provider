@@ -23,90 +23,12 @@
 #include <iostream>
 
 using namespace std;
-using json = nlohmann::json;
-
-void handleException(std::exception e)
-{
-	DebugPrint(e.what());
-}
-
-OfflineData::OfflineData(std::string json_string)
-{
-	json j;
-	try
-	{
-		j = json::parse(json_string);
-	}
-	catch (const json::parse_error & e)
-	{
-		handleException(e);
-		return;
-	}
-	try {
-		if (j["count"].is_string())
-		{
-			try
-			{
-				count = stoi(j["count"].get<std::string>());
-			}
-			catch (const std::invalid_argument & e)
-			{
-				handleException(e);
-			}
-		}
-	}
-	catch (const json::type_error & e) {
-		handleException(e);
-	}
-
-
-	if (j["refilltoken"].is_string())
-	{
-		refilltoken = j["refilltoken"].get<std::string>();
-	}
-
-	if (j["username"].is_string())
-	{
-		username = j["username"].get<std::string>();
-	}
-
-	auto jOTPs = j["response"];
-	if (jOTPs != nullptr)
-	{
-		for (const auto& item : jOTPs.items())
-		{
-			string key = item.key();
-			string value = item.value();
-			offlineOTPs.try_emplace(key, value);
-		}
-	}
-
-	// Try to get the serial - if the data is coming from the save file, the serial will be set
-	if (j["serial"].is_string())
-	{
-		serial = j["serial"].get<std::string>();
-	}
-}
-
+/*
 nlohmann::json OfflineData::ToJSON()
 {
-	json j;
-	j["count"] = to_string(count);
-	j["refilltoken"] = refilltoken;
-	j["serial"] = serial;
-	j["username"] = username;
-
-	json jResponse;
-
-	for (auto& item : offlineOTPs)
-	{
-		jResponse[item.first] = item.second;
-	}
-
-	j["response"] = jResponse;
-
-	return j;
+	
 }
+*/
 
 int OfflineData::GetLowestKey()
 {
@@ -121,14 +43,14 @@ int OfflineData::GetLowestKey()
 		}
 		catch (const std::invalid_argument & e)
 		{
-			handleException(e);
+			DebugPrint(e.what());
 		}
 	}
 
 	return lowestKey;
 }
 
-size_t OfflineData::GetOfflineOTPsLeft() noexcept
+size_t OfflineData::GetOfflineOTPCount() noexcept
 {
 	return offlineOTPs.size();
 }

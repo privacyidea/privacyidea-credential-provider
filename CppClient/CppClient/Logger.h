@@ -29,7 +29,7 @@
 class Logger
 {
 public:
-	std::string logfilePath = "C:\\Users\\Nils\\Desktop\\PICredentialProviderLog.txt";
+	std::string logfilePath = "C:\\PICredentialProviderLog.txt";
 
 	Logger(Logger const&) = delete;
 	void operator=(Logger const&) = delete;

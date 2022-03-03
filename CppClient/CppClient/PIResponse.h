@@ -13,8 +13,12 @@ public:
 	std::string message;
 
 	std::string errorMessage;
-	int errorCode;
+	int errorCode = 0;
 
 	std::vector<Challenge> challenges;
+
+	bool PushAvailable();
+
+	std::string PushMessage();
 };
 

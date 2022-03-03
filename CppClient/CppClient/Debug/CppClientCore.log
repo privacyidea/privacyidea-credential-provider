@@ -1,5 +1,0 @@
-﻿  Endpoint.cpp
-C:\Users\Nils\Desktop\credential provider\CppClientCore\CppClientCore\Endpoint.cpp(200,2): error C4996: 'GetVersionExW': was declared deprecated
-  Logger.cpp
-  RegistryReader.cpp
-  Generating Code...

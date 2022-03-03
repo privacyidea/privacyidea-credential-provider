@@ -20,7 +20,11 @@
 #include <string>
 #include <map>
 
-struct PICONFIG 
+/// <summary>
+/// This is a subset of the configuration loaded by the application using the cpp-client.
+/// These values are required for the operation of the cpp-client.
+/// </summary>
+struct PIConfig
 {
 	std::wstring hostname = L"";
 	std::wstring path = L"";
@@ -34,8 +38,8 @@ struct PICONFIG
 	int offlineTryWindow = 10;
 
 	// optionals
-	int resolveTimeoutMS = 0;
-	int connectTimeoutMS = 0;
-	int sendTimeoutMS = 0;
-	int receiveTimeoutMS = 0;
+	int resolveTimeout = 0; // = infinite
+	int connectTimeout = 60000;
+	int sendTimeout = 30000;
+	int receiveTimeout = 30000;
 };

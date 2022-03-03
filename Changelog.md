@@ -3,9 +3,10 @@
 ## Fixes (probably not complete yet)
  * Fixed a bug that prevented the offline feature to work for multiple users.
  * When using RDP, the incoming password is now properly decrypted so that "2step_send_password" works correctly in this scenario.
- * Fixed a bug that could cause an infinite loop in the CredUI scenario using an excluded account.
+ * Fixed a bug that could cause an infinite loop in the CredUI scenario.
  * Improved the "show_domain_hint" feature to directly show the domain that will be used when entering a backslash.
  * Entering '.\' will now be properly resolved to the local computer name.
+ * Added "offline_threshold" configuration entry. OfflineRefill is only attempted when the remaining offline OTPs drop below the threshold. This will prevent having to wait for a connection timeout every time a authentication is performed where the computer is really offline.
 
 # Version 3.1.2, 2021-06-09
 

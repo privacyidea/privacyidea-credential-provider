@@ -28,13 +28,13 @@
 #include "CCredential.h"
 #include "Configuration.h"
 #include "Logger.h"
-#include "json.hpp"
 #include <resource.h>
 #include <string>
 #include <thread>
 #include <future>
 #include <sstream>
 #include <RegistryReader.h>
+#include <Convert.h>
 
 using namespace std;
 
@@ -114,19 +114,16 @@ HRESULT CCredential::Initialize(
 
 	if (!wstrUsername.empty())
 	{
-		DebugPrint("Copying user to credential");
 		_config->credential.username = wstrUsername;
 	}
 
 	if (!wstrDomainname.empty())
 	{
-		DebugPrint("Copying domain to credential");
 		_config->credential.domain = wstrDomainname;
 	}
 
 	if (!wstrPassword.empty())
 	{
-		DebugPrint("Copying password to credential");
 		_config->credential.password = wstrPassword;
 		SecureZeroMemory(password, sizeof(password));
 	}
@@ -146,15 +143,7 @@ HRESULT CCredential::Initialize(
 		_util.InitializeField(_rgFieldStrings, i);
 	}
 
-	DebugPrint("Init result:");
-	if (SUCCEEDED(hr))
-	{
-		DebugPrint("OK");
-	}
-	else
-	{
-		DebugPrint("FAIL");
-	}
+	DebugPrint("Init result: " + Convert::LongToHexString(hr));
 
 	return hr;
 }
@@ -337,7 +326,7 @@ HRESULT CCredential::GetBitmapValue(
 	if ((FID_LOGO == dwFieldID) && phbmp)
 	{
 		HBITMAP hbmp = nullptr;
-		string szPath = PrivacyIDEA::ws2s(_config->bitmapPath);
+		string szPath = Convert::ToString(_config->bitmapPath);
 		LPCSTR lpszBitmapPath = szPath.c_str();
 
 		if (NOT_EMPTY(lpszBitmapPath))
@@ -436,7 +425,7 @@ HRESULT CCredential::SetStringValue(
 				pos = input.find(L'@');
 				if (pos != std::string::npos)
 				{
-					SetDomainHint(input.substr(pos+1, input.length()));
+					SetDomainHint(input.substr(pos + 1, input.length()));
 				}
 				else
 				{
@@ -634,7 +623,7 @@ HRESULT CCredential::GetSerialization(
 			return S_FALSE;
 		}
 		// Check if we are pre 2nd step or failure
-		if (_piStatus != PI_AUTH_SUCCESS && _config->pushAuthenticationSuccessful == false)
+		if (_authenticationComplete == false && _config->pushAuthenticationSuccessful == false)
 		{
 			if (_config->isSecondStep == false && _config->twoStepHideOTP)
 			{
@@ -647,41 +636,21 @@ HRESULT CCredential::GetSerialization(
 			else
 			{
 				// Failed authentication or error section - create a message depending on the error
-				int errorCode = 0;
-				wstring errorMessage;
-				const bool isGerman = GetUserDefaultUILanguage() == 1031;
-				if (_piStatus == PI_AUTH_FAILURE)
+				wstring errorMessage = _config->defaultOTPFailureText;
+				if (!_config->lastResponse.errorMessage.empty())
 				{
-					errorMessage = _config->defaultOTPFailureText;
+					errorMessage = Convert::ToWString(_config->lastResponse.errorMessage);
 				}
-				// In this case, the error is contained in a valid response from PI
-				else if (_piStatus == PI_AUTH_ERROR)
-				{
-					errorMessage = _privacyIDEA.GetLastErrorMessage();
-					errorCode = _privacyIDEA.GetLastError();
-				}
-				else if (_piStatus == PI_WRONG_OFFLINE_SERVER_UNAVAILABLE)
-				{
-					errorMessage = isGerman ? L"Server nicht erreichbar oder falsches offline OTP!" :
-						L"Server unreachable or wrong offline OTP!";
-				}
-				else if (_piStatus == PI_ENDPOINT_SERVER_UNAVAILABLE)
-				{
-					errorMessage = isGerman ? L"Server nicht erreichbar!" : L"Server unreachable!";
-				}
-				else if (_piStatus == PI_ENDPOINT_SETUP_ERROR)
-				{
-					errorMessage = isGerman ? L"Fehler beim Verbindungsaufbau!" : L"Error while setting up the connection!";
-				}
-				ShowErrorMessage(errorMessage, errorCode);
+
+				ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
 				_util.ResetScenario(this, _pCredProvCredentialEvents);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
-		else if (_piStatus == PI_AUTH_SUCCESS || _config->pushAuthenticationSuccessful)
+		else if (_authenticationComplete || _config->pushAuthenticationSuccessful)
 		{
 			// Reset the authentication
-			_piStatus = PI_STATUS_NOT_SET;
+			_authenticationComplete = false;
 			_config->pushAuthenticationSuccessful = false;
 			_privacyIDEA.StopPoll();
 
@@ -719,9 +688,9 @@ HRESULT CCredential::GetSerialization(
 	if (pcpgsr)
 	{
 		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_FINISHED"); }
-		if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
-		if (*pcpgsr == CPGSR_RETURN_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_CREDENTIAL_FINISHED"); }
-		if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
+		else if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
+		else if (*pcpgsr == CPGSR_RETURN_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_CREDENTIAL_FINISHED"); }
+		else if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
 	}
 	else { DebugPrint("pcpgsr is a nullpointer!"); }
 
@@ -755,11 +724,14 @@ void CCredential::PushAuthenticationCallback(bool success)
 // Connect is called first after the submit button is pressed.
 HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
-	DebugPrint(__FUNCTION__);
+	DebugPrint(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->isSecondStep ? "2" : "1"));
 	UNREFERENCED_PARAMETER(pqcws);
 
 	_config->provider.field_strings = _rgFieldStrings;
-	_util.ReadFieldValues();
+	_util.ReadInputsToConfig();
+
+	wstring username = _config->credential.username;
+	wstring domain = _config->credential.domain;
 
 	// Check if the user is the excluded account
 	if (!_config->excludedAccount.empty())
@@ -770,11 +742,11 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			toCompare.append(_config->credential.domain).append(L"\\");
 		}
 		toCompare.append(_config->credential.username);
-		if (PrivacyIDEA::UpperCase(toCompare) == PrivacyIDEA::UpperCase(_config->excludedAccount))
+		if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(_config->excludedAccount))
 		{
 			DebugPrint("Login data matches excluded account, skipping 2FA...");
 			// Simulate 2FA success so the logic in GetSerialization can stay the same
-			_piStatus = PI_AUTH_SUCCESS;
+			_authenticationComplete = true;
 			return S_OK;
 		}
 	}
@@ -787,68 +759,103 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		return S_OK;
 	}
 
+	// Evaluate if and what should be sent to the server depending on the step and configuration
+	bool sendSomething = false, offlineCheck = false;
+	wstring passToSend;
+	PIResponse pir;
+
 	if (_config->twoStepHideOTP && !_config->isSecondStep)
 	{
 		if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 		{
+			DebugPrint("1st step: Not sending anything");
 			// Delay for a short moment, otherwise logonui freezes (???)
 			this_thread::sleep_for(chrono::milliseconds(200));
 			// Then skip to next step
 		}
 		else
 		{
-			// Send either empty pass or the windows password in first step
-			std::wstring toSend = L"";
+			sendSomething = true;
 			if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
-				toSend = _config->credential.password;
-
-			_piStatus = _privacyIDEA.ValidateCheck(_config->credential.username, _config->credential.domain, toSend);
-			if (_piStatus == PI_TRIGGERED_CHALLENGE)
 			{
-				Challenge c = _privacyIDEA.GetCurrentChallenge();
-				_config->challenge = c;
-				if (!c.transaction_id.empty())
-				{
-					// Always show the OTP field, if push was triggered, start polling in background
-					if (c.tta == TTA::BOTH || c.tta == TTA::PUSH)
-					{
-						// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
-						_privacyIDEA.AsyncPollTransaction(PrivacyIDEA::ws2s(_config->credential.username), c.transaction_id,
-							std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
-					}
-				}
-				else
-				{
-					DebugPrint("Found incomplete challenge: " + c.toString());
-				}
+				passToSend = _config->credential.password;
+				DebugPrint("1st step: Sending windows pass");
 			}
 			else
 			{
-				// Only classic OTP available, nothing else to do in the first step
+				DebugPrint("1st step: Sending empty pass");
 			}
 		}
 	}
-	//////////////////// SECOND STEP ////////////////////////
-	else if (_config->twoStepHideOTP && _config->isSecondStep)
-	{
-		// Send with optional transaction_id from first step
-		_piStatus = _privacyIDEA.ValidateCheck(
-			_config->credential.username,
-			_config->credential.domain,
-			std::wstring(_config->credential.otp.c_str()),
-			_config->challenge.transaction_id);
-	}
-	//////// NORMAL SETUP WITH 3 FIELDS -> SEND OTP ////////
 	else
 	{
-		_piStatus = _privacyIDEA.ValidateCheck(
-			_config->credential.username,
-			_config->credential.domain,
-			std::wstring(_config->credential.otp.c_str()));
+		DebugPrint("Sending OTP");
+		// Second step or Single step authentication, actually use the OTP and do offlineCheck before
+		passToSend = _config->credential.otp;
+		offlineCheck = true;
+		sendSomething = true;
 	}
 
+	// Do the request
+	if (sendSomething)
+	{
+		HRESULT res = E_FAIL;
+		if (offlineCheck)
+		{
+			res = _privacyIDEA.OfflineCheck(username, passToSend);
+
+			// Check if a OfflineRefill should be attempted
+			if ((res == S_OK && _privacyIDEA.GetOfflineOTPCount(username) < _config->offlineTreshold)
+				|| res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
+			{
+				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend);
+				if (refillResult != S_OK)
+				{
+					DebugPrint("OfflineRefill failed " + Convert::LongToHexString(refillResult));
+				}
+			}
+
+			// Authentication is complete if offlineCheck succeeds, regardless of refill status
+			if (res == S_OK)
+			{
+				_authenticationComplete = true;
+			}
+		}
+
+		if (res != S_OK)
+		{
+			// In case of a single step the transactionId will be an empty string
+			string transactionId = _config->lastResponse.transactionId;
+			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, pir, transactionId);
+
+			// Evaluate the response
+			if (SUCCEEDED(res))
+			{
+				_config->lastResponse = pir;
+				// Always show the OTP field, if push was triggered, start polling in background
+				if (pir.PushAvailable())
+				{
+					// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
+					_privacyIDEA.PollTransactionAsync(_config->credential.username, _config->credential.domain, pir.transactionId,
+						std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
+				}
+
+				if (!pir.challenges.empty())
+				{
+					DebugPrint("Challenges have been triggered");
+					_authenticationComplete = false;
+				}
+				else
+				{
+					_authenticationComplete = pir.value;
+				}
+			}
+		}
+	}
+
+	DebugPrint("Authentication complete: " + Convert::ToString(_authenticationComplete));
 	DebugPrint("Connect - END");
-	return S_OK; // always S_OK
+	return S_OK;
 }
 
 HRESULT CCredential::Disconnect()
@@ -868,19 +875,8 @@ HRESULT CCredential::ReportResult(
 )
 {
 	DebugPrint(__FUNCTION__);
-	// only print interesting status
-	if (ntsStatus != 0)
-	{
-		std::stringstream ss;
-		ss << std::hex << ntsStatus;
-		DebugPrint("ntsStatus: " + ss.str());
-	}
-	if (ntsSubstatus != 0)
-	{
-		std::stringstream ss;
-		ss << std::hex << ntsSubstatus;
-		DebugPrint("ntsSubstatus: " + ss.str());
-	}
+	DebugPrint("ntsStatus: " + Convert::LongToHexString(ntsSubstatus)
+		+ ", ntsSubstatus: " + Convert::LongToHexString(ntsSubstatus));
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
@@ -919,6 +915,6 @@ HRESULT CCredential::ReportResult(
 		_config->credential.passwordChanged = false;
 	}
 
-	_util.ResetScenario(this, _pCredProvCredentialEvents);
+	//_util.ResetScenario(this, _pCredProvCredentialEvents);
 	return S_OK;
 }

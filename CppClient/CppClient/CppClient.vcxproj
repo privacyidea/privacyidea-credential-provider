@@ -21,13 +21,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <SpectreMitigation>Spectre</SpectreMitigation>
@@ -46,11 +46,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)CppClientCore\CppClientCore\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)CppClient\CppClient\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)CppClientCore\CppClientCore\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)CppClient\CppClient\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -75,7 +75,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>Default</LanguageStandard>
       <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
@@ -86,7 +86,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Challenge.cpp" />
+    <ClCompile Include="Convert.cpp" />
     <ClCompile Include="Endpoint.cpp" />
     <ClCompile Include="JsonParser.cpp" />
     <ClCompile Include="Logger.cpp" />
@@ -99,13 +99,13 @@
   <ItemGroup>
     <ClInclude Include="..\nlohmann\json.hpp" />
     <ClInclude Include="Challenge.h" />
+    <ClInclude Include="Convert.h" />
     <ClInclude Include="Endpoint.h" />
-    <ClInclude Include="Codes.h" />
     <ClInclude Include="JsonParser.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="OfflineData.h" />
     <ClInclude Include="OfflineHandler.h" />
-    <ClInclude Include="PIConf.h" />
+    <ClInclude Include="PIConfig.h" />
     <ClInclude Include="PIResponse.h" />
     <ClInclude Include="PrivacyIDEA.h" />
     <ClInclude Include="RegistryReader.h" />
