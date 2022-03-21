@@ -16,32 +16,42 @@
 **    limitations under the License.
 **
 ** * * * * * * * * * * * * * * * * * * */
-#pragma once
-#include <string>
-#include <vector>
 
-// Token Type Available
-enum class TTA
+#pragma once
+
+#include "Challenge.h"
+#include "PIConfig.h"
+#include <map>
+#include <Windows.h>
+
+#define PI_ERROR_SERVER_UNAVAILABLE					((HRESULT)0x88809014)
+#define PI_ERROR_ENDPOINT_SETUP						((HRESULT)0x88809015)
+
+enum class RequestMethod
 {
-	NOT_SET,
-	OTP,
-	PUSH,
-	BOTH
+	GET,
+	POST
 };
 
-class Challenge
-{
+class Endpoint
+{ 
 public:
-	std::string toString();
+	Endpoint(PIConfig config) : _config(config) {};
 
-	std::wstring message = L"";
+	std::string SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const RequestMethod& method);
 
-	std::string transaction_id = "";
-
-	std::string serial = "";
-
-	TTA tta = TTA::NOT_SET;
+	HRESULT GetLastErrorCode();
 
 private:
-	std::string ttaToString(TTA tta);
+
+	std::string EncodeRequestParameters(const std::map<std::string, std::string>& parameters);
+
+	std::wstring EncodeUTF16(const std::string& str, int codepage);
+
+	std::string URLEncode(const std::string& in);
+
+	HRESULT _lastErrorCode = 0;
+
+	PIConfig _config;
 };
+

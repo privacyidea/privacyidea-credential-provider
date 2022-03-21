@@ -149,7 +149,7 @@ private:
 
 	Utilities								_util;
 
-	HRESULT									_piStatus = E_FAIL;
-
 	std::wstring							_initialDomain;
+
+	bool									_authenticationComplete = false;
 };

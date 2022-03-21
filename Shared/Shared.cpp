@@ -20,6 +20,7 @@
 #include "Shared.h"
 #include "Logger.h"
 #include "RegistryReader.h"
+#include "Convert.h"
 #include <tchar.h>
 
 namespace Shared
@@ -61,8 +62,8 @@ namespace Shared
 			return false;
 		}
 		std::string strCaller = (caller == 0 ? "Provider" : "Filter");
-		DebugPrint("Checking for " + strCaller + ", " + CPUStoString(cpus) + ", " + (isRemote ? "remote" : "local"));
-		DebugPrint(L"with registry entry: " + entry);
+		DebugPrint("Checking for " + strCaller + ", " + CPUStoString(cpus) + ", " + (isRemote ? "remote" : "local") 
+			+ ", entry=" + Convert::ToString(entry));
 		// default - no additional config found
 		if (entry.empty()) return true;
 
@@ -85,7 +86,6 @@ namespace Shared
 	bool IsCurrentSessionRemote()
 	{
 		bool fIsRemoteable = false;
-		DebugPrint("check for remote session...");
 		if (GetSystemMetrics(SM_REMOTESESSION))
 		{
 			fIsRemoteable = true;
@@ -135,7 +135,7 @@ namespace Shared
 			}
 		}
 
-		DebugPrint(fIsRemoteable ? "session is remote" : "session is not remote");
+		DebugPrint(fIsRemoteable ? "Session is remote" : "Session is local");
 
 		return fIsRemoteable;
 	}

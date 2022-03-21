@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
-** Author: Nils Behlen
+** Copyright	2019 NetKnights GmbH
+** Author:		Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
@@ -16,26 +16,41 @@
 **    limitations under the License.
 **
 ** * * * * * * * * * * * * * * * * * * */
-#pragma once
-#include <string>
-#include <map>
 
-struct PICONFIG 
+#include "OfflineData.h"
+#include "../nlohmann/json.hpp"
+#include "Logger.h"
+#include <iostream>
+
+using namespace std;
+/*
+nlohmann::json OfflineData::ToJSON()
 {
-	std::wstring hostname = L"";
-	std::wstring path = L"";
-	int customPort = 0;
-	bool ignoreInvalidCN = false;
-	bool ignoreUnknownCA = false;
-	std::map<std::wstring, std::wstring> realmMap = std::map<std::wstring, std::wstring>();
-	std::wstring defaultRealm = L"";
-	bool logPasswords = false;
-	std::wstring offlineFilePath = L"C:\\offlineFile.json";
-	int offlineTryWindow = 10;
+	
+}
+*/
 
-	// optionals
-	int resolveTimeoutMS = 0;
-	int connectTimeoutMS = 0;
-	int sendTimeoutMS = 0;
-	int receiveTimeoutMS = 0;
-};
+int OfflineData::GetLowestKey()
+{
+	int lowestKey = INT_MAX;
+
+	for (auto& item : offlineOTPs)
+	{
+		try
+		{
+			const int key = stoi(item.first);
+			lowestKey = (lowestKey > key ? key : lowestKey);
+		}
+		catch (const std::invalid_argument & e)
+		{
+			DebugPrint(e.what());
+		}
+	}
+
+	return lowestKey;
+}
+
+size_t OfflineData::GetOfflineOTPCount() noexcept
+{
+	return offlineOTPs.size();
+}

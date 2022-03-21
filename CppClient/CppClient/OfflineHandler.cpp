@@ -18,16 +18,15 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "OfflineHandler.h"
-#include "Codes.h"
-#include "Endpoint.h" // tryParseJSON
+#include "JsonParser.h"
 #include <iostream>
 #include <fstream>
 #include <atlenc.h>
+#include <algorithm>
 
 #pragma comment (lib, "bcrypt.lib")
 
 using namespace std;
-using json = nlohmann::json;
 
 std::wstring getErrorText(DWORD err)
 {
@@ -106,7 +105,7 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 				catch (const std::out_of_range& e)
 				{
 					UNREFERENCED_PARAMETER(e);
-					// TODO handle missing offline otps -> ignore
+					// handle missing offline otps -> ignore (skip)
 				}
 			}
 
@@ -114,7 +113,6 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 			{
 				if (matchingKey >= lowestKey) // Also include if the matching is the first
 				{
-					cout << "difference: " << (matchingKey - lowestKey) << endl;
 					for (int i = lowestKey; i <= matchingKey; i++)
 					{
 						item.offlineOTPs.erase(to_string(i));
@@ -129,126 +127,22 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 
 HRESULT OfflineHandler::GetRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial)
 {
-	if (dataSets.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
-
 	for (const auto& item : dataSets)
 	{
 		if (item.username == username)
 		{
-			string iserial(item.serial);
-			string irefilltoken(item.refilltoken);
-			if (iserial.empty() || irefilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
-			refilltoken = irefilltoken;
-			serial = iserial;
+			if (item.serial.empty() || item.refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
+			refilltoken = string(item.refilltoken);;
+			serial = string(item.serial);;
 			return S_OK;
 		}
 	}
 
-	return PI_OFFLINE_DATA_USER_NOT_FOUND;
-}
-
-// Check an authentication reponse from privacyIDEA if it contains the inital data for offline
-HRESULT OfflineHandler::ParseForOfflineData(const std::string& in)
-{
-	DebugPrint(__FUNCTION__);
-	auto j = Endpoint::TryParseJSON(in);
-	if (j == nullptr) return PI_JSON_PARSE_ERROR;
-
-	auto jAuth_items = j["auth_items"];
-	if (jAuth_items == nullptr) return PI_OFFLINE_NO_OFFLINE_DATA;
-
-	// Get the serial to add to the data
-	auto jSerial = j["detail"]["serial"];
-	if (!jSerial.is_string()) return PI_JSON_FORMAT_ERROR;
-	string serial = jSerial.get<std::string>();
-
-	auto jOffline = jAuth_items["offline"];
-
-	if (!jOffline.is_array()) return PI_JSON_FORMAT_ERROR;
-	if (jOffline.size() < 1) return PI_OFFLINE_NO_OFFLINE_DATA;
-
-	for (const auto& item : jOffline)
-	{
-		// Build the object
-		OfflineData toAdd(item.dump());
-		toAdd.serial = serial;
-
-		// Check if the user already has data first, then add
-		bool done = false;
-		for (auto& existing : dataSets)
-		{
-			if (existing.username == toAdd.username)
-			{
-				//DebugPrint("found exsisting user data.");
-				existing.refilltoken = toAdd.refilltoken;
-
-				for (const auto& newOTP : toAdd.offlineOTPs)
-				{
-					existing.offlineOTPs.try_emplace(newOTP.first, newOTP.second);
-				}
-				done = true;
-			}
-		}
-
-		if (!done)
-		{
-			dataSets.push_back(toAdd);
-			//DebugPrint("did not find exsisting user data, adding new");
-		}
-	}
-	return S_OK;
-}
-
-HRESULT OfflineHandler::ParseRefillResponse(const std::string& in, const std::string& username)
-{
-	DebugPrint(__FUNCTION__);
-	auto jIn = Endpoint::TryParseJSON(in);
-	if (jIn == nullptr) return PI_JSON_PARSE_ERROR;
-	// Set the new refill token
-	json offline;
-	try
-	{
-		offline = jIn["auth_items"]["offline"].at(0);
-	}
-	catch (const std::exception& e)
-	{
-		DebugPrint(e.what());
-		return PI_JSON_FORMAT_ERROR;
-	}
-
-	if (offline == nullptr) return PI_JSON_FORMAT_ERROR;
-
-	for (auto& item : dataSets)
-	{
-		if (item.username == username)
-		{
-			// still adding the values we got
-			if (offline["refilltoken"].is_string())
-			{
-				item.refilltoken = offline["refilltoken"].get<std::string>();
-			}
-			else
-			{
-				item.refilltoken = "";
-			}
-
-			auto jResponse = offline["response"];
-			for (const auto& jItem : jResponse.items())
-			{
-				string key = jItem.key();
-				string value = jItem.value();
-				item.offlineOTPs.try_emplace(key, value);
-			}
-			return S_OK;
-		}
-	}
-
-	return E_FAIL;
+	return PI_OFFLINE_NO_OFFLINE_DATA;
 }
 
 HRESULT OfflineHandler::DataVailable(const std::string& username)
 {
-	// Check if usable data available for the given username
 	for (auto& item : dataSets)
 	{
 		if (item.username == username)
@@ -257,7 +151,48 @@ HRESULT OfflineHandler::DataVailable(const std::string& username)
 		}
 	}
 
-	return PI_OFFLINE_DATA_USER_NOT_FOUND;
+	return PI_OFFLINE_NO_OFFLINE_DATA;
+}
+
+HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
+{
+	// Check if the user already has data first, then add
+	bool done = false;
+	for (auto& existing : dataSets)
+	{
+		if (existing.username == data.username)
+		{
+			DebugPrint("Offline: Updating exsisting user data.");
+			existing.refilltoken = data.refilltoken;
+
+			for (const auto& newOTP : data.offlineOTPs)
+			{
+				existing.offlineOTPs.try_emplace(newOTP.first, newOTP.second);
+			}
+			done = true;
+		}
+	}
+
+	if (!done)
+	{
+		dataSets.push_back(data);
+		DebugPrint("Offline: Adding new data for user '" + data.username + "'");
+	}
+
+	return S_OK;
+}
+
+size_t OfflineHandler::GetOfflineOTPCount(const std::string& username)
+{
+	for (auto& item : dataSets)
+	{
+		if (item.username == username)
+		{
+			return item.offlineOTPs.size();
+		}
+	}
+
+	return -1;
 }
 
 HRESULT OfflineHandler::SaveToFile()
@@ -266,26 +201,16 @@ HRESULT OfflineHandler::SaveToFile()
 	o.open(_filePath, ios_base::out); // Destroy contents | create new
 
 	if (!o.is_open()) return GetLastError();
-
-	json::array_t jArr;
-
-	for (auto& item : dataSets)
-	{
-		jArr.push_back(item.ToJSON());
-	}
-
-	json j;
-	j["offline"] = jArr;
-
-	o << j.dump(4);
+	JsonParser parser;
+	string s = parser.OfflineDataToString(dataSets);
+	o << s;
 	o.close();
 	return S_OK;
 }
 
 HRESULT OfflineHandler::LoadFromFile()
 {
-	// Check for the file, load if exists
-	string fileContent = "";
+	string fileContent;
 	string line;
 	ifstream ifs(_filePath);
 
@@ -302,25 +227,12 @@ HRESULT OfflineHandler::LoadFromFile()
 
 	if (fileContent.empty()) return PI_OFFLINE_FILE_EMPTY;
 
-	try
+	JsonParser parser;
+	auto vec = parser.ParseFileContentsForOfflineData(fileContent);
+	
+	for (auto& item : vec)
 	{
-		auto j = json::parse(fileContent);
-
-		auto jOffline = j["offline"];
-
-		if (jOffline.is_array())
-		{
-			for (auto const& item : jOffline)
-			{
-				OfflineData d(item.dump());
-				dataSets.push_back(d);
-			}
-		}
-	}
-	catch (const json::parse_error& e)
-	{
-		DebugPrint(e.what());
-		return PI_JSON_PARSE_ERROR;
+		AddOfflineData(item);
 	}
 
 	return S_OK;

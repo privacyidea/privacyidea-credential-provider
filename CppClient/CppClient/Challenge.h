@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright	2019 NetKnights GmbH
-** Author:		Nils Behlen
+** Copyright 2019 NetKnights GmbH
+** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
@@ -17,29 +17,13 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
+#include <string>
 
-#include "Logger.h"
-#include "../nlohmann/json.hpp"
-
-#include <map>
-
-#define JSON_DUMP_INDENTATION 4
-
-class OfflineData
+class Challenge
 {
 public:
-	OfflineData(std::string json_string);
-
-	nlohmann::json ToJSON();
-
-	int GetLowestKey();
-
-	size_t GetOfflineOTPsLeft() noexcept;
-
-	std::string username = "";
-	std::string serial = "";
-	std::string refilltoken = "";
-	std::map<std::string, std::string> offlineOTPs;
-	int rounds = 10000;
-	int count = 0;
+	std::string message;
+	std::string transaction_id;
+	std::string serial;
+	std::string type;
 };

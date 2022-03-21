@@ -18,8 +18,8 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "PIConf.h"
-#include "Challenge.h"
+#include "PIConfig.h"
+#include "PIResponse.h"
 #include <credentialprovider.h>
 
 class Configuration
@@ -29,7 +29,7 @@ public:
 
 	void LogConfig();
 
-	PICONFIG piconfig;
+	PIConfig piconfig;
 
 	std::wstring loginText = L"";
 	std::wstring otpFieldText = L"";
@@ -63,7 +63,8 @@ public:
 
 	bool userCanceled = false;
 
-	Challenge challenge;
+	PIResponse lastResponse;
+
 	std::wstring defaultOTPFailureText = L"";
 	std::wstring defaultOTPHintText = L"";
 
@@ -71,6 +72,8 @@ public:
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
+
+	int offlineTreshold = 10;
 
 	struct PROVIDER
 	{

@@ -27,6 +27,7 @@
 #include "scenario.h"
 #include "RegistryReader.h"
 #include "Shared.h"
+#include "Convert.h"
 #include <credentialprovider.h>
 #include <tchar.h>
 
@@ -78,7 +79,7 @@ HRESULT CProvider::SetUsageScenario(
 	__in DWORD dwFlags
 )
 {
-	DebugPrint(string(__FUNCTION__) + ": " + Shared::CPUStoString(cpus));
+	DebugPrint(string(__FUNCTION__) + ": " + Shared::CPUStoString(cpus) + " - AUTHENTICATION START");
 	if (Logger::Get().logDebug)
 	{
 		_config->LogConfig();
@@ -116,8 +117,7 @@ HRESULT CProvider::SetUsageScenario(
 		}
 	}
 
-	DebugPrint("SetUsageScenario result:");
-	DebugPrint(hr);
+	DebugPrint("SetUsageScenario result: " + Convert::LongToHexString(hr));
 
 	return hr;
 }
@@ -152,8 +152,6 @@ HRESULT CProvider::SetSerialization(
 
 	if (_config->provider.cpu == CPUS_CREDUI)
 	{
-		DebugPrint("CPUS_CREDUI");
-
 		if (((_config->provider.credPackFlags & CREDUIWIN_IN_CRED_ONLY) || (_config->provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY))
 			&& authPackage != pcpcs->ulAuthenticationPackage)
 		{
@@ -213,7 +211,7 @@ HRESULT CProvider::SetSerialization(
 			}
 		}
 	}
-	DebugPrint(result);
+	DebugPrint("SetSerialization result: " + Convert::LongToHexString(result));
 
 	return result;
 }
@@ -243,7 +241,7 @@ HRESULT CProvider::Advise(
 // Called by LogonUI when the ICredentialProviderEvents callback is no longer valid.
 HRESULT CProvider::UnAdvise()
 {
-	DebugPrint(__FUNCTION__);
+	DebugPrint(string(__FUNCTION__) + " - AUTHENTICATION END");
 
 	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
@@ -355,8 +353,12 @@ HRESULT CProvider::GetCredentialCount(
 		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
 	}
 
-	// if serialized creds are available, try using them to logon
-	if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_USERNAME) && _SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD))
+	// If serialized creds are available, try using them to logon
+	// except if CPUS is CREDUI, because in that case ReportResult will not be called i.e. on wrong password
+	// resulting in a loop if autoLogon was enabled
+	if (_SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_USERNAME)
+		&& _SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD)
+		&& _config->provider.cpu != CPUS_CREDUI)
 	{
 		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
 		if (_config->isRemoteSession && !_config->twoStepHideOTP)
@@ -365,6 +367,7 @@ HRESULT CProvider::GetCredentialCount(
 		}
 		else
 		{
+			DebugPrint("Setting AutoLogon to true");
 			*pdwDefault = 0;
 			*pbAutoLogonWithDefault = TRUE;
 		}
@@ -386,12 +389,10 @@ HRESULT CProvider::GetCredentialAt(
 
 	if (!_credential)
 	{
-		DebugPrint("Checking for serialized credentials");
+		DebugPrint("Checking if already serialized credentials are present");
 
 		PWSTR serializedUser, serializedPass, serializedDomain;
 		_GetSerializedCredentials(&serializedUser, &serializedPass, &serializedDomain);
-
-		DebugPrint("Checking for missing credentials");
 
 		if (usage_scenario == CPUS_UNLOCK_WORKSTATION && serializedUser == nullptr)
 		{
@@ -442,8 +443,7 @@ HRESULT CProvider::GetCredentialAt(
 				{
 					serializedDomain = nullptr;
 				}
-				DebugPrint("Found domain:");
-				DebugPrint(serializedDomain);
+				DebugPrint(L"Found domain:" + wstring(serializedDomain));
 			}
 		}
 
@@ -461,19 +461,15 @@ HRESULT CProvider::GetCredentialAt(
 		hr = S_OK;
 	}
 
-	DebugPrint("Checking for successful initialization");
-
 	if (FAILED(hr))
 	{
-		DebugPrint("Initialization failed");
+		DebugPrint("Credential initialization failed");
 		return hr;
 	}
 
-	DebugPrint("Checking for successful instantiation");
-
 	if (!_credential)
 	{
-		DebugPrint("Instantiation failed");
+		DebugPrint("Credential instantiation failed");
 		return E_OUTOFMEMORY;
 	}
 
@@ -481,6 +477,8 @@ HRESULT CProvider::GetCredentialAt(
 
 	if ((dwIndex == 0) && ppcpc)
 	{
+		hr = _credential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
+		/*
 		if (usage_scenario == CPUS_CREDUI)
 		{
 			DebugPrint("CredUI: returning an IID_ICredentialProviderCredential");
@@ -491,13 +489,14 @@ HRESULT CProvider::GetCredentialAt(
 			DebugPrint("Non-CredUI: returning an IID_IConnectableCredentialProviderCredential");
 			hr = _credential->QueryInterface(IID_IConnectableCredentialProviderCredential, reinterpret_cast<void**>(ppcpc));
 		}
+		*/
 	}
 	else
 	{
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrint(hr);
+	DebugPrint("GetCredentialAt result " + Convert::LongToHexString(hr));
 
 	return hr;
 }
@@ -571,27 +570,27 @@ void CProvider::_GetSerializedCredentials(PWSTR* username, PWSTR* password, PWST
 
 bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE checkFor)
 {
-	DebugPrint(__FUNCTION__);
+	//DebugPrint(__FUNCTION__);
 
 	bool result = false;
 
 	if (!_pkiulSetSerialization)
 	{
-		DebugPrint("No serialized creds set");
+		//DebugPrint("No serialized creds set");
 	}
 	else
 	{
 		switch (checkFor)
 		{
-			case SERIALIZATION_AVAILABLE::FOR_USERNAME:
-				result = _pkiulSetSerialization->Logon.UserName.Length && _pkiulSetSerialization->Logon.UserName.Buffer;
-				break;
-			case SERIALIZATION_AVAILABLE::FOR_PASSWORD:
-				result = _pkiulSetSerialization->Logon.Password.Length && _pkiulSetSerialization->Logon.Password.Buffer;
-				break;
-			case SERIALIZATION_AVAILABLE::FOR_DOMAIN:
-				result = _pkiulSetSerialization->Logon.LogonDomainName.Length && _pkiulSetSerialization->Logon.LogonDomainName.Buffer;
-				break;
+		case SERIALIZATION_AVAILABLE::FOR_USERNAME:
+			result = _pkiulSetSerialization->Logon.UserName.Length && _pkiulSetSerialization->Logon.UserName.Buffer;
+			break;
+		case SERIALIZATION_AVAILABLE::FOR_PASSWORD:
+			result = _pkiulSetSerialization->Logon.Password.Length && _pkiulSetSerialization->Logon.Password.Buffer;
+			break;
+		case SERIALIZATION_AVAILABLE::FOR_DOMAIN:
+			result = _pkiulSetSerialization->Logon.LogonDomainName.Length && _pkiulSetSerialization->Logon.LogonDomainName.Buffer;
+			break;
 		}
 	}
 
