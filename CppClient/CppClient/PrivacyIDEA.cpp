@@ -189,11 +189,6 @@ HRESULT PrivacyIDEA::OfflineRefill(std::wstring username, std::wstring lastOTP)
 	return hr;
 }
 
-size_t PrivacyIDEA::GetOfflineOTPCount(const std::wstring& username)
-{
-	return offlineHandler.GetOfflineOTPCount(Convert::ToString(username));
-}
-
 bool PrivacyIDEA::StopPoll()
 {
 	DebugPrint("Stopping poll thread...");
