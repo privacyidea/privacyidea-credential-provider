@@ -118,11 +118,6 @@ void Configuration::Load()
 	winBuildNr = info.dwBuildNumber;
 }
 
-void CheckFilterRegistryEntries()
-{
-
-}
-
 void PrintIfIntIsNotValue(string message, int value, int comparable)
 {
 	if (value != comparable)
