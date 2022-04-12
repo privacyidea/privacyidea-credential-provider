@@ -122,40 +122,40 @@ void CALLBACK WinHttpStatusCallback(
 	//DebugPrint("WinHttpStatusCallback - InternetStatus: " + strInternetStatus + ", StatusInformation: " + to_string(lStatus));
 	switch (dwInternetStatus)
 	{
-	case WINHTTP_CALLBACK_STATUS_SECURE_FAILURE:
-		// Log more detailed information for this error case
-		// https://docs.microsoft.com/en-us/windows/win32/api/winhttp/nc-winhttp-winhttp_status_callback#winhttp_callback_status_shutdown_complete
-		if (lpvStatusInformation && dwStatusInformationLength == sizeof(ULONG))
-		{
-			string strDetail;
-			switch (lStatus)
+		case WINHTTP_CALLBACK_STATUS_SECURE_FAILURE:
+			// Log more detailed information for this error case
+			// https://docs.microsoft.com/en-us/windows/win32/api/winhttp/nc-winhttp-winhttp_status_callback#winhttp_callback_status_shutdown_complete
+			if (lpvStatusInformation && dwStatusInformationLength == sizeof(ULONG))
 			{
-			case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED";
-				break;
-			case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT";
-				break;
-			case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED";
-				break;
-			case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA";
-				break;
-			case WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID";
-				break;
-			case WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID";
-				break;
-			case WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR:
-				strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR";
-				break;
-			}
+				string strDetail;
+				switch (lStatus)
+				{
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID";
+						break;
+					case WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR:
+						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR";
+						break;
+				}
 
-			Print("SECURE_FAILURE with status info: " + strDetail);
-		}
-		break;
+				Print("SECURE_FAILURE with status info: " + strDetail);
+			}
+			break;
 	}
 }
 

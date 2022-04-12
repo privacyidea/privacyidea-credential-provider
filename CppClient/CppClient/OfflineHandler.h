@@ -71,6 +71,8 @@ public:
 	/// <returns>The number of remaining offline OTP values or -1 if no data is found</returns>
 	size_t GetOfflineOTPCount(const std::string& username);
 
+	std::vector<std::pair<std::string, size_t>> GetTokenInfo(const std::string& username);
+
 private:
 	std::vector<OfflineData> dataSets = std::vector<OfflineData>();
 

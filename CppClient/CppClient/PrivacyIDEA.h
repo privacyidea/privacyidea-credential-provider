@@ -41,7 +41,7 @@ public:
 		_defaultRealm(conf.defaultRealm),
 		_logPasswords(conf.logPasswords),
 		_endpoint(conf),
-		_offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
+		offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA) = delete;
@@ -73,13 +73,6 @@ public:
 	/// <returns>S_OK, E_FAIL, PI_JSON_PARSE_ERROR, PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE</returns>
 	HRESULT OfflineRefill(std::wstring username, std::wstring lastOTP);
 
-	/// <summary>
-	/// Get the number of remaining offline OTPs for the user. 
-	/// </summary>
-	/// <param name="username"></param>
-	/// <returns>The number of remaining offline OTP values or -1 if no data is found</returns>
-	size_t GetOfflineOTPCount(const std::wstring& username);
-
 	bool StopPoll();
 
 	// Poll for the given transaction asynchronously. When polling returns success, the transaction is finalized automatically
@@ -91,6 +84,8 @@ public:
 	// https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
 	bool PollTransaction(std::string transaction_id);
 
+	OfflineHandler offlineHandler;
+
 private:
 	HRESULT AppendRealm(std::wstring domain, std::map<std::string, std::string>& parameters);
 
@@ -101,8 +96,7 @@ private:
 	std::wstring _defaultRealm = L"";
 
 	Endpoint _endpoint;
-	OfflineHandler _offlineHandler;
-
+	
 	bool _logPasswords = false;
 
 	std::atomic<bool> _runPoll = false;

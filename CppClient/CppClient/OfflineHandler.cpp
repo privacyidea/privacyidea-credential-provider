@@ -87,6 +87,7 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 	{
 		if (item.username == username)
 		{
+			DebugPrint("Trying token " + item.serial);
 			const int lowestKey = item.GetLowestKey();
 			int matchingKey = lowestKey;
 
@@ -111,13 +112,17 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 
 			if (success == S_OK)
 			{
-				if (matchingKey >= lowestKey) // Also include if the matching is the first
+				// Also include if the matching is the first
+				if (matchingKey >= lowestKey)
 				{
 					for (int i = lowestKey; i <= matchingKey; i++)
 					{
 						item.offlineOTPs.erase(to_string(i));
 					}
 				}
+				DebugPrint("Offline authentication success with token " + item.serial);
+				// If success, stop trying other dataSets
+				break;
 			}
 		}
 	}
@@ -160,9 +165,9 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 	bool done = false;
 	for (auto& existing : dataSets)
 	{
-		if (existing.username == data.username)
+		if (existing.username == data.username && existing.serial == data.serial)
 		{
-			DebugPrint("Offline: Updating exsisting user data.");
+			DebugPrint("Offline: Updating exsisting user data for " + data.username + " and token " + data.serial);
 			existing.refilltoken = data.refilltoken;
 
 			for (const auto& newOTP : data.offlineOTPs)
@@ -176,7 +181,7 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 	if (!done)
 	{
 		dataSets.push_back(data);
-		DebugPrint("Offline: Adding new data for user '" + data.username + "'");
+		DebugPrint("Offline: Adding new data for " + data.username + " and token " + data.serial);
 	}
 
 	return S_OK;
@@ -192,7 +197,20 @@ size_t OfflineHandler::GetOfflineOTPCount(const std::string& username)
 		}
 	}
 
-	return -1;
+	return 0;
+}
+
+std::vector<std::pair<std::string, size_t>> OfflineHandler::GetTokenInfo(const std::string& username)
+{
+	std::vector<std::pair<std::string, size_t>> ret;
+	for (auto& item : dataSets)
+	{
+		if (item.username == username)
+		{
+			ret.push_back(make_pair(item.serial, item.offlineOTPs.size()));
+		}
+	}
+	return ret;
 }
 
 HRESULT OfflineHandler::SaveToFile()

@@ -74,6 +74,7 @@ public:
 	bool bypassPrivacyIDEA = false;
 
 	int offlineTreshold = 10;
+	bool showOfflineInfo = true; // TODO
 
 	struct PROVIDER
 	{

@@ -1,12 +1,19 @@
-# Version 3.1.3, TBD
+# Version 3.2, TBD
 
-## Fixes (probably not complete yet)
- * Fixed a bug that prevented the offline feature to work for multiple users.
+## Features
+ * Multiple offline token for multiple users are possible now
+ * Added "offline_threshold" configuration entry. OfflineRefill is only attempted when the remaining offline OTPs drop below the threshold. This will prevent having to wait for a connection timeout every time a authentication is performed where the computer is really offline.
+ * Added "offline_show_info" configuration entry. This will display available offline token for the user that is currently logging.
+ * Added "enable_filter" configuration entry. This will enable the filter (which removes all other Credential Providers).
+ * Updated the installer with more configuration possibilities. Moreover, the filter is now always installed and has to be activated via the configuration of this Credential Provider.
+
+## Fixes
  * When using RDP, the incoming password is now properly decrypted so that "2step_send_password" works correctly in this scenario.
  * Fixed a bug that could cause an infinite loop in the CredUI scenario.
  * Improved the "show_domain_hint" feature to directly show the domain that will be used when entering a backslash.
  * Entering '.\' will now be properly resolved to the local computer name.
- * Added "offline_threshold" configuration entry. OfflineRefill is only attempted when the remaining offline OTPs drop below the threshold. This will prevent having to wait for a connection timeout every time a authentication is performed where the computer is really offline.
+ * Entering '@' will now be handled correctly to indicate a domain.
+ * Failing the 2nd factor check in RDP scenarios will now only reset the 2nd step. In RDP scenarios, the username and password are already checked before connecting, therefore it is not required to check those on the target again.
 
 # Version 3.1.2, 2021-06-09
 

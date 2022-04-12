@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!--
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
@@ -22,201 +22,263 @@
 **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 -->
-
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Fragment>
-    <UI> <!-- PAGE 1-->
-      <TextStyle Id="Tahoma_Bold" FaceName="Tahoma" Size="8" Bold="yes"/>
-      <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-        <!-- Text inputs (hostname, path, opt texts)
-        
-        <Control Id="ServerUrlLabel" Type="Text" X="45" Y="53" Width="220" Height="15" TabSkip="no" Text="hostname=privacyidea.example.com   path=/path/to/pi" />-->
-       
-        <Control Id="HttpsLabel" Type="Text" X="45" Y="58" Width="220" Height="15" TabSkip="no" Text="https://" />
-        <Control Id="HostnameEdit" Type="Edit" X="75" Y="55" Width="115" Height="18" Property="HOSTNAME" />
-        <Control Id="PathEdit" Type="Edit" X="195" Y="55" Width="90" Height="18" Property="PATH" /> 
-        <Control Id="PathOptLabel" Type="Text" X="290" Y="58" Width="220" Height="15" TabSkip="no" Text="(optional)" />
-        <!--   
-        <Control Id="ServerUrlInfo" Type="PushButton" X="270" Y="64" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
-          <Publish Event="SpawnDialog" Value="ServerUrlInfoDlg">1</Publish>
-        </Control>
-        -->
-        
-        <!-- Checkboxes -->
-        <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="80" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
-        <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="100" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
-
-        <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="120" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step."/>
-        
-        <Control Id="TwoStepSendPassword" Type="CheckBox" X="60" Y="137" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA." >
-          <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
-          <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
-          <Publish Property="TWO_STEP_SEND_EMPTY_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_PASSWORD</Publish>
-        </Control>
-        
-        <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="60" Y="152" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send empty password to privacyIDEA." >
-          <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
-          <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
-          <Publish Property="TWO_STEP_SEND_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_EMPTY_PASSWORD</Publish>
-        </Control>
-
-        <Control Id="HideUserOrDomain" Type="Text" X="45" Y="175" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Hide when the desktop is locked:</Text>
-        </Control>
-        
-        <Control Id="HideFullName" Type="CheckBox" X="45" Y="187" Width="220" Height="17" Property="HIDE_FULLNAME" CheckBoxValue="1" Text="Hide the username and domain.">
-          <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_FULLNAME</Publish>
-        </Control>
-
-        <Control Id="HideDomainName" Type="CheckBox" X="45" Y="202" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
-          <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
-        </Control>
-        
-        <Control Id="ChangeSettingsLabel" Type="Text" X="45" Y="222" Width="220" Height="15" TabSkip="no" Text="{\Tahoma_Bold} These settings can be changed in the registry." />
-        
-        <!-- Bottom Controls -->
-        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
-          <Publish Event="NewDialog" Value="CustomizeDlg">1</Publish>
-        </Control>
-        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-          <Publish Event="NewDialog" Value="UserConfigurationDlg">HOSTNAME</Publish>
-          <Publish Event="SpawnDialog" Value="NoServerURLMessageDlg">HOSTNAME="hostname"</Publish>
-        </Control>
-
-        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
-          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
-        </Control>
-
-        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
-        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Setup hostname, path and properties.</Text>
-        </Control>
-        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>{\WixUI_Font_Title}Configuration 1/2</Text>
-        </Control>
-        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
-
-      </Dialog>
-    </UI>
-  </Fragment>
-
-  <Fragment>
-    <UI> <!-- PAGE 2-->
-      <Dialog Id="UserConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-
-        <Control Id="UserConfigurationInfo" Type="Text" X="45" Y="43" Width="300" Height="45" TabSkip="no" Text="!(loc.UserConfigurationInfo)" />
-
-        <Control Id="V1BitmapPathLabel" Type="Text" X="45" Y="88" Width="220" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
-        <Control Id="V1BitmapPathEdit" Type="Edit" X="45" Y="100" Width="220" Height="18" Property="V1_BITMAP_PATH" Text="{1024}" />
-        <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
-          <Publish Event="SpawnDialog" Value="V1BitmapPathInfoDlg">1</Publish>
-        </Control>
-                
-        <Control Id="LoginTextLabel" Type="Text" X="45" Y="120" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
-        <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
-        <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="131" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
-          <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
-        </Control>
-
-        <Control Id="OTPTextLabel" Type="Text" X="45" Y="152" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
-        <Control Id="OTPTextEdit" Type="Edit" X="45" Y="164" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
-
-        <Control Id="DebugLog" Type="CheckBox" X="45" Y="185" Width="220" Height="17" Property="DEBUG_LOG" CheckBoxValue="1" Text="Create a detailed logfile. Use this for debugging." />
-        
-        <!-- Bottom Controls -->
-        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
-          <Publish Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
-        </Control>
-        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
-
-          <!-- Re-populate the configuration to the registry -->
-          <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
-          <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
-        </Control>
-
-        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
-          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
-        </Control>
-
-        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
-        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>Customize the login.</Text>
-        </Control>
-        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-          <Text>{\WixUI_Font_Title}Configuration 2/2</Text>
-        </Control>
-        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
-
-      </Dialog>
-    </UI>
-  </Fragment>
-
-  <Fragment>
-    <UI>
-      <Dialog Id="NoServerURLMessageDlg" Width="260" Height="85" Title="[ProductName] Setup" NoMinimize="yes">
-        <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24"
-          ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="ExclamIcon" />
-        <Control Id="Return" Type="PushButton" X="100" Y="57" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
-          <Publish Event="EndDialog" Value="Return">1</Publish>
-        </Control>
-        <Control Id="Text" Type="Text" X="48" Y="15" Width="194" Height="30" TabSkip="no">
-          <Text>
-            Please specify at least a hostname! 
-            The path is optional.
-          </Text>
-        </Control>
-      </Dialog>
-    </UI>
-
-    <!-- Configuration Help -->
-    <UI>
-      <Dialog Id="ServerUrlInfoDlg" Width="500" Height="100" Title="[ProductName] Setup" NoMinimize="yes" >
-        <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24"
-          ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="InfoIcon" />
-        <Control Id="Return" Type="PushButton" X="340" Y="80" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
-          <Publish Event="EndDialog" Value="Return">1</Publish>
-        </Control>
-        <Control Id="Text1" Type="Text" X="48" Y="0" Width="482" Height="75" TabSkip="no" NoPrefix="yes" NoWrap="no">
-          <Text>
-            !(loc.ServerUrlInfo)
-          </Text>
-        </Control>
-      </Dialog>
-    </UI>
-
-    <UI>
-      <Dialog Id="LoginTextInfoDlg" Width="500" Height="100" Title="[ProductName] Setup" NoMinimize="yes" >
-        <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24"
-          ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="InfoIcon" />
-        <Control Id="Return" Type="PushButton" X="340" Y="80" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
-          <Publish Event="EndDialog" Value="Return">1</Publish>
-        </Control>
-        <Control Id="Text1" Type="Text" X="48" Y="0" Width="482" Height="75" TabSkip="no" NoPrefix="yes" NoWrap="no">
-          <Text>
-            !(loc.LoginTextInfo)
-          </Text>
-        </Control>
-      </Dialog>
-    </UI>
-
-    <UI>
-      <Dialog Id="V1BitmapPathInfoDlg" Width="500" Height="150" Title="[ProductName] Setup" NoMinimize="yes" >
-        <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24"
-          ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="InfoIcon" />
-        <Control Id="Return" Type="PushButton" X="340" Y="130" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
-          <Publish Event="EndDialog" Value="Return">1</Publish>
-        </Control>
-        <Control Id="Text1" Type="Text" X="48" Y="0" Width="482" Height="125" TabSkip="no" NoPrefix="yes" NoWrap="no">
-          <Text>
-            !(loc.V1BitmapPathInfo)
-          </Text>
-        </Control>
-      </Dialog>
-    </UI>
-
-    <!-- END Configuration Help -->
-  </Fragment>
+    <Fragment>
+        <UI>
+            <!-- PAGE 1-->
+            <TextStyle Id="Tahoma_Bold" FaceName="Tahoma" Size="8" Bold="yes" />
+            <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <!-- Text inputs (hostname, path, opt texts) -->
+                <Control Id="HttpsLabel" Type="Text" X="45" Y="58" Width="220" Height="15" TabSkip="no" Text="https://" />
+                <Control Id="HostnameEdit" Type="Edit" X="75" Y="55" Width="115" Height="15" Property="HOSTNAME" />
+                <Control Id="PathEdit" Type="Edit" X="195" Y="55" Width="90" Height="18" Property="PATH" />
+                <Control Id="PathOptLabel" Type="Text" X="290" Y="58" Width="220" Height="15" TabSkip="no" Text="(optional)" />
+                <!-- Checkboxes -->
+                <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="80" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
+                <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="100" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
+                <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="120" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
+                <Control Id="TwoStepSendPassword" Type="CheckBox" X="60" Y="137" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA.">
+                    <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
+                    <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
+                    <Publish Property="TWO_STEP_SEND_EMPTY_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_PASSWORD</Publish>
+                </Control>
+                <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="60" Y="152" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send empty password to privacyIDEA.">
+                    <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
+                    <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
+                    <Publish Property="TWO_STEP_SEND_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_EMPTY_PASSWORD</Publish>
+                </Control>
+                <Control Id="HideUserOrDomain" Type="Text" X="45" Y="175" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>Hide when the desktop is locked:</Text>
+                </Control>
+                <Control Id="HideFullName" Type="CheckBox" X="45" Y="187" Width="220" Height="17" Property="HIDE_FULLNAME" CheckBoxValue="1" Text="Hide the username and domain.">
+                    <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_FULLNAME</Publish>
+                </Control>
+                <Control Id="HideDomainName" Type="CheckBox" X="45" Y="202" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
+                    <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
+                </Control>
+                <Control Id="ChangeSettingsLabel" Type="Text" X="45" Y="222" Width="220" Height="15" TabSkip="no" Text="{\Tahoma_Bold} These settings can be changed in the registry." />
+                <!-- Bottom Controls NEXT / BACK, Top Banner -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="FilterConfigurationDlg">HOSTNAME</Publish>
+                    <Publish Event="SpawnDialog" Value="NoServerURLMessageDlg">HOSTNAME="hostname"</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>Setup hostname, path and properties.</Text>
+                </Control>
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>{\WixUI_Font_Title}Configuration 1/2</Text>
+                </Control>
+                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
+            </Dialog>
+        </UI>
+    </Fragment>
+    <!-- PAGE 2 FILTER CONFIGURATION -->
+    <Fragment>
+        <UI>
+            <Dialog Id="FilterConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Type="CheckBox" Id="EnableFilter" Property="ENABLE_FILTER" CheckBoxValue="1" Width="300" Height="35" X="35" Y="45" Text="Enable Filter. This will by default remove all other Credential Providers. It is also required to be able to use the scenario specifc configurations below.">
+                </Control>
+                <Control Type="Text" Id="Label_Logon" Width="50" Height="10" X="33" Y="90" Text="{\Tahoma_Bold}Logon" />
+                <Control Type="RadioButtonGroup" Property="CPUS_LOGON" Id="RadioButtonGroupCPUSLogon" Width="274" Height="20" X="35" Y="105">
+                    <RadioButtonGroup Property="CPUS_LOGON">
+                        <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
+                        <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
+                        <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
+                        <RadioButton Text="None" Height="17" Value="0d" Width="40" X="0" Y="0" />
+                    </RadioButtonGroup>
+                    <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
+                    <Condition Action="enable">ENABLE_FILTER=1</Condition>
+                </Control>
+                <Control Type="Text" Id="Label_Unlock" Width="50" Height="10" X="33" Y="135" Text="{\Tahoma_Bold} Unlock" />
+                <Control Type="RadioButtonGroup" Property="CPUS_UNLOCK" Id="RadioButtonGroupCPUSUnlock" Width="274" Height="20" X="35" Y="150">
+                    <RadioButtonGroup Property="CPUS_UNLOCK">
+                        <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
+                        <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
+                        <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
+                        <RadioButton Text="None" Height="17" Value="0d" Width="40" X="0" Y="0" />
+                    </RadioButtonGroup>
+                    <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
+                    <Condition Action="enable">ENABLE_FILTER=1</Condition>
+                </Control>
+                <Control Type="Text" Id="Label_Credui" Width="200" Height="10" X="33" Y="180" Text="{\Tahoma_Bold}CredUI (e.g. Run as Administrator)" />
+                <Control Type="RadioButtonGroup" Property="CPUS_CREDUI" Id="RadioButtonGroupCPUSCredUI" Width="274" Height="20" X="35" Y="195">
+                    <RadioButtonGroup Property="CPUS_CREDUI">
+                        <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
+                        <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
+                        <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
+                        <RadioButton Text="None" Height="17" Value="0d" Width="40" X="0" Y="0" />
+                    </RadioButtonGroup>
+                    <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
+                    <Condition Action="enable">ENABLE_FILTER=1</Condition>
+                </Control>
+                <!-- Bottom Controls NEXT / BACK, Top Banner-->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="OfflineConfigurationDlg">1</Publish>
+                    <!-- Re-populate the configuration to the registry -->
+                    <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
+                    <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>Filter and scenario specific settings.</Text>
+                </Control>
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>{\WixUI_Font_Title}Configuration 2/4</Text>
+                </Control>
+                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="2" />
+                <Control Type="Line" Id="Line1" Width="370" Height="2" X="0" Y="82" />
+            </Dialog>
+        </UI>
+    </Fragment>
+    <!-- PAGE 3 OFFLINE CONFIG -->
+    <Fragment>
+        <UI>
+            <Dialog Id="OfflineConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Type="Edit" Id="OfflineFileLocation" Width="266" Height="16" X="30" Y="67" Property="OFFLINE_FILE_PATH" />
+                <Control Type="Text" Id="OfflineFileLabel" Width="262" Height="12" X="30" Y="52" Text="Absolute path (including file name!) to where the offline file should be stored. Default is C:\offlineFile.json." />
+                <Control Type="Edit" Id="OfflineThreshold" Width="30" Height="16" X="30" Y="120" Integer="yes" Property="OFFLINE_THRESHOLD" />
+                <Control Type="Text" Id="OfflineThresholdLabel" Width="240" Height="22" X="30" Y="94" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted." />
+                <Control Type="Edit" Id="OfflineTryWindow" Width="30" Height="16" X="30" Y="176" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
+                <Control Type="Text" Id="OfflineTryWindowLabel" Width="276" Height="22" X="30" Y="150" Text="Offline try window. Set the range of values for the counter to be tried with an offline token." />
+                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="30" Y="206" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
+                <!-- Bottom Controls NEXT / BACK, Top Banner -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="FilterConfigurationDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="UserConfigurationDlg">1</Publish>
+                    <!-- Re-populate the configuration to the registry -->
+                    <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
+                    <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>Offline configuration.</Text>
+                </Control>
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>{\WixUI_Font_Title}Configuration 3/4</Text>
+                </Control>
+                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
+            </Dialog>
+        </UI>
+    </Fragment>
+    <!-- PAGE 4 CUSTOM TEXTS/BITMAP -->
+    <Fragment>
+        <UI>
+            <Dialog Id="UserConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Id="UserConfigurationInfo" Type="Text" X="45" Y="43" Width="300" Height="45" TabSkip="no" Text="!(loc.UserConfigurationInfo)" />
+                <Control Id="V1BitmapPathLabel" Type="Text" X="45" Y="88" Width="220" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
+                <Control Id="V1BitmapPathEdit" Type="Edit" X="45" Y="100" Width="220" Height="18" Property="V1_BITMAP_PATH" Text="{1024}" />
+                <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
+                    <Publish Event="SpawnDialog" Value="V1BitmapPathInfoDlg">1</Publish>
+                </Control>
+                <Control Id="LoginTextLabel" Type="Text" X="45" Y="120" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
+                <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
+                <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="131" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
+                    <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
+                </Control>
+                <Control Id="OTPTextLabel" Type="Text" X="45" Y="152" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
+                <Control Id="OTPTextEdit" Type="Edit" X="45" Y="164" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
+                <Control Id="DebugLog" Type="CheckBox" X="45" Y="185" Width="220" Height="17" Property="DEBUG_LOG" CheckBoxValue="1" Text="Create a detailed logfile. Use this for debugging." />
+                <!-- Bottom Controls NEXT / BACK, Top Banner -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="OfflineConfigurationDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+                    <!-- Re-populate the configuration to the registry -->
+                    <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
+                    <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>Customize the login.</Text>
+                </Control>
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>{\WixUI_Font_Title}Configuration 4/4</Text>
+                </Control>
+                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
+            </Dialog>
+        </UI>
+    </Fragment>
+    <Fragment>
+        <UI>
+            <Dialog Id="NoServerURLMessageDlg" Width="260" Height="85" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24" ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="ExclamIcon" />
+                <Control Id="Return" Type="PushButton" X="100" Y="57" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
+                    <Publish Event="EndDialog" Value="Return">1</Publish>
+                </Control>
+                <Control Id="Text" Type="Text" X="48" Y="15" Width="194" Height="30" TabSkip="no">
+                    <Text>
+						Please specify at least a hostname!
+						The path is optional.
+					</Text>
+                </Control>
+            </Dialog>
+        </UI>
+        <!-- Configuration Help -->
+        <UI>
+            <Dialog Id="ServerUrlInfoDlg" Width="500" Height="100" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24" ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="InfoIcon" />
+                <Control Id="Return" Type="PushButton" X="340" Y="80" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
+                    <Publish Event="EndDialog" Value="Return">1</Publish>
+                </Control>
+                <Control Id="Text1" Type="Text" X="48" Y="0" Width="482" Height="75" TabSkip="no" NoPrefix="yes" NoWrap="no">
+                    <Text>
+						!(loc.ServerUrlInfo)
+					</Text>
+                </Control>
+            </Dialog>
+        </UI>
+        <UI>
+            <Dialog Id="LoginTextInfoDlg" Width="500" Height="100" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24" ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="InfoIcon" />
+                <Control Id="Return" Type="PushButton" X="340" Y="80" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
+                    <Publish Event="EndDialog" Value="Return">1</Publish>
+                </Control>
+                <Control Id="Text1" Type="Text" X="48" Y="0" Width="482" Height="75" TabSkip="no" NoPrefix="yes" NoWrap="no">
+                    <Text>
+						!(loc.LoginTextInfo)
+					</Text>
+                </Control>
+            </Dialog>
+        </UI>
+        <UI>
+            <Dialog Id="V1BitmapPathInfoDlg" Width="500" Height="150" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Id="Icon" Type="Icon" X="15" Y="15" Width="24" Height="24" ToolTip="Information icon" FixedSize="yes" IconSize="32" Text="InfoIcon" />
+                <Control Id="Return" Type="PushButton" X="340" Y="130" Width="56" Height="17" Default="yes" Cancel="yes" Text="&amp;Return">
+                    <Publish Event="EndDialog" Value="Return">1</Publish>
+                </Control>
+                <Control Id="Text1" Type="Text" X="48" Y="0" Width="482" Height="125" TabSkip="no" NoPrefix="yes" NoWrap="no">
+                    <Text>
+						!(loc.V1BitmapPathInfo)
+					</Text>
+                </Control>
+            </Dialog>
+        </UI>
+        <!-- END Configuration Help -->
+    </Fragment>
 </Wix>

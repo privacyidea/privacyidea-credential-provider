@@ -315,38 +315,38 @@ HRESULT Utilities::SetScenario(
 
 	switch (scenario)
 	{
-	case SCENARIO::LOGON_BASE:
-		DebugPrint("SetScenario: LOGON_BASE");
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioDisplayAllFields);
-		break;
-	case SCENARIO::UNLOCK_BASE:
-		DebugPrint("SetScenario: UNLOCK_BASE");
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockPasswordOTP);
-		break;
-	case SCENARIO::SECOND_STEP:
-		DebugPrint("SetScenario: SECOND_STEP");
-		// Set the submit button next to the OTP field for the second step
-		pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_OTP);
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
-		break;
-	case SCENARIO::CHANGE_PASSWORD:
-		DebugPrint("SetScenario: CHANGE_PASSWORD");
-		// Set the submit button next to the repeat pw field
-		pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
-		break;
-	case SCENARIO::UNLOCK_TWO_STEP:
-		DebugPrint("SetScenario: UNLOCK_TWO_STEP");
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockFirstStepPassword);
-		break;
-	case SCENARIO::LOGON_TWO_STEP:
-		DebugPrint("SetScenario: LOGON_TWO_STEP");
-		hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
-		break;
-	case SCENARIO::NO_CHANGE:
-		DebugPrint("SetScenario: NO_CHANGE");
-	default:
-		break;
+		case SCENARIO::LOGON_BASE:
+			DebugPrint("SetScenario: LOGON_BASE");
+			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioDisplayAllFields);
+			break;
+		case SCENARIO::UNLOCK_BASE:
+			DebugPrint("SetScenario: UNLOCK_BASE");
+			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockPasswordOTP);
+			break;
+		case SCENARIO::SECOND_STEP:
+			DebugPrint("SetScenario: SECOND_STEP");
+			// Set the submit button next to the OTP field for the second step
+			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_OTP);
+			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioSecondStepOTP);
+			break;
+		case SCENARIO::CHANGE_PASSWORD:
+			DebugPrint("SetScenario: CHANGE_PASSWORD");
+			// Set the submit button next to the repeat pw field
+			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
+			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioPasswordChange);
+			break;
+		case SCENARIO::UNLOCK_TWO_STEP:
+			DebugPrint("SetScenario: UNLOCK_TWO_STEP");
+			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioUnlockFirstStepPassword);
+			break;
+		case SCENARIO::LOGON_TWO_STEP:
+			DebugPrint("SetScenario: LOGON_TWO_STEP");
+			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
+			break;
+		case SCENARIO::NO_CHANGE:
+			DebugPrint("SetScenario: NO_CHANGE");
+		default:
+			break;
 	}
 
 	if (_config->credential.passwordMustChange)
@@ -389,7 +389,8 @@ HRESULT Utilities::SetScenario(
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 		{
-			if (!_config->lastResponse.message.empty())
+			// Only set the message of the last server response if that response did not indicate sucess. The success message should not be shown.
+			if (!_config->lastResponse.message.empty() && !_config->lastResponse.value)
 			{
 				wstring wszMessage = Convert::ToWString(_config->lastResponse.message);
 				//DebugPrint(L"Setting message of challenge to small text: " + _config->challenge.message);
@@ -510,138 +511,137 @@ HRESULT Utilities::InitializeField(
 
 	switch (field_index)
 	{
-	case FID_NEW_PASS_1:
-	case FID_NEW_PASS_2:
-	case FID_OTP:
-	case FID_SUBMIT_BUTTON:
-	{
-		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		break;
-	}
-	case FID_LDAP_PASS:
-	{
-		if (!_config->credential.password.empty())
-		{
-			hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
-		}
-		else
+		case FID_NEW_PASS_1:
+		case FID_NEW_PASS_2:
+		case FID_OTP:
+		case FID_SUBMIT_BUTTON:
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			break;
 		}
-		break;
-	}
-	case FID_SUBTEXT:
-	{
-		wstring text = L"";
-		if (_config->showDomainHint)
+		case FID_LDAP_PASS:
 		{
-			text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
-		}
-		hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
-
-		break;
-	}
-	case FID_USERNAME:
-	{
-		hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
-		//DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
-		break;
-	}
-	case FID_LARGE_TEXT:
-	{
-		// This is the USERNAME field which is displayed in the list of users to the right
-		if (!loginText.empty())
-		{
-			hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
-		}
-		else
-		{
-			hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
-		}
-		//DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
-		break;
-	}
-	case FID_SMALL_TEXT:
-	{
-		// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
-		// and the name is displayed in this field instead (or hidden)
-		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
-			&& !hide_fullname && !hide_domainname)
-		{
-			if (!domain_name.empty())
+			if (!_config->credential.password.empty())
 			{
-				wstring fullName = user_name + L"@" + domain_name;
-
-				hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
-			}
-			else if (!user_name.empty())
-			{
-				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
 			}
 			else
 			{
 				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			}
+			break;
 		}
-		else if (!user_name.empty() && hide_domainname && !hide_fullname)
+		case FID_SUBTEXT:
 		{
-			hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+			wstring text = L"";
+			if (_config->showDomainHint)
+			{
+				text = GetTranslatedText(TEXT_DOMAIN_HINT) + _config->credential.domain;
+			}
+			hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
+
+			break;
 		}
-		else if (hide_fullname)
+		case FID_USERNAME:
+		{
+			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
+			//DebugPrint(L"Setting username: " + wstring(rgFieldStrings[field_index]));
+			break;
+		}
+		case FID_LARGE_TEXT:
+		{
+			// This is the USERNAME field which is displayed in the list of users to the right
+			if (!loginText.empty())
+			{
+				hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
+			}
+			else
+			{
+				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
+			}
+			//DebugPrint(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
+			break;
+		}
+		case FID_SMALL_TEXT:
+		{
+			// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
+			// and the name is displayed in this field instead (or hidden)
+			if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
+				&& !hide_fullname && !hide_domainname)
+			{
+				if (!domain_name.empty())
+				{
+					wstring fullName = user_name + L"@" + domain_name;
+
+					hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
+				}
+				else if (!user_name.empty())
+				{
+					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+				}
+				else
+				{
+					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+				}
+			}
+			else if (!user_name.empty() && hide_domainname && !hide_fullname)
+			{
+				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+			}
+			else if (hide_fullname)
+			{
+				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			}
+			else
+			{
+				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			}
+			//DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
+			break;
+		}
+		case FID_LOGO:
+		{
+			hr = S_OK;
+			break;
+		}
+		case FID_COMMANDLINK:
+		{
+			wstring wszCommandLinkText = Utilities::GetTranslatedText(TEXT_RESET_LINK).c_str();
+			//DebugPrint(L"command link: " + wszCommandLinkText);
+			hr = SHStrDupW(wszCommandLinkText.c_str(), &rgFieldStrings[field_index]);
+			break;
+		}
+		default:
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			break;
 		}
-		else
-		{
-			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		}
-		//DebugPrint(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
-		break;
 	}
-	case FID_LOGO:
-	{
-		hr = S_OK;
-		break;
-	}
-	case FID_COMMANDLINK:
-	{
-		wstring wszCommandLinkText = Utilities::GetTranslatedText(TEXT_RESET_LINK).c_str();
-		//DebugPrint(L"command link: " + wszCommandLinkText);
-		hr = SHStrDupW(wszCommandLinkText.c_str(), &rgFieldStrings[field_index]);
-		break;
-	}
-	default:
-	{
-		hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
-		break;
-	}
-	}
-	//DebugPrintLn(rgFieldStrings[field_index]);
 	return hr;
 }
 
-HRESULT Utilities::ReadInputsToConfig()
+HRESULT Utilities::CopyInputsToConfig()
 {
 	DebugPrint(__FUNCTION__);
 	// Currently, no real fine tuning is required
 	switch (_config->provider.cpu)
 	{
-	case CPUS_LOGON:
-	case CPUS_UNLOCK_WORKSTATION:
-	case CPUS_CREDUI:
-	{
-		if (!_config->credential.passwordMustChange)
+		case CPUS_LOGON:
+		case CPUS_UNLOCK_WORKSTATION:
+		case CPUS_CREDUI:
 		{
-			ReadUserField();
-			ReadPasswordField();
-			ReadOTPField();
+			if (!_config->credential.passwordMustChange)
+			{
+				ReadUserField();
+				ReadPasswordField();
+				ReadOTPField();
+			}
+			else
+			{
+				ReadPasswordChangeFields();
+			}
+			break;
 		}
-		else
-		{
-			ReadPasswordChangeFields();
-		}
-		break;
-	}
 
 	}
 	return S_OK;
@@ -664,33 +664,13 @@ HRESULT Utilities::ReadUserField()
 	{
 		wstring input(_config->provider.field_strings[FID_USERNAME]);
 		DebugPrint(L"Loading user and domain from GUI: '" + input + L"'");
-		wstring user_name, domain_name;
+		wstring username, domain;
 
-		auto pos = input.find(L'\\');
-		if (pos == std::string::npos)
-		{
-			pos = input.find('@');
-			if (pos != std::string::npos)
-			{
-				user_name = input.substr(0, pos - 1);
-				domain_name = input.substr(pos + 1, input.length());
-			}
-			else
-			{
-				// only user input, copy string
-				user_name = wstring(input);
-			}
-		}
-		else
-		{
-			// Actually split DOMAIN\USER
-			user_name = wstring(input.substr(pos + 1, input.size()));
-			domain_name = wstring(input.substr(0, pos));
-		}
+		Utilities::SplitUserAndDomain(input, username, domain);
 
-		if (!user_name.empty())
+		if (!username.empty())
 		{
-			wstring newUsername(user_name);
+			wstring newUsername(username);
 			DebugPrint(L"Changing user from '" + _config->credential.username + L"' to '" + newUsername + L"'");
 			_config->credential.username = newUsername;
 		}
@@ -699,9 +679,9 @@ HRESULT Utilities::ReadUserField()
 			DebugPrint(L"Username is empty, keeping old value: '" + _config->credential.username + L"'");
 		}
 
-		if (!domain_name.empty())
+		if (!domain.empty())
 		{
-			wstring newDomain(domain_name);
+			wstring newDomain(domain);
 			if (newDomain == L".")
 			{
 				newDomain = Utilities::ComputerName();
@@ -778,15 +758,28 @@ HRESULT Utilities::ResetScenario(
 	ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
 {
 	DebugPrint(__FUNCTION__);
-	// 2 step progress is reset aswell, therefore put the submit button next to the password field again
-	_config->isSecondStep = false;
-	pCredProvCredentialEvents->SetFieldSubmitButton(pSelf, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
+	// For remote connections only reset the second step, because username+password has already been verified when initializing the
+	// remote connection
+	const bool isRemote = _config->isRemoteSession;
+	if (!isRemote)
+	{
+		// 2 step progress is reset aswell, therefore put the submit button next to the password field again
+		_config->isSecondStep = false;
+		pCredProvCredentialEvents->SetFieldSubmitButton(pSelf, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
+	}
 
 	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
 		if (_config->twoStepHideOTP)
 		{
-			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_TWO_STEP);
+			if (isRemote)
+			{
+				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+			}
+			else
+			{
+				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_TWO_STEP);
+			}
 		}
 		else
 		{
@@ -797,7 +790,14 @@ HRESULT Utilities::ResetScenario(
 	{
 		if (_config->twoStepHideOTP)
 		{
-			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
+			if (isRemote)
+			{
+				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+			}
+			else
+			{
+				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
+			}
 		}
 		else
 		{
@@ -825,3 +825,34 @@ std::wstring Utilities::ComputerName()
 	}
 	return ret;
 }
+
+void Utilities::SplitUserAndDomain(const std::wstring& input, std::wstring& username, std::wstring& domain)
+{
+	auto pos = input.find(L'\\');
+	if (pos == std::string::npos)
+	{
+		pos = input.find('@');
+		if (pos != std::string::npos)
+		{
+			username = input.substr(0, pos);
+			domain = input.substr(pos + 1, input.length());
+		}
+		else
+		{
+			// only user input, copy string
+			username = wstring(input);
+		}
+	}
+	else
+	{
+		// Actually split DOMAIN\USER
+		username = wstring(input.substr(pos + 1, input.size()));
+		domain = wstring(input.substr(0, pos));
+	}
+
+	if (domain == L".")
+	{
+		domain = Utilities::ComputerName();
+	}
+}
+

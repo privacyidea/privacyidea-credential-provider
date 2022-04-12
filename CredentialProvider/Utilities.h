@@ -86,13 +86,22 @@ public:
 		DWORD field_index
 	);
 
-	HRESULT ReadInputsToConfig();
+	HRESULT CopyInputsToConfig();
 
 	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
 
 	HRESULT ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents);
 
 	static std::wstring ComputerName();
+
+	/// <summary>
+	/// Split the input into user and domain. The possible formats are: domain\user and user@domain, check in that order.
+	/// If no '\' or '@' exsists in the input, the whole input is assumed to be the username.
+	/// </summary>
+	/// <param name="input"></param>
+	/// <param name="username"></param>
+	/// <param name="domain"></param>
+	static void SplitUserAndDomain(const std::wstring& input, std::wstring& username, std::wstring& domain);
 
 private:
 	std::shared_ptr<Configuration> _config;

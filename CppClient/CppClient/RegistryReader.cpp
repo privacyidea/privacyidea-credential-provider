@@ -113,6 +113,7 @@ bool RegistryReader::GetAllEntries(const std::wstring& path, std::map<std::wstri
 			}
 		}
 	}
+
 	RegCloseKey(hKey);
 	return true;
 }
@@ -167,3 +168,5 @@ int RegistryReader::GetIntRegistry(std::wstring name) noexcept
 {
 	return _wtoi(GetWStringRegistry(name).c_str()); // Invalid parameter returns 0
 }
+
+
