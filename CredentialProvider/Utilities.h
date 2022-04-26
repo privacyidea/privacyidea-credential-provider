@@ -125,7 +125,9 @@ private:
 #define TEXT_WRONG_PASSWORD 8
 #define TEXT_DEFAULT_OTP_HINT 9
 #define TEXT_RESET_LINK 10
+#define TEXT_AVAILABLE_OFFLINE_TOKEN 11
+#define TEXT_OTPS_REMAINING 12
 
-	const static std::wstring texts[11][2];
+	const static std::wstring texts[13][2];
 };
 

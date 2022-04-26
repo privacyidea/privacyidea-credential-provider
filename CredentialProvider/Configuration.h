@@ -73,7 +73,7 @@ public:
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
-	int offlineTreshold = 10;
+	int offlineTreshold = 20;
 	bool showOfflineInfo = true; // TODO
 
 	struct PROVIDER

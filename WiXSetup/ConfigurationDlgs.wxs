@@ -92,7 +92,7 @@
                         <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
                         <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
                         <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
-                        <RadioButton Text="None" Height="17" Value="0d" Width="40" X="0" Y="0" />
+                        <RadioButton Text="None" Height="17" Value="0e" Width="40" X="0" Y="0" />
                     </RadioButtonGroup>
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
@@ -103,7 +103,7 @@
                         <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
                         <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
                         <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
-                        <RadioButton Text="None" Height="17" Value="0d" Width="40" X="0" Y="0" />
+                        <RadioButton Text="None" Height="17" Value="0e" Width="40" X="0" Y="0" />
                     </RadioButtonGroup>
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
@@ -114,7 +114,7 @@
                         <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
                         <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
                         <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
-                        <RadioButton Text="None" Height="17" Value="0d" Width="40" X="0" Y="0" />
+                        <RadioButton Text="None" Height="17" Value="0e" Width="40" X="0" Y="0" />
                     </RadioButtonGroup>
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>

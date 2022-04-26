@@ -18,8 +18,7 @@ The configuration is located at
 ``Computer\HKEY_LOCAL_MACHINE\SOFTWARE\NetKnights GmbH\PrivacyIDEA-CP\``.
 
 
-NOTE: Not all registry entries listed below will be generated from installing the credential provider.
-Those have to be added manually.
+NOTE: If an entry is missing, you can just create a new entry of type REG_SZ with the corresponding name.
 
 Connection Settings
 ~~~~~~~~~~~~~~~~~~~
@@ -64,6 +63,10 @@ Login behaviour
 Using these settings you can specify the behaviour of the privacyIDEA Credential Provider. The credential provider
 can ask for the username, the password and the otp value in one step or in two steps.
 
+**enable_filter**
+
+This setting is introduced in v3.2. Set this to ``1`` to disable all other Credential Providers so that only this one will be usable.
+
 **two_step_hide_otp**
 
 Set to ``1`` if the privacyIDEA Credential Provider should ask for the user's OTP in a second step. In the first step the user will only be asked for the password.
@@ -77,7 +80,7 @@ Set to ``1`` if the privacyIDEA Credential Provider should send the user's passw
 Set to ``1`` if the privacyIDEA Credential Provider should send an empty password to the privacyIDEA Authentication Service.
 
 NOTE: If both **two_step_send_password** and **two_step_send_empty_password** are set to ``1``, the privacyIDEA Credential Provider will send an empty password to the privacyIDEA Authentication Service.
-NOTE: Sending the windows or an empty password can be used to trigger token types like SMS or Email.
+NOTE: Sending the windows or an empty password can be used to trigger token types like SMS, Email or Push.
 
 **excluded_account**
 
@@ -94,6 +97,8 @@ It is possible to configure both the Credential Provider and the Filter [#f1]_ f
 This way the administrator can define a different behaviour if a users either logs in or
 unlocks his desktop.
 
+For the configurations in this section to take effect, the **enable_filter** setting has to be enabled in v3.2 or higher.
+
 The behaviour in each scenario can be configured via the corresponding registry
 entry named **cpus_logon**, **cpus_unlock** and **cpus_credui**.
 
@@ -109,20 +114,23 @@ The characters stand for:
 
 * "e": Only the privacyIDEA Credential Provider is available. All other
   credential providers are not available.
-* "d": In addition all other credential providers are available.
+* "d": The privacyIDEA Credential Provider will be available *in addition* to all other Credential Providers on the machine.
 
 E.g. This would result in:
 
 * ``cpus_logon = 0e``: Only the privacyIDEA Credential Provider is available for
-  Logon via remote and locally. (0d would be the contrary.)
+  Logon via remote and locally.
+
 * ``cpus_unlock = 1d``: Remotely the locked destop can be unlocked with all
-  available credential providers. (1e would be the contrary.)
+  available Credential Providers, including the privacyIDEA Credential Provider.
+
 * ``cpus_unlock = 2e``: Locally unlocking the desktop is only possible with the
-  privacyIDEA Credential Provider. (2d would be the contrary.)
-* ``cpus_credui = 3d``: For credui scenarios the privacyIDEA Credential Provider
-  is completely disabled, no matter if remotely or locally. Only the other
+  privacyIDEA Credential Provider.
+
+* ``cpus_credui = 3d``: For credui scenarios, the privacyIDEA Credential Provider
+  is disabled and will not be shown, no matter if remotely or locally. Only the other
   credential providers are available.
-  (Note: "3e" does not exist)
+  (Note: "3e" does not exist, because there would be no credential provider available)
 
 If there is no entry for a scenario, the default is assumed:
 The privacyIDEA Credential Provider will be available and the Filter will be active, if installed.
@@ -194,6 +202,14 @@ Set this to ``1`` to have the username field prefilled with the user that last l
 
 Set this to ``1`` to have a clickable text shown at the bottom which will reset the login.
 
+
+Offline token
+~~~~~~~~~~~~~
+
+HOTP token can be configured to be usable without a connection to privacyIDEA. On the detail page of the token, select Application => offline at the bottom.
+Now the token has to be used online once with the Credential Provider, to get the configured amount of OTPs in advance.
+The following settings can be useful with offline token:
+
 **offline_file**
 
 Specify the **absolute** path to where the offline file should be saved. The default is C:\offlineFile.json.
@@ -203,6 +219,15 @@ NOTE: Either txt or json file type is recommended.
 
 Specify how many offline values shall be compared to the input at max. Default is 10. A value of 0 equals the default.
 
+**offline_threshold**
+
+Specify the number of remaining OTP values below which a refill should be attempted. Refilling is done online and therefore requires a connection to the server.
+If the machine is really offline and refill is attempted, this will cause a timeout and thus slow down the login. 
+By default, refill is attempted after every successful offline authentication. However, if 100 offline values are available, it is not neccessary to try refilling after every authentication.
+
+**offline_show_info**
+
+Set this to ``1`` to show information about available offline token for the current user. This will trigger as soon as the input from the username field matches a user for which offline token are available.
 
 
 Realms

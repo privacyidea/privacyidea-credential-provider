@@ -95,16 +95,17 @@
         <Property Id="DEBUG_LOG">
             <RegistrySearch Id="SearchDebugLog" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="debug_log" Win64="$(var.Win64)" Type="raw" />
         </Property>
+		
         <Property Id="ENABLE_FILTER">
             <RegistrySearch Id="SearchEnableFilter" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_filter" Win64="$(var.Win64)" Type="raw" />
         </Property>
-        <Property Id="CPUS_LOGON" Value="0d">
+        <Property Id="CPUS_LOGON" Value="0e">
             <RegistrySearch Id="SearchCPUSLogon" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_logon" Win64="$(var.Win64)" Type="raw" />
         </Property>
-        <Property Id="CPUS_UNLOCK" Value="0d">
+        <Property Id="CPUS_UNLOCK" Value="0e">
             <RegistrySearch Id="SearchCPUSUnlock" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_unlock" Win64="$(var.Win64)" Type="raw" />
         </Property>
-        <Property Id="CPUS_CREDUI" Value="0d">
+        <Property Id="CPUS_CREDUI" Value="0e">
             <RegistrySearch Id="SearchCPUSCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
         </Property>
 		

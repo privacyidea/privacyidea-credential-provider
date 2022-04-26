@@ -13,7 +13,7 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 	_config = c;
 }
 
-const std::wstring Utilities::texts[11][2] = {
+const std::wstring Utilities::texts[13][2] = {
 		{L"Username", L"Benutzername"},
 		{L"Password", L"Kennwort"},
 		{L"Old Password", L"Altes Kennwort"},
@@ -24,7 +24,9 @@ const std::wstring Utilities::texts[11][2] = {
 		{L"Wrong One-Time Password!", L"Falsches Einmalpasswort!"},
 		{L"Wrong password", L"Das Kennwort ist falsch. Wiederholen Sie den Vorgang."},
 		{L"Please enter your second factor!", L"Bitte geben Sie Ihren zweiten Faktor ein!"},
-		{L"Reset Login", L"Login Zurücksetzten"}
+		{L"Reset Login", L"Login Zurücksetzten"},
+		{L"Available offline token:\n", L"Verfügbare offline token:\n"},
+		{L"OTPs left", L"OTPs verbleibend"}
 };
 
 std::wstring Utilities::GetTranslatedText(int id)
@@ -389,7 +391,7 @@ HRESULT Utilities::SetScenario(
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 		{
-			// Only set the message of the last server response if that response did not indicate sucess. The success message should not be shown.
+			// Only set the message of the last server response if that response did not indicate success. The success message should not be shown.
 			if (!_config->lastResponse.message.empty() && !_config->lastResponse.value)
 			{
 				wstring wszMessage = Convert::ToWString(_config->lastResponse.message);

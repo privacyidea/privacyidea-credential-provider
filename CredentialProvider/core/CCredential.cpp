@@ -416,7 +416,7 @@ HRESULT CCredential::SetStringValue(
 			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
 			wstring input(pwz);
 			wstring domain, username;
-			
+
 			Utilities::SplitUserAndDomain(input, username, domain);
 
 			// Set the domain hint to the domain that was found or to the initial domain that was provided
@@ -441,10 +441,12 @@ HRESULT CCredential::SetStringValue(
 					auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(Convert::ToString(username));
 					if (!offlineInfo.empty())
 					{
-						wstring message = L"Available Offline Token:\n";
+						wstring message = Utilities::GetTranslatedText(TEXT_AVAILABLE_OFFLINE_TOKEN);
 						for (auto& pair : offlineInfo)
 						{
-							message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" OTPs left)\n");
+							// <serial> (XX OTPs remaining)
+							message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
+								.append(Utilities::GetTranslatedText(TEXT_OTPS_REMAINING)).append(L")\n");
 						}
 
 						infoSet = true;
@@ -823,9 +825,9 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		if (offlineCheck)
 		{
 			res = _privacyIDEA.OfflineCheck(username, passToSend);
-
-			// Check if a OfflineRefill should be attempted
-			if ((res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username)) < _config->offlineTreshold)
+			// Check if a OfflineRefill should be attempted. Either if offlineThreshold is not set, remaining OTPs are below the threshold, or no more OTPs are available.
+			if ((res == S_OK && _config->offlineTreshold == 0)
+				|| (res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username)) < _config->offlineTreshold)
 				|| res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 			{
 				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend);
@@ -902,10 +904,10 @@ HRESULT CCredential::ReportResult(
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
 	// These status require a complete reset so that there will be no lock out in 2nd step
-	if (ntsStatus == STATUS_LOGON_FAILURE || ntsStatus == STATUS_LOGON_TYPE_NOT_GRANTED 
+	if (ntsStatus == STATUS_LOGON_FAILURE || ntsStatus == STATUS_LOGON_TYPE_NOT_GRANTED
 		|| ntsStatus == STATUS_ACCOUNT_RESTRICTION)
 	{
-		DebugPrint("complete reset!");
+		DebugPrint("Complete reset!");
 		_authenticationComplete = false;
 		_util.ResetScenario(this, _pCredProvCredentialEvents);
 		return S_OK;
