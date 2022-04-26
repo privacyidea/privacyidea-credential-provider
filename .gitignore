@@ -21,3 +21,4 @@ Shared/Debug
 CppClientCore/CppClientCore/Win32/
 Release/
 Credential_Provider_Technical_Reference.xps
+CppClient/nlohmann/json.hpp

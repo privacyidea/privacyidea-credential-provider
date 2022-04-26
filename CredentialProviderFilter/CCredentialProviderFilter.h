@@ -83,5 +83,8 @@ class CCredentialProviderFilter : public ICredentialProviderFilter
 	__override ~CCredentialProviderFilter(); 
 
 	private: 
-	LONG _cRef; 
+	LONG _cRef;
+
+private:
+	bool _filterEnabled = false;
 }; 

@@ -411,26 +411,53 @@ HRESULT CCredential::SetStringValue(
 		CoTaskMemFree(*ppwszStored);
 		hr = SHStrDupW(pwz, ppwszStored);
 
-		// Check if new domain was entered or reset to default domain
 		if (dwFieldID == FID_USERNAME)
 		{
+			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
 			wstring input(pwz);
-			size_t pos = input.find(L'\\');
-			if (pos != std::string::npos)
+			wstring domain, username;
+
+			Utilities::SplitUserAndDomain(input, username, domain);
+
+			// Set the domain hint to the domain that was found or to the initial domain that was provided
+			// when the credential was created
+			if (!domain.empty())
 			{
-				SetDomainHint(input.substr(0, pos));
+				SetDomainHint(domain);
 			}
 			else
 			{
-				pos = input.find(L'@');
-				if (pos != std::string::npos)
+				SetDomainHint(_initialDomain);
+				_config->credential.domain = _initialDomain;
+			}
+
+			// Set the serial and remaining offline OTPs as hint if the setting is enabled
+			// If no offline token are found for the current input, hide the field
+			if (_config->showOfflineInfo)
+			{
+				bool infoSet = false;
+				if (!username.empty())
 				{
-					SetDomainHint(input.substr(pos + 1, input.length()));
+					auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(Convert::ToString(username));
+					if (!offlineInfo.empty())
+					{
+						wstring message = Utilities::GetTranslatedText(TEXT_AVAILABLE_OFFLINE_TOKEN);
+						for (auto& pair : offlineInfo)
+						{
+							// <serial> (XX OTPs remaining)
+							message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
+								.append(Utilities::GetTranslatedText(TEXT_OTPS_REMAINING)).append(L")\n");
+						}
+
+						infoSet = true;
+						_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_DISPLAY_IN_SELECTED_TILE);
+						_pCredProvCredentialEvents->SetFieldString(this, FID_OFFLINE_INFO, message.c_str());
+					}
 				}
-				else
+
+				if (!infoSet)
 				{
-					SetDomainHint(_initialDomain);
-					_config->credential.domain = _initialDomain;
+					_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
 				}
 			}
 		}
@@ -447,12 +474,7 @@ HRESULT CCredential::SetDomainHint(std::wstring domain)
 {
 	if (_config->showDomainHint && !domain.empty())
 	{
-		wstring actualDomain = domain;
-		if (domain == L".")
-		{
-			actualDomain = Utilities::ComputerName();
-		}
-		wstring text = Utilities::GetTranslatedText(TEXT_DOMAIN_HINT) + actualDomain;
+		wstring text = Utilities::GetTranslatedText(TEXT_DOMAIN_HINT) + domain;
 		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, text.c_str());
 	}
 	return S_OK;
@@ -728,7 +750,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	UNREFERENCED_PARAMETER(pqcws);
 
 	_config->provider.field_strings = _rgFieldStrings;
-	_util.ReadInputsToConfig();
+	_util.CopyInputsToConfig();
 
 	wstring username = _config->credential.username;
 	wstring domain = _config->credential.domain;
@@ -762,7 +784,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	// Evaluate if and what should be sent to the server depending on the step and configuration
 	bool sendSomething = false, offlineCheck = false;
 	wstring passToSend;
-	PIResponse pir;
+	PIResponse piResponse;
 
 	if (_config->twoStepHideOTP && !_config->isSecondStep)
 	{
@@ -803,9 +825,9 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		if (offlineCheck)
 		{
 			res = _privacyIDEA.OfflineCheck(username, passToSend);
-
-			// Check if a OfflineRefill should be attempted
-			if ((res == S_OK && _privacyIDEA.GetOfflineOTPCount(username) < _config->offlineTreshold)
+			// Check if a OfflineRefill should be attempted. Either if offlineThreshold is not set, remaining OTPs are below the threshold, or no more OTPs are available.
+			if ((res == S_OK && _config->offlineTreshold == 0)
+				|| (res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username)) < _config->offlineTreshold)
 				|| res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 			{
 				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend);
@@ -826,28 +848,28 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		{
 			// In case of a single step the transactionId will be an empty string
 			string transactionId = _config->lastResponse.transactionId;
-			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, pir, transactionId);
+			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, piResponse, transactionId);
 
 			// Evaluate the response
 			if (SUCCEEDED(res))
 			{
-				_config->lastResponse = pir;
+				_config->lastResponse = piResponse;
 				// Always show the OTP field, if push was triggered, start polling in background
-				if (pir.PushAvailable())
+				if (piResponse.PushAvailable())
 				{
 					// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
-					_privacyIDEA.PollTransactionAsync(_config->credential.username, _config->credential.domain, pir.transactionId,
+					_privacyIDEA.PollTransactionAsync(_config->credential.username, _config->credential.domain, piResponse.transactionId,
 						std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
 				}
 
-				if (!pir.challenges.empty())
+				if (!piResponse.challenges.empty())
 				{
 					DebugPrint("Challenges have been triggered");
 					_authenticationComplete = false;
 				}
 				else
 				{
-					_authenticationComplete = pir.value;
+					_authenticationComplete = piResponse.value;
 				}
 			}
 		}
@@ -875,11 +897,21 @@ HRESULT CCredential::ReportResult(
 )
 {
 	DebugPrint(__FUNCTION__);
-	DebugPrint("ntsStatus: " + Convert::LongToHexString(ntsSubstatus)
+	DebugPrint("ntsStatus: " + Convert::LongToHexString(ntsStatus)
 		+ ", ntsSubstatus: " + Convert::LongToHexString(ntsSubstatus));
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
+
+	// These status require a complete reset so that there will be no lock out in 2nd step
+	if (ntsStatus == STATUS_LOGON_FAILURE || ntsStatus == STATUS_LOGON_TYPE_NOT_GRANTED
+		|| ntsStatus == STATUS_ACCOUNT_RESTRICTION)
+	{
+		DebugPrint("Complete reset!");
+		_authenticationComplete = false;
+		_util.ResetScenario(this, _pCredProvCredentialEvents);
+		return S_OK;
+	}
 
 	if (_config->credential.passwordMustChange && ntsStatus == 0 && ntsSubstatus == 0)
 	{

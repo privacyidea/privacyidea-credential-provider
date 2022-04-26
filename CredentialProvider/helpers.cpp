@@ -218,24 +218,24 @@ HRESULT KerbInteractiveUnlockLogonInit(
 				// Set a MessageType based on the usage scenario.
 				switch (cpus)
 				{
-				case CPUS_UNLOCK_WORKSTATION:
-					pkil->MessageType = KerbWorkstationUnlockLogon;
-					hr = S_OK;
-					break;
+					case CPUS_UNLOCK_WORKSTATION:
+						pkil->MessageType = KerbWorkstationUnlockLogon;
+						hr = S_OK;
+						break;
 
-				case CPUS_LOGON:
-					pkil->MessageType = KerbInteractiveLogon;
-					hr = S_OK;
-					break;
+					case CPUS_LOGON:
+						pkil->MessageType = KerbInteractiveLogon;
+						hr = S_OK;
+						break;
 
-				case CPUS_CREDUI:
-					pkil->MessageType = (KERB_LOGON_SUBMIT_TYPE)0; // MessageType does not apply to CredUI
-					hr = S_OK;
-					break;
+					case CPUS_CREDUI:
+						pkil->MessageType = (KERB_LOGON_SUBMIT_TYPE)0; // MessageType does not apply to CredUI
+						hr = S_OK;
+						break;
 
-				default:
-					hr = E_FAIL;
-					break;
+					default:
+						hr = E_FAIL;
+						break;
 				}
 
 				if (SUCCEEDED(hr))

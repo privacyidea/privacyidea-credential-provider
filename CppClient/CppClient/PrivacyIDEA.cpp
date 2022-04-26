@@ -125,7 +125,7 @@ HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstr
 	{
 		for (auto& item : offlineData)
 		{
-			_offlineHandler.AddOfflineData(item);
+			offlineHandler.AddOfflineData(item);
 		}
 	}
 	res = _parser.ParsePIResponse(response, responseObj);
@@ -141,11 +141,11 @@ HRESULT PrivacyIDEA::OfflineCheck(const std::wstring& username, const std::wstri
 	DebugPrint(__FUNCTION__);
 	string szUsername = Convert::ToString(username);
 
-	HRESULT res = _offlineHandler.DataVailable(szUsername);
+	HRESULT res = offlineHandler.DataVailable(szUsername);
 	if (res == S_OK)
 	{
 		DebugPrint("Offline data available for " + szUsername + ", verifying OTP...");
-		res = _offlineHandler.VerifyOfflineOTP(otp, szUsername);
+		res = offlineHandler.VerifyOfflineOTP(otp, szUsername);
 		DebugPrint("Offline verification result: " + Convert::LongToHexString(res));
 	}
 	else if (res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
@@ -162,7 +162,7 @@ HRESULT PrivacyIDEA::OfflineRefill(std::wstring username, std::wstring lastOTP)
 	string szUsername = Convert::ToString(username);
 	string szLastOTP = Convert::ToString(lastOTP);
 
-	HRESULT hr = _offlineHandler.GetRefillTokenAndSerial(szUsername, refilltoken, serial);
+	HRESULT hr = offlineHandler.GetRefillTokenAndSerial(szUsername, refilltoken, serial);
 	if (hr != S_OK)
 	{
 		DebugPrint("Failed to get parameters for offline refill!");
@@ -185,13 +185,8 @@ HRESULT PrivacyIDEA::OfflineRefill(std::wstring username, std::wstring lastOTP)
 
 	OfflineData data;
 	hr = _parser.ParseRefillResponse(response, szUsername, data);
-	_offlineHandler.AddOfflineData(data);
+	offlineHandler.AddOfflineData(data);
 	return hr;
-}
-
-size_t PrivacyIDEA::GetOfflineOTPCount(const std::wstring& username)
-{
-	return _offlineHandler.GetOfflineOTPCount(Convert::ToString(username));
 }
 
 bool PrivacyIDEA::StopPoll()

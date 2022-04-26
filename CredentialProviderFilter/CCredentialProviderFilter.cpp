@@ -29,10 +29,14 @@
 #include "Logger.h"
 #include "Shared.h"
 #include <unknwn.h>
+#include <RegistryReader.h>
 
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
-	DebugPrint(__FUNCTION__);
+	RegistryReader rr(CONFIG_REGISTRY_PATH);
+	Logger::Get().logDebug = rr.GetBoolRegistry(L"debug_log");
+
+	DebugPrint(std::string(__FUNCTION__) + " - FILTER START");
 	HRESULT hr;
 
 	CCredentialProviderFilter* pProvider = new CCredentialProviderFilter();
@@ -54,7 +58,16 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 	BOOL* rgbAllow, DWORD cProviders)
 {
 	UNREFERENCED_PARAMETER(dwFlags);
-	DebugPrint(std::string(__FUNCTION__) + ": " + Shared::CPUStoString(cpus));
+	DebugPrint(std::string(__FUNCTION__) + " " + Shared::CPUStoString(cpus));
+
+	RegistryReader rr(CONFIG_REGISTRY_PATH);
+	_filterEnabled = rr.GetBoolRegistry(L"enable_filter");
+
+	if (!_filterEnabled)
+	{
+		DebugPrint("Filter disabled by registry setting!");
+		return S_OK;
+	}
 
 	switch (cpus)
 	{

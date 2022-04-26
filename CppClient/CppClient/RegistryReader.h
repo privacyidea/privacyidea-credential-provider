@@ -40,5 +40,5 @@ public:
 	bool GetBoolRegistry(std::wstring name) noexcept;
 
 	int GetIntRegistry(std::wstring name) noexcept;
-};
 
+};

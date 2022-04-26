@@ -94,18 +94,18 @@ HRESULT CProvider::SetUsageScenario(
 
 	switch (cpus)
 	{
-	case CPUS_LOGON:
-	case CPUS_UNLOCK_WORKSTATION:
-	case CPUS_CREDUI:
-		hr = S_OK;
-		break;
-	case CPUS_CHANGE_PASSWORD:
-	case CPUS_PLAP:
-	case CPUS_INVALID:
-		hr = E_NOTIMPL;
-		break;
-	default:
-		return E_INVALIDARG;
+		case CPUS_LOGON:
+		case CPUS_UNLOCK_WORKSTATION:
+		case CPUS_CREDUI:
+			hr = S_OK;
+			break;
+		case CPUS_CHANGE_PASSWORD:
+		case CPUS_PLAP:
+		case CPUS_INVALID:
+			hr = E_NOTIMPL;
+			break;
+		default:
+			return E_INVALIDARG;
 	}
 
 	if (hr == S_OK)
@@ -291,24 +291,24 @@ HRESULT CProvider::GetFieldDescriptorAt(
 		wstring label = L"";
 		switch (dwIndex)
 		{
-		case FID_USERNAME:
-			label = Utilities::GetTranslatedText(TEXT_USERNAME);
-			break;
-		case FID_LDAP_PASS:
-			label = Utilities::GetTranslatedText(TEXT_PASSWORD);
-			break;
-		case FID_NEW_PASS_1:
-			label = Utilities::GetTranslatedText(TEXT_NEW_PASSWORD);
-			break;
-		case FID_NEW_PASS_2:
-			label = Utilities::GetTranslatedText(TEXT_CONFIRM_PASSWORD);
-			break;
-		case FID_OTP:
-			label = _config->otpFieldText;
-			if (label.empty())
-				label = Utilities::GetTranslatedText(TEXT_OTP);
-			break;
-		default: break;
+			case FID_USERNAME:
+				label = Utilities::GetTranslatedText(TEXT_USERNAME);
+				break;
+			case FID_LDAP_PASS:
+				label = Utilities::GetTranslatedText(TEXT_PASSWORD);
+				break;
+			case FID_NEW_PASS_1:
+				label = Utilities::GetTranslatedText(TEXT_NEW_PASSWORD);
+				break;
+			case FID_NEW_PASS_2:
+				label = Utilities::GetTranslatedText(TEXT_CONFIRM_PASSWORD);
+				break;
+			case FID_OTP:
+				label = _config->otpFieldText;
+				if (label.empty())
+					label = Utilities::GetTranslatedText(TEXT_OTP);
+				break;
+			default: break;
 		}
 
 		if (!label.empty())
@@ -582,15 +582,15 @@ bool CProvider::_SerializationAvailable(SERIALIZATION_AVAILABLE checkFor)
 	{
 		switch (checkFor)
 		{
-		case SERIALIZATION_AVAILABLE::FOR_USERNAME:
-			result = _pkiulSetSerialization->Logon.UserName.Length && _pkiulSetSerialization->Logon.UserName.Buffer;
-			break;
-		case SERIALIZATION_AVAILABLE::FOR_PASSWORD:
-			result = _pkiulSetSerialization->Logon.Password.Length && _pkiulSetSerialization->Logon.Password.Buffer;
-			break;
-		case SERIALIZATION_AVAILABLE::FOR_DOMAIN:
-			result = _pkiulSetSerialization->Logon.LogonDomainName.Length && _pkiulSetSerialization->Logon.LogonDomainName.Buffer;
-			break;
+			case SERIALIZATION_AVAILABLE::FOR_USERNAME:
+				result = _pkiulSetSerialization->Logon.UserName.Length && _pkiulSetSerialization->Logon.UserName.Buffer;
+				break;
+			case SERIALIZATION_AVAILABLE::FOR_PASSWORD:
+				result = _pkiulSetSerialization->Logon.Password.Length && _pkiulSetSerialization->Logon.Password.Buffer;
+				break;
+			case SERIALIZATION_AVAILABLE::FOR_DOMAIN:
+				result = _pkiulSetSerialization->Logon.LogonDomainName.Length && _pkiulSetSerialization->Logon.LogonDomainName.Buffer;
+				break;
 		}
 	}
 

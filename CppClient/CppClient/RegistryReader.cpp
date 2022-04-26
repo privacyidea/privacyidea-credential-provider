@@ -113,6 +113,7 @@ bool RegistryReader::GetAllEntries(const std::wstring& path, std::map<std::wstri
 			}
 		}
 	}
+
 	RegCloseKey(hKey);
 	return true;
 }

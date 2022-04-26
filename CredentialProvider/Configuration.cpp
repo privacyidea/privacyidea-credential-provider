@@ -62,7 +62,7 @@ void Configuration::Load()
 	prefillUsername = rr.GetBoolRegistry(L"prefill_username");
 	showResetLink = rr.GetBoolRegistry(L"enable_reset");
 	offlineTreshold = rr.GetIntRegistry(L"offline_threshold");
-
+	showOfflineInfo = rr.GetBoolRegistry(L"offline_show_info");
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.GetWStringRegistry(L"hostname");
 	// Check if the path contains the placeholder, if so set path to empty string
