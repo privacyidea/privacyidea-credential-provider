@@ -1,4 +1,4 @@
-# Version 3.2, TBD
+# Version 3.2.0, 2022-05-03
 
 ## Features
  * Multiple offline token for multiple users are possible now
