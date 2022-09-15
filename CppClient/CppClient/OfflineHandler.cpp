@@ -19,6 +19,7 @@
 
 #include "OfflineHandler.h"
 #include "JsonParser.h"
+#include "Convert.h"
 #include <iostream>
 #include <fstream>
 #include <atlenc.h>
@@ -85,7 +86,7 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 
 	for (auto& item : dataSets)
 	{
-		if (item.username == username)
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
 		{
 			DebugPrint("Trying token " + item.serial);
 			const int lowestKey = item.GetLowestKey();
@@ -134,7 +135,7 @@ HRESULT OfflineHandler::GetRefillTokenAndSerial(const std::string& username, std
 {
 	for (const auto& item : dataSets)
 	{
-		if (item.username == username)
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
 		{
 			if (item.serial.empty() || item.refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
 			refilltoken = string(item.refilltoken);;
@@ -150,7 +151,7 @@ HRESULT OfflineHandler::DataVailable(const std::string& username)
 {
 	for (auto& item : dataSets)
 	{
-		if (item.username == username)
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
 		{
 			return (item.offlineOTPs.empty() ? PI_OFFLINE_DATA_NO_OTPS_LEFT : S_OK);
 		}
@@ -165,7 +166,7 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 	bool done = false;
 	for (auto& existing : dataSets)
 	{
-		if (existing.username == data.username && existing.serial == data.serial)
+		if (Convert::ToUpperCase(existing.username) == Convert::ToUpperCase(data.username) && existing.serial == data.serial)
 		{
 			DebugPrint("Offline: Updating exsisting user data for " + data.username + " and token " + data.serial);
 			existing.refilltoken = data.refilltoken;
@@ -191,7 +192,7 @@ size_t OfflineHandler::GetOfflineOTPCount(const std::string& username)
 {
 	for (auto& item : dataSets)
 	{
-		if (item.username == username)
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
 		{
 			return item.offlineOTPs.size();
 		}
@@ -205,7 +206,7 @@ std::vector<std::pair<std::string, size_t>> OfflineHandler::GetTokenInfo(const s
 	std::vector<std::pair<std::string, size_t>> ret;
 	for (auto& item : dataSets)
 	{
-		if (item.username == username)
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
 		{
 			ret.push_back(make_pair(item.serial, item.offlineOTPs.size()));
 		}

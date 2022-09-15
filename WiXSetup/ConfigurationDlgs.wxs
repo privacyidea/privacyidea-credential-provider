@@ -56,7 +56,7 @@
                 <Control Id="HideDomainName" Type="CheckBox" X="45" Y="202" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
                     <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
                 </Control>
-                <Control Id="ChangeSettingsLabel" Type="Text" X="45" Y="222" Width="220" Height="15" TabSkip="no" Text="{\Tahoma_Bold} These settings can be changed in the registry." />
+                <Control Id="ChangeSettingsLabel" Type="Text" X="94" Y="222" Width="220" Height="15" TabSkip="no" Text="{\Tahoma_Bold}All settings can be changed in the registry." />
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
                     <Publish Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
@@ -86,13 +86,13 @@
             <Dialog Id="FilterConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
                 <Control Type="CheckBox" Id="EnableFilter" Property="ENABLE_FILTER" CheckBoxValue="1" Width="300" Height="35" X="35" Y="45" Text="Enable Filter. This will by default remove all other Credential Providers. It is also required to be able to use the scenario specifc configurations below.">
                 </Control>
-                <Control Type="Text" Id="Label_Logon" Width="50" Height="10" X="33" Y="90" Text="{\Tahoma_Bold}Logon" />
+                <Control Type="Text" Id="Label_Logon" Width="300" Height="10" X="33" Y="90" Text="{\Tahoma_Bold}Logon" />
                 <Control Type="RadioButtonGroup" Property="CPUS_LOGON" Id="RadioButtonGroupCPUSLogon" Width="274" Height="20" X="35" Y="105">
                     <RadioButtonGroup Property="CPUS_LOGON">
-                        <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
-                        <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
-                        <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
-                        <RadioButton Text="None" Height="17" Value="0e" Width="40" X="0" Y="0" />
+                        <RadioButton Text="Local and Remote" Height="17" Value="0e" Width="85" X="0" Y="0" />
+                        <RadioButton Text="Local only" Height="17" Value="2e" Width="60" X="87" Y="0" />
+                        <RadioButton Text="Remote only" Height="17" Value="1e" Width="70" X="148" Y="0" />
+                        <RadioButton Text="Disabled" Height="17" Value="3e" Width="50" X="218" Y="0" />
                     </RadioButtonGroup>
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
@@ -100,21 +100,21 @@
                 <Control Type="Text" Id="Label_Unlock" Width="50" Height="10" X="33" Y="135" Text="{\Tahoma_Bold} Unlock" />
                 <Control Type="RadioButtonGroup" Property="CPUS_UNLOCK" Id="RadioButtonGroupCPUSUnlock" Width="274" Height="20" X="35" Y="150">
                     <RadioButtonGroup Property="CPUS_UNLOCK">
-                        <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
-                        <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
-                        <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
-                        <RadioButton Text="None" Height="17" Value="0e" Width="40" X="0" Y="0" />
+                        <RadioButton Text="Local and Remote" Height="17" Value="0e" Width="85" X="0" Y="0" />
+                        <RadioButton Text="Local only" Height="17" Value="2e" Width="60" X="87" Y="0" />
+                        <RadioButton Text="Remote only" Height="17" Value="1e" Width="70" X="148" Y="0" />
+                        <RadioButton Text="Disabled" Height="17" Value="3e" Width="50" X="218" Y="0" />
                     </RadioButtonGroup>
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
                 </Control>
-                <Control Type="Text" Id="Label_Credui" Width="200" Height="10" X="33" Y="180" Text="{\Tahoma_Bold}CredUI (e.g. Run as Administrator)" />
+                <Control Type="Text" Id="Label_Credui" Width="200" Height="10" X="33" Y="180" Text="{\Tahoma_Bold}CredUI (e.g. Run as Administrator prompt)" />
                 <Control Type="RadioButtonGroup" Property="CPUS_CREDUI" Id="RadioButtonGroupCPUSCredUI" Width="274" Height="20" X="35" Y="195">
                     <RadioButtonGroup Property="CPUS_CREDUI">
-                        <RadioButton Text="Only Remote" Height="17" Value="1e" Width="70" X="132" Y="0" />
-                        <RadioButton Text="Local and Remote" Height="17" Value="3e" Width="90" X="41" Y="0" />
-                        <RadioButton Text="Only Local" Height="17" Value="2e" Width="60" X="203" Y="0" />
-                        <RadioButton Text="None" Height="17" Value="0e" Width="40" X="0" Y="0" />
+                        <RadioButton Text="Local and Remote" Height="17" Value="0e" Width="85" X="0" Y="0" />
+                        <RadioButton Text="Local only" Height="17" Value="2e" Width="60" X="87" Y="0" />
+                        <RadioButton Text="Remote only" Height="17" Value="1e" Width="70" X="148" Y="0" />
+                        <RadioButton Text="Disabled" Height="17" Value="3e" Width="50" X="218" Y="0" />
                     </RadioButtonGroup>
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
