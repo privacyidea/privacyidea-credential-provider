@@ -30,6 +30,12 @@ std::wstring Convert::ToUpperCase(std::wstring s)
 	return s;
 }
 
+std::string Convert::ToUpperCase(std::string s)
+{
+	std::transform(s.begin(), s.end(), s.begin(), [](char c) { return static_cast<char>(std::toupper(c)); });
+	return s;
+}
+
 std::string Convert::LongToHexString(long in)
 {
 	std::stringstream ss;
