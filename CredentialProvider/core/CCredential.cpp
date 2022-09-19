@@ -193,6 +193,7 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	if (_config->doAutoLogon)
 	{
 		*pbAutoLogon = TRUE;
+		DebugPrint("AUTOLOGON ENABLED!");
 		_config->doAutoLogon = false;
 	}
 

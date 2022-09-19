@@ -343,6 +343,7 @@ HRESULT Utilities::SetScenario(
 			break;
 		case SCENARIO::LOGON_TWO_STEP:
 			DebugPrint("SetScenario: LOGON_TWO_STEP");
+			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
 			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
 			break;
 		case SCENARIO::NO_CHANGE:
@@ -760,28 +761,14 @@ HRESULT Utilities::ResetScenario(
 	ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
 {
 	DebugPrint(__FUNCTION__);
-	// For remote connections only reset the second step, because username+password has already been verified when initializing the
-	// remote connection
-	const bool isRemote = _config->isRemoteSession;
-	if (!isRemote)
-	{
-		// 2 step progress is reset aswell, therefore put the submit button next to the password field again
-		_config->isSecondStep = false;
-		pCredProvCredentialEvents->SetFieldSubmitButton(pSelf, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
-	}
+
+	_config->isSecondStep = false;
 
 	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
 		if (_config->twoStepHideOTP)
 		{
-			if (isRemote)
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
-			}
-			else
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_TWO_STEP);
-			}
+			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
 		}
 		else
 		{
@@ -792,19 +779,20 @@ HRESULT Utilities::ResetScenario(
 	{
 		if (_config->twoStepHideOTP)
 		{
-			if (isRemote)
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
-			}
-			else
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
-			}
+			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
 		}
 		else
 		{
 			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_BASE);
 		}
+	}
+
+	// Do not clear the password for remote scenarios, because it is already checked when initializing the remote connection.
+	// The OTP field content has to be cleared manually.
+	if (_config->isRemoteSession)
+	{
+		_config->clearFields = false;
+		pCredProvCredentialEvents->SetFieldString(pSelf, FID_OTP, L"");
 	}
 
 	return S_OK;
