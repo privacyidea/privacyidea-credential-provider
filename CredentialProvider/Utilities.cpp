@@ -13,7 +13,7 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 	_config = c;
 }
 
-const std::wstring Utilities::texts[13][2] = {
+const std::wstring Utilities::texts[14][2] = {
 		{L"Username", L"Benutzername"},
 		{L"Password", L"Kennwort"},
 		{L"Old Password", L"Altes Kennwort"},
@@ -26,7 +26,8 @@ const std::wstring Utilities::texts[13][2] = {
 		{L"Please enter your second factor!", L"Bitte geben Sie Ihren zweiten Faktor ein!"},
 		{L"Reset Login", L"Login Zurücksetzten"},
 		{L"Available offline token:\n", L"Verfügbare offline token:\n"},
-		{L"OTPs left", L"OTPs verbleibend"}
+		{L"OTPs left", L"OTPs verbleibend"},
+		{L"Connection or configuration error! Please check the logfile.", L"Verbindungs- oder Konfigurationsfehler!\nBitte prüfen Sie die Log Datei." }
 };
 
 std::wstring Utilities::GetTranslatedText(int id)

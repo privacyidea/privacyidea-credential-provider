@@ -151,5 +151,7 @@ private:
 
 	std::wstring							_initialDomain;
 
+	HRESULT									_lastError = S_OK;
+
 	bool									_authenticationComplete = false;
 };

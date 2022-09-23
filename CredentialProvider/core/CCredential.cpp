@@ -648,7 +648,7 @@ HRESULT CCredential::GetSerialization(
 		// Check if we are pre 2nd step or failure
 		if (_authenticationComplete == false && _config->pushAuthenticationSuccessful == false)
 		{
-			if (_config->isSecondStep == false && _config->twoStepHideOTP)
+			if (_config->isSecondStep == false && _config->twoStepHideOTP && _lastError == S_OK)
 			{
 				// Prepare for the second step (input only OTP)
 				_config->isSecondStep = true;
@@ -663,6 +663,11 @@ HRESULT CCredential::GetSerialization(
 				if (!_config->lastResponse.errorMessage.empty())
 				{
 					errorMessage = Convert::ToWString(_config->lastResponse.errorMessage);
+				}
+				else if (_lastError != S_OK)
+				{
+					// Probably configuration or network error - details will be logged where the error occurs -> check log
+					errorMessage = Utilities::GetTranslatedText(TEXT_GENERIC_ERROR);
 				}
 
 				ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
@@ -749,7 +754,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	DebugPrint(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->isSecondStep ? "2" : "1"));
 	UNREFERENCED_PARAMETER(pqcws);
-
+	_lastError = S_OK; // reset error
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.CopyInputsToConfig();
 
@@ -872,6 +877,10 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				{
 					_authenticationComplete = piResponse.value;
 				}
+			}
+			else
+			{
+				_lastError = res;
 			}
 		}
 	}
