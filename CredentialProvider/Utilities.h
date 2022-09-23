@@ -127,7 +127,8 @@ private:
 #define TEXT_RESET_LINK 10
 #define TEXT_AVAILABLE_OFFLINE_TOKEN 11
 #define TEXT_OTPS_REMAINING 12
+#define TEXT_GENERIC_ERROR 13
 
-	const static std::wstring texts[13][2];
+	const static std::wstring texts[14][2];
 };
 

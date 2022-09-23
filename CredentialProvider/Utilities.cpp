@@ -13,7 +13,7 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 	_config = c;
 }
 
-const std::wstring Utilities::texts[13][2] = {
+const std::wstring Utilities::texts[14][2] = {
 		{L"Username", L"Benutzername"},
 		{L"Password", L"Kennwort"},
 		{L"Old Password", L"Altes Kennwort"},
@@ -26,7 +26,8 @@ const std::wstring Utilities::texts[13][2] = {
 		{L"Please enter your second factor!", L"Bitte geben Sie Ihren zweiten Faktor ein!"},
 		{L"Reset Login", L"Login Zurücksetzten"},
 		{L"Available offline token:\n", L"Verfügbare offline token:\n"},
-		{L"OTPs left", L"OTPs verbleibend"}
+		{L"OTPs left", L"OTPs verbleibend"},
+		{L"Connection or configuration error! Please check the logfile.", L"Verbindungs- oder Konfigurationsfehler!\nBitte prüfen Sie die Log Datei." }
 };
 
 std::wstring Utilities::GetTranslatedText(int id)
@@ -343,6 +344,7 @@ HRESULT Utilities::SetScenario(
 			break;
 		case SCENARIO::LOGON_TWO_STEP:
 			DebugPrint("SetScenario: LOGON_TWO_STEP");
+			pCPCE->SetFieldSubmitButton(pCredential, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
 			hr = SetFieldStatePairBatch(pCredential, pCPCE, s_rgScenarioLogonFirstStepUserLDAP);
 			break;
 		case SCENARIO::NO_CHANGE:
@@ -760,28 +762,14 @@ HRESULT Utilities::ResetScenario(
 	ICredentialProviderCredentialEvents* pCredProvCredentialEvents)
 {
 	DebugPrint(__FUNCTION__);
-	// For remote connections only reset the second step, because username+password has already been verified when initializing the
-	// remote connection
-	const bool isRemote = _config->isRemoteSession;
-	if (!isRemote)
-	{
-		// 2 step progress is reset aswell, therefore put the submit button next to the password field again
-		_config->isSecondStep = false;
-		pCredProvCredentialEvents->SetFieldSubmitButton(pSelf, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
-	}
+
+	_config->isSecondStep = false;
 
 	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
 		if (_config->twoStepHideOTP)
 		{
-			if (isRemote)
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
-			}
-			else
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_TWO_STEP);
-			}
+			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
 		}
 		else
 		{
@@ -792,19 +780,20 @@ HRESULT Utilities::ResetScenario(
 	{
 		if (_config->twoStepHideOTP)
 		{
-			if (isRemote)
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
-			}
-			else
-			{
-				SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
-			}
+			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
 		}
 		else
 		{
 			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_BASE);
 		}
+	}
+
+	// Do not clear the password for remote scenarios, because it is already checked when initializing the remote connection.
+	// The OTP field content has to be cleared manually.
+	if (_config->isRemoteSession)
+	{
+		_config->clearFields = false;
+		pCredProvCredentialEvents->SetFieldString(pSelf, FID_OTP, L"");
 	}
 
 	return S_OK;
