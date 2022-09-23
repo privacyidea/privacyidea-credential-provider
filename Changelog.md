@@ -1,3 +1,11 @@
+# Version 3.2.1, 2022-09-23
+
+## Fixes
+* Fixed a bug where an offline user would not be found if the username was capitalized differently (missing case insensitivity)
+* When entering the wrong OTP in RDP scenarios, the credential provider will now reset to the first step with username and password prefilled. This way, the user just has to press enter and can trigger challenges again.
+*Fixed a bug where the installer wrote the wrong values for scenario specific configuration
+
+
 # Version 3.2.0, 2022-05-03
 
 ## Features
