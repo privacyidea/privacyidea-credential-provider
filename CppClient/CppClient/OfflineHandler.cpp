@@ -31,7 +31,7 @@ using namespace std;
 
 std::wstring getErrorText(DWORD err)
 {
-	LPWSTR msgBuf;
+	LPWSTR msgBuf = nullptr;
 	FormatMessage(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		FORMAT_MESSAGE_FROM_SYSTEM |
@@ -80,10 +80,9 @@ OfflineHandler::~OfflineHandler()
 	}
 }
 
-HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& username)
+HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const std::string& username, std::string& serialUsed)
 {
 	HRESULT success = E_FAIL;
-
 	for (auto& item : dataSets)
 	{
 		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
@@ -94,6 +93,7 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 
 			for (int i = lowestKey; i < (lowestKey + _tryWindow); i++)
 			{
+				//DebugPrint("Key number: " + to_string(i));
 				try
 				{
 					string storedValue = item.offlineOTPs.at(to_string(i));
@@ -114,14 +114,17 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 			if (success == S_OK)
 			{
 				// Also include if the matching is the first
+				int count = 0;
 				if (matchingKey >= lowestKey)
 				{
 					for (int i = lowestKey; i <= matchingKey; i++)
 					{
 						item.offlineOTPs.erase(to_string(i));
+						count++;
 					}
 				}
-				DebugPrint("Offline authentication success with token " + item.serial);
+				DebugPrint("Offline authentication success with token " + item.serial + ", removing " + to_string(count) + " offline OTPs.");
+				serialUsed = item.serial;
 				// If success, stop trying other dataSets
 				break;
 			}
@@ -131,29 +134,15 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const string& 
 	return success;
 }
 
-HRESULT OfflineHandler::GetRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial)
+HRESULT OfflineHandler::GetRefillToken(const std::string& username, const std::string& serial, std::string& refilltoken)
 {
 	for (const auto& item : dataSets)
 	{
-		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username) && item.serial == serial)
 		{
-			if (item.serial.empty() || item.refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
-			refilltoken = string(item.refilltoken);;
-			serial = string(item.serial);;
+			if (item.refilltoken.empty()) return PI_OFFLINE_NO_OFFLINE_DATA;
+			refilltoken = string(item.refilltoken);
 			return S_OK;
-		}
-	}
-
-	return PI_OFFLINE_NO_OFFLINE_DATA;
-}
-
-HRESULT OfflineHandler::DataVailable(const std::string& username)
-{
-	for (auto& item : dataSets)
-	{
-		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
-		{
-			return (item.offlineOTPs.empty() ? PI_OFFLINE_DATA_NO_OTPS_LEFT : S_OK);
 		}
 	}
 
@@ -188,11 +177,11 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 	return S_OK;
 }
 
-size_t OfflineHandler::GetOfflineOTPCount(const std::string& username)
+size_t OfflineHandler::GetOfflineOTPCount(const std::string& username, const std::string& serial)
 {
 	for (auto& item : dataSets)
 	{
-		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
+		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username) && item.serial == serial)
 		{
 			return item.offlineOTPs.size();
 		}

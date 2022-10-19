@@ -43,24 +43,12 @@ public:
 
 		@param[in] OTP
 		@param[in] Username
-
+		@param[out] serialUsed
 		@returns S_OK or E_FAIL
 	*/
-	HRESULT VerifyOfflineOTP(const std::wstring& otp, const std::string& username);
+	HRESULT VerifyOfflineOTP(const std::wstring& otp, const std::string& username, std::string& serialUsed);
 
-	HRESULT GetRefillTokenAndSerial(const std::string& username, std::string& refilltoken, std::string& serial);
-
-	/*!
-	Checks if offline data and OTPs are available for the given user.
-	Offline data is the association of a token with a username and a refill token.
-
-	@param[in] username Username
-
-	@return	S_OK if data and OTPs are available
-			PI_OFFLINE_DATA_NO_OTPS_LEFT if offline data is available but OTPs are empty
-			PI_OFFLINE_NO_OFFLINE_DATA if no data exists for the user
-	*/
-	HRESULT DataVailable(const std::string& username);
+	HRESULT GetRefillToken(const std::string& username, const std::string& serial, std::string& refilltoken);
 
 	HRESULT AddOfflineData(const OfflineData& data);
 
@@ -69,7 +57,7 @@ public:
 	/// </summary>
 	/// <param name="username"></param>
 	/// <returns>The number of remaining offline OTP values or 0 if no data is found</returns>
-	size_t GetOfflineOTPCount(const std::string& username);
+	size_t GetOfflineOTPCount(const std::string& username, const std::string& serial);
 
 	std::vector<std::pair<std::string, size_t>> GetTokenInfo(const std::string& username);
 

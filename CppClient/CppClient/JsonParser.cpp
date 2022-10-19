@@ -176,7 +176,7 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 	for (auto& item : data)
 	{
 		json jElement;
-		jElement["count"] = to_string(item.count);
+		jElement["count"] = to_string(item.GetOfflineOTPCount());
 		jElement["refilltoken"] = item.refilltoken;
 		jElement["serial"] = item.serial;
 		jElement["username"] = item.username;

@@ -18,17 +18,10 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "OfflineData.h"
-#include "../nlohmann/json.hpp"
 #include "Logger.h"
 #include <iostream>
 
 using namespace std;
-/*
-nlohmann::json OfflineData::ToJSON()
-{
-	
-}
-*/
 
 int OfflineData::GetLowestKey()
 {

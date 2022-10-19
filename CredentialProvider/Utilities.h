@@ -103,9 +103,6 @@ public:
 	/// <param name="domain"></param>
 	static void SplitUserAndDomain(const std::wstring& input, std::wstring& username, std::wstring& domain);
 
-private:
-	std::shared_ptr<Configuration> _config;
-
 	HRESULT ReadUserField();
 
 	HRESULT ReadPasswordField();
@@ -113,6 +110,9 @@ private:
 	HRESULT ReadOTPField();
 
 	HRESULT ReadPasswordChangeFields();
+
+private:
+	std::shared_ptr<Configuration> _config;
 
 #define TEXT_USERNAME 0
 #define TEXT_PASSWORD 1

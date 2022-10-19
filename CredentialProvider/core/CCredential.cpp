@@ -224,11 +224,19 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		wstring wszEntry = rr.GetWStringRegistry(L"LastLoggedOnUser");
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
+		hr = _pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_FOCUSED);
 	}
 
 	if (!_config->showResetLink)
 	{
 		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
+	}
+
+	// In case of wrong password or other resets, the offline values will be consumed anyway. Therefore update the values remaining.
+	if (_config->showOfflineInfo)
+	{
+		_util.ReadUserField();
+		hr = SetOfflineInfo(Convert::ToString(_config->credential.username));
 	}
 
 	if (_config->credential.passwordChanged)
@@ -401,7 +409,6 @@ HRESULT CCredential::SetStringValue(
 	__in PCWSTR pwz
 )
 {
-
 	HRESULT hr = S_OK;
 
 	// Validate parameters.
@@ -436,30 +443,7 @@ HRESULT CCredential::SetStringValue(
 			// If no offline token are found for the current input, hide the field
 			if (_config->showOfflineInfo)
 			{
-				bool infoSet = false;
-				if (!username.empty())
-				{
-					auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(Convert::ToString(username));
-					if (!offlineInfo.empty())
-					{
-						wstring message = Utilities::GetTranslatedText(TEXT_AVAILABLE_OFFLINE_TOKEN);
-						for (auto& pair : offlineInfo)
-						{
-							// <serial> (XX OTPs remaining)
-							message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
-								.append(Utilities::GetTranslatedText(TEXT_OTPS_REMAINING)).append(L")\n");
-						}
-
-						infoSet = true;
-						_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_DISPLAY_IN_SELECTED_TILE);
-						_pCredProvCredentialEvents->SetFieldString(this, FID_OFFLINE_INFO, message.c_str());
-					}
-				}
-
-				if (!infoSet)
-				{
-					_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
-				}
+				SetOfflineInfo(Convert::ToString(username));
 			}
 		}
 	}
@@ -468,6 +452,38 @@ HRESULT CCredential::SetStringValue(
 		hr = E_INVALIDARG;
 	}
 
+	return hr;
+}
+
+HRESULT CCredential::SetOfflineInfo(std::string username)
+{
+	DebugPrint("Setting offline info for user " + username);
+	bool infoSet = false;
+	HRESULT hr = S_OK;
+	if (!username.empty())
+	{
+		auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(username);
+		if (!offlineInfo.empty())
+		{
+			wstring message = Utilities::GetTranslatedText(TEXT_AVAILABLE_OFFLINE_TOKEN);
+			for (auto& pair : offlineInfo)
+			{
+				// <serial> (XX OTPs remaining)
+				message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
+					.append(Utilities::GetTranslatedText(TEXT_OTPS_REMAINING)).append(L")\n");
+			}
+
+			infoSet = true;
+			_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_DISPLAY_IN_SELECTED_TILE);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_OFFLINE_INFO, message.c_str());
+		}
+	}
+
+	if (!infoSet)
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
+		hr = E_FAIL;
+	}
 	return hr;
 }
 
@@ -830,13 +846,14 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		HRESULT res = E_FAIL;
 		if (offlineCheck)
 		{
-			res = _privacyIDEA.OfflineCheck(username, passToSend);
+			string serialUsed;
+			res = _privacyIDEA.OfflineCheck(username, passToSend, serialUsed);
 			// Check if a OfflineRefill should be attempted. Either if offlineThreshold is not set, remaining OTPs are below the threshold, or no more OTPs are available.
 			if ((res == S_OK && _config->offlineTreshold == 0)
-				|| (res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username)) < _config->offlineTreshold)
+				|| (res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username), serialUsed) < _config->offlineTreshold)
 				|| res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 			{
-				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend);
+				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend, serialUsed);
 				if (refillResult != S_OK)
 				{
 					DebugPrint("OfflineRefill failed " + Convert::LongToHexString(refillResult));

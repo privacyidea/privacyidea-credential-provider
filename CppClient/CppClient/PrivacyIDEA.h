@@ -55,7 +55,7 @@ public:
 	/// <param name="responseObj">This will be filled with the response of the server if no error occurred</param>
 	/// <param name="transaction_id">Optional to reference a challenge that was triggered before</param>
 	/// <returns>S_OK if the request was processed correctly. Possible error codes: PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE, PI_JSON_PARSE_ERROR</returns>
-	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, PIResponse& responseObj, const std::string& transaction_id = std::string());
+	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id = std::string());
 
 	/// <summary>
 	/// Try to validate the given OTP value with the offline data for the user.
@@ -63,7 +63,7 @@ public:
 	/// <param name="username"></param>
 	/// <param name="otp"></param>
 	/// <returns>S_OK, E_FAIL, PI_OFFLINE_DATA_NO_OTPS_LEFT, PI_OFFLINE_NO_OFFLINE_DATA</returns>
-	HRESULT OfflineCheck(const std::wstring& username, const std::wstring& otp);
+	HRESULT OfflineCheck(const std::wstring& username, const std::wstring& otp, __out std::string& serialUsed);
 
 	/// <summary>
 	/// Try to refill offline OTP values with a request to /validate/offlinerefill.
@@ -71,7 +71,7 @@ public:
 	/// <param name="username"></param>
 	/// <param name="lastOTP"></param>
 	/// <returns>S_OK, E_FAIL, PI_JSON_PARSE_ERROR, PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE</returns>
-	HRESULT OfflineRefill(std::wstring username, std::wstring lastOTP);
+	HRESULT OfflineRefill(const std::wstring& username, const std::wstring& lastOTP, const std::string& serial);
 
 	bool StopPoll();
 

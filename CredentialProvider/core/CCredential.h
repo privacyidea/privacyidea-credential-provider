@@ -121,6 +121,8 @@ public:
 
 private:
 	HRESULT SetDomainHint(std::wstring domain);
+	HRESULT SetOfflineInfo(std::string username);
+
 	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
 	void PushAuthenticationCallback(bool success);

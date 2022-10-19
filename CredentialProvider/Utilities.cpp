@@ -666,7 +666,12 @@ HRESULT Utilities::ReadUserField()
 {
 	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
 	{
-		wstring input(_config->provider.field_strings[FID_USERNAME]);
+		wstring input;
+		if (_config->provider.field_strings != nullptr)
+		{
+			input = wstring(_config->provider.field_strings[FID_USERNAME]);
+		}
+		
 		DebugPrint(L"Loading user and domain from GUI: '" + input + L"'");
 		wstring username, domain;
 

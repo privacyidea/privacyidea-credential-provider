@@ -136,33 +136,23 @@ HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstr
 
 @return PI_OFFLINE_NO_OFFLINE_DATA, PI_OFFLINE_DATA_NO_OTPS_LEFT, S_OK, E_FAIL
 */
-HRESULT PrivacyIDEA::OfflineCheck(const std::wstring& username, const std::wstring& otp)
+HRESULT PrivacyIDEA::OfflineCheck(const std::wstring& username, const std::wstring& otp, __out std::string& serialUsed)
 {
 	DebugPrint(__FUNCTION__);
 	string szUsername = Convert::ToString(username);
 
-	HRESULT res = offlineHandler.DataVailable(szUsername);
-	if (res == S_OK)
-	{
-		DebugPrint("Offline data available for " + szUsername + ", verifying OTP...");
-		res = offlineHandler.VerifyOfflineOTP(otp, szUsername);
-		DebugPrint("Offline verification result: " + Convert::LongToHexString(res));
-	}
-	else if (res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
-	{
-		DebugPrint("No offline OTPs left for the user.");
-	}
-	// Do not log the case PI_OFFLINE_NO_OFFLINE_DATA, because it would spam
+	HRESULT res = offlineHandler.VerifyOfflineOTP(otp, szUsername, serialUsed);
+	DebugPrint("Offline verification result: " + Convert::LongToHexString(res));
 	return res;
 }
 
-HRESULT PrivacyIDEA::OfflineRefill(std::wstring username, std::wstring lastOTP)
+HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstring& lastOTP, const std::string& serial)
 {
-	string refilltoken, serial;
+	string refilltoken;
 	string szUsername = Convert::ToString(username);
 	string szLastOTP = Convert::ToString(lastOTP);
 
-	HRESULT hr = offlineHandler.GetRefillTokenAndSerial(szUsername, refilltoken, serial);
+	HRESULT hr = offlineHandler.GetRefillToken(szUsername, serial, refilltoken);
 	if (hr != S_OK)
 	{
 		DebugPrint("Failed to get parameters for offline refill!");
@@ -185,6 +175,8 @@ HRESULT PrivacyIDEA::OfflineRefill(std::wstring username, std::wstring lastOTP)
 
 	OfflineData data;
 	hr = _parser.ParseRefillResponse(response, szUsername, data);
+	// Add the serial off the token used to be able to identify it when adding new data
+	data.serial = serial;
 	offlineHandler.AddOfflineData(data);
 	return hr;
 }
