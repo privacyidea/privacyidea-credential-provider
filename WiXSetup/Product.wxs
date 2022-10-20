@@ -159,15 +159,15 @@
                 <Component Location="local" Guid="9944eca5-ac62-4a0e-82fa-5ec243a56b0d" Transitive="yes">
                     <Condition>1</Condition>
                     <!-- Files -->
-                    <File Id="CredentialProvider" Name="PrivacyIDEA$(var.CredentialProvider.TargetFileName)" Source="$(var.CredentialProvider.TargetPath)" KeyPath="yes" />
-                    <RemoveFile Id="RemoveCredentialProviderFiles" Name="PrivacyIDEA$(var.CredentialProvider.TargetFileName)" On="uninstall" />
+                    <File Id="CredentialProvider" Name="$(var.CredentialProvider.TargetFileName)" Source="$(var.CredentialProvider.TargetPath)" KeyPath="yes" />
+                    <RemoveFile Id="RemoveCredentialProviderFiles" Name="$(var.CredentialProvider.TargetFileName)" On="uninstall" />
                     <!-- END Files -->
                     <!-- Registry -->
                     <!-- Register the Provider -->
                     <RegistryKey Root="HKCR" Key="CLSID\{$(var.ProviderRegistryGUID)}" ForceCreateOnInstall="yes">
-                        <RegistryValue Type="string" Value="PrivacyIDEA$(var.CredentialProvider.TargetName)" />
+                        <RegistryValue Type="string" Value="$(var.CredentialProvider.TargetName)" />
                         <RegistryKey Key="InprocServer32">
-                            <RegistryValue Type="string" Value="PrivacyIDEA$(var.CredentialProvider.TargetFileName)" />
+                            <RegistryValue Type="string" Value="$(var.CredentialProvider.TargetFileName)" />
                             <RegistryValue Name="ThreadingModel" Type="string" Value="Apartment" />
                         </RegistryKey>
                     </RegistryKey>
@@ -226,14 +226,14 @@
                 <!-- ProviderFilter component -->
                 <Component Location="local" Guid="a6d595a6-58b4-4541-8171-65f3f364b58c">
                     <!-- Files -->
-                    <File Id="CredentialProviderFilter" Name="PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)" Source="$(var.CredentialProviderFilter.TargetPath)" KeyPath="yes" />
-                    <RemoveFile Id="RemoveCredentialProviderFilterFiles" Name="PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)" On="uninstall" />
+                    <File Id="CredentialProviderFilter" Name="$(var.CredentialProviderFilter.TargetFileName)" Source="$(var.CredentialProviderFilter.TargetPath)" KeyPath="yes" />
+                    <RemoveFile Id="RemoveCredentialProviderFilterFiles" Name="$(var.CredentialProviderFilter.TargetFileName)" On="uninstall" />
                     <!-- END Files -->
                     <!-- Registry -->
                     <RegistryKey Root="HKCR" Key="CLSID\{$(var.ProviderFilterRegistryGUID)}" ForceCreateOnInstall="yes">
                         <RegistryValue Type="string" Value="PrivacyIDEA$(var.CredentialProviderFilter.TargetName)" />
                         <RegistryKey Key="InprocServer32">
-                            <RegistryValue Type="string" Value="PrivacyIDEA$(var.CredentialProviderFilter.TargetFileName)" />
+                            <RegistryValue Type="string" Value="$(var.CredentialProviderFilter.TargetFileName)" />
                             <RegistryValue Name="ThreadingModel" Type="string" Value="Apartment" />
                         </RegistryKey>
                     </RegistryKey>
