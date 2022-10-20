@@ -1,3 +1,12 @@
+# Version 3.2.2, 2022-10-23
+
+## Fixes
+
+* Remember the serial of the token that was used to authenticate to add the refill values to the right token, fixes #123
+* If prefill_username is enabled, set the focus to the password field, fixes #122
+* Update the offline info after wrong password or other errors. The number displayed will now represent the comsumed offline 	OTPs if they had not been refilled directly (e.g. machine is offline)
+* Fixed the count field in the offline file to correctly display the count of OTPs
+
 # Version 3.2.1, 2022-09-23
 
 ## Fixes
