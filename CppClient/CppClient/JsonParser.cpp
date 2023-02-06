@@ -100,7 +100,8 @@ HRESULT JsonParser::ParsePIResponse(std::string serverResponse, PIResponse& resp
 			c.message = GetStringOrEmpty(jChallenge, "message");
 			c.serial = GetStringOrEmpty(jChallenge, "serial");
 			c.transaction_id = GetStringOrEmpty(jChallenge, "transaction_id");
-
+			c.client_mode = GetStringOrEmpty(jChallenge, "client_mode");
+			c.image = GetStringOrEmpty(jChallenge, "image");
 			responseObj.challenges.push_back(c);
 		}
 	}

@@ -126,6 +126,8 @@ private:
 	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
 	void PushAuthenticationCallback(bool success);
+	
+	HBITMAP CreateBitmapFromBase64PNG(const std::wstring& base64);
 
 	LONG									_cRef;
 

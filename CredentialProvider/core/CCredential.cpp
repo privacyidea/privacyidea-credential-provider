@@ -35,6 +35,8 @@
 #include <sstream>
 #include <RegistryReader.h>
 #include <Convert.h>
+#include <gdiplus.h>
+#pragma comment (lib,"Gdiplus.lib")
 
 using namespace std;
 
@@ -457,7 +459,6 @@ HRESULT CCredential::SetStringValue(
 
 HRESULT CCredential::SetOfflineInfo(std::string username)
 {
-	DebugPrint("Setting offline info for user " + username);
 	bool infoSet = false;
 	HRESULT hr = S_OK;
 	if (!username.empty())
@@ -888,6 +889,29 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (!piResponse.challenges.empty())
 				{
 					DebugPrint("Challenges have been triggered");
+					
+					// Only one image can be displayed so take the first challenge
+					// In the main use-case, token enrollment, there will only be a single challenge
+					// because the enrollment is only happening after the authentication is completed
+					if (piResponse.challenges.size() >= 1)
+					{
+						auto challenge = piResponse.challenges.at(0);
+						// Remove the leading "data:image/png;base64,"
+						auto base64image = challenge.image.substr(22, challenge.image.size());
+						if (!base64image.empty())
+						{
+							auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
+							if (hBitmap != nullptr)
+							{
+								_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
+							}
+							else
+							{
+								DebugPrint("Conversion to bitmap failed, image will not be displayed.");
+							}
+						}
+					}
+					
 					_authenticationComplete = false;
 				}
 				else
@@ -905,6 +929,40 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	DebugPrint("Authentication complete: " + Convert::ToString(_authenticationComplete));
 	DebugPrint("Connect - END");
 	return S_OK;
+}
+
+HBITMAP CCredential::CreateBitmapFromBase64PNG(const std::wstring& base64)
+{
+	std::vector<BYTE> binaryData;
+	DWORD binaryDataSize = 0;
+	if (!CryptStringToBinary(base64.c_str(), base64.size(), CRYPT_STRING_BASE64, nullptr, &binaryDataSize, nullptr, nullptr))
+	{
+		return nullptr;
+	}
+	binaryData.resize(binaryDataSize);
+	if (!CryptStringToBinary(base64.c_str(), base64.size(), CRYPT_STRING_BASE64, binaryData.data(), &binaryDataSize, nullptr, nullptr))
+	{
+		return nullptr;
+	}
+
+	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+	ULONG_PTR gdiplusToken;
+	Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+	IStream* stream = NULL;
+	CreateStreamOnHGlobal(NULL, TRUE, &stream);
+	stream->Write(binaryData.data(), binaryDataSize, NULL);
+	Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(stream);
+	HBITMAP hBitmap;
+	auto status = bitmap->GetHBITMAP(Gdiplus::Color::White, &hBitmap);
+	if (status != Gdiplus::Status::Ok)
+	{
+		Print("Getting bitmap failed, gdiplus status: " + to_string(status));
+		hBitmap = nullptr;
+	}
+	delete bitmap;
+	stream->Release();
+	Gdiplus::GdiplusShutdown(gdiplusToken);
+	return hBitmap;
 }
 
 HRESULT CCredential::Disconnect()

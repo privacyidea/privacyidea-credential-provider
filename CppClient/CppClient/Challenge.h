@@ -26,4 +26,6 @@ public:
 	std::string transaction_id;
 	std::string serial;
 	std::string type;
+	std::string image;
+	std::string client_mode;
 };
