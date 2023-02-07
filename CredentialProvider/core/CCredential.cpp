@@ -787,7 +787,13 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			toCompare.append(_config->credential.domain).append(L"\\");
 		}
 		toCompare.append(_config->credential.username);
-		if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(_config->excludedAccount))
+
+		// Check if the excluded account from the registry contains '.' and resolve that to the computer name
+		wstring exclUsername, exclDomain;
+		Utilities::SplitUserAndDomain(_config->excludedAccount, exclUsername, exclDomain);
+		wstring exclAccount = exclDomain + L"\\" + exclUsername;
+		DebugPrint(L"Matching user with excluded account: " + exclAccount);
+		if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(exclAccount))
 		{
 			DebugPrint("Login data matches excluded account, skipping 2FA...");
 			// Simulate 2FA success so the logic in GetSerialization can stay the same
@@ -889,7 +895,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (!piResponse.challenges.empty())
 				{
 					DebugPrint("Challenges have been triggered");
-					
+
 					// Only one image can be displayed so take the first challenge
 					// In the main use-case, token enrollment, there will only be a single challenge
 					// because the enrollment is only happening after the authentication is completed
@@ -911,7 +917,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 							}
 						}
 					}
-					
+
 					_authenticationComplete = false;
 				}
 				else

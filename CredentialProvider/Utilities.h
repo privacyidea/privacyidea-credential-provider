@@ -97,6 +97,7 @@ public:
 	/// <summary>
 	/// Split the input into user and domain. The possible formats are: domain\user and user@domain, check in that order.
 	/// If no '\' or '@' exsists in the input, the whole input is assumed to be the username.
+	/// If the domain is '.', it will be resolved to the local computer name.
 	/// </summary>
 	/// <param name="input"></param>
 	/// <param name="username"></param>

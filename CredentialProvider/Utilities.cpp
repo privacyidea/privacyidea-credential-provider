@@ -690,13 +690,8 @@ HRESULT Utilities::ReadUserField()
 
 		if (!domain.empty())
 		{
-			wstring newDomain(domain);
-			if (newDomain == L".")
-			{
-				newDomain = Utilities::ComputerName();
-			}
-			DebugPrint(L"Changing domain from '" + _config->credential.domain + L"' to '" + newDomain + L"'");
-			_config->credential.domain = newDomain;
+			DebugPrint(L"Changing domain from '" + _config->credential.domain + L"' to '" + domain + L"'");
+			_config->credential.domain = domain;
 		}
 		else
 		{
