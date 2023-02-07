@@ -19,6 +19,7 @@
 #pragma once
 #include <string>
 #include <map>
+#include <vector>
 
 #define CONFIG_REGISTRY_PATH			L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\"
 #define REALM_MAPPING_REGISTRY_PATH		L"SOFTWARE\\Netknights GmbH\\PrivacyIDEA-CP\\realm-mapping"
@@ -41,4 +42,5 @@ public:
 
 	int GetIntRegistry(std::wstring name) noexcept;
 
+	std::vector<std::wstring> GetMultiSZ(const std::wstring& valueName) noexcept;
 };

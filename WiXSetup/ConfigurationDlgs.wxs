@@ -149,13 +149,13 @@
     <Fragment>
         <UI>
             <Dialog Id="OfflineConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Type="Edit" Id="OfflineFileLocation" Width="266" Height="16" X="30" Y="67" Property="OFFLINE_FILE_PATH" />
-                <Control Type="Text" Id="OfflineFileLabel" Width="262" Height="12" X="30" Y="52" Text="Absolute path (including file name!) to where the offline file should be stored. Default is C:\offlineFile.json." />
-                <Control Type="Edit" Id="OfflineThreshold" Width="30" Height="16" X="30" Y="120" Integer="yes" Property="OFFLINE_THRESHOLD" />
-                <Control Type="Text" Id="OfflineThresholdLabel" Width="240" Height="22" X="30" Y="94" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted." />
-                <Control Type="Edit" Id="OfflineTryWindow" Width="30" Height="16" X="30" Y="176" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
-                <Control Type="Text" Id="OfflineTryWindowLabel" Width="276" Height="22" X="30" Y="150" Text="Offline try window. Set the range of values for the counter to be tried with an offline token." />
-                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="30" Y="206" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
+                <Control Type="Edit" Id="OfflineFileLocation" Width="268" Height="15" X="30" Y="86" Property="OFFLINE_FILE_PATH" />
+                <Control Type="Text" Id="OfflineFileLabel" Width="264" Height="30" X="30" Y="49" Text="Absolute path (including file name!) to where the offline file should be stored. Possible file formats are txt and json. The default is C:\offlineFile.json." />
+                <Control Type="Edit" Id="OfflineThreshold" Width="30" Height="15" X="266" Y="112" Integer="yes" Property="OFFLINE_THRESHOLD" />
+                <Control Type="Text" Id="OfflineThresholdLabel" Width="228" Height="22" X="30" Y="112" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted." />
+                <Control Type="Edit" Id="OfflineTryWindow" Width="30" Height="15" X="266" Y="142" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
+                <Control Type="Text" Id="OfflineTryWindowLabel" Width="211" Height="22" X="30" Y="142" Text="Offline try window. Set the range of values for the counter to be tried with an offline token." />
+                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="30" Y="176" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
                     <Publish Event="NewDialog" Value="FilterConfigurationDlg">1</Publish>

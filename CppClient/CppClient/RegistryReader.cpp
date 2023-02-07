@@ -122,12 +122,7 @@ std::wstring RegistryReader::GetWStringRegistry(std::wstring name) noexcept
 {
 	DWORD dwRet = NULL;
 	HKEY hKey = nullptr;
-	dwRet = RegOpenKeyEx(
-		HKEY_LOCAL_MACHINE,
-		wpath.c_str(),
-		NULL,
-		KEY_QUERY_VALUE,
-		&hKey);
+	dwRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, wpath.c_str(),	NULL, KEY_QUERY_VALUE, &hKey);
 	if (dwRet != ERROR_SUCCESS)
 	{
 		return L"";
@@ -137,13 +132,7 @@ std::wstring RegistryReader::GetWStringRegistry(std::wstring name) noexcept
 	TCHAR szValue[SIZE] = _T("");
 	DWORD dwValue = SIZE;
 	DWORD dwType = 0;
-	dwRet = RegQueryValueEx(
-		hKey,
-		name.c_str(),
-		NULL,
-		&dwType,
-		(LPBYTE)&szValue,
-		&dwValue);
+	dwRet = RegQueryValueEx(hKey, name.c_str(),	NULL, &dwType, (LPBYTE)&szValue, &dwValue);
 	if (dwRet != ERROR_SUCCESS)
 	{
 		return L"";
@@ -167,4 +156,36 @@ bool RegistryReader::GetBoolRegistry(std::wstring name) noexcept
 int RegistryReader::GetIntRegistry(std::wstring name) noexcept
 {
 	return _wtoi(GetWStringRegistry(name).c_str()); // Invalid parameter returns 0
+}
+
+std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueName) noexcept
+{
+	HKEY hKey;
+	LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, wpath.c_str(), 0, KEY_READ, &hKey);
+	if (result != ERROR_SUCCESS)
+	{
+		return std::vector<std::wstring>();
+	}
+
+	DWORD dwType = REG_MULTI_SZ, dwSize = 0;
+	result = RegQueryValueEx(hKey, valueName.c_str(), 0, &dwType, 0, &dwSize);
+	if (result != ERROR_SUCCESS)
+	{
+		return std::vector<std::wstring>();
+	}
+
+	std::vector<wchar_t> buffer(dwSize);
+	result = RegQueryValueEx(hKey, valueName.c_str(), 0, &dwType, (LPBYTE)buffer.data(), &dwSize);
+	if (result != ERROR_SUCCESS)
+	{
+		return std::vector<std::wstring>();
+	}
+
+	std::vector<std::wstring> strings;
+	for (wchar_t* p = buffer.data(); *p != '\0'; p += lstrlen(p) + 1)
+	{
+		strings.push_back(p);
+	}
+
+	return strings;
 }

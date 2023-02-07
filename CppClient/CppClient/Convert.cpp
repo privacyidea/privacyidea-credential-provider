@@ -42,3 +42,17 @@ std::string Convert::LongToHexString(long in)
 	ss << std::hex << in;
 	return "0x" + ss.str();
 }
+
+std::wstring Convert::JoinW(const std::vector<std::wstring>& elements, const wchar_t* const separator)
+{
+	std::wstringstream os;
+	for (std::vector<std::wstring>::const_iterator iter = elements.begin(); iter != elements.end(); ++iter)
+	{
+		os << *iter;
+		if (iter + 1 != elements.end())
+		{
+			os << separator;
+		}
+	}
+	return os.str();
+}

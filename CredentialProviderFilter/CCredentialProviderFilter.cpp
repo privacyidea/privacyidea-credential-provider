@@ -28,6 +28,7 @@
 #include "guid.h"
 #include "Logger.h"
 #include "Shared.h"
+#include "Convert.h"
 #include <unknwn.h>
 #include <RegistryReader.h>
 
@@ -87,15 +88,47 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 		return S_OK;
 	}
 
+	std::vector<GUID> whitelistedGUIDs;
+	auto whitelist = rr.GetMultiSZ(L"filter_whitelist");
+	if (!whitelist.empty())
+	{
+		DebugPrint("Entries for filter whitelist found:");
+		DebugPrint(Convert::JoinW(whitelist, L", "));
+		HRESULT hr = S_OK;
+		// Convert the wstrings to GUIDs
+		for (auto& ws : whitelist)
+		{
+			CLSID clsid;
+			hr = CLSIDFromString(ws.c_str(), &clsid);
+			if (SUCCEEDED(hr))
+			{
+				whitelistedGUIDs.push_back(clsid);
+				DebugPrint(L"Added " + ws + L" to whitelisted GUIDs");
+			}
+			else
+			{
+				Print(L"Failed to convert " + ws + L" to GUID. Check if the format is correct.");
+			}
+		}
+	}
+
 	for (DWORD i = 0; i < cProviders; i++)
 	{
+		rgbAllow[i] = FALSE;
+
+		// Check if it is our own provider
 		if (IsEqualGUID(rgclsidProviders[i], CLSID_COTP_LOGON))
 		{
 			rgbAllow[i] = TRUE;
 		}
-		else
+
+		// Check if it a whitelisted provider
+		for (auto& guid : whitelistedGUIDs)
 		{
-			rgbAllow[i] = FALSE;
+			if (IsEqualGUID(rgclsidProviders[i], guid))
+			{
+				rgbAllow[i] = TRUE;
+			}
 		}
 	}
 

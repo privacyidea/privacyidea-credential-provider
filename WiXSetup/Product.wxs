@@ -99,6 +99,9 @@
         <Property Id="ENABLE_FILTER">
             <RegistrySearch Id="SearchEnableFilter" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_filter" Win64="$(var.Win64)" Type="raw" />
         </Property>
+		<Property Id="FILTER_WHITELIST">
+			<RegistrySearch Id="SearchFilterWhitelist" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="filter_whitelist" Win64="$(var.Win64)" Type="raw" />
+		</Property>
         <Property Id="CPUS_LOGON" Value="0e">
             <RegistrySearch Id="SearchCPUSLogon" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_logon" Win64="$(var.Win64)" Type="raw" />
         </Property>
@@ -206,6 +209,7 @@
                         <RegistryValue Name="cpus_unlock" Type="string" Value="[CPUS_UNLOCK]" />
                         <RegistryValue Name="cpus_credui" Type="string" Value="[CPUS_CREDUI]" />
                         <RegistryValue Name="enable_filter" Type="string" Value="[ENABLE_FILTER]" />
+						<RegistryValue Name="filter_whitelist" Type="multiString" Value="[FILTER_WHITELIST]" />
                         <!-- MISC -->
                         <RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
                         <RegistryValue Name="excluded_account" Type="string" Value="" />
@@ -231,7 +235,7 @@
                     <!-- END Files -->
                     <!-- Registry -->
                     <RegistryKey Root="HKCR" Key="CLSID\{$(var.ProviderFilterRegistryGUID)}" ForceCreateOnInstall="yes">
-                        <RegistryValue Type="string" Value="PrivacyIDEA$(var.CredentialProviderFilter.TargetName)" />
+                        <RegistryValue Type="string" Value="$(var.CredentialProviderFilter.TargetName)" />
                         <RegistryKey Key="InprocServer32">
                             <RegistryValue Type="string" Value="$(var.CredentialProviderFilter.TargetFileName)" />
                             <RegistryValue Name="ThreadingModel" Type="string" Value="Apartment" />
@@ -242,7 +246,7 @@
                 <!-- END ProviderFilter component -->
                 <!-- Activate ProviderFilter (InstallAsDefault) component -->
                 <Component Id="ActivateCredentialProviderFilter" Location="local" Guid="ddc94b52-e7f2-4632-9f04-37f1b2b3c7a3">
-                    <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Type="string" Value="PrivacyIDEA$(var.CredentialProviderFilter.TargetName)" KeyPath="yes" />
+                    <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Type="string" Value="$(var.CredentialProviderFilter.TargetName)" KeyPath="yes" />
                     <RemoveRegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Action="removeOnUninstall" />
                 </Component>
                 <!-- END Activate ProviderFilter component -->
