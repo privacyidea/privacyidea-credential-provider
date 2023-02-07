@@ -840,7 +840,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	}
 	else
 	{
-		DebugPrint("Sending OTP");
+		DebugPrint("2nd step: Sending OTP/Offline check");
 		// Second step or Single step authentication, actually use the OTP and do offlineCheck before
 		passToSend = _config->credential.otp;
 		offlineCheck = true;
@@ -901,19 +901,22 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					// because the enrollment is only happening after the authentication is completed
 					if (piResponse.challenges.size() >= 1)
 					{
-						auto challenge = piResponse.challenges.at(0);
-						// Remove the leading "data:image/png;base64,"
-						auto base64image = challenge.image.substr(22, challenge.image.size());
-						if (!base64image.empty())
+						auto& challenge = piResponse.challenges.at(0);
+						if (!challenge.image.empty())
 						{
-							auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
-							if (hBitmap != nullptr)
+							// Remove the leading "data:image/png;base64,"
+							auto base64image = challenge.image.substr(22, challenge.image.size());
+							if (!base64image.empty())
 							{
-								_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
-							}
-							else
-							{
-								DebugPrint("Conversion to bitmap failed, image will not be displayed.");
+								auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
+								if (hBitmap != nullptr)
+								{
+									_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
+								}
+								else
+								{
+									DebugPrint("Conversion to bitmap failed, image will not be displayed.");
+								}
 							}
 						}
 					}
@@ -927,7 +930,16 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 			else
 			{
-				_lastError = res;
+				// If an error occured during the first step (send pw/empty) ignore it
+				// so the next step, where offline could be done, will still be possible
+				if (_config->twoStepHideOTP && !_config->isSecondStep)
+				{
+					_lastError = S_OK;
+				}
+				else
+				{
+					_lastError = res;
+				}
 			}
 		}
 	}
