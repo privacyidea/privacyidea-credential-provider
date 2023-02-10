@@ -671,7 +671,7 @@ HRESULT Utilities::ReadUserField()
 		{
 			input = wstring(_config->provider.field_strings[FID_USERNAME]);
 		}
-		
+
 		DebugPrint(L"Loading user and domain from GUI: '" + input + L"'");
 		wstring username, domain;
 
@@ -763,29 +763,21 @@ HRESULT Utilities::ResetScenario(
 {
 	DebugPrint(__FUNCTION__);
 
-	_config->isSecondStep = false;
-
-	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+	if (_config->twoStepHideOTP && !_config->isSecondStep)
 	{
-		if (_config->twoStepHideOTP)
-		{
-			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
-		}
-		else
-		{
-			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_BASE);
-		}
+		SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
 	}
-	else if (_config->provider.cpu == CPUS_LOGON)
+	else if (_config->twoStepHideOTP && _config->isSecondStep)
 	{
-		if (_config->twoStepHideOTP)
-		{
-			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_TWO_STEP);
-		}
-		else
-		{
-			SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_BASE);
-		}
+		SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+	}
+	else if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+	{
+		SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::UNLOCK_BASE);
+	}
+	else
+	{
+		SetScenario(pSelf, pCredProvCredentialEvents, SCENARIO::LOGON_BASE);
 	}
 
 	// Do not clear the password for remote scenarios, because it is already checked when initializing the remote connection.

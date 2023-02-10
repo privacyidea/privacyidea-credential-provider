@@ -61,6 +61,7 @@ public:
 	);
 
 	// Set all fields state depending on the scenario, then fill the fields depending on scenario and configuration
+	// This will also account for the last response that was received by privacyIDEA
 	HRESULT SetScenario(
 		__in ICredentialProviderCredential* pCredential,
 		__in ICredentialProviderCredentialEvents* pCPCE,

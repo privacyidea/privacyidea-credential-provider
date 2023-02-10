@@ -91,7 +91,7 @@ void PrivacyIDEA::PollThread(
 }
 
 HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstring& domain,
-	const std::wstring& otp, PIResponse& responseObj, const std::string& transaction_id)
+	const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id)
 {
 	DebugPrint(__FUNCTION__);
 	HRESULT res = S_OK;

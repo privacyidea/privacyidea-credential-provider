@@ -673,6 +673,12 @@ HRESULT CCredential::GetSerialization(
 				_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
+			else if (_config->isSecondStep && !_config->lastResponse.challenges.empty())
+			{
+				// Repeat the second step (privacyIDEA) because another challenge was triggered
+				_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			}
 			else
 			{
 				// Failed authentication or error section - create a message depending on the error
@@ -688,6 +694,8 @@ HRESULT CCredential::GetSerialization(
 				}
 
 				ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
+				// TODO should it reset to first step if OTP is wrong?
+				//_config->isSecondStep = false;
 				_util.ResetScenario(this, _pCredProvCredentialEvents);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
@@ -714,8 +722,8 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			ShowErrorMessage(L"Unexpected error");
-
-			// Jump to the first login window
+			// Reset to first step
+			_config->isSecondStep = false;
 			_util.ResetScenario(this, _pCredProvCredentialEvents);
 			hr = S_FALSE;
 		}
