@@ -588,8 +588,10 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
 	DebugPrint(__FUNCTION__);
-	_util.ResetScenario(this, _pCredProvCredentialEvents);
+	_config->isSecondStep = false;
 	_privacyIDEA.StopPoll();
+	_util.ResetScenario(this, _pCredProvCredentialEvents);
+	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
 	return S_OK;
 }
 
