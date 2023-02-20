@@ -627,7 +627,7 @@ HRESULT CCredential::GetSerialization(
 	The difference between this value and CPGSR_NO_CREDENTIAL_FINISHED is that this flag
 	will force the logon UI to return, which will unadvise all the credential providers.
 	*/
-	* pcpgsr = CPGSR_RETURN_NO_CREDENTIAL_FINISHED;
+	*pcpgsr = CPGSR_RETURN_NO_CREDENTIAL_FINISHED;
 
 	_config->provider.status_icon = pcpsiOptionalStatusIcon;
 	_config->provider.status_text = ppwszOptionalStatusText;

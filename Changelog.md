@@ -1,3 +1,14 @@
+# Version 3.3.0, 2023-02-20
+
+## Features
+* Token enrollment via challenge-response (introduced in privacyIDEA 3.8) can be used in the CP.
+* Added whitelist for the filter to spare other credential providers from being filtered.
+
+## Fixes
+* If sending password or emtpy password was enabled and machine was offline, it was impossible to get to the second step for an offline authentication, because of the error caused by the attempt to send something. This is now fixed and offline is possible even if an error occured in the first step.
+* If the excluded_account included a '.', it was not resolved to the local machine name before comparing with the input. Now both input and registry setting will have the '.' resolved before comparing values.
+
+
 # Version 3.2.2, 2022-10-23
 
 ## Fixes
