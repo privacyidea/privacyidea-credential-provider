@@ -87,13 +87,27 @@ NOTE: Sending the windows or an empty password can be used to trigger token type
 Specify an account that should be excluded from 2FA. The format is required to be ``domain\username`` or ``computername\username``.
 
 
+Filter
+~~~~~~
+The Filter is an additional component of a credential provider. It can be used to filter out other credential providers (e.g. the system ones).
+By default, if our filter is enabled, it will filter every other credential provider so that the privacyIDEA CP is the only one usable.
+
+**enable_filter**
+Set this to ``1`` to enable the filter of the privacyIDEA Credential Provider. If this is disabled, the privacyIDEA CP will just be listed **in addition**
+to the other existing CPs.
+
+**filter_whitelist**
+Add entries to this REG_MULTI_SZ to spare other CPs from being filtered. The entry has to be the CLSID of a CP.
+One way to check the CLSID of a CP is to look at
+**HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers**
+
 Disabling for specific scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are different *credential provider usage scenarios* ("cpus"). The available
 scenarios are **logon**, **unlock** and **credui**.
 
-It is possible to configure both the Credential Provider and the Filter [#f1]_ for each of the scenarios.
+It is possible to configure both the Credential Provider and the Filter for each of the scenarios.
 This way the administrator can define a different behaviour if a users either logs in or
 unlocks his desktop.
 
@@ -259,8 +273,3 @@ If this setting is disabled, actual errors are still written to the log file.
 In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. 
 By default, sensitive data is not logged. Instead it is only logged if the password contains a value.
 To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a log file.
-
-.. rubric:: Footnotes
-
-.. [#f1] The Filter is the component that defines, if only the privacyIDEA Credential Provider is be available for login. If the
-         Filter is not installed, then the privacyIDEA Credential Provider and all other credential providers are available.
