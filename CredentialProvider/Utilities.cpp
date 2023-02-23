@@ -390,6 +390,13 @@ HRESULT Utilities::SetScenario(
 			//DebugPrint(L"Setting large text: " + text);
 		}
 
+		// If the username is already present (e.g. retry after wrong password) focus the password field
+		auto input = wstring(_config->provider.field_strings[FID_USERNAME]);
+		if (!input.empty())
+		{
+			pCPCE->SetFieldInteractiveState(pCredential, FID_LDAP_PASS, CPFIS_FOCUSED);
+		}
+
 		// Small text, use if 1step or in 2nd step of 2step
 		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->isSecondStep))
 		{

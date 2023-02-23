@@ -1022,6 +1022,7 @@ HRESULT CCredential::ReportResult(
 	{
 		DebugPrint("Complete reset!");
 		_authenticationComplete = false;
+		_config->isSecondStep = false;
 		_util.ResetScenario(this, _pCredProvCredentialEvents);
 		return S_OK;
 	}
