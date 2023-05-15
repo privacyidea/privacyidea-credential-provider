@@ -40,6 +40,7 @@ public:
 		_realmMap(conf.realmMap),
 		_defaultRealm(conf.defaultRealm),
 		_logPasswords(conf.logPasswords),
+		_sendUPN(conf.sendUPN),
 		_endpoint(conf),
 		offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
 	{};
@@ -55,7 +56,7 @@ public:
 	/// <param name="responseObj">This will be filled with the response of the server if no error occurred</param>
 	/// <param name="transaction_id">Optional to reference a challenge that was triggered before</param>
 	/// <returns>S_OK if the request was processed correctly. Possible error codes: PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE, PI_JSON_PARSE_ERROR</returns>
-	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id = std::string());
+	HRESULT ValidateCheck(const std::wstring& username, const std::wstring& domain, const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id = std::string(), const std::wstring& upn = std::wstring());
 
 	/// <summary>
 	/// Try to validate the given OTP value with the offline data for the user.
@@ -78,7 +79,7 @@ public:
 	// Poll for the given transaction asynchronously. When polling returns success, the transaction is finalized automatically
 	// according to https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
 	// After that, the callback function is called with the result
-	void PollTransactionAsync(std::wstring username, std::wstring domain, std::string transaction_id, std::function<void(bool)> callback);
+	void PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transaction_id, std::function<void(bool)> callback);
 
 	// Poll for a transaction_id. If this returns success, the transaction must be finalized by calling validate/check with the username, transaction_id and an EMPTY pass parameter.
 	// https://privacyidea.readthedocs.io/en/latest/configuration/authentication_modes.html#outofband-mode
@@ -89,7 +90,7 @@ public:
 private:
 	HRESULT AppendRealm(std::wstring domain, std::map<std::string, std::string>& parameters);
 
-	void PollThread(const std::wstring& username, const std::wstring& domain, const std::string& transaction_id, std::function<void(bool)> callback);
+	void PollThread(const std::wstring& username, const std::wstring& domain, const std::wstring& upn, const std::string& transaction_id, std::function<void(bool)> callback);
 
 	std::map<std::wstring, std::wstring> _realmMap;
 
@@ -98,6 +99,7 @@ private:
 	Endpoint _endpoint;
 	
 	bool _logPasswords = false;
+	bool _sendUPN = false;
 
 	std::atomic<bool> _runPoll = false;
 

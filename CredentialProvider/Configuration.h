@@ -98,6 +98,7 @@ public:
 		std::wstring domain = L"";
 		std::wstring password = L"";
 		std::wstring otp = L"";
+		std::wstring upn = L"";
 
 		bool passwordMustChange = false;
 		bool passwordChanged = false;

@@ -36,6 +36,7 @@ struct PIConfig
 	bool logPasswords = false;
 	std::wstring offlineFilePath = L"C:\\offlineFile.json";
 	int offlineTryWindow = 10;
+	bool sendUPN = false;
 
 	// optionals
 	int resolveTimeout = 0; // = infinite

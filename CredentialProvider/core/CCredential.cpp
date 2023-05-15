@@ -428,7 +428,6 @@ HRESULT CCredential::SetStringValue(
 			wstring domain, username;
 
 			Utilities::SplitUserAndDomain(input, username, domain);
-
 			// Set the domain hint to the domain that was found or to the initial domain that was provided
 			// when the credential was created
 			if (!domain.empty())
@@ -787,6 +786,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 
 	wstring username = _config->credential.username;
 	wstring domain = _config->credential.domain;
+	// Leave the UPN empty if it should not be used
+	wstring upn = _config->piconfig.sendUPN ? _config->credential.upn : L"";
 
 	// Check if the user is the excluded account
 	if (!_config->excludedAccount.empty())
@@ -888,7 +889,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		{
 			// In case of a single step the transactionId will be an empty string
 			string transactionId = _config->lastResponse.transactionId;
-			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, piResponse, transactionId);
+			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, piResponse, transactionId, upn);
 
 			// Evaluate the response
 			if (SUCCEEDED(res))
@@ -898,7 +899,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (piResponse.PushAvailable())
 				{
 					// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
-					_privacyIDEA.PollTransactionAsync(_config->credential.username, _config->credential.domain, piResponse.transactionId,
+					_privacyIDEA.PollTransactionAsync(username, domain, upn, piResponse.transactionId,
 						std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
 				}
 

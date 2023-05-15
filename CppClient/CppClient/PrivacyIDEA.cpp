@@ -53,6 +53,7 @@ HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std:
 void PrivacyIDEA::PollThread(
 	const std::wstring& username,
 	const std::wstring& domain,
+	const std::wstring& upn,
 	const std::string& transaction_id,
 	std::function<void(bool)> callback)
 {
@@ -77,7 +78,7 @@ void PrivacyIDEA::PollThread(
 	{
 		DebugPrint("Finalizing transaction...");
 		PIResponse pir;
-		HRESULT res = ValidateCheck(username, domain, L"", pir, transaction_id);
+		HRESULT res = ValidateCheck(username, domain, L"", pir, transaction_id, upn);
 		if (FAILED(res))
 		{
 			DebugPrint("/validate/check failed with " + to_string(res));
@@ -91,25 +92,35 @@ void PrivacyIDEA::PollThread(
 }
 
 HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstring& domain,
-	const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id)
+	const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id, const std::wstring& upn)
 {
 	DebugPrint(__FUNCTION__);
 	HRESULT res = S_OK;
-	string strUsername = Convert::ToString(username);
 	string strOTP = Convert::ToString(otp);
-
+	
 	map<string, string> parameters =
 	{
-		{ "user", strUsername },
 		{ "pass", strOTP }
 	};
 
+	if (_sendUPN && !upn.empty())
+	{
+		string strUPN = Convert::ToString(upn);
+		DebugPrint("Sending UPN " + strUPN);
+		parameters.try_emplace("user", strUPN);
+	}
+	else
+	{
+		string strUsername = Convert::ToString(username);
+		parameters.try_emplace("user", strUsername);
+		AppendRealm(domain, parameters);
+	}
+	
 	if (!transaction_id.empty())
 	{
 		parameters.try_emplace("transaction_id", transaction_id);
 	}
 
-	AppendRealm(domain, parameters);
 
 	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, RequestMethod::POST);
 
@@ -188,10 +199,10 @@ bool PrivacyIDEA::StopPoll()
 	return true;
 }
 
-void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::string transaction_id, std::function<void(bool)> callback)
+void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transaction_id, std::function<void(bool)> callback)
 {
 	_runPoll.store(true);
-	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, transaction_id, callback);
+	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transaction_id, callback);
 	t.detach();
 }
 

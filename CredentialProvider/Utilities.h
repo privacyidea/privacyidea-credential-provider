@@ -105,6 +105,14 @@ public:
 	/// <param name="domain"></param>
 	static void SplitUserAndDomain(const std::wstring& input, std::wstring& username, std::wstring& domain);
 
+	/// <summary>
+	/// Check if the input is an UPN. The check is very basic and assumes the input is an UPN if it contains an @ and no \.
+	/// </summary>
+	/// <param name="input"></param>
+	/// <param name="config"></param>
+	/// <returns>bool if upn detected, false otherwise</returns>
+	static bool CheckForUPN(const std::wstring& input);
+
 	HRESULT ReadUserField();
 
 	HRESULT ReadPasswordField();

@@ -684,6 +684,11 @@ HRESULT Utilities::ReadUserField()
 
 		Utilities::SplitUserAndDomain(input, username, domain);
 
+		if (Utilities::CheckForUPN(input))
+		{
+			_config->credential.upn = input;
+		}
+
 		if (!username.empty())
 		{
 			wstring newUsername(username);
@@ -844,5 +849,10 @@ void Utilities::SplitUserAndDomain(const std::wstring& input, std::wstring& user
 	{
 		domain = Utilities::ComputerName();
 	}
+}
+
+bool Utilities::CheckForUPN(const std::wstring& input)
+{
+	return input.find(L"@") != string::npos && input.find(L"\\") == string::npos;
 }
 

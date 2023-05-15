@@ -74,7 +74,7 @@ void Configuration::Load()
 	piconfig.customPort = rr.GetIntRegistry(L"custom_port");
 	piconfig.offlineFilePath = rr.GetWStringRegistry(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetIntRegistry(L"offline_try_window");
-
+	piconfig.sendUPN = rr.GetBoolRegistry(L"send_upn");
 	piconfig.resolveTimeout = rr.GetIntRegistry(L"resolve_timeout");
 	piconfig.connectTimeout = rr.GetIntRegistry(L"connect_timeout");
 	piconfig.sendTimeout = rr.GetIntRegistry(L"send_timeout");
@@ -168,7 +168,7 @@ void Configuration::LogConfig()
 	DebugPrint("Log sensitive data: " + Convert::ToString(piconfig.logPasswords));
 	DebugPrint("No default: " + Convert::ToString(noDefault));
 	DebugPrint("Show domain hint: " + Convert::ToString(showDomainHint));
-
+	PrintIfIntIsNotNull("Send UPN", piconfig.sendUPN);
 	PrintIfStringNotEmpty(L"Bitmap path", bitmapPath);
 	PrintIfStringNotEmpty(L"Offline file path", piconfig.offlineFilePath);
 	PrintIfIntIsNotNull("Offline try window", piconfig.offlineTryWindow);

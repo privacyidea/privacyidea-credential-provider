@@ -185,7 +185,9 @@
     <Fragment>
         <UI>
             <Dialog Id="UserConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Id="UserConfigurationInfo" Type="Text" X="45" Y="43" Width="300" Height="45" TabSkip="no" Text="!(loc.UserConfigurationInfo)" />
+				<Control Type="CheckBox" Id="SendUPN" Property="SEND_UPN" CheckBoxValue="1" Width="210" Height="38" X="45" Y="45">
+					<Text>Send the UPN if detected in Username field. UPN is assumed if @ is entered and no \. When UPN is sent, the realm is omitted.</Text>
+				</Control>
                 <Control Id="V1BitmapPathLabel" Type="Text" X="45" Y="88" Width="220" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
                 <Control Id="V1BitmapPathEdit" Type="Edit" X="45" Y="100" Width="220" Height="18" Property="V1_BITMAP_PATH" Text="{1024}" />
                 <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
