@@ -73,10 +73,11 @@ std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::s
 	string ret;
 	for (auto& entry : parameters)
 	{
-		ret += entry.first + "=" + URLEncode(entry.second) + "&";
+		auto encoded = URLEncode(entry.second);
+		ret += entry.first + "=" + encoded + "&";
 		if (entry.first != "pass" || _config.logPasswords)
 		{
-			DebugPrint(entry.first + "=" + entry.second);
+			DebugPrint(entry.first + "=" + encoded);
 		}
 		else
 		{
@@ -379,131 +380,3 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 
 	return response;
 }
-
-/*
-HRESULT Endpoint::ParseAuthenticationRequest(const string& in)
-{
-	DebugPrint(__FUNCTION__);
-
-	auto j = Endpoint::TryParseJSON(in);
-	if (j == nullptr) return PI_JSON_PARSE_ERROR;
-
-	auto jValue = j["result"]["value"];
-
-	if (jValue.is_boolean())
-	{
-		return (jValue.get<boolean>() ? PI_AUTH_SUCCESS : PI_AUTH_FAILURE);
-	}
-	return PI_AUTH_FAILURE;
-}
-*/
-
-/*
-HRESULT Endpoint::ParseTriggerRequest(const std::string& in, Challenge& c)
-{
-	DebugPrint(__FUNCTION__);
-
-	auto j = Endpoint::TryParseJSON(in);
-	if (j == nullptr) return PI_JSON_PARSE_ERROR;
-
-	json multiChallenge = j["detail"]["multi_challenge"];
-
-	if (multiChallenge.empty())
-	{
-		return PI_NO_CHALLENGES;
-	}
-
-	// Get the message from detail, that is the accumulated message created by privacyIDEA
-	auto jMessage = j["detail"]["message"];
-	if (jMessage.is_string())
-		c.message = PrivacyIDEA::s2ws(jMessage.get<std::string>());
-
-	// Check each element for transaction IDs / push token
-	for (auto val : multiChallenge.items())
-	{
-		json j2 = val.value();
-		string type = j2["type"].get<std::string>();
-		string txid = j2["transaction_id"].get<std::string>();
-		string serial = j2["serial"].get<std::string>();
-
-		if (!type.empty())
-		{
-
-			if (type == "push")
-			{
-				c.tta = (c.tta == TTA::OTP) ? TTA::BOTH : TTA::PUSH;
-			}
-			else
-			{
-				c.tta = (c.tta == TTA::PUSH) ? TTA::BOTH : TTA::OTP;
-			}
-		}
-		if (!txid.empty())
-		{
-			c.transaction_id = txid;
-		}
-		if (!serial.empty())
-		{
-			c.serial = serial;
-		}
-	}
-	return PI_TRIGGERED_CHALLENGE;
-}
-*/
-/*
-HRESULT Endpoint::ParseForError(const std::string& in, std::string& errMsg, int& errCode)
-{
-	DebugPrint(__FUNCTION__);
-	auto j = Endpoint::TryParseJSON(in);
-	if (j == nullptr) return PI_JSON_PARSE_ERROR;
-
-	// Check for error code and message
-	auto error = j["result"]["error"];
-	if (error.is_object())
-	{
-		auto jErrCode = error["code"];
-		auto jErrMsg = error["message"];
-
-		if (jErrCode.is_number() && jErrMsg.is_string())
-		{
-			errCode = jErrCode.get<int>();
-			errMsg = jErrMsg.get<std::string>();
-			return PI_JSON_ERROR_CONTAINED;
-		}
-	}
-	return E_FAIL;
-}
-*/
-
-/*
-HRESULT Endpoint::PollForTransaction(const std::string& data)
-{
-	string response = SendRequest(PI_ENDPOINT_POLLTRANSACTION, data, RequestMethod::GET);
-	return ParseForTransactionSuccess(response);
-}
-*/
-/*
-HRESULT Endpoint::ParseForTransactionSuccess(const std::string& in)
-{
-	//DebugPrint(__FUNCTION__);
-	auto j = Endpoint::TryParseJSON(in);
-	if (j == nullptr) return false;
-
-	auto& jValue = j["result"]["value"];
-	if (jValue.is_boolean())
-	{
-		return jValue.get<bool>();
-	}
-	return false;
-}
-*/
-/*
-HRESULT Endpoint::FinalizePolling(const std::string& user, const std::string& transaction_id)
-{
-	DebugPrint(__FUNCTION__);
-	// Finalize with empty pass
-	std::string data = EncodePair("user", user) + "&" + EncodePair("transaction_id", transaction_id) + "&pass=";
-	string response = SendRequest(PI_ENDPOINT_VALIDATE_CHECK, data, RequestMethod::POST);
-	return ParseAuthenticationRequest(response);
-}
-*/
