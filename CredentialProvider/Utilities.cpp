@@ -391,7 +391,12 @@ HRESULT Utilities::SetScenario(
 		}
 
 		// If the username is already present (e.g. retry after wrong password) focus the password field
-		auto input = wstring(_config->provider.field_strings[FID_USERNAME]);
+		wstring input;
+		if (_config != nullptr && _config->provider.field_strings != nullptr)
+		{
+			input = wstring(_config->provider.field_strings[FID_USERNAME]);
+		}
+		
 		if (!input.empty())
 		{
 			pCPCE->SetFieldInteractiveState(pCredential, FID_LDAP_PASS, CPFIS_FOCUSED);
