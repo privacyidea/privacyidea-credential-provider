@@ -53,7 +53,7 @@ std::string Endpoint::URLEncode(const std::string& in)
 	}
 	std::string ret;
 
-	if (AtlEscapeUrl(in.c_str(), buf, pdwWritten, (DWORD)maxLen, (DWORD)NULL))
+	if (AtlEscapeUrl(in.c_str(), buf, pdwWritten, (DWORD)maxLen, ATL_URL_ENCODE_PERCENT))
 	{
 		ret = std::string(buf);
 	}
