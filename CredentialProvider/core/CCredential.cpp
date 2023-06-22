@@ -257,11 +257,10 @@ HRESULT CCredential::SetDeselected()
 	DebugPrint(__FUNCTION__);
 
 	HRESULT hr = S_OK;
-
+	
 	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
-
 	hr = _util.ResetScenario(this, _pCredProvCredentialEvents);
-
+	
 	// Reset password changing in case another user wants to log in
 	_config->credential.passwordChanged = false;
 	_config->credential.passwordMustChange = false;
@@ -1019,7 +1018,7 @@ HRESULT CCredential::ReportResult(
 
 	// These status require a complete reset so that there will be no lock out in 2nd step
 	if (ntsStatus == STATUS_LOGON_FAILURE || ntsStatus == STATUS_LOGON_TYPE_NOT_GRANTED
-		|| ntsStatus == STATUS_ACCOUNT_RESTRICTION)
+		|| (ntsStatus == STATUS_ACCOUNT_RESTRICTION && ntsSubstatus != STATUS_PASSWORD_EXPIRED))
 	{
 		DebugPrint("Complete reset!");
 		_authenticationComplete = false;
