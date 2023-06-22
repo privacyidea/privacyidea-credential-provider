@@ -1,3 +1,13 @@
+# Version 3.4.0 2023-06-26
+
+## Features
+* If 'send_upn' is enabled and the username input contains an '@' and no '\', it will be send as is to privacyidea. This feature does not *yet* check with AD if the UPN is correct.
+
+## Fixes
+* Fixed a bug where a password reset for an expired password was not recogized.
+* Fixed a bug where the '%' was not properly encoded when communicating with privacyidea.
+
+
 # Version 3.3.0, 2023-02-20
 
 ## Features
