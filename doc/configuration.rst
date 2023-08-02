@@ -104,7 +104,7 @@ to the other existing CPs.
 **filter_whitelist**
 Add entries to this REG_MULTI_SZ to spare other CPs from being filtered. The entry has to be the CLSID of a CP.
 One way to check the CLSID of a CP is to look at
-**HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers**
+**HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\Credential Providers**
 
 Disabling for specific scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
