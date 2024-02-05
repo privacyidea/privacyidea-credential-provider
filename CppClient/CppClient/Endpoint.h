@@ -24,8 +24,6 @@
 #include <map>
 #include <Windows.h>
 
-constexpr auto PI_USER_AGENT = L"privacyidea-cp";
-
 #define PI_ERROR_SERVER_UNAVAILABLE					((HRESULT)0x88809014)
 #define PI_ERROR_ENDPOINT_SETUP						((HRESULT)0x88809015)
 

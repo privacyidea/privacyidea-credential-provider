@@ -69,6 +69,13 @@ void Configuration::Load()
 
 	piconfig.ignoreUnknownCA = rr.GetBoolRegistry(L"ssl_ignore_unknown_ca");
 	piconfig.ignoreInvalidCN = rr.GetBoolRegistry(L"ssl_ignore_invalid_cn");
+	auto version = string(VER_FILE_VERSION_STR);
+	piconfig.userAgent = L"privacyidea-cp/" + Convert::ToWString(version);
+	if (!rr.GetBoolRegistry(L"user_agent_hide_computer_name"))
+	{
+		piconfig.userAgent += L" Windows/" + Utilities::ComputerName();
+	}
+
 	piconfig.customPort = rr.GetIntRegistry(L"custom_port");
 	piconfig.offlineFilePath = rr.GetWStringRegistry(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetIntRegistry(L"offline_try_window");

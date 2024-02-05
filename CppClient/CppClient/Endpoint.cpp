@@ -194,7 +194,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	}
 
 	// Use WinHttpOpen to obtain a session handle.
-	hSession = WinHttpOpen(PI_USER_AGENT,
+	hSession = WinHttpOpen(_config.userAgent.c_str(),
 		dwAccessType,
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
@@ -233,10 +233,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 
 	// Set Option Security Flags to start TLS
 	DWORD dwReqOpts = 0;
-	if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwReqOpts, sizeof(DWORD)))
-	{
-	}
-	else
+	if (!WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwReqOpts, sizeof(DWORD)))
 	{
 		PIError("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
@@ -290,6 +287,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 
 	// Send the request
 	if (hRequest)
+	{
 		bResults = WinHttpSendRequest(
 			hRequest,
 			L"Content-Type: application/x-www-form-urlencoded\r\n",
@@ -298,6 +296,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			data_len,
 			data_len,
 			0);
+	}
 
 	if (!bResults)
 	{
