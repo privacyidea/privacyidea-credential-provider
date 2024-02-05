@@ -62,12 +62,6 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>$(SolutionDir)CppClient\nlohmann\x64\include;$(SolutionDir)libfido2-1.14.0-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>webauthn.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libssl.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\Nils\Desktop\openssl-3-win\openssl-3\x64\lib;C:\Users\Nils\Desktop\libfido2-1.13.0-win\Win64\Release\v143\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
     <Lib>
       <AdditionalLibraryDirectories>$(SolutionDir)libfido2-1.14.0-win\Win64\Release\v143\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>fido2.lib;crypt32.lib;zlib1.lib;crypto-50.lib;cbor.lib;Ws2_32.lib;hid.lib;setupapi.lib</AdditionalDependencies>
