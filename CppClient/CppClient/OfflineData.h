@@ -24,15 +24,26 @@
 class OfflineData
 {
 public:
-
 	int GetLowestKey();
 
-	size_t GetOfflineOTPCount() noexcept;
+	bool operator==(const OfflineData& other) const
+	{
+		return username == other.username && serial == other.serial && refilltoken == other.refilltoken;
+	}
 
 	std::string username = "";
 	std::string serial = "";
 	std::string refilltoken = "";
+
+	// HOTP
 	std::map<std::string, std::string> offlineOTPs;
 	int rounds = 10000;
-	int count = 0;
+	int count = 0; // Max OTPs that will be stored offline
+
+	// WebAuthn
+	std::string pubKey;
+	std::string credId;
+	std::string rpId;
+
+	bool isWebAuthn() const { return !pubKey.empty() && !credId.empty() && !rpId.empty(); }
 };

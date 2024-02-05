@@ -16,6 +16,7 @@
 **    limitations under the License.
 **
 ** * * * * * * * * * * * * * * * * * * */
+
 #include "PrivacyIDEA.h"
 #include "Challenge.h"
 #include "Convert.h"
@@ -50,21 +51,35 @@ HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std:
 	return S_OK;
 }
 
+HRESULT PrivacyIDEA::ProcessResponse(std::string response, _Inout_ PIResponse& responseObj)
+{
+	auto offlineData = _parser.ParseResponseForOfflineData(response);
+	if (!offlineData.empty())
+	{
+		for (auto& item : offlineData)
+		{
+			offlineHandler.AddOfflineData(item);
+		}
+	}
+	HRESULT res = _parser.ParseResponse(response, responseObj);
+	return res;
+}
+
 void PrivacyIDEA::PollThread(
 	const std::wstring& username,
 	const std::wstring& domain,
 	const std::wstring& upn,
-	const std::string& transaction_id,
+	const std::string& transactionId,
 	std::function<void(bool)> callback)
 {
-	DebugPrint("Starting poll thread...");
+	PIDebug("Starting poll thread...");
 	bool success = false;
 
 	this_thread::sleep_for(chrono::milliseconds(300));
 
 	while (_runPoll.load())
 	{
-		if (PollTransaction(transaction_id))
+		if (PollTransaction(transactionId))
 		{
 			success = true;
 			_runPoll.store(false);
@@ -72,16 +87,16 @@ void PrivacyIDEA::PollThread(
 		}
 		this_thread::sleep_for(chrono::milliseconds(500));
 	}
-	DebugPrint("Polling stopped");
+	PIDebug("Polling stopped");
 	// Only finalize if there was success while polling. If the authentication finishes otherwise, the polling is stopped without finalizing.
 	if (success)
 	{
-		DebugPrint("Finalizing transaction...");
+		PIDebug("Finalizing transaction...");
 		PIResponse pir;
-		HRESULT res = ValidateCheck(username, domain, L"", pir, transaction_id, upn);
+		HRESULT res = ValidateCheck(username, domain, L"", pir, transactionId, upn);
 		if (FAILED(res))
 		{
-			DebugPrint("/validate/check failed with " + to_string(res));
+			PIDebug("/validate/check failed with " + to_string(res));
 			callback(false);
 		}
 		else
@@ -91,22 +106,29 @@ void PrivacyIDEA::PollThread(
 	}
 }
 
-HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstring& domain,
-	const std::wstring& otp, __out PIResponse& responseObj, const std::string& transaction_id, const std::wstring& upn)
+HRESULT PrivacyIDEA::ValidateCheck(
+	const std::wstring& username,
+	const std::wstring& domain,
+	const std::wstring& otp,
+	PIResponse& responseObj,
+	const std::string& transactionId,
+	const std::wstring& upn,
+	const std::map<std::string, std::string>& headers)
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	HRESULT res = S_OK;
 	string strOTP = Convert::ToString(otp);
-	
+
 	map<string, string> parameters =
 	{
 		{ "pass", strOTP }
 	};
 
+	// Username+Domain/Realm or just UPN
 	if (_sendUPN && !upn.empty())
 	{
 		string strUPN = Convert::ToString(upn);
-		DebugPrint("Sending UPN " + strUPN);
+		PIDebug("Sending UPN " + strUPN);
 		parameters.try_emplace("user", strUPN);
 	}
 	else
@@ -115,32 +137,79 @@ HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstr
 		parameters.try_emplace("user", strUsername);
 		AppendRealm(domain, parameters);
 	}
-	
-	if (!transaction_id.empty())
+
+	if (!transactionId.empty())
 	{
-		parameters.try_emplace("transaction_id", transaction_id);
+		parameters.try_emplace("transaction_id", transactionId);
 	}
 
-
-	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, RequestMethod::POST);
+	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
 	{
-		DebugPrint("Response was empty. Endpoint error: " + Convert::LongToHexString(_endpoint.GetLastErrorCode()));
+		PIDebug("Response was empty. Endpoint error: " + Convert::LongToHexString(_endpoint.GetLastErrorCode()));
 		return _endpoint.GetLastErrorCode();
 	}
-	// Check for initial offline OTP data
-	auto offlineData = _parser.ParseResponseForOfflineData(response);
-	if (!offlineData.empty())
+
+	return ProcessResponse(response, responseObj);
+}
+
+HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
+	const std::wstring& username,
+	const std::wstring& domain,
+	const WebAuthnSignResponse& webAuthnSignResponse,
+	const std::string& origin,
+	PIResponse& responseObj,
+	const std::string& transactionId,
+	const std::wstring& upn)
+{
+	map<string, string> parameters = { { "pass", "" } };
+
+	// Username+Domain/Realm or just UPN
+	if (_sendUPN && !upn.empty())
 	{
-		for (auto& item : offlineData)
-		{
-			offlineHandler.AddOfflineData(item);
-		}
+		string strUPN = Convert::ToString(upn);
+		PIDebug("Sending UPN " + strUPN);
+		parameters.try_emplace("user", strUPN);
 	}
-	res = _parser.ParsePIResponse(response, responseObj);
-	return res;
+	else
+	{
+		string strUsername = Convert::ToString(username);
+		parameters.try_emplace("user", strUsername);
+		AppendRealm(domain, parameters);
+	}
+
+	if (!transactionId.empty())
+	{
+		parameters.try_emplace("transaction_id", transactionId);
+	}
+	else
+	{
+		PIError("Unable to send WebAuthnSignResponse without transactionId!");
+		return PI_ERROR_WRONG_PARAMETER;
+	}
+
+	// Add webauthn parameters, each member of the response is a parameter
+	parameters.try_emplace("credentialid", webAuthnSignResponse.credentialid);
+	parameters.try_emplace("clientdata", webAuthnSignResponse.clientdata);
+	parameters.try_emplace("signaturedata", webAuthnSignResponse.signaturedata);
+	parameters.try_emplace("authenticatordata", webAuthnSignResponse.authenticatordata);
+
+	// TODO userhandle, exstensions
+
+	map<string, string> headers = { { "Origin", origin } };
+
+	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+
+	// If the response is empty, there was an error in the endpoint
+	if (response.empty())
+	{
+		PIDebug("Response was empty. Endpoint error: " + Convert::LongToHexString(_endpoint.GetLastErrorCode()));
+		return _endpoint.GetLastErrorCode();
+	}
+
+	return ProcessResponse(response, responseObj);
 }
 
 /*!
@@ -149,16 +218,17 @@ HRESULT PrivacyIDEA::ValidateCheck(const std::wstring& username, const std::wstr
 */
 HRESULT PrivacyIDEA::OfflineCheck(const std::wstring& username, const std::wstring& otp, __out std::string& serialUsed)
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	string szUsername = Convert::ToString(username);
 
 	HRESULT res = offlineHandler.VerifyOfflineOTP(otp, szUsername, serialUsed);
-	DebugPrint("Offline verification result: " + Convert::LongToHexString(res));
+	PIDebug("Offline verification result: " + Convert::LongToHexString(res));
 	return res;
 }
 
 HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstring& lastOTP, const std::string& serial)
 {
+	PIDebug(__FUNCTION__);
 	string refilltoken;
 	string szUsername = Convert::ToString(username);
 	string szLastOTP = Convert::ToString(lastOTP);
@@ -166,7 +236,7 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 	HRESULT hr = offlineHandler.GetRefillToken(szUsername, serial, refilltoken);
 	if (hr != S_OK)
 	{
-		DebugPrint("Failed to get parameters for offline refill!");
+		PIDebug("Failed to get parameters for offline refill!");
 		return E_FAIL;
 	}
 
@@ -176,11 +246,11 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 		{"serial", serial}
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, RequestMethod::POST);
+	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
 
 	if (response.empty())
 	{
-		DebugPrint("Offline refill response was empty");
+		PIDebug("Offline refill response was empty");
 		return _endpoint.GetLastErrorCode();
 	}
 
@@ -192,26 +262,62 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 	return hr;
 }
 
+HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const std::string& serial)
+{
+	PIDebug(__FUNCTION__);
+	string refilltoken;
+	string szUsername = Convert::ToString(username);
+
+	HRESULT hr = offlineHandler.GetRefillToken(szUsername, serial, refilltoken);
+	if (hr != S_OK)
+	{
+		PIDebug("Failed to get parameters for offline refill!");
+		return E_FAIL;
+	}
+
+	map<string, string> parameters = {
+		{"refilltoken", refilltoken},
+		{"serial", serial},
+		{"pass", ""}
+	};
+
+	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
+
+	if (response.empty())
+	{
+		PIDebug("Offline refill response was empty");
+		return _endpoint.GetLastErrorCode();
+	}
+
+	if (!_parser.IsStillActiveOfflineToken(response))
+	{
+		PIDebug("Token " + serial + " is not marked for offline use anymore, its data is removed from this machine");
+		offlineHandler.RemoveOfflineData(szUsername, serial);
+	}
+
+	return hr;
+}
+
 bool PrivacyIDEA::StopPoll()
 {
-	DebugPrint("Stopping poll thread...");
+	PIDebug("Stopping poll thread...");
 	_runPoll.store(false);
 	return true;
 }
 
-void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transaction_id, std::function<void(bool)> callback)
+void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transactionId, std::function<void(bool)> callback)
 {
 	_runPoll.store(true);
-	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transaction_id, callback);
+	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);
 	t.detach();
 }
 
-bool PrivacyIDEA::PollTransaction(std::string transaction_id)
+bool PrivacyIDEA::PollTransaction(std::string transactionId)
 {
 	map<string, string> parameters = {
-		{"transaction_id", transaction_id }
+		{"transaction_id", transactionId }
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_POLLTRANSACTION, parameters, RequestMethod::GET);
+	string response = _endpoint.SendRequest(PI_ENDPOINT_POLLTRANSACTION, parameters, map<string, string>(), RequestMethod::GET);
 	return _parser.ParsePollTransaction(response);
 }

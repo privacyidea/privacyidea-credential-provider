@@ -37,15 +37,14 @@ public:
 
 	~OfflineHandler();
 
-	/*!
-		Check if the given OTP matches with one of the offline OTPs in the configured window.
-		If the given OTP is not the first in the list, the values between the start of the list and the matching position are removed.
-
-		@param[in] OTP
-		@param[in] Username
-		@param[out] serialUsed
-		@returns S_OK or E_FAIL
-	*/
+	/// <summary>
+	/// Check if the given OTP matches with one of the offline OTPs in the configured window.
+	/// If the given OTP is not the first in the list, the values between the start of the list and the matching position are removed.
+	/// </summary>
+	/// <param name="otp"></param>
+	/// <param name="username"></param>
+	/// <param name="serialUsed"></param>
+	/// <returns></returns>
 	HRESULT VerifyOfflineOTP(const std::wstring& otp, const std::string& username, std::string& serialUsed);
 
 	HRESULT GetRefillToken(const std::string& username, const std::string& serial, std::string& refilltoken);
@@ -61,20 +60,20 @@ public:
 
 	std::vector<std::pair<std::string, size_t>> GetTokenInfo(const std::string& username);
 
+	std::vector<OfflineData> GetWebAuthnOfflineData(const std::string& username);
+
+	bool RemoveOfflineData(const std::string& username, const std::string& serial);
+
 private:
-	std::vector<OfflineData> dataSets = std::vector<OfflineData>();
+	std::vector<OfflineData> _dataSets = std::vector<OfflineData>();
 
 	std::wstring _filePath = L"C:\\offlineFile.json";
 
 	int _tryWindow = 10;
 
-	bool Pbkdf2_sha512_verify(std::wstring password, std::string storedValue);
-
-	void Base64toabase64(std::string& in);
+	bool PBKDF2SHA512Verify(std::wstring password, std::string storedValue);
 
 	std::string GetNextValue(std::string& in);
-
-	char* UnicodeToCodePage(int codePage, const wchar_t* src);
 
 	HRESULT SaveToFile();
 

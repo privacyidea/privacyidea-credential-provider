@@ -24,6 +24,8 @@
 #include <map>
 #include <Windows.h>
 
+constexpr auto PI_USER_AGENT = L"privacyidea-cp";
+
 #define PI_ERROR_SERVER_UNAVAILABLE					((HRESULT)0x88809014)
 #define PI_ERROR_ENDPOINT_SETUP						((HRESULT)0x88809015)
 
@@ -38,7 +40,11 @@ class Endpoint
 public:
 	Endpoint(PIConfig config) : _config(config) {};
 
-	std::string SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const RequestMethod& method);
+	std::string SendRequest(
+		const std::string& endpoint,
+		const std::map<std::string, std::string>& parameters,
+		const std::map<std::string, std::string>& headers = std::map<std::string, std::string>(),
+		const RequestMethod& method = RequestMethod::POST);
 
 	HRESULT GetLastErrorCode();
 

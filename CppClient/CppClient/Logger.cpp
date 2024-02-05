@@ -93,13 +93,7 @@ void Logger::Log(const wchar_t* message, const char* file, int line, bool isDebu
 	}
 	LogW(msg, file, line, isDebugMessage);
 }
-/*
-void Logger::log(const int message, const char* file, int line, bool isDebugMessage)
-{
-	string i = "(int) " + to_string(message);
-	logS(i, file, line, isDebugMessage);
-}
-*/
+
 void Logger::Log(const long message, const char* file, int line, bool isDebugMessage)
 {
 	string i = "(long) " + to_string(message);
@@ -115,14 +109,3 @@ void Logger::Log(const std::wstring& message, const char* file, int line, bool i
 {
 	LogW(message, file, line, isDebugMessage);
 }
-/*
-void Logger::log(const std::string& message, const char* file, int line, bool isDebugMessage)
-{
-	logS(message.c_str(), file, line, isDebugMessage);
-}
-
-void Logger::log(const std::wstring& message, const char* file, int line, bool isDebugMessage)
-{
-	logW(message.c_str(), file, line, isDebugMessage);
-}
-*/

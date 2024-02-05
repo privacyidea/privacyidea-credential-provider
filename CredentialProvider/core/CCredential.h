@@ -97,7 +97,7 @@ public:
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
 		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon) override;
-	
+
 	IFACEMETHODIMP ReportResult(__in NTSTATUS ntsStatus,
 		__in NTSTATUS ntsSubstatus,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
@@ -120,13 +120,19 @@ public:
 		__in_opt PWSTR password);
 
 private:
+	HRESULT SetScenario(__in SCENARIO scenario);
+
+	HRESULT ResetScenario(__in bool resetToFirstStep = false);
+
 	HRESULT SetDomainHint(std::wstring domain);
 	HRESULT SetOfflineInfo(std::string username);
+
+	SCENARIO SelectWebAuthnScenario();
 
 	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
 	void PushAuthenticationCallback(bool success);
-	
+
 	HBITMAP CreateBitmapFromBase64PNG(const std::wstring& base64);
 
 	LONG									_cRef;
@@ -137,15 +143,14 @@ private:
 	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];				// An array holding the state of 
 																							// each field in the tile.
 
-	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];												// An array holding the string 
+	wchar_t*								_rgFieldStrings[FID_NUM_FIELDS];				// An array holding the string 
 																							// value of each field. This is 
 																							// different from the name of 
 																							// the field held in 
 																							// _rgCredProvFieldDescriptors.
 	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
 
-	DWORD                                   _dwComboIndex;									// Tracks the current index 
-																							// of our combobox.
+	DWORD                                   _dwComboIndex;									// Tracks the current index of our combobox.
 
 	PrivacyIDEA								_privacyIDEA;
 

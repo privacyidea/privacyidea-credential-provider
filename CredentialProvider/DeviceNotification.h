@@ -1,13 +1,14 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2012 Dominik Pretzsch
-** 
+** Copyright 2024 NetKnights GmbH
+** Author: Nils Behlen
+**
 **    Licensed under the Apache License, Version 2.0 (the "License");
 **    you may not use this file except in compliance with the License.
 **    You may obtain a copy of the License at
-** 
+**
 **        http://www.apache.org/licenses/LICENSE-2.0
-** 
+**
 **    Unless required by applicable law or agreed to in writing, software
 **    distributed under the License is distributed on an "AS IS" BASIS,
 **    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,14 +18,14 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
+#include <atomic>
 
-#include "helpers.h"
-#include <windows.h>
-#include <unknwn.h>
+class DeviceNotification
+{
+public:
+	static int Register();
 
-// global dll hinstance
-extern HINSTANCE g_hinst;
-#define HINST_THISDLL g_hinst
+	static int Unregister();
 
-void DllAddRef() noexcept;
-void DllRelease() noexcept;
+	static std::atomic<bool> newDevices;
+};

@@ -6,32 +6,49 @@
 #include <Windows.h>
 #include <wincred.h>
 
-#define CLEAR_FIELDS_CRYPT 0
-#define CLEAR_FIELDS_EDIT_AND_CRYPT 1
-#define CLEAR_FIELDS_ALL 2
-#define CLEAR_FIELDS_ALL_DESTROY 3
+constexpr auto CLEAR_FIELDS_CRYPT = 0;
+constexpr auto CLEAR_FIELDS_EDIT_AND_CRYPT = 1;
+constexpr auto CLEAR_FIELDS_ALL = 2;
+constexpr auto CLEAR_FIELDS_ALL_DESTROY = 3;
 
-#define MAX_SIZE_DOMAIN 64
-#define MAX_SIZE_USERNAME 512
+constexpr auto MAX_SIZE_DOMAIN = 64;
+constexpr auto MAX_SIZE_USERNAME = 512;
 
-enum class SCENARIO
-{
-	NO_CHANGE = 0,
-	LOGON_BASE = 1,
-	UNLOCK_BASE = 2,
-	SECOND_STEP = 3,
-	LOGON_TWO_STEP = 4,
-	UNLOCK_TWO_STEP = 5,
-	CHANGE_PASSWORD = 6,
-};
+// Text IDs
+constexpr auto TEXT_USERNAME = 0;
+constexpr auto TEXT_PASSWORD = 1;
+constexpr auto TEXT_OLD_PASSWORD = 2;
+constexpr auto TEXT_NEW_PASSWORD = 3;
+constexpr auto TEXT_CONFIRM_PASSWORD = 4;
+constexpr auto TEXT_DOMAIN_HINT = 5;
+constexpr auto TEXT_OTP_FIELD = 6;
+constexpr auto TEXT_WRONG_OTP = 7;
+constexpr auto TEXT_RESET_LINK = 8;
+constexpr auto TEXT_AVAILABLE_OFFLINE_TOKEN = 9;
+constexpr auto TEXT_OTPS_REMAINING = 10;
+constexpr auto TEXT_GENERIC_ERROR = 11;
+constexpr auto TEXT_USE_WEBAUTHN = 12;
+constexpr auto TEXT_USE_OTP = 13;
+constexpr auto TEXT_WAN_PIN_HINT = 14;
+constexpr auto TEXT_TOUCH_SEC_KEY = 15;
+constexpr auto TEXT_CONNECTING = 16;
+constexpr auto TEXT_LOGIN_TEXT = 17;
+constexpr auto TEXT_OTP_PROMPT = 18;
+constexpr auto TEXT_FIDO_NO_CREDENTIALS = 19;
+constexpr auto TEXT_FIDO_WAITING_FOR_DEVICE = 20;
 
 class Utilities
 {
 public:
 	Utilities(std::shared_ptr<Configuration> c) noexcept;
-
-	// Returns the text for the id in english or german, depending on GetUserDefaultUILanguage
-	static std::wstring GetTranslatedText(int text_id);
+	
+	/// <summary>
+	/// If the text for the id is configurable and exists in the config, return that value.
+	/// Otherwise, return the default text for the id in english or german, depending on GetUserDefaultUILanguage.
+	/// </summary>
+	/// <param name="id"></param>
+	/// <returns></returns>
+	std::wstring GetText(int id);
 
 	HRESULT KerberosLogon(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
@@ -60,17 +77,9 @@ public:
 		__in std::wstring domain
 	);
 
-	// Set all fields state depending on the scenario, then fill the fields depending on scenario and configuration
-	// This will also account for the last response that was received by privacyIDEA
-	HRESULT SetScenario(
-		__in ICredentialProviderCredential* pCredential,
-		__in ICredentialProviderCredentialEvents* pCPCE,
-		__in SCENARIO scenario
-	);
-
 	HRESULT Clear(
 		wchar_t* (&field_strings)[FID_NUM_FIELDS],
-		CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR(&pcpfd)[FID_NUM_FIELDS],
+		CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR (&pcpfd)[FID_NUM_FIELDS],
 		ICredentialProviderCredential* pcpc,
 		ICredentialProviderCredentialEvents* pcpce,
 		char clear
@@ -83,15 +92,9 @@ public:
 	);
 
 	HRESULT InitializeField(
-		LPWSTR rgFieldStrings[11],
+		LPWSTR rgFieldStrings[FID_NUM_FIELDS],
 		DWORD field_index
 	);
-
-	HRESULT CopyInputsToConfig();
-
-	static const FIELD_STATE_PAIR* GetFieldStatePairFor(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, bool twoStepHideOTP);
-
-	HRESULT ResetScenario(ICredentialProviderCredential* pSelf, ICredentialProviderCredentialEvents* pCredProvCredentialEvents);
 
 	static std::wstring ComputerName();
 
@@ -112,33 +115,20 @@ public:
 	/// <param name="config"></param>
 	/// <returns>bool if upn detected, false otherwise</returns>
 	static bool CheckForUPN(const std::wstring& input);
+	
+	HRESULT CopyInputFields();
 
-	HRESULT ReadUserField();
+	HRESULT CopyUsernameField();
 
-	HRESULT ReadPasswordField();
+	HRESULT CopyPasswordField();
 
-	HRESULT ReadOTPField();
+	HRESULT CopyOTPField();
 
-	HRESULT ReadPasswordChangeFields();
+	HRESULT CopyWANPinField();
+
+	HRESULT CopyPasswordChangeFields();
 
 private:
 	std::shared_ptr<Configuration> _config;
-
-#define TEXT_USERNAME 0
-#define TEXT_PASSWORD 1
-#define TEXT_OLD_PASSWORD 2
-#define TEXT_NEW_PASSWORD 3
-#define TEXT_CONFIRM_PASSWORD 4
-#define TEXT_DOMAIN_HINT 5
-#define TEXT_OTP 6
-#define TEXT_WRONG_OTP 7
-#define TEXT_WRONG_PASSWORD 8
-#define TEXT_DEFAULT_OTP_HINT 9
-#define TEXT_RESET_LINK 10
-#define TEXT_AVAILABLE_OFFLINE_TOKEN 11
-#define TEXT_OTPS_REMAINING 12
-#define TEXT_GENERIC_ERROR 13
-
-	const static std::wstring texts[14][2];
 };
 

@@ -1,3 +1,13 @@
+# Version 3.5.0 TBD
+
+## Features
+* WebAuthn online
+* WebAuthn offline, requires privacyIDEA 3.10
+
+## Fixes
+* Fixed `reset_link_text` to be actually used when set
+
+
 # Version 3.4.0 2023-06-26
 
 ## Features

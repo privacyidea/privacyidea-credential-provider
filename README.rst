@@ -32,4 +32,5 @@ The Solution is built using the platform tools v143 (VS 2022)
 Dependencies
 ============
 This project requires *json.hpp* from https://github.com/nlohmann/json, put it in ``CppClient/nlohmann/json.hpp``.
+It also requires libfido2 for Windows v1.14 (https://developers.yubico.com/libfido2/Releases/) to be in the SolutionDir (or adjust the include settings)
 To build the installer, the VC143 merge modules are required to be in ``lib/merge``.

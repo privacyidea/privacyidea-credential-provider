@@ -113,7 +113,9 @@
         <Property Id="CPUS_CREDUI" Value="0e">
             <RegistrySearch Id="SearchCPUSCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
         </Property>
-		
+		<Property Id="RESET_LINK_TEXT">
+			<RegistrySearch Id="SearchCPUSCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Property Id="OFFLINE_FILE_PATH">
 			<RegistrySearch Id="SearchOfflineFilePath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_file" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -126,7 +128,21 @@
 		<Property Id="OFFLINE_SHOW_INFO">
 			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_show_info" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-        <!-- END PROPERTIES -->
+
+		<Property Id="USE_OTP_LINK_TEXT">
+			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="use_otp_link_text" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="WEBAUTHN_LINK_TEXT">
+			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="WEBAUTHN_PREFERRED">
+			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_preferred" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="WEBAUTHN_PIN_HINT">
+			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+
+		<!-- END PROPERTIES -->
         <!-- Directory definitions -->
         <Directory Id="TARGETDIR" Name="SourceDir">
             <!-- Visual Studio C++ Redistributable -->
@@ -196,7 +212,6 @@
                         <RegistryValue Name="login_text" Type="string" Value="[LOGIN_TEXT]" />
                         <RegistryValue Name="otp_text" Type="string" Value="[OTP_TEXT]" />
                         <RegistryValue Name="otp_fail_text" Type="string" Value="" />
-                        <RegistryValue Name="otp_hint_text" Type="string" Value="" />
                         <RegistryValue Name="v1_bitmap_path" Type="string" Value="[V1_BITMAP_PATH]" />
                         <RegistryValue Name="two_step_hide_otp" Type="string" Value="[TWO_STEP_HIDE_OTP]" />
                         <RegistryValue Name="two_step_send_password" Type="string" Value="[TWO_STEP_SEND_PASSWORD]" />
@@ -206,13 +221,20 @@
                         <RegistryValue Name="show_domain_hint" Type="string" Value="" />
                         <RegistryValue Name="prefill_username" Type="string" Value="" />
                         <RegistryValue Name="enable_reset" Type="string" Value="" />
+						<RegistryValue Name="reset_link_text" Type="string" Value="[RESET_LINK_TEXT]" />
 						<RegistryValue Name="send_upn" Type="string" Value="[SEND_UPN]" />
+						<RegistryValue Name="use_otp_link_text" Type="string" Value="[USE_OTP_LINK_TEXT]" />
                         <!-- END CUSTOMIZATION -->
                         <RegistryValue Name="cpus_logon" Type="string" Value="[CPUS_LOGON]" />
                         <RegistryValue Name="cpus_unlock" Type="string" Value="[CPUS_UNLOCK]" />
                         <RegistryValue Name="cpus_credui" Type="string" Value="[CPUS_CREDUI]" />
                         <RegistryValue Name="enable_filter" Type="string" Value="[ENABLE_FILTER]" />
 						<RegistryValue Name="filter_whitelist" Type="multiString" Value="[FILTER_WHITELIST]" />
+						<!-- WEBAUTHN -->
+						<RegistryValue Name="webauthn_link_text" Type="string" Value="[WEBAUTHN_LINK_TEXT]" />
+						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
+						<RegistryValue Name="webauthn_pin_hint" Type="string" Value="[WEBAUTHN_PIN_HINT]" />
+						<!-- END WEBAUTHN -->
                         <!-- MISC -->
                         <RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
                         <RegistryValue Name="excluded_account" Type="string" Value="" />

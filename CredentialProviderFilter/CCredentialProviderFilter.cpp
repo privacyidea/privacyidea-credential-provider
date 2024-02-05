@@ -37,7 +37,7 @@ HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 	RegistryReader rr(CONFIG_REGISTRY_PATH);
 	Logger::Get().logDebug = rr.GetBoolRegistry(L"debug_log");
 
-	DebugPrint(std::string(__FUNCTION__) + " - FILTER START");
+	PIDebug(std::string(__FUNCTION__) + " - FILTER START");
 	HRESULT hr;
 
 	CCredentialProviderFilter* pProvider = new CCredentialProviderFilter();
@@ -59,14 +59,14 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 	BOOL* rgbAllow, DWORD cProviders)
 {
 	UNREFERENCED_PARAMETER(dwFlags);
-	DebugPrint(std::string(__FUNCTION__) + " " + Shared::CPUStoString(cpus));
+	PIDebug(std::string(__FUNCTION__) + " " + Shared::CPUStoString(cpus));
 
 	RegistryReader rr(CONFIG_REGISTRY_PATH);
 	_filterEnabled = rr.GetBoolRegistry(L"enable_filter");
 
 	if (!_filterEnabled)
 	{
-		DebugPrint("Filter disabled by registry setting!");
+		PIDebug("Filter disabled by registry setting!");
 		return S_OK;
 	}
 
@@ -84,7 +84,7 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 
 	if (!Shared::IsRequiredForScenario(cpus, FILTER))
 	{
-		DebugPrint("Filter is configured to be disabled for this scenario.");
+		PIDebug("Filter is configured to be disabled for this scenario.");
 		return S_OK;
 	}
 
@@ -92,8 +92,8 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 	auto whitelist = rr.GetMultiSZ(L"filter_whitelist");
 	if (!whitelist.empty())
 	{
-		DebugPrint("Entries for filter whitelist found:");
-		DebugPrint(Convert::JoinW(whitelist, L", "));
+		PIDebug("Entries for filter whitelist found:");
+		PIDebug(Convert::JoinW(whitelist, L", "));
 		HRESULT hr = S_OK;
 		// Convert the wstrings to GUIDs
 		for (auto& ws : whitelist)
@@ -103,11 +103,11 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 			if (SUCCEEDED(hr))
 			{
 				whitelistedGUIDs.push_back(clsid);
-				DebugPrint(L"Added " + ws + L" to whitelisted GUIDs");
+				PIDebug(L"Added " + ws + L" to whitelisted GUIDs");
 			}
 			else
 			{
-				Print(L"Failed to convert " + ws + L" to GUID. Check if the format is correct.");
+				PIError(L"Failed to convert " + ws + L" to GUID. Check if the format is correct.");
 			}
 		}
 	}
@@ -138,13 +138,13 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 CCredentialProviderFilter::CCredentialProviderFilter() :
 	_cRef(1)
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	DllAddRef();
 }
 
 CCredentialProviderFilter::~CCredentialProviderFilter()
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	DllRelease();
 }
 
@@ -152,7 +152,7 @@ HRESULT CCredentialProviderFilter::UpdateRemoteCredential(const CREDENTIAL_PROVI
 {
 	//UNREFERENCED_PARAMETER(pcpsIn);
 	//UNREFERENCED_PARAMETER(pcpcsOut);
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 
 	if (!pcpcsIn)
 	{
