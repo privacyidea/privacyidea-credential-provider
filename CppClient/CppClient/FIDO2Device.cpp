@@ -73,16 +73,18 @@ FIDO2Device::FIDO2Device(const fido_dev_info_t* devinfo)
 	{
 		PIError("fido_dev_open_with_info: " + std::string(fido_strerr(res)) + " " + std::to_string(res));
 	}
+	else
+	{
+		_path = fido_dev_info_path(devinfo);
+		_manufacturer = fido_dev_info_manufacturer_string(devinfo);
+		_product = fido_dev_info_product_string(devinfo);
+		_hasPin = fido_dev_has_pin(dev);
+		_isWinHello = fido_dev_is_winhello(dev);
+		_hasUV = fido_dev_has_uv(dev);
+		PIDebug("New FIDO2 device: " + _manufacturer + " " + _product + " " + _path + " hasPin: " + std::to_string(_hasPin) + " isWinHello: " + std::to_string(_isWinHello));
 
-	_path = fido_dev_info_path(devinfo);
-	_manufacturer = fido_dev_info_manufacturer_string(devinfo);
-	_product = fido_dev_info_product_string(devinfo);
-	_hasPin = fido_dev_has_pin(dev);
-	_isWinHello = fido_dev_is_winhello(dev);
-	_hasUV = fido_dev_has_uv(dev);
-	PIDebug("New FIDO2 device: " + _manufacturer + " " + _product + " " + _path + " hasPin: " + std::to_string(_hasPin) + " isWinHello: " + std::to_string(_isWinHello));
-
-	fido_dev_close(dev);
+		fido_dev_close(dev);
+	}
 }
 
 int GetAssert(
