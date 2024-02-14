@@ -154,38 +154,17 @@ int GetAssert(
 		return FIDO_ERR_INTERNAL;
 	}
 
-	fido_dev_open(dev, devicePath.c_str());
-	res = fido_dev_get_assert(dev, *assert, pin.empty() ? NULL : pin.c_str());
-	fido_dev_close(dev);
-	/*
-		WebAuthnSignResponse signResponse;
-		signResponse.clientdata = Convert::Base64URLEncode(clientData);
-
-		auto pID = fido_assert_id_ptr(*assert, 0);
-		auto pIDlen = fido_assert_id_len(*assert, 0);
-		signResponse.credentialid = Convert::Base64URLEncode(pID, pIDlen);
-
-		auto adataraw = fido_assert_authdata_raw_ptr(*assert, 0);
-		auto adatarawlen = fido_assert_authdata_raw_len(*assert, 0);
-		auto adatarawenc = Convert::Base64URLEncode(adataraw, adatarawlen);
-		signResponse.authenticatordata = adatarawenc;
-		auto sig = fido_assert_sig_ptr(*assert, 0);
-		auto siglen = fido_assert_sig_len(*assert, 0);
-		signResponse.signaturedata = Convert::Base64URLEncode(sig, siglen);
-
-
-
-
-		std::string pubkey = "a5010203262001215820ddcf9da43b0e38804a347860db7d4ef5ca906185e01a94dafa81b104ed19d9d2225820edf66881d7d36177bc1f7bc3b7a7d74660fa412f9e14d9e4cacc375b42cfea94";
-		auto pubKeyBytes = Convert::HexToBytes(pubkey);
-		void* pk = pubKeyBytes.data();
-		int algorithm = COSE_ES256;
-		res = fido_assert_verify(*assert, 0, algorithm, pk);
-		if (res != FIDO_OK)
-		{
-			PIError("infunc fido_assert_verify: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		}
-		*/
+	res = fido_dev_open(dev, devicePath.c_str());
+	if (res == FIDO_OK)
+	{
+		res = fido_dev_get_assert(dev, *assert, pin.empty() ? NULL : pin.c_str());
+		fido_dev_close(dev);
+	}
+	else
+	{
+		PIDebug("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+	}
+	
 	return res;
 }
 
