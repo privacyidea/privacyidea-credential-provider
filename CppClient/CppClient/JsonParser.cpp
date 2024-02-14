@@ -125,6 +125,8 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 	if (!multiChallenge.empty())
 	{
 		response.transactionId = GetStringOrEmpty(jDetail, "transaction_id");
+		response.preferredMode = GetStringOrEmpty(jDetail, "preferred_client_mode");
+
 		for (auto& item : multiChallenge.items())
 		{
 			json jChallenge = item.value();

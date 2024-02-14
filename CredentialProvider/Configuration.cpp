@@ -85,7 +85,7 @@ void Configuration::Load()
 	piconfig.sendTimeout = rr.GetIntRegistry(L"send_timeout");
 	piconfig.receiveTimeout = rr.GetIntRegistry(L"receive_timeout");
 
-	// format domain\username or computername\username
+	// Format domain\username or computername\username
 	excludedAccount = rr.GetWStringRegistry(L"excluded_account");
 
 	// Realm Mapping

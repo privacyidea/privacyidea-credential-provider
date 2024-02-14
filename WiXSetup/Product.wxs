@@ -114,7 +114,7 @@
 			<RegistrySearch Id="SearchCPUSCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="RESET_LINK_TEXT">
-			<RegistrySearch Id="SearchCPUSCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchResetLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="OFFLINE_FILE_PATH">
 			<RegistrySearch Id="SearchOfflineFilePath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_file" Win64="$(var.Win64)" Type="raw" />
@@ -129,17 +129,17 @@
 			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_show_info" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 
-		<Property Id="USE_OTP_LINK_TEXT">
-			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="use_otp_link_text" Win64="$(var.Win64)" Type="raw" />
+		<Property Id="OTP_LINK_TEXT">
+			<RegistrySearch Id="SearchOTPLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="OTP_LINK_TEXT" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="WEBAUTHN_LINK_TEXT">
-			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchWebAuthnLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="WEBAUTHN_PREFERRED">
-			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_preferred" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchWebAuthnPreferred" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_preferred" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="WEBAUTHN_PIN_HINT">
-			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchWebAu" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 
 		<!-- END PROPERTIES -->
@@ -223,7 +223,7 @@
 						<RegistryValue Name="enable_reset" Type="string" Value="" />
 						<RegistryValue Name="reset_link_text" Type="string" Value="[RESET_LINK_TEXT]" />
 						<RegistryValue Name="send_upn" Type="string" Value="[SEND_UPN]" />
-						<RegistryValue Name="use_otp_link_text" Type="string" Value="[USE_OTP_LINK_TEXT]" />
+						<RegistryValue Name="otp_link_text" Type="string" Value="[OTP_LINK_TEXT]" />
 						<!-- END CUSTOMIZATION -->
 						<RegistryValue Name="cpus_logon" Type="string" Value="[CPUS_LOGON]" />
 						<RegistryValue Name="cpus_unlock" Type="string" Value="[CPUS_UNLOCK]" />

@@ -977,8 +977,11 @@ HRESULT CCredential::GetSerialization(
 			// Continue with WebAuthn as the second step if there is a sign request and it is configured to be preferred
 			// or if the current scenario is a webauthn one, e.g. to do NO_DEVICE -> PIN
 			const bool offlineWANAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty();
-			const bool continueWithWebAuthn =
-				(_config->webAuthnPreferred && (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
+			
+			// Continue with webauthn in the following cases:
+			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request, or when continuing webauthn (e.g. from NO_DEVICE to PIN)
+			const bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn" 
+				|| (_config->webAuthnPreferred && (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
 				|| (_config->scenario > SCENARIO::SECURITY_KEY_ANY);
 
 			const auto webAuthnScenario = SelectWebAuthnScenario();

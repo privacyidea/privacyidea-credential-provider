@@ -43,5 +43,7 @@ public:
 	std::string GetPushMessage();
 
 	WebAuthnSignRequest GetWebAuthnSignRequest();
+
+	std::string preferredMode;
 };
 

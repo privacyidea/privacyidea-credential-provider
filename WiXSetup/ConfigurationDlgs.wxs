@@ -74,7 +74,7 @@
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>{\WixUI_Font_Title}Configuration 1/2</Text>
+                    <Text>{\WixUI_Font_Title}Configuration 1/5</Text>
                 </Control>
                 <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
             </Dialog>
@@ -138,7 +138,7 @@
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>{\WixUI_Font_Title}Configuration 2/4</Text>
+                    <Text>{\WixUI_Font_Title}Configuration 2/5</Text>
                 </Control>
                 <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="2" />
                 <Control Type="Line" Id="Line1" Width="370" Height="2" X="0" Y="82" />
@@ -149,13 +149,13 @@
     <Fragment>
         <UI>
             <Dialog Id="OfflineConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Type="Edit" Id="OfflineFileLocation" Width="268" Height="15" X="30" Y="86" Property="OFFLINE_FILE_PATH" />
-                <Control Type="Text" Id="OfflineFileLabel" Width="264" Height="30" X="30" Y="49" Text="Absolute path (including file name!) to where the offline file should be stored. Possible file formats are txt and json. The default is C:\offlineFile.json." />
-                <Control Type="Edit" Id="OfflineThreshold" Width="30" Height="15" X="266" Y="112" Integer="yes" Property="OFFLINE_THRESHOLD" />
-                <Control Type="Text" Id="OfflineThresholdLabel" Width="228" Height="22" X="30" Y="112" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted." />
-                <Control Type="Edit" Id="OfflineTryWindow" Width="30" Height="15" X="266" Y="142" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
-                <Control Type="Text" Id="OfflineTryWindowLabel" Width="211" Height="22" X="30" Y="142" Text="Offline try window. Set the range of values for the counter to be tried with an offline token." />
-                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="30" Y="176" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
+                <Control Type="Edit" Id="OfflineFileLocation" Width="270" Height="15" X="30" Y="90" Property="OFFLINE_FILE_PATH" />
+                <Control Type="Text" Id="OfflineFileLabel" Width="270" Height="30" X="30" Y="49" Text="Absolute path (including file name!) to where the offline file should be stored. Possible file formats are txt and json. The default is C:\offlineFile.json." />
+                <Control Type="Edit" Id="OfflineThreshold" Width="30" Height="15" X="266" Y="120" Integer="yes" Property="OFFLINE_THRESHOLD" />
+                <Control Type="Text" Id="OfflineThresholdLabel" Width="228" Height="22" X="30" Y="120" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted." />
+                <Control Type="Edit" Id="OfflineTryWindow" Width="30" Height="15" X="266" Y="154" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
+                <Control Type="Text" Id="OfflineTryWindowLabel" Width="211" Height="22" X="30" Y="154" Text="Offline try window. Set the range of values for the counter to be tried with an offline token." />
+                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="30" Y="184" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
                     <Publish Event="NewDialog" Value="FilterConfigurationDlg">1</Publish>
@@ -175,7 +175,7 @@
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>{\WixUI_Font_Title}Configuration 3/4</Text>
+                    <Text>{\WixUI_Font_Title}Configuration 3/5</Text>
                 </Control>
                 <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
             </Dialog>
@@ -185,16 +185,16 @@
     <Fragment>
         <UI>
             <Dialog Id="UserConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-				<Control Type="CheckBox" Id="SendUPN" Property="SEND_UPN" CheckBoxValue="1" Width="210" Height="38" X="45" Y="45">
-					<Text>Send the UPN if detected in Username field. UPN is assumed if @ is entered and no \. When UPN is sent, the realm is omitted.</Text>
-				</Control>
+                <Control Type="CheckBox" Id="SendUPN" Property="SEND_UPN" CheckBoxValue="1" Width="210" Height="38" X="45" Y="45">
+                    <Text>Send the UPN if detected in Username field. UPN is assumed if @ is entered and no \. When UPN is sent, the realm is omitted.</Text>
+                </Control>
                 <Control Id="V1BitmapPathLabel" Type="Text" X="45" Y="88" Width="220" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
                 <Control Id="V1BitmapPathEdit" Type="Edit" X="45" Y="100" Width="220" Height="18" Property="V1_BITMAP_PATH" Text="{1024}" />
                 <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
                     <Publish Event="SpawnDialog" Value="V1BitmapPathInfoDlg">1</Publish>
                 </Control>
                 <Control Id="LoginTextLabel" Type="Text" X="45" Y="120" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
-                <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="18" Property="LOGIN_TEXT" Text="{64}" />
+                <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="15" Property="LOGIN_TEXT" Text="{64}" />
                 <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="131" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
                     <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
                 </Control>
@@ -204,6 +204,43 @@
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
                     <Publish Event="NewDialog" Value="OfflineConfigurationDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="WebAuthnDlg">1</Publish>
+                    <!-- Re-populate the configuration to the registry -->
+                    <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
+                    <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>Customize the login.</Text>
+                </Control>
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>{\WixUI_Font_Title}Configuration 4/5</Text>
+                </Control>
+                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
+            </Dialog>
+        </UI>
+    </Fragment>
+    <!-- PAGE 5 WEBAUTHN -->
+    <Fragment>
+        <UI>
+            <Dialog Id="WebAuthnDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Type="Edit" Id="WebAuthnLinkText" Width="270" Height="15" X="30" Y="82" Property="WEBAUTHN_LINK_TEXT" />
+                <Control Type="Text" Id="WebAuthnLinkTextLabel" Width="270" Height="21" X="30" Y="56" Text="WebAuthn Link Text: The text on the link the user can click to switch to WebAuthn mode. Default: &quot;Use Security Key&quot;." />
+                <Control Type="Edit" Id="OTPLinkText" Width="270" Height="15" X="30" Y="131" Property="OTP_LINK_TEXT" />
+                <Control Type="Text" Id="OTPLinkTextLabel" Width="270" Height="21" X="30" Y="105" Text="OTP Link Text: The text of the link the user can click to switch to OTP mode. Default: &quot;Use One-Time-Password&quot;." />
+                <Control Type="Text" Id="WebAuthnPINHintLabel" Width="270" Height="21" X="30" Y="154" Text="WebAuthn PIN Hint: Hint text of the input field in WebAuthn mode in which the security PIN should be entered. Default: &quot;Security Key PIN&quot;." />
+                <Control Type="Edit" Id="WebAuthnPINHint" Width="270" Height="15" X="30" Y="180" Property="WEBAUTHN_PIN_HINT" />
+                <Control Type="CheckBox" Id="WebAuthnPreferred" Width="270" Height="20" X="30" Y="206" Property="WEBAUTHN_PREFERRED" CheckBoxValue="1" Text="Prefer to use WebAuthn if available. The Credential Provider will be in WebAuthn mode automatically if possible." />
+                <Control Type="Text" Id="WebAuthn2StepHint" Width="270" Height="10" X="30" Y="41" Text="{\Tahoma_Bold}To use WebAuthn, it is required to the 2step." />
+                <!-- Bottom Controls NEXT / BACK, Top Banner -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="UserConfigurationDlg">1</Publish>
                 </Control>
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
                     <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
@@ -220,7 +257,7 @@
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>{\WixUI_Font_Title}Configuration 4/4</Text>
+                    <Text>{\WixUI_Font_Title}Configuration 5/5</Text>
                 </Control>
                 <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
             </Dialog>
