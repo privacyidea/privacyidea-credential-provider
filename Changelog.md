@@ -1,11 +1,16 @@
-# Version 3.5.0 TBD
+# Version 3.5.0 2024-02-20
 
 ## Features
 * WebAuthn online
 * WebAuthn offline, requires privacyIDEA 3.10
 
+## Enhancements
+* Added CredentialProvider version to the useragent
+* Added ComputerName to useragent (optional). This will be needed for the WebAuthn offline management of refilltoken in the server.
+
 ## Fixes
 * Fixed `reset_link_text` to be actually used when set
+* Fixed a bug when using RDP with UPN would result in the UPN not being split properly and therefore producing a wrong username, making login impossible.
 
 
 # Version 3.4.0 2023-06-26
