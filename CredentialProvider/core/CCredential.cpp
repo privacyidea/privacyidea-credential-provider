@@ -117,15 +117,29 @@ HRESULT CCredential::Initialize(
 		PIDebug(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 	}
 	HRESULT hr = S_OK;
-
-	if (!wstrUsername.empty())
+	
+	// Check if the username is in UPN format. In that case we do not need the domain name.
+	// Otherwise, use the user and domain name from the provider.
+	wstring tmpUser, tmpDomain;
+	Utilities::SplitUserAndDomain(wstrUsername, tmpUser, tmpDomain);
+	if (!tmpDomain.empty())
 	{
-		_config->credential.username = wstrUsername;
+		PIDebug(L"Username is in UPN format, using domain from username");
+		_config->credential.username = tmpUser;
+		_config->credential.domain = tmpDomain;
 	}
-
-	if (!wstrDomainname.empty())
+	else
 	{
-		_config->credential.domain = wstrDomainname;
+		PIDebug(L"Username is not in UPN format, using username and domain from provider");
+		if (!wstrUsername.empty())
+		{
+			_config->credential.username = wstrUsername;
+		}
+
+		if (!wstrDomainname.empty())
+		{
+			_config->credential.domain = wstrDomainname;
+		}
 	}
 
 	if (!wstrPassword.empty())
