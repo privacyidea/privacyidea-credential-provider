@@ -22,11 +22,8 @@
 #include <codecvt>
 #include <sstream>
 #include <algorithm>
-#include <wincrypt.h>
 #include <iomanip>
 #include <iostream>
-
-#pragma comment(lib, "crypt32.lib")
 
 
 std::wstring Convert::ToWString(const std::string& s)
