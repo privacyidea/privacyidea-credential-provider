@@ -40,9 +40,6 @@ public:
 	static std::string Base64URLEncode(const unsigned char* data, const size_t size, bool padded = false);
 	static std::string Base64URLEncode(const std::vector<unsigned char>& data, bool padded = false);
 
-	static std::string PByteToBase64(const PBYTE data, const DWORD dataSize);
-	static std::string PByteToBase64URL(const PBYTE data, const DWORD dataSize);
-	
 	static char* UnicodeToCodePage(int codePage, const wchar_t* src);
 	// replace '+' with '-' and '/' with '_'
 	static void Base64ToBase64URL(std::string& base64);

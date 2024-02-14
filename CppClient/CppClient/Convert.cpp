@@ -234,35 +234,6 @@ std::string Convert::Base64URLEncode(const std::vector<unsigned char>& data, boo
 	return Base64URLEncode(data.data(), data.size(), padded);
 }
 
-std::string Convert::PByteToBase64(const PBYTE data, const DWORD dataSize)
-{
-	DWORD base64Len = 0;
-	if (!CryptBinaryToStringA(data, dataSize, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr, &base64Len))
-	{
-		PIError("CryptBinaryToStringA failed to determine data size");
-		return "";
-	}
-
-	std::string base64String;
-	base64String.resize(base64Len);
-
-	if (!CryptBinaryToStringA(data, dataSize, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, &base64String[0], &base64Len))
-	{
-		PIError("CryptBinaryToStringA failed to convert data to base64 string");
-		return "";
-	}
-
-	return base64String;
-}
-
-std::string Convert::PByteToBase64URL(const PBYTE data, const DWORD dataSize)
-{
-	auto res = Convert::PByteToBase64(data, dataSize);
-	Convert::Base64ToBase64URL(res);
-	auto ret = Convert::ReplaceAll(res, "=", "");
-	return ret;
-}
-
 char* Convert::UnicodeToCodePage(int codePage, const wchar_t* src)
 {
 	if (!src) return 0;
