@@ -185,17 +185,17 @@ int FIDO2Device::Sign(
 	{
 		signResponse.clientdata = Convert::Base64URLEncode(cDataBytes);
 
-		auto pID = fido_assert_id_ptr(assert, 0);
-		auto pIDlen = fido_assert_id_len(assert, 0);
-		signResponse.credentialid = Convert::Base64URLEncode(pID, pIDlen);
+		auto pbId = fido_assert_id_ptr(assert, 0);
+		auto cbId = fido_assert_id_len(assert, 0);
+		signResponse.credentialid = Convert::Base64URLEncode(pbId, cbId);
 
-		auto adataraw = fido_assert_authdata_raw_ptr(assert, 0);
-		auto adatarawlen = fido_assert_authdata_raw_len(assert, 0);
-		auto adatarawenc = Convert::Base64URLEncode(adataraw, adatarawlen);
-		signResponse.authenticatordata = adatarawenc;
-		auto sig = fido_assert_sig_ptr(assert, 0);
-		auto siglen = fido_assert_sig_len(assert, 0);
-		signResponse.signaturedata = Convert::Base64URLEncode(sig, siglen);
+		auto pbAuthData = fido_assert_authdata_raw_ptr(assert, 0);
+		auto cbAuthData = fido_assert_authdata_raw_len(assert, 0);
+		signResponse.authenticatordata = Convert::Base64URLEncode(pbAuthData, cbAuthData);
+
+		auto pbSig = fido_assert_sig_ptr(assert, 0);
+		auto cbSig = fido_assert_sig_len(assert, 0);
+		signResponse.signaturedata = Convert::Base64URLEncode(pbSig, cbSig);
 	}
 
 	if (assert)
