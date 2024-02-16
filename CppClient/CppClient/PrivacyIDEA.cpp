@@ -116,7 +116,6 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	const std::map<std::string, std::string>& headers)
 {
 	PIDebug(__FUNCTION__);
-	HRESULT res = S_OK;
 	string strOTP = Convert::ToString(otp);
 
 	map<string, string> parameters =

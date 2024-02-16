@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
-
+#include <Windows.h>
 
 std::wstring Convert::ToWString(const std::string& s)
 {

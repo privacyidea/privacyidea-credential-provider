@@ -34,7 +34,7 @@ public:
 	std::wstring path;
 
 	// puts all keys and values from the current path into a map, the keys will be converted to uppercase
-	bool GetAllEntries(const std::wstring& path, std::map<std::wstring, std::wstring>& map) noexcept;
+	bool GetAllEntries(const std::wstring & pathToKey, std::map<std::wstring, std::wstring>& map) noexcept;
 
 	std::wstring GetWStringRegistry(std::wstring name) noexcept;
 

@@ -22,7 +22,6 @@
 #include "PrivacyIDEA.h"
 #include <cbor.h>
 #include <fido/es256.h>
-#include <iostream>
 
 std::vector<FIDO2Device> FIDO2Device::GetDevices()
 {
@@ -213,7 +212,7 @@ constexpr auto COSE_PUB_KEY_Y = -3;
 constexpr auto COSE_PUB_KEY_E = -2;
 constexpr auto COSE_PUB_KEY_N = -1;
 
-int MakeEC_KEY(
+int EcKeyFromCBOR(
 	const std::string& cborPubKey, 
 	EC_KEY** ecKey, 
 	int* algorithm)
@@ -384,7 +383,7 @@ int FIDO2Device::SignAndVerifyAssertion(
 			return FIDO_ERR_INVALID_ARGUMENT;
 		}
 
-		res = MakeEC_KEY(pubKey, &ecKey, &algorithm);
+		res = EcKeyFromCBOR(pubKey, &ecKey, &algorithm);
 		if (ecKey == nullptr)
 		{
 			PIError("Failed to create EC_KEY");

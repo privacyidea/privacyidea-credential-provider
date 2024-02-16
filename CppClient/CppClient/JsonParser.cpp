@@ -228,11 +228,11 @@ HRESULT ParseOfflineDataItem(json jRoot, OfflineData& data)
 		return PI_JSON_PARSE_ERROR;
 	}
 	
-	const bool isWebAuthn = response.contains("credential_id") && response.contains("rpId") && response.contains("pubkey");
+	const bool isWebAuthn = response.contains("credentialId") && response.contains("rpId") && response.contains("pubKey");
 	if (isWebAuthn)
 	{
-		data.pubKey = GetStringOrEmpty(response, "pubkey");
-		data.credId = GetStringOrEmpty(response, "credential_id");
+		data.pubKey = GetStringOrEmpty(response, "pubKey");
+		data.credId = GetStringOrEmpty(response, "credentialId");
 		data.rpId = GetStringOrEmpty(response, "rpId");
 	}
 	else // HOTP
@@ -293,8 +293,8 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 
 		if (isWebAuthn)
 		{
-			jResponse["pubkey"] = item.pubKey;
-			jResponse["credential_id"] = item.credId;
+			jResponse["pubKey"] = item.pubKey;
+			jResponse["credentialId"] = item.credId;
 			jResponse["rpId"] = item.rpId;
 		}
 		else // HOTP

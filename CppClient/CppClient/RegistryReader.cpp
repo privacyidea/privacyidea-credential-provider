@@ -31,12 +31,12 @@ RegistryReader::RegistryReader(const std::wstring& pathToKey) noexcept
 	path = pathToKey;
 }
 
-bool RegistryReader::GetAllEntries(const std::wstring& path, std::map<std::wstring, std::wstring>& map) noexcept
+bool RegistryReader::GetAllEntries(const std::wstring & pathToKey, std::map<std::wstring, std::wstring>& map) noexcept
 {
 	// Open handle to realm-mapping key
 	HKEY hKey = nullptr;
 
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, pathToKey.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
 	{
 		return false;
 	}

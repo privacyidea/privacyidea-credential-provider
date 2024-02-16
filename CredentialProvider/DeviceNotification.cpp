@@ -55,6 +55,7 @@ void ErrorHandler(LPCTSTR lpszFunction)
 
 void MessagePump(HWND hWnd)
 {
+	UNREFERENCED_PARAMETER(hWnd);
 	MSG msg;
 	int retVal;
 	PIDebug("MessagePump start");
