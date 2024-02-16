@@ -22,6 +22,22 @@
 #include "PIResponse.h"
 #include <credentialprovider.h>
 
+enum class SCENARIO
+{
+	NO_CHANGE = 0,
+	LOGON_BASE = 1,
+	UNLOCK_BASE = 2,
+	SECOND_STEP = 3,
+	LOGON_TWO_STEP = 4,
+	UNLOCK_TWO_STEP = 5,
+	CHANGE_PASSWORD = 6,
+
+	SECURITY_KEY_ANY = 20,
+	SECURITY_KEY_PIN = 21,
+	SECURITY_KEY_NO_PIN = 22, // Requires reset with autoLogon to get to CCredential::Connect directly
+	SECURITY_KEY_NO_DEVICE = 23, // Requires reset with autoLogon to get to CCredential::Connect directly
+};
+
 class Configuration
 {
 public:
@@ -29,26 +45,31 @@ public:
 
 	void LogConfig();
 
+	bool IsSecondStep() const noexcept;
+
 	PIConfig piconfig;
 
 	std::wstring loginText = L"";
 	std::wstring otpFieldText = L"";
+	std::wstring otpFailureText = L"";
+	std::wstring useOtpLinkText;
 	std::wstring bitmapPath = L"";
 
 	bool twoStepHideOTP = false;
 	bool twoStepSendPassword = false;
 	bool twoStepSendEmptyPassword = false;
-	bool isSecondStep = false;
 
 	bool hideFullName = false;
 	bool hideDomainName = false;
 
 	bool showDomainHint = false;
 	bool prefillUsername = false;
+
 	bool showResetLink = false;
+	std::wstring resetLinkText = L"";
 
 	bool debugLog = false;
-
+	
 	bool noDefault = false;
 
 	int winVerMajor = 0;
@@ -65,16 +86,20 @@ public:
 
 	PIResponse lastResponse;
 
-	std::wstring defaultOTPFailureText = L"";
-	std::wstring defaultOTPHintText = L"";
-
 	std::wstring excludedAccount = L"";
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
 	int offlineTreshold = 20;
-	bool showOfflineInfo = true;
+	bool offlineShowInfo = true;
+
+	std::wstring webAuthnLinkText;
+	std::wstring webAuthnPinHint;
+	bool webAuthnPreferred = false;
+
+	// Track the current state
+	SCENARIO scenario = SCENARIO::NO_CHANGE;
 
 	struct PROVIDER
 	{
@@ -99,11 +124,11 @@ public:
 		std::wstring password = L"";
 		std::wstring otp = L"";
 		std::wstring upn = L"";
+		std::wstring webAuthnPIN = L"";
 
 		bool passwordMustChange = false;
 		bool passwordChanged = false;
 
-		// ChangePassword
 		std::wstring newPassword1 = L"";
 		std::wstring newPassword2 = L"";
 	} credential;

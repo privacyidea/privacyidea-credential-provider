@@ -38,7 +38,11 @@ class Endpoint
 public:
 	Endpoint(PIConfig config) : _config(config) {};
 
-	std::string SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const RequestMethod& method);
+	std::string SendRequest(
+		const std::string& endpoint,
+		const std::map<std::string, std::string>& parameters,
+		const std::map<std::string, std::string>& headers = std::map<std::string, std::string>(),
+		const RequestMethod& method = RequestMethod::POST);
 
 	HRESULT GetLastErrorCode();
 

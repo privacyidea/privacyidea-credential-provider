@@ -27,10 +27,10 @@ namespace Shared
 {
 	bool IsRequiredForScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, int caller)
 	{
-		DebugPrint(__FUNCTION__);
+		PIDebug(__FUNCTION__);
 		if (caller != FILTER && caller != PROVIDER)
 		{
-			DebugPrint("Invalid argument for caller: " + std::to_string(caller));
+			PIDebug("Invalid argument for caller: " + std::to_string(caller));
 			return false;
 		}
 
@@ -62,7 +62,7 @@ namespace Shared
 				return false;
 		}
 		std::string strCaller = (caller == 0 ? "Provider" : "Filter");
-		DebugPrint("Checking for " + strCaller + ", " + CPUStoString(cpus) + ", " + (isRemote ? "remote" : "local")
+		PIDebug("Checking for " + strCaller + ", " + CPUStoString(cpus) + ", " + (isRemote ? "remote" : "local")
 			+ ", entry=" + Convert::ToString(entry));
 		// default - no additional config found
 		if (entry.empty()) return true;
@@ -135,7 +135,7 @@ namespace Shared
 			}
 		}
 
-		DebugPrint(fIsRemoteable ? "Session is remote" : "Session is local");
+		PIDebug(fIsRemoteable ? "Session is remote" : "Session is local");
 
 		return fIsRemoteable;
 	}

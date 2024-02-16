@@ -48,7 +48,7 @@ std::string Endpoint::URLEncode(const std::string& in)
 	LPSTR buf = (char*)malloc(sizeof(char) * maxLen);
 	if (buf == nullptr)
 	{
-		DebugPrint("malloc fail");
+		PIDebug("malloc fail");
 		return "";
 	}
 	std::string ret;
@@ -59,7 +59,7 @@ std::string Endpoint::URLEncode(const std::string& in)
 	}
 	else
 	{
-		Print("AtlEscapeUrl Failure " + to_string(GetLastError()));
+		PIError("AtlEscapeUrl Failure " + to_string(GetLastError()));
 	}
 
 	SecureZeroMemory(buf, (sizeof(char) * maxLen));
@@ -69,7 +69,7 @@ std::string Endpoint::URLEncode(const std::string& in)
 
 std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::string>& parameters)
 {
-	DebugPrint("Request parameters:");
+	PIDebug("Request parameters:");
 	string ret;
 	for (auto& entry : parameters)
 	{
@@ -77,11 +77,11 @@ std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::s
 		ret += entry.first + "=" + encoded + "&";
 		if (entry.first != "pass" || _config.logPasswords)
 		{
-			DebugPrint(entry.first + "=" + encoded);
+			PIDebug(entry.first + "=" + encoded);
 		}
 		else
 		{
-			DebugPrint("pass parameter is not logged");
+			PIDebug("pass parameter is not logged");
 		}
 	}
 
@@ -154,15 +154,15 @@ void CALLBACK WinHttpStatusCallback(
 						break;
 				}
 
-				Print("SECURE_FAILURE with status info: " + strDetail);
+				PIError("SECURE_FAILURE with status info: " + strDetail);
 			}
 			break;
 	}
 }
 
-string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const RequestMethod& method)
+string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const std::map<std::string, std::string>& headers, const RequestMethod& method)
 {
-	DebugPrint(string(__FUNCTION__) + " to " + endpoint);
+	PIDebug(string(__FUNCTION__) + " to " + endpoint);
 	// Prepare the parameters
 	wstring wHostname = EncodeUTF16(Convert::ToString(_config.hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
@@ -181,7 +181,6 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	HINTERNET  hSession = nullptr, hConnect = nullptr, hRequest = nullptr;
 
 	// Check the windows version to decide which access type flag to set
-	// TODO config already has this info, add shared_ptr to this class
 	DWORD dwAccessType = WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY;
 	OSVERSIONINFOEX info;
 	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
@@ -191,11 +190,11 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	if (info.dwMajorVersion == 6 && info.dwMinorVersion <= 2)
 	{
 		dwAccessType = WINHTTP_ACCESS_TYPE_DEFAULT_PROXY;
-		DebugPrint("Setting access type to WINHTTP_ACCESS_TYPE_DEFAULT_PROXY");
+		PIDebug("Setting access type to WINHTTP_ACCESS_TYPE_DEFAULT_PROXY");
 	}
 
 	// Use WinHttpOpen to obtain a session handle.
-	hSession = WinHttpOpen(L"privacyidea-cp",
+	hSession = WinHttpOpen(_config.userAgent.c_str(),
 		dwAccessType,
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
@@ -215,7 +214,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	}
 	else
 	{
-		Print("WinHttpOpen failure: " + to_string(GetLastError()));
+		PIError("WinHttpOpen failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
 		return "";
 	}
@@ -227,19 +226,16 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	}
 	else
 	{
-		Print("WinHttpOpenRequest failure: " + to_string(GetLastError()));
+		PIError("WinHttpOpenRequest failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
 		return "";
 	}
 
 	// Set Option Security Flags to start TLS
 	DWORD dwReqOpts = 0;
-	if (WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwReqOpts, sizeof(DWORD)))
+	if (!WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwReqOpts, sizeof(DWORD)))
 	{
-	}
-	else
-	{
-		Print("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
+		PIError("WinHttpSetOption to set TLS flag failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
 		return "";
 	}
@@ -266,7 +262,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 		}
 		else
 		{
-			Print("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
+			PIError("WinHttpSetOption for SSL flags failure: " + to_string(GetLastError()));
 			_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
 			return "";
 		}
@@ -276,28 +272,36 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	// Set timeouts on the request handle
 	if (!WinHttpSetTimeouts(hRequest, _config.resolveTimeout, _config.connectTimeout, _config.sendTimeout, _config.receiveTimeout))
 	{
-		Print("Failed to set timeouts on hRequest: " + to_string(GetLastError()));
+		PIError("Failed to set timeouts on hRequest: " + to_string(GetLastError()));
 		// Continue with defaults
 	}
 
-	// Define for POST to be recognized
-	LPCWSTR additionalHeaders = L"Content-Type: application/x-www-form-urlencoded\r\n";
+	// Add headers to the request
+	for (auto& entry : headers)
+	{
+		if (!WinHttpAddRequestHeaders(hRequest, Convert::ToWString(entry.first + ": " + entry.second).c_str(), (DWORD)-1L, WINHTTP_ADDREQ_FLAG_ADD))
+		{
+			PIError("Failed to add header " + entry.first + ": " + entry.second + " to request: " + to_string(GetLastError()));
+		}
+	}
 
-	// Send a request.
+	// Send the request
 	if (hRequest)
+	{
 		bResults = WinHttpSendRequest(
 			hRequest,
-			additionalHeaders,
+			L"Content-Type: application/x-www-form-urlencoded\r\n",
 			(DWORD)-1,
 			(LPVOID)data,
 			data_len,
 			data_len,
 			0);
+	}
 
 	if (!bResults)
 	{
 		// This happens in case of timeout using offline OTP vvv will be 120002
-		Print("WinHttpSendRequest failure: " + to_string(GetLastError()));
+		PIError("WinHttpSendRequest failure: " + to_string(GetLastError()));
 		_lastErrorCode = PI_ERROR_SERVER_UNAVAILABLE;
 		return "";
 	}
@@ -318,7 +322,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			dwSize = 0;
 			if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
 			{
-				Print("WinHttpQueryDataAvailable failure: " + to_string(GetLastError()));
+				PIError("WinHttpQueryDataAvailable failure: " + to_string(GetLastError()));
 				response = ""; //ENDPOINT_ERROR_RESPONSE_ERROR;
 			}
 
@@ -326,7 +330,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			pszOutBuffer = new char[ULONGLONG(dwSize) + 1];
 			if (!pszOutBuffer)
 			{
-				Print("WinHttpReadData out of memory: " + to_string(GetLastError()));
+				PIError("WinHttpReadData out of memory: " + to_string(GetLastError()));
 				response = ""; // ENDPOINT_ERROR_RESPONSE_ERROR;
 				dwSize = 0;
 			}
@@ -336,7 +340,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 				ZeroMemory(pszOutBuffer, (ULONGLONG)dwSize + 1);
 				if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
 				{
-					Print("WinHttpReadData error: " + to_string(GetLastError()));
+					PIError("WinHttpReadData error: " + to_string(GetLastError()));
 					response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 				}
 				else
@@ -351,7 +355,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	// Report any errors.
 	if (!bResults)
 	{
-		Print("WinHttp Result error: " + to_string(GetLastError()));
+		PIError("WinHttp Result error: " + to_string(GetLastError()));
 		response = "";// ENDPOINT_ERROR_RESPONSE_ERROR;
 	}
 	// Close any open handles.
@@ -365,11 +369,11 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	{
 		if (!response.empty())
 		{
-			DebugPrint(JsonParser::PrettyFormatJson(response));
+			PIDebug(JsonParser::PrettyFormatJson(response));
 		}
 		else
 		{
-			DebugPrint("Response was empty.");
+			PIDebug("Response was empty.");
 		}
 	}
 

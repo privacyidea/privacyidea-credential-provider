@@ -18,9 +18,9 @@
 
 #pragma once
 
+#include "helpers.h"
 #include <windows.h>
 #include <unknwn.h>
-#include "helpers.h"
 
 // global dll hinstance
 extern HINSTANCE g_hinst;

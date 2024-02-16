@@ -23,18 +23,14 @@
 #ifndef _CPROVIDER_H
 #define _CPROVIDER_H
 
+#include "helpers.h"
+#include "CCredential.h"
 #include <windows.h>
 #include <strsafe.h>
-#include <Wtsapi32.h>						
-#include <Lm.h>
 #include <credentialprovider.h>
 
-#include <helpers.h>
-
-#include "CCredential.h"
-
-#define MAX_CREDENTIALS 3
-#define MAX_DWORD   0xffffffff        // maximum DWORD
+constexpr auto MAX_CREDENTIALS = 3;
+constexpr auto MAX_DWORD = 0xffffffff;        // maximum DWORD;
 
 enum class SERIALIZATION_AVAILABLE
 {

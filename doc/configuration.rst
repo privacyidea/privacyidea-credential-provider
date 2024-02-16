@@ -221,6 +221,30 @@ Set this to ``1`` to have the username field prefilled with the user that last l
 
 Set this to ``1`` to have a clickable text shown at the bottom which will reset the login.
 
+**use_otp_link_text**
+
+Set this to overwrite the text to switch from webauthn to OTP mode. Default is "Use One-Time-Password".
+
+
+WebAuthn
+~~~~~~~~
+To use WebAuthn, it is required to configure **two_step_hide_otp** and either of the other **two_step_send** options to trigger a challenge!
+NOTE: CURRENTLY SUPPORTS ONLY A SINGLE CONNECTED FIDO2 DEVICE. IF MORE THAN ONE DEVICE IS CONNECTED, THE "FIRST ENUMERATED" WILL BE USED, WHICH IS A NON-DETERMINISTIC SELECTION!
+NOTE: AFTER YOU ARE PROMPTED TO TOUCH YOUR SECURITY KEY, IT IS NOT POSSIBLE TO CANCEL THE OPERATION. EVENTHOUGH THERE IS A CANCEL BUTTON, THE CONTROL IS TRANSFERED TO THE DEVICE UNTIL THE OPERATION IS COMPLETED!
+
+
+**webauthn_link_text**
+
+Set a custom text to switch the login to security key (webauthn) mode. Default is "Use Security Key".
+
+**webauthn_preferred**
+
+Set to ``1`` to continue directly with webauthn mode after receiving a webauthn challenge. By default, the second step is OTP.
+
+**webauthn_pin_hint**
+
+Set this to overwrite the hint text (which is visible when the input is empty) when asking for the security key PIN. The default is "Security Key PIN".
+
 
 Offline token
 ~~~~~~~~~~~~~

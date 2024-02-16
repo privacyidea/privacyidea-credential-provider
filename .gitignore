@@ -1,10 +1,7 @@
 .vs/
-CppClientCore/CppClientCore/Debug/
-CppClientCore/CppClientCore/Release/
 *.obj
 *.tlog
 *.pdb
-CppClientCore/CppClientCore/x64/
 CredentialProvider/bin/
 CredentialProvider/obj/
 CredentialProviderFilter/*
@@ -18,7 +15,7 @@ CppClientCore/nlohmann/json.hpp
 *.aps
 Shared/Release/
 Shared/Debug
-CppClientCore/CppClientCore/Win32/
 Release/
 Credential_Provider_Technical_Reference.xps
 CppClient/nlohmann/json.hpp
+libfido2-1.14.0-win/*

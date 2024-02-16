@@ -53,16 +53,14 @@ void Configuration::Load()
 
 	otpFieldText = rr.GetWStringRegistry(L"otp_text");
 
-	tmp = rr.GetWStringRegistry(L"otp_fail_text");
-	defaultOTPFailureText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_WRONG_OTP) : tmp;
-
-	tmp = rr.GetWStringRegistry(L"otp_hint_text");
-	defaultOTPHintText = tmp.empty() ? Utilities::GetTranslatedText(TEXT_DEFAULT_OTP_HINT) : tmp;
+	otpFailureText = rr.GetWStringRegistry(L"otp_fail_text");
 
 	prefillUsername = rr.GetBoolRegistry(L"prefill_username");
 	showResetLink = rr.GetBoolRegistry(L"enable_reset");
+	resetLinkText = rr.GetWStringRegistry(L"reset_link_text");
 	offlineTreshold = rr.GetIntRegistry(L"offline_threshold");
-	showOfflineInfo = rr.GetBoolRegistry(L"offline_show_info");
+	offlineShowInfo = rr.GetBoolRegistry(L"offline_show_info");
+	
 	// Config for PrivacyIDEA
 	piconfig.hostname = rr.GetWStringRegistry(L"hostname");
 	// Check if the path contains the placeholder, if so set path to empty string
@@ -71,6 +69,13 @@ void Configuration::Load()
 
 	piconfig.ignoreUnknownCA = rr.GetBoolRegistry(L"ssl_ignore_unknown_ca");
 	piconfig.ignoreInvalidCN = rr.GetBoolRegistry(L"ssl_ignore_invalid_cn");
+	auto version = string(VER_FILE_VERSION_STR);
+	piconfig.userAgent = L"privacyidea-cp/" + Convert::ToWString(version);
+	if (!rr.GetBoolRegistry(L"user_agent_hide_computer_name"))
+	{
+		piconfig.userAgent += L" Windows/" + Utilities::ComputerName();
+	}
+
 	piconfig.customPort = rr.GetIntRegistry(L"custom_port");
 	piconfig.offlineFilePath = rr.GetWStringRegistry(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetIntRegistry(L"offline_try_window");
@@ -80,7 +85,7 @@ void Configuration::Load()
 	piconfig.sendTimeout = rr.GetIntRegistry(L"send_timeout");
 	piconfig.receiveTimeout = rr.GetIntRegistry(L"receive_timeout");
 
-	// format domain\username or computername\username
+	// Format domain\username or computername\username
 	excludedAccount = rr.GetWStringRegistry(L"excluded_account");
 
 	// Realm Mapping
@@ -91,13 +96,19 @@ void Configuration::Load()
 		piconfig.realmMap.clear();
 	}
 
+	useOtpLinkText = rr.GetWStringRegistry(L"use_otp_link_text");
+
+	// WebAuthn
+	webAuthnLinkText = rr.GetWStringRegistry(L"webauthn_link_text");
+	webAuthnPreferred = rr.GetBoolRegistry(L"webauthn_preferred");
+	webAuthnPinHint = rr.GetWStringRegistry(L"webauthn_pin_hint");
+
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
 	if (hideDomainName && hideFullName)
 	{
 		hideDomainName = false;
 	}
-	// Validate 2Step
 	if (twoStepSendEmptyPassword || twoStepSendPassword)
 	{
 		twoStepHideOTP = true;
@@ -122,7 +133,7 @@ void PrintIfIntIsNotValue(string message, int value, int comparable)
 {
 	if (value != comparable)
 	{
-		DebugPrint(message + ": " + to_string(value));
+		PIDebug(message + ": " + to_string(value));
 	}
 }
 
@@ -135,18 +146,18 @@ void PrintIfStringNotEmpty(wstring message, wstring value)
 {
 	if (!value.empty())
 	{
-		DebugPrint(message + L": " + value);
+		PIDebug(message + L": " + value);
 	}
 }
 
 void Configuration::LogConfig()
 {
-	DebugPrint("-----------------------------");
-	DebugPrint("CP Version: " + string(VER_FILE_VERSION_STR));
-	DebugPrint(L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
+	PIDebug("-----------------------------");
+	PIDebug("CP Version: " + string(VER_FILE_VERSION_STR));
+	PIDebug(L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
 		+ L"." + to_wstring(winBuildNr));
-	DebugPrint("------- Configuration -------");
-	DebugPrint(L"Hostname: " + piconfig.hostname);
+	PIDebug("------- Configuration -------");
+	PIDebug(L"Hostname: " + piconfig.hostname);
 	PrintIfStringNotEmpty(L"Path", piconfig.path);
 	PrintIfIntIsNotNull("Custom Port", piconfig.customPort);
 
@@ -157,17 +168,17 @@ void Configuration::LogConfig()
 
 	PrintIfStringNotEmpty(L"Login text", loginText);
 	PrintIfStringNotEmpty(L"OTP field text", otpFieldText);
-	PrintIfStringNotEmpty(L"OTP failure text", defaultOTPFailureText);
+	PrintIfStringNotEmpty(L"OTP failure text", otpFailureText);
 
-	DebugPrint("Hide domain/full name: " + Convert::ToString(hideDomainName) + "/" + Convert::ToString(hideFullName));
-	DebugPrint("SSL ignore unknown CA/invalid CN: " + Convert::ToString(piconfig.ignoreUnknownCA) + "/" + Convert::ToString(piconfig.ignoreInvalidCN));
+	PIDebug("Hide domain/full name: " + Convert::ToString(hideDomainName) + "/" + Convert::ToString(hideFullName));
+	PIDebug("SSL ignore unknown CA/invalid CN: " + Convert::ToString(piconfig.ignoreUnknownCA) + "/" + Convert::ToString(piconfig.ignoreInvalidCN));
 
-	DebugPrint("2step enabled/send empty/domain password: " + Convert::ToString(twoStepHideOTP)
+	PIDebug("2step enabled/send empty/domain password: " + Convert::ToString(twoStepHideOTP)
 		+ "/" + Convert::ToString(twoStepSendEmptyPassword) + "/" + Convert::ToString(twoStepSendPassword));
-	DebugPrint("Debug Log: " + Convert::ToString(debugLog));
-	DebugPrint("Log sensitive data: " + Convert::ToString(piconfig.logPasswords));
-	DebugPrint("No default: " + Convert::ToString(noDefault));
-	DebugPrint("Show domain hint: " + Convert::ToString(showDomainHint));
+	PIDebug("Debug Log: " + Convert::ToString(debugLog));
+	PIDebug("Log sensitive data: " + Convert::ToString(piconfig.logPasswords));
+	PIDebug("No default: " + Convert::ToString(noDefault));
+	PIDebug("Show domain hint: " + Convert::ToString(showDomainHint));
 	PrintIfIntIsNotNull("Send UPN", piconfig.sendUPN);
 	PrintIfStringNotEmpty(L"Bitmap path", bitmapPath);
 	PrintIfStringNotEmpty(L"Offline file path", piconfig.offlineFilePath);
@@ -182,9 +193,14 @@ void Configuration::LogConfig()
 		{
 			tmp += item.first + L"=" + item.second + L", ";
 		}
-		DebugPrint("Realm mapping:");
-		DebugPrint(tmp.substr(0, tmp.size() - 2).c_str());
+		PIDebug("Realm mapping:");
+		PIDebug(tmp.substr(0, tmp.size() - 2).c_str());
 	}
 
-	DebugPrint("-----------------------------");
+	PIDebug("-----------------------------");
+}
+
+bool Configuration::IsSecondStep() const noexcept
+{
+	return scenario == SCENARIO::SECOND_STEP || scenario > SCENARIO::SECURITY_KEY_ANY;
 }

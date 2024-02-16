@@ -22,8 +22,8 @@
 
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
-#define Print(message)				Logger::Get().Log(message, __FILENAME__, __LINE__, false)
-#define DebugPrint(message)			Logger::Get().Log(message, __FILENAME__, __LINE__, true)
+#define PIError(message)				Logger::Get().Log(message, __FILENAME__, __LINE__, false)
+#define PIDebug(message)				Logger::Get().Log(message, __FILENAME__, __LINE__, true)
 
 // Singleton logger class that writes to a file on C: and to OutputDebugString
 class Logger

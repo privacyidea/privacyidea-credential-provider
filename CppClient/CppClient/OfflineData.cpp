@@ -36,14 +36,9 @@ int OfflineData::GetLowestKey()
 		}
 		catch (const std::invalid_argument & e)
 		{
-			DebugPrint(e.what());
+			PIDebug(e.what());
 		}
 	}
 
 	return lowestKey;
-}
-
-size_t OfflineData::GetOfflineOTPCount() noexcept
-{
-	return offlineOTPs.size();
 }

@@ -31,6 +31,7 @@ struct PIConfig
 	int customPort = 0;
 	bool ignoreInvalidCN = false;
 	bool ignoreUnknownCA = false;
+	std::wstring userAgent = L"privacyidea-cpp-client";
 	std::map<std::wstring, std::wstring> realmMap = std::map<std::wstring, std::wstring>();
 	std::wstring defaultRealm = L"";
 	bool logPasswords = false;

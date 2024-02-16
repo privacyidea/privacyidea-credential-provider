@@ -20,23 +20,27 @@
 **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef WIN32_NO_STATUS
-#include <ntstatus.h>
-#define WIN32_NO_STATUS
-#endif
-
 #include "CCredential.h"
 #include "Configuration.h"
+#include "RegistryReader.h"
+#include "Convert.h"
 #include "Logger.h"
+#include "WebAuthn.h"
+#include "DeviceNotification.h"
+#include "FIDO2Device.h"
 #include <resource.h>
 #include <string>
 #include <thread>
 #include <future>
 #include <sstream>
-#include <RegistryReader.h>
-#include <Convert.h>
 #include <gdiplus.h>
-#pragma comment (lib,"Gdiplus.lib")
+
+#ifndef WIN32_NO_STATUS
+#include <ntstatus.h>
+#define WIN32_NO_STATUS
+#endif
+
+#pragma comment (lib, "Gdiplus.lib")
 
 using namespace std;
 
@@ -72,7 +76,7 @@ HRESULT CCredential::Initialize(
 	__in_opt PWSTR password
 )
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 
 	wstring wstrUsername, wstrDomainname;
 	std::wstring wstrPassword;
@@ -99,29 +103,43 @@ HRESULT CCredential::Initialize(
 			hr = UnProtectIfNecessaryAndCopyPassword(pwzProtectedPassword, &password);
 			if (FAILED(hr))
 			{
-				DebugPrint("Failed to decrypt password " + GetLastError());
+				PIDebug("Failed to decrypt password " + GetLastError());
 			}
 		}
 		CoTaskMemFree(pwzProtectedPassword);
 		wstrPassword = std::wstring(password);
 	}
 
-	DebugPrint(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
-	DebugPrint(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
+	PIDebug(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
+	PIDebug(L"Domain from provider: " + (wstrDomainname.empty() ? L"empty" : wstrDomainname));
 	if (_config->piconfig.logPasswords)
 	{
-		DebugPrint(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
+		PIDebug(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 	}
 	HRESULT hr = S_OK;
-
-	if (!wstrUsername.empty())
+	
+	// Check if the username is in UPN format. In that case we do not need the domain name.
+	// Otherwise, use the user and domain name from the provider.
+	wstring tmpUser, tmpDomain;
+	Utilities::SplitUserAndDomain(wstrUsername, tmpUser, tmpDomain);
+	if (!tmpDomain.empty())
 	{
-		_config->credential.username = wstrUsername;
+		PIDebug(L"Username is in UPN format, using domain from username");
+		_config->credential.username = tmpUser;
+		_config->credential.domain = tmpDomain;
 	}
-
-	if (!wstrDomainname.empty())
+	else
 	{
-		_config->credential.domain = wstrDomainname;
+		PIDebug(L"Username is not in UPN format, using username and domain from provider");
+		if (!wstrUsername.empty())
+		{
+			_config->credential.username = wstrUsername;
+		}
+
+		if (!wstrDomainname.empty())
+		{
+			_config->credential.domain = wstrDomainname;
+		}
 	}
 
 	if (!wstrPassword.empty())
@@ -132,8 +150,6 @@ HRESULT CCredential::Initialize(
 
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
 	{
-		//DebugPrint("Copy field #:");
-		//DebugPrint(i + 1);
 		_rgFieldStatePairs[i] = rgfsp[i];
 		hr = FieldDescriptorCopy(rgcpfd[i], &_rgCredProvFieldDescriptors[i]);
 
@@ -142,10 +158,14 @@ HRESULT CCredential::Initialize(
 			break;
 		}
 
-		_util.InitializeField(_rgFieldStrings, i);
+		hr = _util.InitializeField(_rgFieldStrings, i);
+		if (FAILED(hr))
+		{
+			PIError("Failed to initialize field " + to_string(i));
+		}
 	}
 
-	DebugPrint("Init result: " + Convert::LongToHexString(hr));
+	PIDebug("Init result: " + Convert::LongToHexString(hr));
 
 	return hr;
 }
@@ -155,7 +175,7 @@ HRESULT CCredential::Advise(
 	__in ICredentialProviderCredentialEvents* pcpce
 )
 {
-	//DebugPrintLn(__FUNCTION__);
+	//PIDebugLn(__FUNCTION__);
 
 	if (_pCredProvCredentialEvents != nullptr)
 	{
@@ -170,7 +190,7 @@ HRESULT CCredential::Advise(
 // LogonUI calls this to tell us to release the callback.
 HRESULT CCredential::UnAdvise()
 {
-	//DebugPrintLn(__FUNCTION__);
+	//PIDebugLn(__FUNCTION__);
 
 	if (_pCredProvCredentialEvents)
 	{
@@ -188,14 +208,14 @@ HRESULT CCredential::UnAdvise()
 // selected, you would do it here.
 HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	*pbAutoLogon = false;
 	HRESULT hr = S_OK;
 
 	if (_config->doAutoLogon)
 	{
 		*pbAutoLogon = TRUE;
-		DebugPrint("AUTOLOGON ENABLED!");
+		PIDebug("AUTOLOGON ENABLED!");
 		_config->doAutoLogon = false;
 	}
 
@@ -203,17 +223,17 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		&& _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
 		&& _config->winVerMajor != 10)
 	{
-		// We cant handle a password change while the maschine is locked, so we guide the user to sign out and in again like windows does
-		DebugPrint("Password must change in CPUS_UNLOCK_WORKSTATION");
+		// We cant handle a password change while the machine is locked, so we guide the user to sign out and in again like windows does
+		PIDebug("Password must change in CPUS_UNLOCK_WORKSTATION");
 		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, L"Go back until you are asked to sign in.");
-		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, L"To change your password sign out and in again.");
+		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, L"To change your password, sign out and in again.");
 		_pCredProvCredentialEvents->SetFieldState(this, FID_LDAP_PASS, CPFS_HIDDEN);
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
 	}
 
 	if (_config->credential.passwordMustChange)
 	{
-		hr = _util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::CHANGE_PASSWORD);
+		hr = SetScenario(SCENARIO::CHANGE_PASSWORD);
 		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 		{
 			_config->bypassPrivacyIDEA = true;
@@ -229,15 +249,15 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 		hr = _pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_FOCUSED);
 	}
 
-	if (!_config->showResetLink)
+	if (_config->showResetLink)
 	{
-		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_COMMANDLINK, CPFS_HIDDEN);
+		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
 	}
 
 	// In case of wrong password or other resets, the offline values will be consumed anyway. Therefore update the values remaining.
-	if (_config->showOfflineInfo)
+	if (_config->offlineShowInfo)
 	{
-		_util.ReadUserField();
+		_util.CopyUsernameField();
 		hr = SetOfflineInfo(Convert::ToString(_config->credential.username));
 	}
 
@@ -254,16 +274,19 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 // is to clear out the password field.
 HRESULT CCredential::SetDeselected()
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 
 	HRESULT hr = S_OK;
-	
+
 	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
-	hr = _util.ResetScenario(this, _pCredProvCredentialEvents);
-	
+	hr = ResetScenario();
+
 	// Reset password changing in case another user wants to log in
 	_config->credential.passwordChanged = false;
 	_config->credential.passwordMustChange = false;
+
+	// Possible cleanup
+	DeviceNotification::Unregister();
 
 	return hr;
 }
@@ -276,7 +299,7 @@ HRESULT CCredential::GetFieldState(
 	__out CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis
 )
 {
-	//DebugPrintLn(__FUNCTION__);
+	//PIDebugLn(__FUNCTION__);
 
 	HRESULT hr = S_OK;
 
@@ -292,7 +315,7 @@ HRESULT CCredential::GetFieldState(
 		hr = E_INVALIDARG;
 	}
 
-	//DebugPrintLn(hr);
+	//PIDebugLn(hr);
 
 	return hr;
 }
@@ -303,7 +326,7 @@ HRESULT CCredential::GetStringValue(
 	__deref_out PWSTR* ppwsz
 )
 {
-	//DebugPrintLn(__FUNCTION__);
+	//PIDebugLn(__FUNCTION__);
 
 	HRESULT hr = S_OK;
 
@@ -319,7 +342,7 @@ HRESULT CCredential::GetStringValue(
 		hr = E_INVALIDARG;
 	}
 
-	//DebugPrintLn(hr);
+	//PIDebugLn(hr);
 
 	return hr;
 }
@@ -330,7 +353,7 @@ HRESULT CCredential::GetBitmapValue(
 	__out HBITMAP* phbmp
 )
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 
 	HRESULT hr = E_INVALIDARG;
 	if ((FID_LOGO == dwFieldID) && phbmp)
@@ -343,7 +366,7 @@ HRESULT CCredential::GetBitmapValue(
 		{
 			DWORD const dwAttrib = GetFileAttributesA(lpszBitmapPath);
 
-			DebugPrint(dwAttrib);
+			PIDebug(dwAttrib);
 
 			if (dwAttrib != INVALID_FILE_ATTRIBUTES
 				&& !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
@@ -352,7 +375,7 @@ HRESULT CCredential::GetBitmapValue(
 
 				if (hbmp == nullptr)
 				{
-					DebugPrint(GetLastError());
+					PIDebug(GetLastError());
 				}
 			}
 		}
@@ -377,7 +400,7 @@ HRESULT CCredential::GetBitmapValue(
 		hr = E_INVALIDARG;
 	}
 
-	DebugPrint(hr);
+	PIDebug(hr);
 
 	return hr;
 }
@@ -391,8 +414,8 @@ HRESULT CCredential::GetSubmitButtonValue(
 	__out DWORD* pdwAdjacentTo
 )
 {
-	DebugPrint(__FUNCTION__);
-	//DebugPrint("Submit Button ID:" + to_string(dwFieldID));
+	PIDebug(__FUNCTION__);
+	//PIDebug("Submit Button ID:" + to_string(dwFieldID));
 	if (FID_SUBMIT_BUTTON == dwFieldID && pdwAdjacentTo)
 	{
 		// This is only called once when the credential is created.
@@ -441,10 +464,28 @@ HRESULT CCredential::SetStringValue(
 
 			// Set the serial and remaining offline OTPs as hint if the setting is enabled
 			// If no offline token are found for the current input, hide the field
-			if (_config->showOfflineInfo)
+			if (_config->offlineShowInfo)
 			{
 				SetOfflineInfo(Convert::ToString(username));
 			}
+
+			/*
+			// Check if offline webauthn is available for the user and if so, show the link
+			// TODO indicate offline by suffixing the link text?
+			if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty())
+			{
+				_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
+				PIDebug("Enabling WebAuthn link because of available offline data");
+			}
+			else
+			{
+				// Disable if no match for the user and no "online" webauthn request
+				if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0)
+				{
+					_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_HIDDEN);
+				}
+			}
+			*/
 		}
 	}
 	else
@@ -464,12 +505,12 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 		auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(username);
 		if (!offlineInfo.empty())
 		{
-			wstring message = Utilities::GetTranslatedText(TEXT_AVAILABLE_OFFLINE_TOKEN);
+			wstring message = _util.GetText(TEXT_AVAILABLE_OFFLINE_TOKEN);
 			for (auto& pair : offlineInfo)
 			{
 				// <serial> (XX OTPs remaining)
 				message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
-					.append(Utilities::GetTranslatedText(TEXT_OTPS_REMAINING)).append(L")\n");
+					.append(_util.GetText(TEXT_OTPS_REMAINING)).append(L")\n");
 			}
 
 			infoSet = true;
@@ -486,11 +527,270 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 	return hr;
 }
 
+// Determine the status of FIDO2 devices and return the scenario based on that.
+// It can be one of the following:
+// - SCENARIO::SECURITY_KEY_PIN
+// - SCENARIO::SECURITY_KEY_NO_PIN
+// - SCENARIO::SECURITY_KEY_NO_DEVICE
+SCENARIO CCredential::SelectWebAuthnScenario()
+{
+	auto devices = FIDO2Device::GetDevices();
+	if (devices.size() == 0)
+	{
+		PIDebug("No FIDO2 devices found");
+		return SCENARIO::SECURITY_KEY_NO_DEVICE;
+	}
+	else if (devices.size() > 0)
+	{
+		if (devices.size() > 1)
+		{
+			PIDebug("Multiple FIDO2 devices found, using the first: " + devices[0].GetPath());
+		}
+
+		if (devices[0].HasPin())
+		{
+			PIDebug("One FIDO2 device found with PIN");
+			return SCENARIO::SECURITY_KEY_PIN;
+		}
+		else
+		{
+			PIDebug("One FIDO2 device found without PIN");
+			return SCENARIO::SECURITY_KEY_NO_PIN;
+		}
+	}
+	return SCENARIO::NO_CHANGE;
+}
+
+HRESULT CCredential::SetScenario(SCENARIO scenario)
+{
+	HRESULT hr = S_OK;
+
+	if (scenario != SCENARIO::NO_CHANGE)
+	{
+		_config->scenario = scenario;
+	}
+
+	switch (scenario)
+	{
+		case SCENARIO::LOGON_BASE:
+		{
+			PIDebug("SetScenario: LOGON_BASE");
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioDisplayAllFields);
+			break;
+		}
+		case SCENARIO::UNLOCK_BASE:
+		{
+			PIDebug("SetScenario: UNLOCK_BASE");
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUnlockPasswordOTP);
+			break;
+		}
+		case SCENARIO::SECOND_STEP:
+		{
+			PIDebug("SetScenario: SECOND_STEP");
+			// Set the submit button next to the OTP field for the second step
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_OTP);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecondStepOTP);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_WEBAUTHN).c_str());
+			break;
+		}
+		case SCENARIO::CHANGE_PASSWORD:
+		{
+			PIDebug("SetScenario: CHANGE_PASSWORD");
+			// Set the submit button next to the repeat pw field
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPasswordChange);
+			break;
+		}
+		case SCENARIO::UNLOCK_TWO_STEP:
+		{
+			PIDebug("SetScenario: UNLOCK_TWO_STEP");
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUnlockFirstStepPassword);
+			break;
+		}
+		case SCENARIO::LOGON_TWO_STEP:
+		{
+			PIDebug("SetScenario: LOGON_TWO_STEP");
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioLogonFirstStepUserLDAP);
+			break;
+		}
+		case SCENARIO::SECURITY_KEY_PIN:
+		{
+			PIDebug("SetScenario: SECURITY_KEY_PIN");
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_WAN_PIN);
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_WAN_PIN, CPFIS_FOCUSED);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_OTP).c_str());
+			break;
+		}
+		case SCENARIO::SECURITY_KEY_NO_DEVICE:
+		{
+			PIDebug("SetScenario: SECURITY_KEY_NO_DEVICE");
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_WAN_PIN);
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_WAN_PIN, CPFIS_FOCUSED);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_OTP).c_str());
+			break;
+		}
+		case SCENARIO::SECURITY_KEY_NO_PIN:
+		{
+			PIDebug("SetScenario: SECURITY_KEY_NO_PIN");
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_WAN_PIN);
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_WAN_PIN, CPFIS_NONE);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_OTP).c_str());
+			// Reset with autologon to get to CCredential::Connect directly
+			PIDebug("Skipping to CCredential::Connect...");
+			_config->doAutoLogon = true;
+			_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+			break;
+		}
+		case SCENARIO::NO_CHANGE:
+			PIDebug("SetScenario: NO_CHANGE");
+			break;
+		default:
+			PIError("SetScenario: Unknown scenario");
+			break;
+	}
+
+	// Password change
+	if (_config->credential.passwordMustChange)
+	{
+		// Show username in large text, prefill old password
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _config->credential.username.c_str());
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LDAP_PASS, _config->credential.password.c_str());
+	}
+	// Login or Unlock
+	else
+	{
+		const int hideFullName = _config->hideFullName;
+		const int hideDomain = _config->hideDomainName;
+
+		// Fill the textfields with text depending on configuration
+		// Large text for username@domain, username or nothing
+		// Small text for transaction message or default OTP message
+
+		// Large text
+		wstring text = _config->credential.username + L"@" + _config->credential.domain;
+		if (hideDomain)
+		{
+			text = _config->credential.username;
+		}
+		if (hideFullName)
+		{
+			text = L"";
+		}
+		//PIDebug(L"Setting large text: " + text);
+		if (text.empty() || _config->credential.username.empty())
+		{
+			_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _config->loginText.c_str());
+			//PIDebug(L"Setting large text: " + _config->loginText);
+		}
+		else
+		{
+			_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, text.c_str());
+			//PIDebug(L"Setting large text: " + text);
+		}
+
+		// If the username is already present (e.g. retry after wrong password) focus the password field
+		wstring input;
+		if (_config != nullptr && _config->provider.field_strings != nullptr)
+		{
+			input = wstring(_config->provider.field_strings[FID_USERNAME]);
+		}
+
+		if (!input.empty())
+		{
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_FOCUSED);
+		}
+
+		// Small text, use if 1st step or in 2nd step of 2step
+		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->IsSecondStep()))
+		{
+			// Only set the message of the last server response if that response did not indicate success. The success message should not be shown.
+			if (!_config->lastResponse.message.empty() && !_config->lastResponse.value)
+			{
+				wstring wszMessage = Convert::ToWString(_config->lastResponse.message);
+				//PIDebug(L"Setting message of challenge to small text: " + _config->challenge.message);
+				_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, wszMessage.c_str());
+				_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
+			}
+			else
+			{
+				_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, _util.GetText(TEXT_OTP_PROMPT).c_str());
+			}
+		}
+		else
+		{
+			_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_HIDDEN);
+		}
+	}
+
+	// Domain in FID_SUBTEXT, optional
+	if (_config->showDomainHint)
+	{
+		wstring domaintext = _util.GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
+		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, domaintext.c_str());
+	}
+	else
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_SUBTEXT, CPFS_HIDDEN);
+	}
+
+	// WebAuthn link: show if a sign request is present or if offline webauthn is available for the user
+	if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0)
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
+		PIDebug("Enabling link for online webauthn");
+	}
+
+	if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty())
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
+		PIDebug("Enabling link for offline webauthn");
+	}
+
+	return hr;
+}
+
+HRESULT CCredential::ResetScenario(__in bool resetToFirstStep)
+{
+	PIDebug(__FUNCTION__);
+
+	// If resetToFirstStep is true, the scenario is reset to the first step regardless of the current scenario.
+	if (_config->twoStepHideOTP && (_config->IsSecondStep() || resetToFirstStep))
+	{
+		SetScenario(SCENARIO::LOGON_TWO_STEP);
+	}
+	else if (_config->twoStepHideOTP && _config->IsSecondStep())
+	{
+		SetScenario(SCENARIO::SECOND_STEP);
+	}
+	else if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+	{
+		SetScenario(SCENARIO::UNLOCK_BASE);
+	}
+	else
+	{
+		SetScenario(SCENARIO::LOGON_BASE);
+	}
+
+	// Do not clear the password for remote scenarios, because it is already checked when initializing the remote connection.
+	// The OTP field content has to be cleared manually.
+	if (_config->isRemoteSession)
+	{
+		_config->clearFields = false;
+		_pCredProvCredentialEvents->SetFieldString(this, FID_OTP, L"");
+	}
+
+	return S_OK;
+}
+
 HRESULT CCredential::SetDomainHint(std::wstring domain)
 {
 	if (_config->showDomainHint && !domain.empty())
 	{
-		wstring text = Utilities::GetTranslatedText(TEXT_DOMAIN_HINT) + domain;
+		wstring text = _util.GetText(TEXT_DOMAIN_HINT) + domain;
 		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, text.c_str());
 	}
 	return S_OK;
@@ -504,7 +804,7 @@ HRESULT CCredential::GetComboBoxValueCount(
 	__out_range(< , *pcItems) DWORD* pdwSelectedItem
 )
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 
 	// Validate parameters.
 	if (dwFieldID < FID_NUM_FIELDS &&
@@ -527,7 +827,7 @@ HRESULT CCredential::GetComboBoxValueAt(
 	__in DWORD dwItem,
 	__deref_out PWSTR* ppwszItem)
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwItem);
 	UNREFERENCED_PARAMETER(dwFieldID);
 	UNREFERENCED_PARAMETER(ppwszItem);
@@ -541,7 +841,7 @@ HRESULT CCredential::SetComboBoxSelectedValue(
 	__in DWORD dwSelectedItem
 )
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwSelectedItem);
 	// Validate parameters.
 	if (dwFieldID < FID_NUM_FIELDS &&
@@ -562,7 +862,7 @@ HRESULT CCredential::GetCheckboxValue(
 )
 {
 	// Called to check the initial state of the checkbox
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwFieldID);
 	UNREFERENCED_PARAMETER(ppwszLabel);
 	*pbChecked = FALSE;
@@ -578,18 +878,42 @@ HRESULT CCredential::SetCheckboxValue(
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
 	UNREFERENCED_PARAMETER(bChecked);
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	return S_OK;
 }
 
 HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 {
-	UNREFERENCED_PARAMETER(dwFieldID);
-	DebugPrint(__FUNCTION__);
-	_config->isSecondStep = false;
-	_privacyIDEA.StopPoll();
-	_util.ResetScenario(this, _pCredProvCredentialEvents);
-	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
+	PIDebug(__FUNCTION__);
+	if (dwFieldID == FID_RESET_LINK)
+	{
+		PIDebug("Reset link clicked");
+		_privacyIDEA.StopPoll();
+		ResetScenario(true);
+		_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
+	}
+	else if (dwFieldID == FID_WAN_LINK)
+	{
+		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
+		{
+			PIDebug("Switching to OTP mode");
+			SetScenario(SCENARIO::SECOND_STEP);
+			return S_OK;
+		}
+		else
+		{
+			PIDebug("Switching to WebAuthn mode");
+			const auto scenario = SelectWebAuthnScenario();
+			SetScenario(scenario);
+			if (scenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
+			{
+				_config->doAutoLogon = true;
+				_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+			}
+			return S_OK;
+		}
+	}
+
 	return S_OK;
 }
 
@@ -603,7 +927,7 @@ HRESULT CCredential::GetSerialization(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 
 	HRESULT hr = S_OK;
 	/*
@@ -630,10 +954,9 @@ HRESULT CCredential::GetSerialization(
 	_config->provider.status_icon = pcpsiOptionalStatusIcon;
 	_config->provider.status_text = ppwszOptionalStatusText;
 
-	// Do password change
+	// Password change evaluation
 	if (_config->credential.passwordMustChange)
 	{
-		// Compare new passwords
 		if (_config->credential.newPassword1 == _config->credential.newPassword2)
 		{
 			_util.KerberosChangePassword(pcpgsr, pcpcs, _config->credential.username, _config->credential.password,
@@ -641,19 +964,19 @@ HRESULT CCredential::GetSerialization(
 		}
 		else
 		{
-			// not finished
 			ShowErrorMessage(L"New passwords don't match!");
 			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			_config->clearFields = false;
 		}
 	}
+	// Logon after pw change with the new pw
 	else if (_config->credential.passwordChanged)
 	{
-		// Logon with the new password
 		hr = _util.KerberosLogon(pcpgsr, pcpcs, _config->provider.cpu,
 			_config->credential.username, _config->credential.newPassword1, _config->credential.domain);
 		_config->credential.passwordChanged = false;
 	}
+	// Normal authentication
 	else
 	{
 		if (_config->userCanceled)
@@ -665,38 +988,58 @@ HRESULT CCredential::GetSerialization(
 		// Check if we are pre 2nd step or failure
 		if (_authenticationComplete == false && _config->pushAuthenticationSuccessful == false)
 		{
-			if (_config->isSecondStep == false && _config->twoStepHideOTP && _lastError == S_OK)
+			// Continue with WebAuthn as the second step if there is a sign request and it is configured to be preferred
+			// or if the current scenario is a webauthn one, e.g. to do NO_DEVICE -> PIN
+			const bool offlineWANAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty();
+			
+			// Continue with webauthn in the following cases:
+			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request, or when continuing webauthn (e.g. from NO_DEVICE to PIN)
+			const bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn" 
+				|| (_config->webAuthnPreferred && (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
+				|| (_config->scenario > SCENARIO::SECURITY_KEY_ANY);
+
+			const auto webAuthnScenario = SelectWebAuthnScenario();
+			const bool isSecondStep = _config->IsSecondStep();
+
+			// Regular second step, asking for second factor
+			if (!isSecondStep && _config->twoStepHideOTP && _lastError == S_OK)
 			{
-				// Prepare for the second step (input only OTP)
-				_config->isSecondStep = true;
 				_config->clearFields = false;
-				_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				if (continueWithWebAuthn && webAuthnScenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
+				{
+					_config->doAutoLogon = true;
+					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+				}
 			}
-			else if (_config->isSecondStep && !_config->lastResponse.challenges.empty())
+			// Another challenge was triggered: repeat the second step (privacyIDEA)
+			else if (isSecondStep && !_config->lastResponse.challenges.empty() && _lastError == S_OK)
 			{
-				// Repeat the second step (privacyIDEA) because another challenge was triggered
-				_util.SetScenario(this, _pCredProvCredentialEvents, SCENARIO::SECOND_STEP);
+				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 			else
 			{
 				// Failed authentication or error section - create a message depending on the error
-				wstring errorMessage = _config->defaultOTPFailureText;
+				wstring errorMessage = _util.GetText(TEXT_WRONG_OTP);
 				if (!_config->lastResponse.errorMessage.empty())
 				{
 					errorMessage = Convert::ToWString(_config->lastResponse.errorMessage);
 				}
+				else if (_lastError == FIDO_ERR_NO_CREDENTIALS)
+				{
+					SetScenario(SCENARIO::SECOND_STEP);
+					errorMessage = _util.GetText(TEXT_FIDO_NO_CREDENTIALS);
+				}
 				else if (_lastError != S_OK)
 				{
 					// Probably configuration or network error - details will be logged where the error occurs -> check log
-					errorMessage = Utilities::GetTranslatedText(TEXT_GENERIC_ERROR);
+					errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
 				}
 
 				ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
-				// TODO should it reset to first step if OTP is wrong?
-				//_config->isSecondStep = false;
-				_util.ResetScenario(this, _pCredProvCredentialEvents);
+				ResetScenario();
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
@@ -722,9 +1065,7 @@ HRESULT CCredential::GetSerialization(
 		else
 		{
 			ShowErrorMessage(L"Unexpected error");
-			// Reset to first step
-			_config->isSecondStep = false;
-			_util.ResetScenario(this, _pCredProvCredentialEvents);
+			ResetScenario(true);
 			hr = S_FALSE;
 		}
 	}
@@ -740,14 +1081,14 @@ HRESULT CCredential::GetSerialization(
 
 	if (pcpgsr)
 	{
-		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_FINISHED"); }
-		else if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { DebugPrint("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
-		else if (*pcpgsr == CPGSR_RETURN_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_CREDENTIAL_FINISHED"); }
-		else if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { DebugPrint("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
+		if (*pcpgsr == CPGSR_NO_CREDENTIAL_FINISHED) { PIDebug("CPGSR_NO_CREDENTIAL_FINISHED"); }
+		else if (*pcpgsr == CPGSR_NO_CREDENTIAL_NOT_FINISHED) { PIDebug("CPGSR_NO_CREDENTIAL_NOT_FINISHED"); }
+		else if (*pcpgsr == CPGSR_RETURN_CREDENTIAL_FINISHED) { PIDebug("CPGSR_RETURN_CREDENTIAL_FINISHED"); }
+		else if (*pcpgsr == CPGSR_RETURN_NO_CREDENTIAL_FINISHED) { PIDebug("CPGSR_RETURN_NO_CREDENTIAL_FINISHED"); }
 	}
-	else { DebugPrint("pcpgsr is a nullpointer!"); }
+	else { PIDebug("Unknown value for pcpgsr"); }
 
-	DebugPrint("CCredential::GetSerialization - END");
+	PIDebug("CCredential::GetSerialization - END");
 	return hr;
 }
 
@@ -763,7 +1104,7 @@ void CCredential::ShowErrorMessage(const std::wstring& message, const HRESULT& c
 // If push is successful, reset the credential to do autologin
 void CCredential::PushAuthenticationCallback(bool success)
 {
-	DebugPrint(__FUNCTION__);
+	PIDebug(__FUNCTION__);
 	if (success)
 	{
 		_config->pushAuthenticationSuccessful = true;
@@ -777,16 +1118,19 @@ void CCredential::PushAuthenticationCallback(bool success)
 // Connect is called first after the submit button is pressed.
 HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
-	DebugPrint(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->isSecondStep ? "2" : "1"));
-	UNREFERENCED_PARAMETER(pqcws);
-	_lastError = S_OK; // reset error
-	_config->provider.field_strings = _rgFieldStrings;
-	_util.CopyInputsToConfig();
+	PIDebug(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->IsSecondStep() ? "2" : "1"));
 
+	_lastError = S_OK; // reset error
+	// Copy the input fields to the config
+	_config->provider.field_strings = _rgFieldStrings;
+	_util.CopyInputFields();
 	wstring username = _config->credential.username;
 	wstring domain = _config->credential.domain;
 	// Leave the UPN empty if it should not be used
 	wstring upn = _config->piconfig.sendUPN ? _config->credential.upn : L"";
+
+	// Default message
+	pqcws->SetStatusMessage(_util.GetText(TEXT_CONNECTING).c_str());
 
 	// Check if the user is the excluded account
 	if (!_config->excludedAccount.empty())
@@ -802,11 +1146,10 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		wstring exclUsername, exclDomain;
 		Utilities::SplitUserAndDomain(_config->excludedAccount, exclUsername, exclDomain);
 		wstring exclAccount = exclDomain + L"\\" + exclUsername;
-		DebugPrint(L"Matching user with excluded account: " + exclAccount);
+		PIDebug(L"Matching user with excluded account: " + exclAccount);
 		if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(exclAccount))
 		{
-			DebugPrint("Login data matches excluded account, skipping 2FA...");
-			// Simulate 2FA success so the logic in GetSerialization can stay the same
+			PIDebug("Login data matches excluded account, skipping 2FA...");
 			_authenticationComplete = true;
 			return S_OK;
 		}
@@ -814,25 +1157,23 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 
 	if (_config->bypassPrivacyIDEA)
 	{
-		DebugPrint("Bypassing privacyIDEA...");
+		PIDebug("Bypassing privacyIDEA...");
 		_config->bypassPrivacyIDEA = false;
-
 		return S_OK;
 	}
 
 	// Evaluate if and what should be sent to the server depending on the step and configuration
 	bool sendSomething = false, offlineCheck = false;
 	wstring passToSend;
-	PIResponse piResponse;
 
-	if (_config->twoStepHideOTP && !_config->isSecondStep)
+	// 1st step
+	if (_config->twoStepHideOTP && !_config->IsSecondStep())
 	{
 		if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 		{
-			DebugPrint("1st step: Not sending anything");
+			PIDebug("1st step: Not sending anything");
 			// Delay for a short moment, otherwise logonui freezes (???)
 			this_thread::sleep_for(chrono::milliseconds(200));
-			// Then skip to next step
 		}
 		else
 		{
@@ -840,28 +1181,28 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
 			{
 				passToSend = _config->credential.password;
-				DebugPrint("1st step: Sending windows pass");
+				PIDebug("1st step: Sending windows pass");
 			}
 			else
 			{
-				DebugPrint("1st step: Sending empty pass");
+				PIDebug("1st step: Sending empty pass");
 			}
 		}
 	}
 	else
 	{
-		DebugPrint("2nd step: Sending OTP/Offline check");
-		// Second step or Single step authentication, actually use the OTP and do offlineCheck before
+		PIDebug("2nd step: Sending OTP/Offline check");
+		// Second step or single step authentication, actually use the OTP and do offlineCheck before
 		passToSend = _config->credential.otp;
 		offlineCheck = true;
 		sendSomething = true;
 	}
 
-	// Do the request
+	// Send a request to privacyIDEA, try offline authentication or webauthn, depending on what happened before
 	if (sendSomething)
 	{
 		HRESULT res = E_FAIL;
-		if (offlineCheck)
+		if (offlineCheck && (_config->scenario < SCENARIO::SECURITY_KEY_ANY))
 		{
 			string serialUsed;
 			res = _privacyIDEA.OfflineCheck(username, passToSend, serialUsed);
@@ -873,7 +1214,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend, serialUsed);
 				if (refillResult != S_OK)
 				{
-					DebugPrint("OfflineRefill failed " + Convert::LongToHexString(refillResult));
+					PIDebug("OfflineRefill failed " + Convert::LongToHexString(refillResult));
 				}
 			}
 
@@ -884,65 +1225,193 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 		}
 
-		if (res != S_OK)
+		// WebAuthn
+		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
 		{
+			PIDebug("Trying WebAuthn...");
+			// Check if a WebAuthnSignRequest is available either from online or offline
+			if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.empty() && _privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty())
+			{
+				PIError("No WebAuthnSignRequest available and no offline data found for user " + Convert::ToString(username));
+				return E_FAIL;
+			}
+
+			// Wait for a device to be connected if necessary. 
+			// Afterward, the scenario might be reset to get the PIN input or will continue if no PIN is required.
+			std::vector<FIDO2Device> devices;
+			if (_config->scenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
+			{
+				PIDebug("No device found, waiting for device");
+				pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
+
+				DeviceNotification::Register();
+				while (true)
+				{
+					this_thread::sleep_for(chrono::milliseconds(100));
+					if (pqcws->QueryContinue() != S_OK)
+					{
+						PIError("User cancelled device search");
+						SetScenario(SCENARIO::SECOND_STEP);
+						return E_FAIL;
+					}
+
+					if (DeviceNotification::newDevices)
+					{
+						DeviceNotification::newDevices = false;
+						devices = FIDO2Device::GetDevices();
+						if (devices.size() > 0)
+						{
+							break;
+						}
+						else
+						{
+							PIDebug("Inserted device is not a FIDO2 device");
+						}
+					}
+				}
+				DeviceNotification::Unregister();
+				const auto scenario = SelectWebAuthnScenario();
+				if (scenario != SCENARIO::SECURITY_KEY_NO_PIN)
+				{
+					// Reset to get PIN input
+					SetScenario(scenario);
+					_config->doAutoLogon = true;
+					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+				}
+			}
+
+			// Find the device to use
+			devices = FIDO2Device::GetDevices();
+			if (devices.size() == 0)
+			{
+				PIError("No FIDO2 device available");
+				return E_FAIL;
+			}
+
+			FIDO2Device device = devices.front();
+			auto pin = Convert::ToString(_config->credential.webAuthnPIN);
+
+			if (device.HasPin() && pin.empty())
+			{
+				PIDebug("No WebAuthn PIN input, but pin is required");
+				return E_FAIL;
+			}
+
+			pqcws->SetStatusMessage(_util.GetText(TEXT_TOUCH_SEC_KEY).c_str());
+			WebAuthnSignResponse signResponse;
+			string origin = Convert::ToString(Utilities::ComputerName());
+
+			// Try to do offline then online webauthn
+			// Prefer offline so that there is a chance to try refill
+			// That means once a user has offline data, webauthn online is not possible anymore
+			auto offlineData = _privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username));
+			if (!offlineData.empty())
+			{
+				PIDebug("Trying offline WebAuthn...");
+				string serialUsed;
+				res = device.SignAndVerifyAssertion(offlineData, origin, pin, serialUsed);
+				if (res == FIDO_OK)
+				{
+					_authenticationComplete = true;
+					_privacyIDEA.OfflineRefillWebAuthn(username, serialUsed);
+				}
+				else
+				{
+					PIError("WebAuthn offline signing or verifying failed with error: " + to_string(res));
+				}
+			}
+
+			if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 && !_authenticationComplete)
+			{
+				PIDebug("Trying online WebAuthn...");
+				res = device.Sign(_config->lastResponse.GetWebAuthnSignRequest(), origin, pin, signResponse);
+				if (res != 0)
+				{
+					PIError("WebAuthn signing failed with error: " + to_string(res));
+				}
+
+				if (res == FIDO_ERR_NO_CREDENTIALS)
+				{
+					PIDebug("No credentials available on the device " + device.GetProduct());
+					_lastError = res;
+					return E_FAIL;
+				}
+
+				if (pqcws->QueryContinue() != S_OK)
+				{
+					PIError("User cancelled WebAuthn");
+					SetScenario(SCENARIO::SECOND_STEP);
+					return E_FAIL;
+				}
+
+				if (res == S_OK)
+				{
+					PIResponse response;
+					res = _privacyIDEA.ValidateCheckWebAuthn(username, domain, signResponse, origin, response, _config->lastResponse.transactionId);
+					if (SUCCEEDED(res))
+					{
+						_authenticationComplete = response.value;
+						_config->lastResponse = response;
+					}
+				}
+			}
+		}
+		else // OTP
+		{
+			PIResponse otpResponse;
 			// In case of a single step the transactionId will be an empty string
 			string transactionId = _config->lastResponse.transactionId;
-			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, piResponse, transactionId, upn);
+			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, otpResponse, transactionId, upn);
 
 			// Evaluate the response
 			if (SUCCEEDED(res))
 			{
-				_config->lastResponse = piResponse;
 				// Always show the OTP field, if push was triggered, start polling in background
-				if (piResponse.PushAvailable())
+				if (otpResponse.IsPushAvailable())
 				{
 					// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
-					_privacyIDEA.PollTransactionAsync(username, domain, upn, piResponse.transactionId,
+					_privacyIDEA.PollTransactionAsync(username, domain, upn, otpResponse.transactionId,
 						std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
 				}
 
-				if (!piResponse.challenges.empty())
+				if (!otpResponse.challenges.empty())
 				{
-					DebugPrint("Challenges have been triggered");
+					PIDebug("Challenges have been triggered");
 
 					// Only one image can be displayed so take the first challenge
 					// In the main use-case, token enrollment, there will only be a single challenge
 					// because the enrollment is only happening after the authentication is completed
-					if (piResponse.challenges.size() >= 1)
+					auto& challenge = otpResponse.challenges.at(0);
+					if (!challenge.image.empty())
 					{
-						auto& challenge = piResponse.challenges.at(0);
-						if (!challenge.image.empty())
+						// Remove the leading "data:image/png;base64,"
+						auto base64image = challenge.image.substr(22, challenge.image.size());
+						if (!base64image.empty())
 						{
-							// Remove the leading "data:image/png;base64,"
-							auto base64image = challenge.image.substr(22, challenge.image.size());
-							if (!base64image.empty())
+							auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
+							if (hBitmap != nullptr)
 							{
-								auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
-								if (hBitmap != nullptr)
-								{
-									_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
-								}
-								else
-								{
-									DebugPrint("Conversion to bitmap failed, image will not be displayed.");
-								}
+								_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
+							}
+							else
+							{
+								PIDebug("Conversion to bitmap failed, image will not be displayed.");
 							}
 						}
 					}
-
-					_authenticationComplete = false;
 				}
 				else
 				{
-					_authenticationComplete = piResponse.value;
+					_authenticationComplete = otpResponse.value;
 				}
+
+				_config->lastResponse = otpResponse;
 			}
 			else
 			{
 				// If an error occured during the first step (send pw/empty) ignore it
 				// so the next step, where offline could be done, will still be possible
-				if (_config->twoStepHideOTP && !_config->isSecondStep)
+				if (_config->twoStepHideOTP && _config->scenario != SCENARIO::SECOND_STEP)
 				{
 					_lastError = S_OK;
 				}
@@ -954,8 +1423,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		}
 	}
 
-	DebugPrint("Authentication complete: " + Convert::ToString(_authenticationComplete));
-	DebugPrint("Connect - END");
+	PIDebug("Authentication complete: " + Convert::ToString(_authenticationComplete));
+	PIDebug("Connect - END");
 	return S_OK;
 }
 
@@ -984,7 +1453,7 @@ HBITMAP CCredential::CreateBitmapFromBase64PNG(const std::wstring& base64)
 	auto status = bitmap->GetHBITMAP(Gdiplus::Color::White, &hBitmap);
 	if (status != Gdiplus::Status::Ok)
 	{
-		Print("Getting bitmap failed, gdiplus status: " + to_string(status));
+		PIError("Getting bitmap failed, gdiplus status: " + to_string(status));
 		hBitmap = nullptr;
 	}
 	delete bitmap;
@@ -1009,8 +1478,8 @@ HRESULT CCredential::ReportResult(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
-	DebugPrint(__FUNCTION__);
-	DebugPrint("ntsStatus: " + Convert::LongToHexString(ntsStatus)
+	PIDebug(__FUNCTION__);
+	PIDebug("ntsStatus: " + Convert::LongToHexString(ntsStatus)
 		+ ", ntsSubstatus: " + Convert::LongToHexString(ntsSubstatus));
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
@@ -1020,10 +1489,10 @@ HRESULT CCredential::ReportResult(
 	if (ntsStatus == STATUS_LOGON_FAILURE || ntsStatus == STATUS_LOGON_TYPE_NOT_GRANTED
 		|| (ntsStatus == STATUS_ACCOUNT_RESTRICTION && ntsSubstatus != STATUS_PASSWORD_EXPIRED))
 	{
-		DebugPrint("Complete reset!");
+		PIDebug("Complete reset!");
 		_authenticationComplete = false;
-		_config->isSecondStep = false;
-		_util.ResetScenario(this, _pCredProvCredentialEvents);
+		_config->lastResponse = PIResponse();
+		ResetScenario(true);
 		return S_OK;
 	}
 
@@ -1032,7 +1501,7 @@ HRESULT CCredential::ReportResult(
 		// Password change was successful, set this so SetSelected knows to autologon
 		_config->credential.passwordMustChange = false;
 		_config->credential.passwordChanged = true;
-		_util.ResetScenario(this, _pCredProvCredentialEvents);
+		ResetScenario();
 		return S_OK;
 	}
 
@@ -1040,7 +1509,7 @@ HRESULT CCredential::ReportResult(
 	if (pwMustChange)
 	{
 		_config->credential.passwordMustChange = true;
-		DebugPrint("Status: Password must change");
+		PIDebug("Status: Password must change");
 		return S_OK;
 	}
 
@@ -1049,9 +1518,9 @@ HRESULT CCredential::ReportResult(
 	bool pwNotUpdated = (ntsStatus == STATUS_PASSWORD_RESTRICTION) || (ntsSubstatus == STATUS_ILL_FORMED_PASSWORD);
 	if (pwNotUpdated)
 	{
-		DebugPrint("Status: Password update failed: Not conform to policies");
+		PIDebug("Status: Password update failed: Not conform to policies");
 	}
-	// this catches the wrong old password 
+	// this catches the wrong old password
 	pwNotUpdated = pwNotUpdated || ((ntsStatus == STATUS_LOGON_FAILURE) && (ntsSubstatus == STATUS_INTERNAL_ERROR));
 
 	if (pwNotUpdated)

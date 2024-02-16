@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2024 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,32 +18,14 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "Challenge.h"
-#include "WebAuthnSignRequest.h"
-#include <memory>
-#include <string>
-#include <vector>
+#include <atomic>
 
-class PIResponse
+class DeviceNotification
 {
 public:
-	bool status = false;
-	bool value = false;
+	static int Register();
 
-	std::string transactionId;
-	std::string message;
+	static int Unregister();
 
-	std::string errorMessage;
-	int errorCode = 0;
-
-	std::vector<Challenge> challenges;
-
-	bool IsPushAvailable();
-
-	std::string GetPushMessage();
-
-	WebAuthnSignRequest GetWebAuthnSignRequest();
-
-	std::string preferredMode;
+	static std::atomic<bool> newDevices;
 };
-

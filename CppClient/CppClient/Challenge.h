@@ -17,15 +17,17 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
+#include "WebAuthnSignRequest.h"
 #include <string>
 
 class Challenge
 {
 public:
 	std::string message;
-	std::string transaction_id;
+	std::string transactionId;
 	std::string serial;
 	std::string type;
 	std::string image;
-	std::string client_mode;
+	std::string clientMode;
+	WebAuthnSignRequest webAuthnSignRequest;
 };

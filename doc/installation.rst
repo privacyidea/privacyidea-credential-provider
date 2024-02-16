@@ -71,6 +71,9 @@ You may specify the path to a custom login image.
 After these two steps the privacyIDEA Credential Provider is installed on
 your system and can be chosen for login.
 
+**PLEASE SEE THE CONFIGURATION SECTION FOR FURTHER EXPLAINATIONS ON CERTAIN FEATURES**
+
+
 Manual Installation
 -------------------
 
