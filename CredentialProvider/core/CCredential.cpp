@@ -1226,7 +1226,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		}
 
 		// WebAuthn
-		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
+		if (!_authenticationComplete && _config->scenario > SCENARIO::SECURITY_KEY_ANY)
 		{
 			PIDebug("Trying WebAuthn...");
 			// Check if a WebAuthnSignRequest is available either from online or offline
@@ -1356,7 +1356,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				}
 			}
 		}
-		else // OTP
+		else if (!_authenticationComplete) // OTP
 		{
 			PIResponse otpResponse;
 			// In case of a single step the transactionId will be an empty string
