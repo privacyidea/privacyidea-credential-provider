@@ -24,7 +24,7 @@ map<int, pair<wstring, wstring>> texts{
 	{TEXT_OTP_FIELD, {L"One-Time Password", L"Einmalpassword"}},
 	{TEXT_WRONG_OTP, {L"Wrong One-Time Password!", L"Falsches Einmalpasswort!"}},
 	{TEXT_RESET_LINK, {L"Reset Login", L"Login zurücksetzen"}},
-	{TEXT_AVAILABLE_OFFLINE_TOKEN, {L"Available offline token:\n", L"Verfügbare offline token:\n"}},
+	{TEXT_AVAILABLE_OFFLINE_TOKEN, {L"Available offline token:\n", L"Verfügbare Offline Token:\n"}},
 	{TEXT_OTPS_REMAINING, {L"OTPs left", L"OTPs verbleibend"}},
 	{TEXT_GENERIC_ERROR, {L"Connection or configuration error! Please check the logfile.", L"Verbindungs- oder Konfigurationsfehler!\nBitte prüfen Sie die Log Datei." }},
 	{TEXT_USE_WEBAUTHN, {L"Use Security Key", L"Sicherheitsschlüssel verwenden"}},
@@ -35,7 +35,9 @@ map<int, pair<wstring, wstring>> texts{
 	{TEXT_LOGIN_TEXT, {L"privacyIDEA Login", L"privacyIDEA Login" }},
 	{TEXT_OTP_PROMPT, {L"Please enter your One-Time-Password", L"Bitte geben Sie Ihr Einmalpasswort ein" }},
 	{TEXT_FIDO_NO_CREDENTIALS, {L"No matching credentials on this security key found!", L"Auf diesem Sicherheitsschlüssel sind keine passenden Anmeldedaten!" }},
-	{TEXT_FIDO_WAITING_FOR_DEVICE, {L"Insert your security key!", L"Schließen Sie Ihren Sicherheitsschlüssel an!" }}
+	{TEXT_FIDO_WAITING_FOR_DEVICE, {L"Insert your security key!", L"Schließen Sie Ihren Sicherheitsschlüssel an!" }},
+	{TEXT_FIDO_CHECKING_OFFLINE_STATUS, {L"Authentication successful!\nChecking offline status for this token...", L"Authentisierung erfolgreich! \nOffline Status für diesen Token wird geprüft..." }},
+	{TEXT_OFFLINE_REFILL, {L"Refilling offline token...", L"Offline Token werden aufgefüllt..." }}
 };
 
 std::wstring Utilities::GetText(int id)

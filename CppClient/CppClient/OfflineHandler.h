@@ -64,6 +64,8 @@ public:
 
 	bool RemoveOfflineData(const std::string& username, const std::string& serial);
 
+	bool UpdateRefilltoken(std::string serial, std::string refilltoken);
+
 private:
 	std::vector<OfflineData> _dataSets = std::vector<OfflineData>();
 

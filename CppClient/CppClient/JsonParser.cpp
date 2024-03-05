@@ -371,6 +371,22 @@ std::vector<OfflineData> JsonParser::ParseResponseForOfflineData(std::string ser
 	return ret;
 }
 
+std::string JsonParser::GetRefilltoken(std::string input)
+{
+	auto jRoot = ParseJson(input);
+	if (jRoot == nullptr) return "";
+	try
+	{
+		json jOffline = jRoot["auth_items"]["offline"].at(0);
+		return GetStringOrEmpty(jOffline, "refilltoken");
+	}
+	catch (const std::exception& e)
+	{
+		PIError(e.what());
+		return "";
+	}
+}
+
 HRESULT JsonParser::ParseRefillResponse(const std::string& in, const std::string& username, OfflineData& data)
 {
 	PIDebug(__FUNCTION__);

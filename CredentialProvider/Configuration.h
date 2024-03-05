@@ -82,8 +82,6 @@ public:
 
 	bool doAutoLogon = false;
 
-	bool userCanceled = false;
-
 	PIResponse lastResponse;
 
 	std::wstring excludedAccount = L"";

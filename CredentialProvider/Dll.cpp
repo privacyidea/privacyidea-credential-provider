@@ -150,6 +150,7 @@ STDAPI_(BOOL) DllMain(__in HINSTANCE hinstDll, __in DWORD dwReason, __in void*)
 		case DLL_PROCESS_DETACH:
 		case DLL_THREAD_ATTACH:
 		case DLL_THREAD_DETACH:
+		default:
 			break;
 	}
 

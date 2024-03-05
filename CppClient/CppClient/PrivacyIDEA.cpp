@@ -293,6 +293,20 @@ HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const s
 		PIDebug("Token " + serial + " is not marked for offline use anymore, its data is removed from this machine");
 		offlineHandler.RemoveOfflineData(szUsername, serial);
 	}
+	else
+	{
+		auto refilltoken = _parser.GetRefilltoken(response);
+		if (refilltoken.empty())
+		{
+			PIDebug("Refilltoken is empty");
+			return E_FAIL;
+		}
+		if (!offlineHandler.UpdateRefilltoken(serial, refilltoken))
+		{
+            PIDebug("Failed to update refilltoken for serial " + serial);
+			return E_FAIL;
+		}
+	}
 
 	return hr;
 }

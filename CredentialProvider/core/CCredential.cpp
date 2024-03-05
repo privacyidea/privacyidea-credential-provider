@@ -508,9 +508,17 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 			wstring message = _util.GetText(TEXT_AVAILABLE_OFFLINE_TOKEN);
 			for (auto& pair : offlineInfo)
 			{
-				// <serial> (XX OTPs remaining)
-				message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
-					.append(_util.GetText(TEXT_OTPS_REMAINING)).append(L")\n");
+				if (pair.first.rfind("WAN", 0) == 0)
+				{
+					// <serial> (WebAuthn)
+					message.append(Convert::ToWString(pair.first)).append(L" (WebAuthn)\n");
+				}
+				else
+				{
+					// <serial> (XX OTPs remaining)
+					message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
+						.append(_util.GetText(TEXT_OTPS_REMAINING)).append(L")\n");
+				}
 			}
 
 			infoSet = true;
@@ -979,12 +987,6 @@ HRESULT CCredential::GetSerialization(
 	// Normal authentication
 	else
 	{
-		if (_config->userCanceled)
-		{
-			*pcpgsr = CPGSR_NO_CREDENTIAL_FINISHED;
-			ShowErrorMessage(L"Logon cancelled");
-			return S_FALSE;
-		}
 		// Check if we are pre 2nd step or failure
 		if (_authenticationComplete == false && _config->pushAuthenticationSuccessful == false)
 		{
@@ -994,9 +996,15 @@ HRESULT CCredential::GetSerialization(
 			
 			// Continue with webauthn in the following cases:
 			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request, or when continuing webauthn (e.g. from NO_DEVICE to PIN)
-			const bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn" 
+			bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn" 
 				|| (_config->webAuthnPreferred && (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
 				|| (_config->scenario > SCENARIO::SECURITY_KEY_ANY);
+
+			// If the user cancelled the operation, do not continue with webauthn
+			if (_fidoDeviceSearchCancelled)
+			{
+				continueWithWebAuthn = false;
+			}
 
 			const auto webAuthnScenario = SelectWebAuthnScenario();
 			const bool isSecondStep = _config->IsSecondStep();
@@ -1021,7 +1029,7 @@ HRESULT CCredential::GetSerialization(
 			}
 			else
 			{
-				// Failed authentication or error section - create a message depending on the error
+				// Failed authentication, fido cancelled or error section - create a message depending on the error
 				wstring errorMessage = _util.GetText(TEXT_WRONG_OTP);
 				if (!_config->lastResponse.errorMessage.empty())
 				{
@@ -1037,9 +1045,16 @@ HRESULT CCredential::GetSerialization(
 					// Probably configuration or network error - details will be logged where the error occurs -> check log
 					errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
 				}
-
-				ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
-				ResetScenario();
+				if (_fidoDeviceSearchCancelled)
+				{
+					_fidoDeviceSearchCancelled = false;
+				}
+				else
+				{
+					ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
+					ResetScenario();
+				}
+				
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
@@ -1070,6 +1085,7 @@ HRESULT CCredential::GetSerialization(
 		}
 	}
 
+	// Reset things
 	if (_config->clearFields)
 	{
 		_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
@@ -1211,6 +1227,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				|| (res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username), serialUsed) < _config->offlineTreshold)
 				|| res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 			{
+				pqcws->SetStatusMessage(_util.GetText(TEXT_OFFLINE_REFILL).c_str());
 				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend, serialUsed);
 				if (refillResult != S_OK)
 				{
@@ -1250,8 +1267,10 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					this_thread::sleep_for(chrono::milliseconds(100));
 					if (pqcws->QueryContinue() != S_OK)
 					{
-						PIError("User cancelled device search");
+						PIDebug("User cancelled device search");
+						DeviceNotification::Unregister();
 						SetScenario(SCENARIO::SECOND_STEP);
+						_fidoDeviceSearchCancelled = true;
 						return E_FAIL;
 					}
 
@@ -1313,6 +1332,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (res == FIDO_OK)
 				{
 					_authenticationComplete = true;
+					pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
 					_privacyIDEA.OfflineRefillWebAuthn(username, serialUsed);
 				}
 				else

@@ -163,4 +163,6 @@ private:
 	HRESULT									_lastError = S_OK;
 
 	bool									_authenticationComplete = false;
+
+	bool									_fidoDeviceSearchCancelled = false;
 };

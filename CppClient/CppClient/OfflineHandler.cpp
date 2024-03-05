@@ -237,6 +237,19 @@ bool OfflineHandler::RemoveOfflineData(const std::string& username, const std::s
 	return found;
 }
 
+bool OfflineHandler::UpdateRefilltoken(std::string serial, std::string refilltoken)
+{
+	for (auto& item : _dataSets)
+	{
+		if (item.serial == serial)
+		{
+			item.refilltoken = refilltoken;
+			return true;
+		}
+	}
+	return false;
+}
+
 HRESULT OfflineHandler::SaveToFile()
 {
 	ofstream o;

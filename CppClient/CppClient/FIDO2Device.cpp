@@ -174,8 +174,8 @@ int FIDO2Device::Sign(
 	WebAuthnSignResponse& signResponse) const
 {
 	fido_assert_t* assert = nullptr;
-	std::vector<unsigned char> cDataBytes;
-	int res = GetAssert(signRequest, origin, pin, _path, &assert, cDataBytes);
+	std::vector<unsigned char> vecClientData;
+	int res = GetAssert(signRequest, origin, pin, _path, &assert, vecClientData);
 
 	if (res != FIDO_OK)
 	{
@@ -183,7 +183,7 @@ int FIDO2Device::Sign(
 	}
 	else
 	{
-		signResponse.clientdata = Convert::Base64URLEncode(cDataBytes);
+		signResponse.clientdata = Convert::Base64URLEncode(vecClientData);
 
 		auto pbId = fido_assert_id_ptr(assert, 0);
 		auto cbId = fido_assert_id_len(assert, 0);

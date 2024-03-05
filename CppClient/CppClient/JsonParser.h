@@ -63,6 +63,9 @@ public:
 
 	HRESULT ParseRefillResponse(const std::string& in, const std::string& username, OfflineData& data);
 
+	std::string GetRefilltoken(std::string input);
+
+
 	// Return the input json with indentation of 4. If the input is not a valid json it is returned as is.
 	static std::string PrettyFormatJson(std::string input);
 

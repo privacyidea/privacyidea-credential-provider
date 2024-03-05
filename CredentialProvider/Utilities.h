@@ -36,6 +36,8 @@ constexpr auto TEXT_LOGIN_TEXT = 17;
 constexpr auto TEXT_OTP_PROMPT = 18;
 constexpr auto TEXT_FIDO_NO_CREDENTIALS = 19;
 constexpr auto TEXT_FIDO_WAITING_FOR_DEVICE = 20;
+constexpr auto TEXT_FIDO_CHECKING_OFFLINE_STATUS = 21;
+constexpr auto TEXT_OFFLINE_REFILL = 22;
 
 class Utilities
 {
