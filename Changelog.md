@@ -1,3 +1,14 @@
+# Version 3.5.1 2024-03-05
+
+## Fixes
+* Fixed successful offline authentication with HOTP not ending the authentication
+* Fixed the info text displayed for offline token for webauthn
+* Fixed refreshing of refilltoken for webauthn offline
+* Fixed FIDO device search cancellation
+* Fixed some texts
+* Added texts for refill phases to be distinguished from authentication
+
+
 # Version 3.5.0 2024-02-20
 
 ## Features
