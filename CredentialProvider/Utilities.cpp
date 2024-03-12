@@ -15,11 +15,11 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 }
 
 map<int, pair<wstring, wstring>> texts{
-	{TEXT_USERNAME, {L"Benutzername", L"Username"}},
-	{TEXT_PASSWORD, {L"Kennwort", L"Password"}},
-	{TEXT_OLD_PASSWORD, {L"Altes Kennwort", L"Old Password"}},
-	{TEXT_NEW_PASSWORD, {L"Neues Kennwort", L"New Password"}},
-	{TEXT_CONFIRM_PASSWORD, {L"Kennwort bestätigen", L"Confirm password"}},
+	{TEXT_USERNAME, {L"Username", L"Benutzername"}},
+	{TEXT_PASSWORD, {L"Password", L"Kennwort"}},
+	{TEXT_OLD_PASSWORD, {L"Old Password", L"Altes Kennwort"}},
+	{TEXT_NEW_PASSWORD, {L"New Password", L"Neues Kennwort"}},
+	{TEXT_CONFIRM_PASSWORD, {L"Confirm password", L"Kennwort bestätigen"}},
 	{TEXT_DOMAIN_HINT, {L"Sign in to: ", L"Anmelden an: "}},
 	{TEXT_OTP_FIELD, {L"One-Time Password", L"Einmalpassword"}},
 	{TEXT_WRONG_OTP, {L"Wrong One-Time Password!", L"Falsches Einmalpasswort!"}},
