@@ -29,7 +29,7 @@
 
 #define VERSION_MAJOR               3
 #define VERSION_MINOR               5
-#define VERSION_REVISION            1
+#define VERSION_REVISION            2
  
 #define VER_FILE_DESCRIPTION_STR    "privacyIDEA Credential Provider for Windows logon"
 #define VER_FILE_VERSION            VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION

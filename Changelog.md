@@ -1,3 +1,9 @@
+# Version 3.5.2 2024-03-18
+
+## Fixes
+* Fixed inverted German-English translation that occured for some texts
+
+
 # Version 3.5.1 2024-03-05
 
 ## Fixes
