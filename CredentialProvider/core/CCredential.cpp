@@ -766,7 +766,7 @@ HRESULT CCredential::ResetScenario(__in bool resetToFirstStep)
 	PIDebug(__FUNCTION__);
 
 	// If resetToFirstStep is true, the scenario is reset to the first step regardless of the current scenario.
-	if (_config->twoStepHideOTP && (_config->IsSecondStep() || resetToFirstStep))
+	if (_config->twoStepHideOTP && (!_config->IsSecondStep() || (_config->IsSecondStep() && resetToFirstStep)))
 	{
 		SetScenario(SCENARIO::LOGON_TWO_STEP);
 	}
