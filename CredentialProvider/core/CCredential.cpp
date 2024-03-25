@@ -279,6 +279,7 @@ HRESULT CCredential::SetDeselected()
 	HRESULT hr = S_OK;
 
 	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
+	hr = SetOfflineInfo("");
 	hr = ResetScenario();
 
 	// Reset password changing in case another user wants to log in
@@ -1045,6 +1046,7 @@ HRESULT CCredential::GetSerialization(
 					// Probably configuration or network error - details will be logged where the error occurs -> check log
 					errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
 				}
+
 				if (_fidoDeviceSearchCancelled)
 				{
 					_fidoDeviceSearchCancelled = false;
@@ -1052,7 +1054,13 @@ HRESULT CCredential::GetSerialization(
 				else
 				{
 					ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
-					ResetScenario();
+					bool resetToFirstStep = false;
+					// 904 is "user not found in any resolver in this realm" so the user has to be changable -> reset to first step
+					if (_config->lastResponse.errorCode == 904)
+					{
+						resetToFirstStep = true;
+					}
+					ResetScenario(resetToFirstStep);
 				}
 				
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;

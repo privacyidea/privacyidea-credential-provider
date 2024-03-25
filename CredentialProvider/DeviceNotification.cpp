@@ -87,6 +87,7 @@ INT_PTR WINAPI WinProcCallback(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 		case WM_CREATE:
 		{
 			PIDebug("WM_CREATE");
+			stopPump = false;
 			DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
 
 			ZeroMemory(&NotificationFilter, sizeof(NotificationFilter));
@@ -167,8 +168,13 @@ int TaskRegister()
 
 	if (!RegisterClassEx(&wx))
 	{
-		PIDebug("Failed to register window class");
-		return -1;
+		const auto lastError = GetLastError();
+		if (lastError != ERROR_CLASS_ALREADY_EXISTS)
+		{
+			PIError("Failed to register window class:");
+			PIError(std::to_string(lastError));
+			return -1;
+		}
 	}
 
 	// Upon creation of the window, a WM_CREATE message will be sent to the WinProcCallback, which will 
@@ -177,7 +183,8 @@ int TaskRegister()
 
 	if (!g_hWnd)
 	{
-		PIDebug("Failed to create window");
+		PIError("Failed to create window:");
+		PIError(std::to_string(GetLastError()));
 		return -1;
 	}
 

@@ -1,3 +1,10 @@
+# Version 3.5.3 2024-03-25
+
+## Fixes
+* Fixed a bug that would result in `two_step_hide_otp` being ignored when selecting another credential provider
+* Fixed a bug that would not reset the login to the first step if "the user could not be found in any resolver in this realm" occured
+* Fixed a bug that would prevent the FIDO device recognition on the second try if it was cancelled once
+
 # Version 3.5.2 2024-03-18
 
 ## Fixes
