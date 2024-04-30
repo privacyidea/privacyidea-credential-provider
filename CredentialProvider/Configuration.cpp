@@ -39,6 +39,9 @@ void Configuration::Load()
 	twoStepSendEmptyPassword = rr.GetBoolRegistry(L"two_step_send_empty_password");
 	twoStepSendPassword = rr.GetBoolRegistry(L"two_step_send_password");
 
+	// Set locales files path from registry
+	localesPath = rr.GetWStringRegistry(L"localesPath");
+
 	piconfig.logPasswords = rr.GetBoolRegistry(L"log_sensitive");
 	debugLog = rr.GetBoolRegistry(L"debug_log");
 #ifdef _DEBUG
@@ -169,6 +172,8 @@ void Configuration::LogConfig()
 	PrintIfStringNotEmpty(L"Login text", loginText);
 	PrintIfStringNotEmpty(L"OTP field text", otpFieldText);
 	PrintIfStringNotEmpty(L"OTP failure text", otpFailureText);
+
+	PrintIfStringNotEmpty(L"Locales Path", localesPath);
 
 	PIDebug("Hide domain/full name: " + Convert::ToString(hideDomainName) + "/" + Convert::ToString(hideFullName));
 	PIDebug("SSL ignore unknown CA/invalid CN: " + Convert::ToString(piconfig.ignoreUnknownCA) + "/" + Convert::ToString(piconfig.ignoreInvalidCN));
