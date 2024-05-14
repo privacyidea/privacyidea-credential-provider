@@ -19,3 +19,4 @@ Release/
 Credential_Provider_Technical_Reference.xps
 CppClient/nlohmann/json.hpp
 libfido2-1.14.0-win/*
+nlohmann/*
