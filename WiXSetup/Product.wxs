@@ -114,7 +114,7 @@
 			<RegistrySearch Id="SearchCPUSCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="RESET_LINK_TEXT">
-			<RegistrySearch Id="SearchResetLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="cpus_credui" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchResetLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="reset_link_text" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="OFFLINE_FILE_PATH">
 			<RegistrySearch Id="SearchOfflineFilePath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_file" Win64="$(var.Win64)" Type="raw" />
@@ -128,9 +128,8 @@
 		<Property Id="OFFLINE_SHOW_INFO">
 			<RegistrySearch Id="SearchOfflineShowInfo" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_show_info" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
 		<Property Id="OTP_LINK_TEXT">
-			<RegistrySearch Id="SearchOTPLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="OTP_LINK_TEXT" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchOTPLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_link_text" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="WEBAUTHN_LINK_TEXT">
 			<RegistrySearch Id="SearchWebAuthnLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text" Win64="$(var.Win64)" Type="raw" />

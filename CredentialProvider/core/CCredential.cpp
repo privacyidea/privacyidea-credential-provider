@@ -117,7 +117,7 @@ HRESULT CCredential::Initialize(
 		PIDebug(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 	}
 	HRESULT hr = S_OK;
-	
+
 	// Check if the username is in UPN format. In that case we do not need the domain name.
 	// Otherwise, use the user and domain name from the provider.
 	wstring tmpUser, tmpDomain;
@@ -281,6 +281,9 @@ HRESULT CCredential::SetDeselected()
 	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
 	hr = SetOfflineInfo("");
 	hr = ResetScenario();
+	_config->credential.domain = L"";
+	_config->credential.username = L"";
+	_config->credential.password = L"";
 
 	// Reset password changing in case another user wants to log in
 	_config->credential.passwordChanged = false;
@@ -499,8 +502,10 @@ HRESULT CCredential::SetStringValue(
 
 HRESULT CCredential::SetOfflineInfo(std::string username)
 {
+	//PIDebug("Setting offline info for " + username);
 	bool infoSet = false;
 	HRESULT hr = S_OK;
+
 	if (!username.empty())
 	{
 		auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(username);
@@ -759,6 +764,20 @@ HRESULT CCredential::SetScenario(SCENARIO scenario)
 		PIDebug("Enabling link for offline webauthn");
 	}
 
+	// Reset Link
+	if (_config->showResetLink)
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
+	}
+
+	// Offline Info
+	if (_config->offlineShowInfo)
+	{
+		PWSTR pwszUsername;
+		this->GetStringValue(FID_USERNAME, &pwszUsername);
+		SetOfflineInfo(Convert::ToString(wstring(pwszUsername)));
+	}
+
 	return hr;
 }
 
@@ -994,10 +1013,10 @@ HRESULT CCredential::GetSerialization(
 			// Continue with WebAuthn as the second step if there is a sign request and it is configured to be preferred
 			// or if the current scenario is a webauthn one, e.g. to do NO_DEVICE -> PIN
 			const bool offlineWANAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty();
-			
+
 			// Continue with webauthn in the following cases:
 			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request, or when continuing webauthn (e.g. from NO_DEVICE to PIN)
-			bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn" 
+			bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn"
 				|| (_config->webAuthnPreferred && (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
 				|| (_config->scenario > SCENARIO::SECURITY_KEY_ANY);
 
@@ -1062,7 +1081,7 @@ HRESULT CCredential::GetSerialization(
 					}
 					ResetScenario(resetToFirstStep);
 				}
-				
+
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
