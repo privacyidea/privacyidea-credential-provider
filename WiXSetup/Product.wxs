@@ -140,6 +140,9 @@
 		<Property Id="WEBAUTHN_PIN_HINT">
 			<RegistrySearch Id="SearchWebAu" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="OTP_FAIL_RETURN_TO_FIRST_STEP">
+			<RegistrySearch Id="SearchWebAu" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_fail_return_to_first_step" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 
 		<!-- END PROPERTIES -->
 		<!-- Directory definitions -->
@@ -245,6 +248,7 @@
 						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
 						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
 						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
+						<RegistryValue Name="otp_fail_return_to_first_step" Type="string" Value="[OTP_FAIL_RETURN_TO_FIRST_STEP]" />
 						<!-- END MISC -->
 					</RegistryKey>
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Action="removeOnUninstall" />

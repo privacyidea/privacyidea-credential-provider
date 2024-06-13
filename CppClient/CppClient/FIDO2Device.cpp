@@ -110,7 +110,7 @@ int GetAssert(
 	int res = FIDO_OK;
 
 	// Allow Creds
-	for (auto allowCred : signRequest.allowCredentials)
+	for (auto& allowCred : signRequest.allowCredentials)
 	{
 		auto cred = Convert::Base64URLDecode(allowCred.id);
 		res = fido_assert_allow_cred(*assert, cred.data(), cred.size());

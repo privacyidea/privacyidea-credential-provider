@@ -44,6 +44,8 @@ public:
 
 	WebAuthnSignRequest GetWebAuthnSignRequest();
 
+	std::string GetDeduplicatedMessage();
+
 	std::string preferredMode;
 };
 

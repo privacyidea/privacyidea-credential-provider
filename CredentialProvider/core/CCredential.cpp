@@ -724,7 +724,7 @@ HRESULT CCredential::SetScenario(SCENARIO scenario)
 			// Only set the message of the last server response if that response did not indicate success. The success message should not be shown.
 			if (!_config->lastResponse.message.empty() && !_config->lastResponse.value)
 			{
-				wstring wszMessage = Convert::ToWString(_config->lastResponse.message);
+				wstring wszMessage = Convert::ToWString(_config->lastResponse.GetDeduplicatedMessage());
 				//PIDebug(L"Setting message of challenge to small text: " + _config->challenge.message);
 				_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, wszMessage.c_str());
 				_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
@@ -1075,9 +1075,10 @@ HRESULT CCredential::GetSerialization(
 					ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
 					bool resetToFirstStep = false;
 					// 904 is "user not found in any resolver in this realm" so the user has to be changable -> reset to first step
-					if (_config->lastResponse.errorCode == 904)
+					if (_config->lastResponse.errorCode == 904 || _config->otpFailReturnToFirstStep)
 					{
 						resetToFirstStep = true;
+						_config->clearFields = false; // keep the inputs so the user does not have to repeat them
 					}
 					ResetScenario(resetToFirstStep);
 				}
@@ -1090,6 +1091,7 @@ HRESULT CCredential::GetSerialization(
 			// Reset the authentication
 			_authenticationComplete = false;
 			_config->pushAuthenticationSuccessful = false;
+			_config->lastTransactionId = "";
 			_privacyIDEA.StopPoll();
 
 			// Pack credentials for logon
@@ -1394,7 +1396,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (res == S_OK)
 				{
 					PIResponse response;
-					res = _privacyIDEA.ValidateCheckWebAuthn(username, domain, signResponse, origin, response, _config->lastResponse.transactionId);
+					res = _privacyIDEA.ValidateCheckWebAuthn(username, domain, signResponse, origin, response, _config->lastTransactionId);
 					if (SUCCEEDED(res))
 					{
 						_authenticationComplete = response.value;
@@ -1406,9 +1408,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		else if (!_authenticationComplete) // OTP
 		{
 			PIResponse otpResponse;
-			// In case of a single step the transactionId will be an empty string
-			string transactionId = _config->lastResponse.transactionId;
-			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, otpResponse, transactionId, upn);
+			// lastTransactionId can be empty
+			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, otpResponse, _config->lastTransactionId, upn);
 
 			// Evaluate the response
 			if (SUCCEEDED(res))
@@ -1419,6 +1420,12 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 					// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
 					_privacyIDEA.PollTransactionAsync(username, domain, upn, otpResponse.transactionId,
 						std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
+				}
+
+				// Save the lastTransactionId, so that the lastResponse can be overwritten with an error response and we still have the transactionId
+				if (!otpResponse.transactionId.empty())
+				{
+					_config->lastTransactionId = otpResponse.transactionId;
 				}
 
 				if (!otpResponse.challenges.empty())
