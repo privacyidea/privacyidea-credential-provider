@@ -138,10 +138,10 @@
 			<RegistrySearch Id="SearchWebAuthnPreferred" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_preferred" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="WEBAUTHN_PIN_HINT">
-			<RegistrySearch Id="SearchWebAu" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchWebAuthnPinHint" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="OTP_FAIL_RETURN_TO_FIRST_STEP">
-			<RegistrySearch Id="SearchWebAu" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_fail_return_to_first_step" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchOtpFailReturnToFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_fail_return_to_first_step" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 
 		<!-- END PROPERTIES -->
