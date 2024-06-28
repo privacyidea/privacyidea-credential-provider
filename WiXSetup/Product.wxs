@@ -176,6 +176,24 @@
 				</Directory>
 			</Directory>
 			<!-- END Directories/Components to be placed in ProgramFiles-folder -->
+			<!-- Directories/Components to be placed in ProgramData-folder (localization files)-->
+			<Directory Id="$(var.PlatformProgramDataFolder)" Name="$(var.PlatformProgramDataFolder)">
+				<Directory Id="PublisherFolder" Name ="$(var.Publisher)">
+					<Directory Id="ProductFolderName" Name="$(var.ProductFolderName)">
+						<Directory Id="locales" Name="locales" >
+							<Component Id="LocalizationFilesInProgramDataFolder" Location="local" Guid="ddab0976-8d7c-476b-87c5-1318d39c65a1">
+								<File Id="Localization_en"  Name="en.json" Source="$(var.SolutionDir)locales\en.json"  />
+								<File Id="Localization_es"  Name="es.json" Source="$(var.SolutionDir)locales\es.json"  />
+								<File Id="Localization_de"  Name="de.json" Source="$(var.SolutionDir)locales\de.json"  />
+								<RemoveFile Id="RemoveLocalesFiles" Name="*" On="uninstall" />
+								<RemoveFolder Id="RemoveLocalization" On="uninstall" />
+								<RemoveFolder Id="RemovePublisherFolderIfEmpty" Directory="PublisherFolder" On="uninstall" />
+							</Component>
+						</Directory>
+					</Directory>
+				</Directory>
+			</Directory>
+
 			<!-- Directories/Components to be placed in System-folder -->
 			<Directory Id="$(var.PlatformSystemFolder)">
 				<!-- Core components -->
@@ -250,6 +268,9 @@
 						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
 						<RegistryValue Name="otp_fail_return_to_first_step" Type="string" Value="[OTP_FAIL_RETURN_TO_FIRST_STEP]" />
 						<!-- END MISC -->
+						<!-- LOCALIZATION-->
+						<RegistryValue Name="localesPath" Type="string" Value="[$(var.PlatformProgramDataFolder)]$(var.Publisher)\$(var.ProductFolderName)\locales" />
+						<!-- END LOCALIZATION -->
 					</RegistryKey>
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Action="removeOnUninstall" />
 					<!-- END Configuration values -->
@@ -289,6 +310,7 @@
 				<ComponentRef Id="CredentialProvider" />
 				<ComponentRef Id="CredentialProviderFilter" />
 				<ComponentRef Id="ActivateCredentialProviderFilter" />
+				<ComponentRef Id="LocalizationFilesInProgramDataFolder"/>
 			</Feature>
 			<!-- These are installed anyway: -->
 			<Feature Id="VCRedist" Title="Visual C++ Runtime" AllowAdvertise="no" Display="hidden" Level="1">

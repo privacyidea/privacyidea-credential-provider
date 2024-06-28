@@ -38,7 +38,10 @@
   
   <?define ProductFolderName = "PrivacyIDEA Credential Provider" ?>
   <?define SimpleProductName = "PrivacyIDEA-CP" ?>
-  
+
+  <!-- Locales files in ProgramData -->
+  <?define PlatformProgramDataFolder = "CommonAppDataFolder" ?>
+	
   <?if $(var.Platform) = x64 ?>
     <?define ProductName = "$(var.BaseProductName) $(var.Version) (64 bit)" ?>
     <?define Win64 = "yes" ?>

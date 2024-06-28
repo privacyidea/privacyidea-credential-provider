@@ -55,6 +55,9 @@ public:
 	std::wstring useOtpLinkText;
 	std::wstring bitmapPath = L"";
 
+	// Add locales files path
+	std::wstring localesPath = L"";
+
 	bool twoStepHideOTP = false;
 	bool twoStepSendPassword = false;
 	bool twoStepSendEmptyPassword = false;
