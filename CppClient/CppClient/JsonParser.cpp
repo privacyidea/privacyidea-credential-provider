@@ -278,6 +278,8 @@ HRESULT JsonParser::ParseOfflineDataItemFromString(std::string input, OfflineDat
 
 std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 {
+	// The data can be empty if a webauthn token has been removed as offline token.
+	if (data.empty()) return "";
 	json::array_t jArray;
 
 	for (auto& item : data)

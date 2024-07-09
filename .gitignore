@@ -8,7 +8,6 @@ CredentialProviderFilter/*
 x64/
 WiXSetup/obj/
 Tests/Tests.vcxproj.user
-CppClientCore/nlohmann/json.hpp
 *.user
 *.wixpdb
 *.msm
@@ -18,4 +17,4 @@ Shared/Debug
 Release/
 Credential_Provider_Technical_Reference.xps
 CppClient/nlohmann/json.hpp
-libfido2-1.14.0-win/*
+/libfido2-1.15.0-nfc-enabled

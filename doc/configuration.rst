@@ -222,7 +222,11 @@ Set this to ``1`` to have the username field prefilled with the user that last l
 
 Set this to ``1`` to have a clickable text shown at the bottom which will reset the login.
 
-**use_otp_link_text**
+**reset_link_text**
+
+Set this to change the text for reset link. The default is "Reset Login".
+
+**otp_link_text**
 
 Set this to overwrite the text to switch from webauthn to OTP mode. Default is "Use One-Time-Password".
 

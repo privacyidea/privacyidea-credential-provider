@@ -50,6 +50,10 @@ WebAuthnSignRequest PIResponse::GetWebAuthnSignRequest()
 
 std::string PIResponse::GetDeduplicatedMessage()
 {
+	if (challenges.empty())
+	{
+		return message;
+	}
 	std::vector<std::string> messages;
 	// Add the message of each challenge to the vector, only if it is not already in there
 	for (auto& challenge : challenges)
@@ -61,9 +65,9 @@ std::string PIResponse::GetDeduplicatedMessage()
 	}
 	// Concatenate all messages
 	std::string deduplicatedMessage;
-	for (auto& message : messages)
+	for (auto& m : messages)
 	{
-		deduplicatedMessage += message + ", ";
+		deduplicatedMessage += m + ", ";
 	}
 	// Remove the last comma and space
 	if (!deduplicatedMessage.empty())

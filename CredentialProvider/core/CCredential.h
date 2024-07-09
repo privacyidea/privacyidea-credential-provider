@@ -160,7 +160,7 @@ private:
 
 	std::wstring							_initialDomain;
 
-	HRESULT									_lastError = S_OK;
+	HRESULT									_lastStatus = S_OK;
 
 	bool									_authenticationComplete = false;
 

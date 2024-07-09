@@ -36,6 +36,7 @@ constexpr auto PI_ENDPOINT_OFFLINE_REFILL = "/validate/offlinerefill";
 
 #define PI_ERROR_WRONG_PARAMETER					((HRESULT)0x88809011)
 
+constexpr auto PI_ERR_AUTH_FAILED = 0x88809099;
 
 class PrivacyIDEA
 {
