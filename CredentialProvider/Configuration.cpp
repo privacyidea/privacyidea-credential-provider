@@ -99,7 +99,8 @@ void Configuration::Load()
 		piconfig.realmMap.clear();
 	}
 
-	useOtpLinkText = rr.GetWStringRegistry(L"use_otp_link_text");
+	useOtpLinkText = rr.GetWStringRegistry(L"otp_link_text");
+	otpFailReturnToFirstStep = rr.GetBoolRegistry(L"otp_fail_return_to_first_step");
 
 	// WebAuthn
 	webAuthnLinkText = rr.GetWStringRegistry(L"webauthn_link_text");

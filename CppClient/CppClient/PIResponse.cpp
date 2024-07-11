@@ -47,3 +47,34 @@ WebAuthnSignRequest PIResponse::GetWebAuthnSignRequest()
 
 	return webAuthnSignRequest;
 }
+
+std::string PIResponse::GetDeduplicatedMessage()
+{
+	if (challenges.empty())
+	{
+		return message;
+	}
+	std::vector<std::string> messages;
+	// Add the message of each challenge to the vector, only if it is not already in there
+	for (auto& challenge : challenges)
+	{
+		if (std::find(messages.begin(), messages.end(), challenge.message) == messages.end())
+		{
+			messages.push_back(challenge.message);
+		}
+	}
+	// Concatenate all messages
+	std::string deduplicatedMessage;
+	for (auto& m : messages)
+	{
+		deduplicatedMessage += m + ", ";
+	}
+	// Remove the last comma and space
+	if (!deduplicatedMessage.empty())
+	{
+		deduplicatedMessage.pop_back();
+		deduplicatedMessage.pop_back();
+	}
+
+	return deduplicatedMessage;
+}

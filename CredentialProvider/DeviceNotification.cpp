@@ -58,7 +58,7 @@ void MessagePump(HWND hWnd)
 	UNREFERENCED_PARAMETER(hWnd);
 	MSG msg;
 	int retVal;
-	PIDebug("MessagePump start");
+	//PIDebug("MessagePump start");
 	while (stopPump == false)
 	{
 		retVal = PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
@@ -73,7 +73,7 @@ void MessagePump(HWND hWnd)
 			DispatchMessage(&msg);
 		}
 	}
-	PIDebug("MessagePump stopped");
+	//PIDebug("MessagePump stopped");
 }
 
 INT_PTR WINAPI WinProcCallback(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -86,7 +86,7 @@ INT_PTR WINAPI WinProcCallback(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 	{
 		case WM_CREATE:
 		{
-			PIDebug("WM_CREATE");
+			//PIDebug("WM_CREATE");
 			stopPump = false;
 			DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
 
@@ -107,12 +107,12 @@ INT_PTR WINAPI WinProcCallback(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 				return -1;
 			}
 
-			PIDebug("Registered for device notification...");
+			PIDebug("Registered for HID device notifications...");
 			break;
 		}
 		case WM_DEVICECHANGE:
 		{
-			PIDebug("WM_DEVICECHANGE");
+			//PIDebug("WM_DEVICECHANGE");
 			switch (wParam)
 			{
 				case DBT_DEVICEARRIVAL:
@@ -129,7 +129,7 @@ INT_PTR WINAPI WinProcCallback(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 		}
 		case WM_CLOSE:
 		{
-			PIDebug("WM_CLOSE");
+			//PIDebug("WM_CLOSE");
 			stopPump = true;
 			if (!UnregisterDeviceNotification(hDeviceNotify))
 			{

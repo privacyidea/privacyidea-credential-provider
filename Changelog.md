@@ -1,9 +1,34 @@
+# Version 3.6 TBD
+
+## Enhancement
+* WebAuthn via NFC. However, this feature is marked as experimental by libfido2, which is used here. So there might be devices that do not work or other problems.
+* WebAuthn token can be used for offline authentication if it marked as such in privacyIDEA.
+* Use of `user_verification=discouraged` policy in privacyIDEA is now considered.
+
+## Fixes
+* Fixed a bug that would cause `otp_link_text` to be ignored.
+* Fixed a bug that would cause the (customizable) OTP failure text to not be displayed.
+
+
+# Version 3.5.4 2024-06-20
+
+## Enhancement
+* `otp_fail_return_to_first_step` can be set to `1` to return to the first step (username and password) after the OTP verification failed. The default behavior is to stay in the second step and ask for the OTP again.
+
+## Fixes
+* Fixed a bug that would result in the reset_link being invisible after clicking it once
+* Fixed unintended behavior with some combinations of the reset link, offline info and deselecting the credential tile
+* Fixed a bug that would cause the transactionid to be lost for consecutive requests
+* Duplicated messages prompting for the OTP are removed.
+
+
 # Version 3.5.3 2024-03-25
 
 ## Fixes
 * Fixed a bug that would result in `two_step_hide_otp` being ignored when selecting another credential provider
 * Fixed a bug that would not reset the login to the first step if "the user could not be found in any resolver in this realm" occured
 * Fixed a bug that would prevent the FIDO device recognition on the second try if it was cancelled once
+
 
 # Version 3.5.2 2024-03-18
 

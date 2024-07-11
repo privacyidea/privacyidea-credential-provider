@@ -106,7 +106,7 @@ Add entries to this REG_MULTI_SZ to spare other CPs from being filtered. The ent
 One way to check the CLSID of a CP is to look at
 **HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\Credential Providers**
 
-Disabling for specific scenarios
+Configuration for specific scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are different *credential provider usage scenarios* ("cpus"). The available
@@ -155,6 +155,7 @@ If there is no entry for a scenario, the default is assumed:
 The privacyIDEA Credential Provider will be available and the Filter will be active, if installed.
 
 **NOTE: Starting with Windows 10, CPUS_UNLOCK is not triggered by default anymore when unlocking the workstation. Instead, unlocking the workstation is considered CPUS_LOGON. If you need to differentiate the two scenarios, disabling fast user switching in the group policy editor restores the previous behavior. An example of how to do this can be found here:** https://support.waters.com/KB_Inf/Empower_Breeze/WKB47366_How_To_Enable_Disable_Fast_User_Switching_In_Windows_10
+**NOTE: To use the Credential Provider in CredUI Scenarios on Priviliged Access Workstations with Admin Accounts see https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpsb/341747f5-6b5d-4d30-85fc-fa1cc04038d4**
 
 Recommended setup for remote desktop scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -221,7 +222,11 @@ Set this to ``1`` to have the username field prefilled with the user that last l
 
 Set this to ``1`` to have a clickable text shown at the bottom which will reset the login.
 
-**use_otp_link_text**
+**reset_link_text**
+
+Set this to change the text for reset link. The default is "Reset Login".
+
+**otp_link_text**
 
 Set this to overwrite the text to switch from webauthn to OTP mode. Default is "Use One-Time-Password".
 

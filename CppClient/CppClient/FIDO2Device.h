@@ -28,7 +28,7 @@
 constexpr auto fidoFlags = FIDO_DISABLE_U2F_FALLBACK | FIDO_DEBUG;
 constexpr auto filterWinHello = true; // TODO check if winhello can be used
 
-constexpr auto FIDO2DEVICE_ERR_NO_DEVICE = -1;
+constexpr auto FIDO2DEVICE_ERR_TX = 0x88809089;
 
 constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 
@@ -50,6 +50,7 @@ public:
 	bool HasPin() const noexcept { return _hasPin; }
 	bool IsWinHello() const noexcept { return _isWinHello; }
 	bool HasUV() const noexcept { return _hasUV; }
+	bool isPCSC() const noexcept;
 
 private:
 	std::string _path;

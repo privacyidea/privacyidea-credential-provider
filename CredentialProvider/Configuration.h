@@ -86,6 +86,7 @@ public:
 	bool doAutoLogon = false;
 
 	PIResponse lastResponse;
+	std::string lastTransactionId = "";
 
 	std::wstring excludedAccount = L"";
 
@@ -98,6 +99,7 @@ public:
 	std::wstring webAuthnLinkText;
 	std::wstring webAuthnPinHint;
 	bool webAuthnPreferred = false;
+	bool otpFailReturnToFirstStep = false;
 
 	// Track the current state
 	SCENARIO scenario = SCENARIO::NO_CHANGE;

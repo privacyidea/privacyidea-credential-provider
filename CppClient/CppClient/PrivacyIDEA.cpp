@@ -295,7 +295,7 @@ HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const s
 	}
 	else
 	{
-		auto refilltoken = _parser.GetRefilltoken(response);
+		refilltoken = _parser.GetRefilltoken(response);
 		if (refilltoken.empty())
 		{
 			PIDebug("Refilltoken is empty");
