@@ -60,11 +60,11 @@
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(SolutionDir)CppClient\nlohmann\x64\include;$(SolutionDir)libfido2-1.14.0-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CppClient\nlohmann\x64\include;$(SolutionDir)\libfido2-1.15.0-nfc-enabled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Lib>
-      <AdditionalLibraryDirectories>$(SolutionDir)libfido2-1.14.0-win\Win64\Release\v143\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>fido2.lib;crypt32.lib;zlib1.lib;crypto-50.lib;cbor.lib;Ws2_32.lib;hid.lib;setupapi.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)libfido2-1.15.0-nfc-enabled\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>fido2.lib;crypt32.lib;zlib1.lib;crypto.lib;cbor.lib;Ws2_32.lib;hid.lib;setupapi.lib;Winscard.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -78,7 +78,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>Default</LanguageStandard>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)CppClient\nlohmann\x64\include;$(SolutionDir)libfido2-1.14.0-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)CppClient\nlohmann\x64\include;$(SolutionDir)\libfido2-1.15.0-nfc-enabled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -87,10 +87,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>fido2.lib;crypt32.lib;zlib1.lib;crypto-50.lib;cbor.lib;Ws2_32.lib;hid.lib;setupapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>fido2.lib;crypt32.lib;zlib1.lib;crypto.lib;cbor.lib;Ws2_32.lib;hid.lib;setupapi.lib;Winscard.lib</AdditionalDependencies>
     </Lib>
     <Lib>
-      <AdditionalLibraryDirectories>$(SolutionDir)libfido2-1.14.0-win\Win64\Release\v143\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)libfido2-1.15.0-nfc-enabled\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>

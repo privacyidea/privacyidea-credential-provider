@@ -1,3 +1,15 @@
+# Version 3.6 TBD
+
+## Enhancement
+* WebAuthn via NFC. However, this feature is marked as experimental by libfido2, which is used here. So there might be devices that do not work or other problems.
+* WebAuthn token can be used for offline authentication if it marked as such in privacyIDEA.
+* Use of `user_verification=discouraged` policy in privacyIDEA is now considered.
+
+## Fixes
+* Fixed a bug that would cause `otp_link_text` to be ignored.
+* Fixed a bug that would cause the (customizable) OTP failure text to not be displayed.
+
+
 # Version 3.5.4 2024-06-20
 
 ## Enhancement

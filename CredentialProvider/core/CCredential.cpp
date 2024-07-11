@@ -39,6 +39,7 @@
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
 #endif
+#include <SmartcardListener.h>
 
 #pragma comment (lib, "Gdiplus.lib")
 
@@ -548,6 +549,9 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 // - SCENARIO::SECURITY_KEY_NO_DEVICE
 SCENARIO CCredential::SelectWebAuthnScenario()
 {
+	PIDebug(__FUNCTION__);
+	const bool uvDiscouraged = _config->lastResponse.GetWebAuthnSignRequest().userVerification == "discouraged";
+	PIDebug("User verification discouraged: " + to_string(uvDiscouraged));
 	auto devices = FIDO2Device::GetDevices();
 	if (devices.size() == 0)
 	{
@@ -561,14 +565,12 @@ SCENARIO CCredential::SelectWebAuthnScenario()
 			PIDebug("Multiple FIDO2 devices found, using the first: " + devices[0].GetPath());
 		}
 
-		if (devices[0].HasPin())
+		if (devices[0].HasPin() && !uvDiscouraged)
 		{
-			PIDebug("One FIDO2 device found with PIN");
 			return SCENARIO::SECURITY_KEY_PIN;
 		}
 		else
 		{
-			PIDebug("One FIDO2 device found without PIN");
 			return SCENARIO::SECURITY_KEY_NO_PIN;
 		}
 	}
@@ -788,11 +790,22 @@ HRESULT CCredential::ResetScenario(__in bool resetToFirstStep)
 	// If resetToFirstStep is true, the scenario is reset to the first step regardless of the current scenario.
 	if (_config->twoStepHideOTP && (!_config->IsSecondStep() || (_config->IsSecondStep() && resetToFirstStep)))
 	{
+		_config->lastTransactionId = "";
+		_config->lastResponse = {};
+		_privacyIDEA.StopPoll();
 		SetScenario(SCENARIO::LOGON_TWO_STEP);
 	}
 	else if (_config->twoStepHideOTP && _config->IsSecondStep())
 	{
-		SetScenario(SCENARIO::SECOND_STEP);
+		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
+		{
+			PIDebug("Currently in a security key scenario, staying there..");
+			SetScenario(_config->scenario);
+		}
+		else
+		{
+			SetScenario(SCENARIO::SECOND_STEP);
+		}
 	}
 	else if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
@@ -1007,30 +1020,72 @@ HRESULT CCredential::GetSerialization(
 	// Normal authentication
 	else
 	{
-		// Check if we are pre 2nd step or failure
+		// Pre 2nd step, challenge or failure
 		if (_authenticationComplete == false && _config->pushAuthenticationSuccessful == false)
 		{
+			const auto webAuthnScenario = SelectWebAuthnScenario();
+			const bool isSecondStep = _config->IsSecondStep();
+			auto& lastResponse = _config->lastResponse;
+
 			// Continue with WebAuthn as the second step if there is a sign request and it is configured to be preferred
 			// or if the current scenario is a webauthn one, e.g. to do NO_DEVICE -> PIN
 			const bool offlineWANAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty();
 
 			// Continue with webauthn in the following cases:
 			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request, or when continuing webauthn (e.g. from NO_DEVICE to PIN)
-			bool continueWithWebAuthn = _config->lastResponse.preferredMode == "webauthn"
-				|| (_config->webAuthnPreferred && (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
+			bool continueWithWebAuthn = lastResponse.preferredMode == "webauthn"
+				|| (_config->webAuthnPreferred && (lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
 				|| (_config->scenario > SCENARIO::SECURITY_KEY_ANY);
 
 			// If the user cancelled the operation, do not continue with webauthn
 			if (_fidoDeviceSearchCancelled)
 			{
 				continueWithWebAuthn = false;
+				_fidoDeviceSearchCancelled = false;
 			}
+			// Show an error message if authentication failed or there is an error
+			if (_lastStatus != S_OK || (lastResponse.challenges.empty() && !lastResponse.value && isSecondStep))
+			{
+				PIDebug("Last status: " + to_string(_lastStatus));
+				bool resetToFirstStep = false;
+				wstring errorMessage = _util.GetText(TEXT_WRONG_OTP);
+				if (!lastResponse.errorMessage.empty())
+				{
+					errorMessage = Convert::ToWString(lastResponse.errorMessage);
+				}
+				else if (_lastStatus == FIDO_ERR_NO_CREDENTIALS)
+				{
+					SetScenario(SCENARIO::SECOND_STEP);
+					errorMessage = _util.GetText(TEXT_FIDO_NO_CREDENTIALS);
+				}
+				else if (_lastStatus == FIDO_ERR_PIN_AUTH_BLOCKED)
+				{
+					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_BLOCKED);
+				}
+				else if (_lastStatus == FIDO2DEVICE_ERR_TX)
+				{
+					resetToFirstStep = true;
+					errorMessage = _util.GetText(TEXT_FIDO_ERR_TX);
+				}
+				else if (_lastStatus != S_OK)
+				{
+					// Probably configuration or network error - details will be logged where the error occurs -> check log
+					errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
+				}
 
-			const auto webAuthnScenario = SelectWebAuthnScenario();
-			const bool isSecondStep = _config->IsSecondStep();
+				ShowErrorMessage(errorMessage, lastResponse.errorCode);
+				// 904 is "user not found in any resolver in this realm" so the user has to be changable -> reset to first step
+				if (lastResponse.errorCode == 904 || _config->otpFailReturnToFirstStep)
+				{
+					resetToFirstStep = true;
+					_config->clearFields = false; // Keep the inputs so the user does not have to repeat them
+				}
 
+				ResetScenario(resetToFirstStep);
+				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			}
 			// Regular second step, asking for second factor
-			if (!isSecondStep && _config->twoStepHideOTP && _lastError == S_OK)
+			else if (!isSecondStep && _config->twoStepHideOTP && _lastStatus == S_OK)
 			{
 				_config->clearFields = false;
 				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
@@ -1042,50 +1097,13 @@ HRESULT CCredential::GetSerialization(
 				}
 			}
 			// Another challenge was triggered: repeat the second step (privacyIDEA)
-			else if (isSecondStep && !_config->lastResponse.challenges.empty() && _lastError == S_OK)
+			else if (isSecondStep && !lastResponse.challenges.empty() && _lastStatus == S_OK)
 			{
 				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
-			else
-			{
-				// Failed authentication, fido cancelled or error section - create a message depending on the error
-				wstring errorMessage = _util.GetText(TEXT_WRONG_OTP);
-				if (!_config->lastResponse.errorMessage.empty())
-				{
-					errorMessage = Convert::ToWString(_config->lastResponse.errorMessage);
-				}
-				else if (_lastError == FIDO_ERR_NO_CREDENTIALS)
-				{
-					SetScenario(SCENARIO::SECOND_STEP);
-					errorMessage = _util.GetText(TEXT_FIDO_NO_CREDENTIALS);
-				}
-				else if (_lastError != S_OK)
-				{
-					// Probably configuration or network error - details will be logged where the error occurs -> check log
-					errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
-				}
-
-				if (_fidoDeviceSearchCancelled)
-				{
-					_fidoDeviceSearchCancelled = false;
-				}
-				else
-				{
-					ShowErrorMessage(errorMessage, _config->lastResponse.errorCode);
-					bool resetToFirstStep = false;
-					// 904 is "user not found in any resolver in this realm" so the user has to be changable -> reset to first step
-					if (_config->lastResponse.errorCode == 904 || _config->otpFailReturnToFirstStep)
-					{
-						resetToFirstStep = true;
-						_config->clearFields = false; // keep the inputs so the user does not have to repeat them
-					}
-					ResetScenario(resetToFirstStep);
-				}
-
-				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-			}
 		}
+		// Authentication was successful - log in
 		else if (_authenticationComplete || _config->pushAuthenticationSuccessful)
 		{
 			// Reset the authentication
@@ -1140,6 +1158,11 @@ HRESULT CCredential::GetSerialization(
 // if code == 0, the code won't be displayed
 void CCredential::ShowErrorMessage(const std::wstring& message, const HRESULT& code)
 {
+	if (message.empty())
+	{
+		PIDebug("Cannot show error message without text!");
+		return;
+	}
 	*_config->provider.status_icon = CPSI_ERROR;
 	wstring errorMessage = message;
 	if (code != 0) errorMessage += L" (" + to_wstring(code) + L")";
@@ -1165,7 +1188,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	PIDebug(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->IsSecondStep() ? "2" : "1"));
 
-	_lastError = S_OK; // reset error
+	_lastStatus = S_OK; // reset error
 	// Copy the input fields to the config
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.CopyInputFields();
@@ -1247,6 +1270,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	if (sendSomething)
 	{
 		HRESULT res = E_FAIL;
+		// Offline OTP check
 		if (offlineCheck && (_config->scenario < SCENARIO::SECURITY_KEY_ANY))
 		{
 			string serialUsed;
@@ -1278,7 +1302,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			// Check if a WebAuthnSignRequest is available either from online or offline
 			if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.empty() && _privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty())
 			{
-				PIError("No WebAuthnSignRequest available and no offline data found for user " + Convert::ToString(username));
+				PIDebug("No WebAuthnSignRequest available or no offline data found for user " + Convert::ToString(username));
 				return E_FAIL;
 			}
 
@@ -1289,11 +1313,12 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			{
 				PIDebug("No device found, waiting for device");
 				pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
-
+				// Check for changes in HID (USB) and Smartcard (NFC)
 				DeviceNotification::Register();
+				SmartcardListener sCardListener;
 				while (true)
 				{
-					this_thread::sleep_for(chrono::milliseconds(100));
+					this_thread::sleep_for(chrono::milliseconds(200));
 					if (pqcws->QueryContinue() != S_OK)
 					{
 						PIDebug("User cancelled device search");
@@ -1302,8 +1327,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 						_fidoDeviceSearchCancelled = true;
 						return E_FAIL;
 					}
-
-					if (DeviceNotification::newDevices)
+					if (DeviceNotification::newDevices || sCardListener.CheckForSmartcardPresence())
 					{
 						DeviceNotification::newDevices = false;
 						devices = FIDO2Device::GetDevices();
@@ -1337,9 +1361,11 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 
 			FIDO2Device device = devices.front();
+
 			auto pin = Convert::ToString(_config->credential.webAuthnPIN);
 
-			if (device.HasPin() && pin.empty())
+			if (device.HasPin() && pin.empty()
+				&& _config->lastResponse.GetWebAuthnSignRequest().userVerification != "discouraged")
 			{
 				PIDebug("No WebAuthn PIN input, but pin is required");
 				return E_FAIL;
@@ -1377,12 +1403,18 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				if (res != 0)
 				{
 					PIError("WebAuthn signing failed with error: " + to_string(res));
+					if (res == FIDO_ERR_TX)
+					{
+						// Use a more expressive error number
+						res = FIDO2DEVICE_ERR_TX;
+					}
+					_lastStatus = res;
 				}
 
 				if (res == FIDO_ERR_NO_CREDENTIALS)
 				{
 					PIDebug("No credentials available on the device " + device.GetProduct());
-					_lastError = res;
+					_lastStatus = res;
 					return E_FAIL;
 				}
 
@@ -1467,11 +1499,11 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				// so the next step, where offline could be done, will still be possible
 				if (_config->twoStepHideOTP && _config->scenario != SCENARIO::SECOND_STEP)
 				{
-					_lastError = S_OK;
+					_lastStatus = S_OK;
 				}
 				else
 				{
-					_lastError = res;
+					_lastStatus = res;
 				}
 			}
 		}

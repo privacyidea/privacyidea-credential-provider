@@ -66,17 +66,14 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 
 OfflineHandler::~OfflineHandler()
 {
-	if (!_dataSets.empty())
+	const HRESULT res = SaveToFile();
+	if (res != S_OK)
 	{
-		const HRESULT res = SaveToFile();
-		if (res != S_OK)
-		{
-			PIDebug(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
-		}
-		else
-		{
-			PIDebug("Offline data saved successfully!");
-		}
+		PIDebug(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
+	}
+	else
+	{
+		PIDebug("Offline data saved successfully!");
 	}
 }
 
@@ -233,7 +230,7 @@ bool OfflineHandler::RemoveOfflineData(const std::string& username, const std::s
 	{
 		PIDebug("Offline: No data to remove for " + username + " and token " + serial);
 	}
-	
+
 	return found;
 }
 

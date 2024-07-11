@@ -35,9 +35,11 @@ map<int, pair<wstring, wstring>> texts{
 	{TEXT_LOGIN_TEXT, {L"privacyIDEA Login", L"privacyIDEA Login" }},
 	{TEXT_OTP_PROMPT, {L"Please enter your One-Time-Password", L"Bitte geben Sie Ihr Einmalpasswort ein" }},
 	{TEXT_FIDO_NO_CREDENTIALS, {L"No matching credentials on this security key found!", L"Auf diesem Sicherheitsschlüssel sind keine passenden Anmeldedaten!" }},
-	{TEXT_FIDO_WAITING_FOR_DEVICE, {L"Insert your security key!", L"Schließen Sie Ihren Sicherheitsschlüssel an!" }},
+	{TEXT_FIDO_WAITING_FOR_DEVICE, {L"Connect your security key!", L"Schließen Sie Ihren Sicherheitsschlüssel an!" }},
 	{TEXT_FIDO_CHECKING_OFFLINE_STATUS, {L"Authentication successful!\nChecking offline status for this token...", L"Authentisierung erfolgreich! \nOffline Status für diesen Token wird geprüft..." }},
-	{TEXT_OFFLINE_REFILL, {L"Refilling offline token...", L"Offline Token werden aufgefüllt..." }}
+	{TEXT_OFFLINE_REFILL, {L"Refilling offline token...", L"Offline Token werden aufgefüllt..." }},
+	{TEXT_FIDO_ERR_PIN_BLOCKED, {L"Please remove and insert your device again!", L"Bitte entfernen Sie Ihren Sicherheitsschlüssel und verbinden Sie Ihn erneut!" }},
+	{TEXT_FIDO_ERR_TX, {L"Communicating with the device failed. Try another authentication method or device.", L"Kommunikation mit dem Gerät fehlgeschlagen. Versuchen Sie eine andere Anmeldeoption oder ein anderes Gerät." }},
 };
 
 std::wstring Utilities::GetText(int id)
@@ -627,44 +629,41 @@ HRESULT Utilities::CopyPasswordChangeFields()
 
 HRESULT Utilities::CopyUsernameField()
 {
-	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
+	wstring input;
+	if (_config->provider.field_strings != nullptr)
 	{
-		wstring input;
-		if (_config->provider.field_strings != nullptr)
-		{
-			input = wstring(_config->provider.field_strings[FID_USERNAME]);
-		}
+		input = wstring(_config->provider.field_strings[FID_USERNAME]);
+	}
 
-		PIDebug(L"Copying user and domain from GUI: '" + input + L"'");
-		wstring username, domain;
+	PIDebug(L"Copying user and domain from GUI: '" + input + L"'");
+	wstring username, domain;
 
-		Utilities::SplitUserAndDomain(input, username, domain);
+	Utilities::SplitUserAndDomain(input, username, domain);
 
-		if (Utilities::CheckForUPN(input))
-		{
-			_config->credential.upn = input;
-		}
+	if (Utilities::CheckForUPN(input))
+	{
+		_config->credential.upn = input;
+	}
 
-		if (!username.empty())
-		{
-			wstring newUsername(username);
-			PIDebug(L"Changing user from '" + _config->credential.username + L"' to '" + newUsername + L"'");
-			_config->credential.username = newUsername;
-		}
-		else
-		{
-			PIDebug(L"Username is empty, keeping old value: '" + _config->credential.username + L"'");
-		}
+	if (!username.empty())
+	{
+		wstring newUsername(username);
+		PIDebug(L"Changing user from '" + _config->credential.username + L"' to '" + newUsername + L"'");
+		_config->credential.username = newUsername;
+	}
+	else
+	{
+		PIDebug(L"Username is empty, keeping old value: '" + _config->credential.username + L"'");
+	}
 
-		if (!domain.empty())
-		{
-			PIDebug(L"Changing domain from '" + _config->credential.domain + L"' to '" + domain + L"'");
-			_config->credential.domain = domain;
-		}
-		else
-		{
-			PIDebug(L"Domain is empty, keeping old value: '" + _config->credential.domain + L"'");
-		}
+	if (!domain.empty())
+	{
+		PIDebug(L"Changing domain from '" + _config->credential.domain + L"' to '" + domain + L"'");
+		_config->credential.domain = domain;
+	}
+	else
+	{
+		PIDebug(L"Domain is empty, keeping old value: '" + _config->credential.domain + L"'");
 	}
 
 	return S_OK;

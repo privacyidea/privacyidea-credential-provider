@@ -87,11 +87,11 @@ FIDO2Device::FIDO2Device(const fido_dev_info_t* devinfo)
 }
 
 int GetAssert(
-	const WebAuthnSignRequest& signRequest, 
+	const WebAuthnSignRequest& signRequest,
 	const std::string& origin,
 	const std::string& pin,
-	const std::string& devicePath, 
-	fido_assert_t** assert, 
+	const std::string& devicePath,
+	fido_assert_t** assert,
 	std::vector<unsigned char>& clientDataOut)
 {
 	if (devicePath.empty())
@@ -100,14 +100,28 @@ int GetAssert(
 		return FIDO_ERR_INVALID_ARGUMENT;
 	}
 
+	int res = FIDO_OK;
+	fido_dev_t* dev = fido_dev_new();
+	if (dev == NULL)
+	{
+		PIError("fido_dev_new failed.");
+		return FIDO_ERR_INTERNAL;
+	}
+
+	res = fido_dev_open(dev, devicePath.c_str());
+	if (res != FIDO_OK)
+	{
+		PIDebug("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		return FIDO_ERR_INTERNAL;
+	}
+
 	// Create assertion
 	if ((*assert = fido_assert_new()) == NULL)
 	{
 		PIError("fido_assert_new failed.");
+		fido_dev_close(dev);
 		return FIDO_ERR_INTERNAL;
 	}
-
-	int res = FIDO_OK;
 
 	// Allow Creds
 	for (auto& allowCred : signRequest.allowCredentials)
@@ -136,41 +150,41 @@ int GetAssert(
 		PIDebug("fido_assert_set_rp: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
 	}
 
-	// EXT TODO
-	res = fido_assert_set_extensions(*assert, NULL);
+	// Extensions TODO
+	/*res = fido_assert_set_extensions(*assert, NULL);
 	if (res != FIDO_OK)
 	{
 		PIDebug("fido_assert_set_extensions: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+	}*/
+
+	// User verification
+	bool hasUV = fido_dev_has_uv(dev);
+	PIDebug("Device has user verification: " + std::to_string(hasUV) + " and request is: " + signRequest.userVerification);
+
+	if (hasUV && signRequest.userVerification == "discouraged")
+	{
+		res = fido_assert_set_uv(*assert, FIDO_OPT_FALSE);
+		if (res != FIDO_OK)
+		{
+			PIDebug("fido_assert_set_uv: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		}
+		else
+		{
+			PIDebug("User verification set to 'discouraged'");
+		}
 	}
 
-	// TODO userhandle?
+	// Get assert and close
+	res = fido_dev_get_assert(dev, *assert, pin.empty() ? NULL : pin.c_str());
 
-	// GET ASSERT
-	fido_dev_t* dev = fido_dev_new();
-	if (dev == NULL)
-	{
-		PIError("fido_dev_new failed.");
-		return FIDO_ERR_INTERNAL;
-	}
-
-	res = fido_dev_open(dev, devicePath.c_str());
-	if (res == FIDO_OK)
-	{
-		res = fido_dev_get_assert(dev, *assert, pin.empty() ? NULL : pin.c_str());
-		fido_dev_close(dev);
-	}
-	else
-	{
-		PIDebug("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-	}
-	
+	fido_dev_close(dev);
 	return res;
 }
 
 int FIDO2Device::Sign(
-	const WebAuthnSignRequest& signRequest, 
+	const WebAuthnSignRequest& signRequest,
 	const std::string& origin,
-	const std::string& pin, 
+	const std::string& pin,
 	WebAuthnSignResponse& signResponse) const
 {
 	fido_assert_t* assert = nullptr;
@@ -181,7 +195,8 @@ int FIDO2Device::Sign(
 	{
 		PIDebug("fido_dev_get_assert: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
 	}
-	else
+
+	if (res == FIDO_OK)
 	{
 		signResponse.clientdata = Convert::Base64URLEncode(vecClientData);
 
@@ -213,15 +228,15 @@ constexpr auto COSE_PUB_KEY_E = -2;
 constexpr auto COSE_PUB_KEY_N = -1;
 
 int EcKeyFromCBOR(
-	const std::string& cborPubKey, 
-	EC_KEY** ecKey, 
+	const std::string& cborPubKey,
+	EC_KEY** ecKey,
 	int* algorithm)
 {
 	int res = FIDO_OK;
 	auto pubKeyBytes = Convert::HexToBytes(cborPubKey);
 	struct cbor_load_result result;
 	cbor_item_t* map = cbor_load(pubKeyBytes.data(), pubKeyBytes.size(), &result);
-	
+
 	if (map == NULL)
 	{
 		PIError("Failed to parse CBOR public key");
@@ -236,7 +251,7 @@ int EcKeyFromCBOR(
 
 	size_t size = cbor_map_size(map);
 	cbor_pair* pairs = cbor_map_handle(map);
-	
+
 	// Find the algorithm
 	int alg = 0;
 	for (int i = 0; i < size; i++)
@@ -328,7 +343,7 @@ std::string GenerateRandomAsBase64URL(long size)
 }
 
 int FIDO2Device::SignAndVerifyAssertion(
-	const std::vector<OfflineData>& offlineData, 
+	const std::vector<OfflineData>& offlineData,
 	const std::string& origin,
 	const std::string& pin,
 	std::string& serialUsed) const
@@ -389,7 +404,7 @@ int FIDO2Device::SignAndVerifyAssertion(
 			PIError("Failed to create EC_KEY");
 			return FIDO_ERR_INTERNAL;
 		}
-		
+
 		// TODO other algorithms if privacyidea supports them
 		if (algorithm != COSE_ES256)
 		{
@@ -434,4 +449,9 @@ int FIDO2Device::SignAndVerifyAssertion(
 	}
 
 	return res;
+}
+
+bool FIDO2Device::isPCSC() const noexcept
+{
+	return _path.rfind("pcsc://", 0) == 0;
 }
