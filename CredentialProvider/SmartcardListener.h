@@ -10,7 +10,7 @@ public:
 	/// calling CheckForSmartcardPresence. If the readers change, the object has to be recreated to use them.
 	/// </summary>
 	SmartcardListener();
-	
+
 	/// <summary>
 	/// Releases the SCARDCONTEXT.
 	/// </summary>
@@ -20,10 +20,9 @@ public:
 	/// Does SCardGetStatusChange for SCARD_STATE_PRESENT once.
 	/// </summary>
 	/// <returns>true or false</returns>
-	int CheckForSmartcardPresence();
+	bool CheckForSmartcardPresence();
 
 private:
 	SCARDCONTEXT hContext = NULL;
 	std::vector<SCARD_READERSTATE> readerStates;
 };
-

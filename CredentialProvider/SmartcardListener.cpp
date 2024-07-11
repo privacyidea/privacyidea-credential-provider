@@ -48,7 +48,7 @@ SmartcardListener::~SmartcardListener()
 	}
 }
 
-int SmartcardListener::CheckForSmartcardPresence()
+bool SmartcardListener::CheckForSmartcardPresence()
 {
 	LONG res = SCARD_S_SUCCESS;
 	const DWORD dwTimeout = 100;

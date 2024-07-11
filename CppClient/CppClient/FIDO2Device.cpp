@@ -112,6 +112,7 @@ int GetAssert(
 	if (res != FIDO_OK)
 	{
 		PIDebug("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		return FIDO_ERR_INTERNAL;
 	}
 
 	// Create assertion

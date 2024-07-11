@@ -37,6 +37,7 @@ map<int, pair<wstring, wstring>> texts{
 	{TEXT_FIDO_NO_CREDENTIALS, {L"No matching credentials on this security key found!", L"Auf diesem Sicherheitsschlüssel sind keine passenden Anmeldedaten!" }},
 	{TEXT_FIDO_WAITING_FOR_DEVICE, {L"Connect your security key!", L"Schließen Sie Ihren Sicherheitsschlüssel an!" }},
 	{TEXT_FIDO_CHECKING_OFFLINE_STATUS, {L"Authentication successful!\nChecking offline status for this token...", L"Authentisierung erfolgreich! \nOffline Status für diesen Token wird geprüft..." }},
+	{TEXT_OFFLINE_REFILL, {L"Refilling offline token...", L"Offline Token werden aufgefüllt..." }},
 	{TEXT_FIDO_ERR_PIN_BLOCKED, {L"Please remove and insert your device again!", L"Bitte entfernen Sie Ihren Sicherheitsschlüssel und verbinden Sie Ihn erneut!" }},
 	{TEXT_FIDO_ERR_TX, {L"Communicating with the device failed. Try another authentication method or device.", L"Kommunikation mit dem Gerät fehlgeschlagen. Versuchen Sie eine andere Anmeldeoption oder ein anderes Gerät." }},
 };
