@@ -21,5 +21,8 @@
   "19": "¡No se encontraron credenciales coincidentes para esta clave de seguridad!",
   "20": "¡Conecta tu llave de seguridad!",
   "21": "¡Autenticación exitosa! \nComprobando el estado fuera de línea de este token...",
-  "22": "Recargando token fuera de línea..."
+  "22": "Recargando token fuera de línea...",
+  "23": "¡Quite e inserte su dispositivo nuevamente!",
+  "24": "Falló la comunicación con el dispositivo. Pruebe con otro método o dispositivo de autenticación.",
+  "25": "¡Pin de llave de seguridad incorrecto!"
 }

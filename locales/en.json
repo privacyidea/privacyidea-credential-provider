@@ -19,7 +19,10 @@
 	"17": "privacyIDEA Login",
 	"18": "Please enter your One-Time-Password",
 	"19": "No matching credentials on this security key found!",
-	"20": "Insert your security key!",
+	"20": "Connect your security key!",
 	"21": "Authentication successful!\nChecking offline status for this token...",
-	"22": "Refilling offline token..."
+	"22": "Refilling offline token...",
+	"23": "Please remove and insert your device again!",
+	"24": "Communicating with the device failed. Try another authentication method or device.",
+	"25": "Wrong security key PIN!"
 }

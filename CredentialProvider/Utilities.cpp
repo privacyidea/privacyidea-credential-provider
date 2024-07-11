@@ -4,9 +4,9 @@
 #include "guid.h"
 #include "PrivacyIDEA.h"
 #include "Convert.h"
+#include "Translator.h"
 #include <stdexcept>
 #include <Shlwapi.h>
-#include "Translator.h"
 
 using namespace std;
 
@@ -14,34 +14,6 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 {
 	_config = c;
 }
-
-map<int, pair<wstring, wstring>> texts{
-	{TEXT_USERNAME, {L"Username", L"Benutzername"}},
-	{TEXT_PASSWORD, {L"Password", L"Kennwort"}},
-	{TEXT_OLD_PASSWORD, {L"Old Password", L"Altes Kennwort"}},
-	{TEXT_NEW_PASSWORD, {L"New Password", L"Neues Kennwort"}},
-	{TEXT_CONFIRM_PASSWORD, {L"Confirm password", L"Kennwort bestätigen"}},
-	{TEXT_DOMAIN_HINT, {L"Sign in to: ", L"Anmelden an: "}},
-	{TEXT_OTP_FIELD, {L"One-Time Password", L"Einmalpassword"}},
-	{TEXT_WRONG_OTP, {L"Wrong One-Time Password!", L"Falsches Einmalpasswort!"}},
-	{TEXT_RESET_LINK, {L"Reset Login", L"Login zurücksetzen"}},
-	{TEXT_AVAILABLE_OFFLINE_TOKEN, {L"Available offline token:\n", L"Verfügbare Offline Token:\n"}},
-	{TEXT_OTPS_REMAINING, {L"OTPs left", L"OTPs verbleibend"}},
-	{TEXT_GENERIC_ERROR, {L"Connection or configuration error! Please check the logfile.", L"Verbindungs- oder Konfigurationsfehler!\nBitte prüfen Sie die Log Datei." }},
-	{TEXT_USE_WEBAUTHN, {L"Use Security Key", L"Sicherheitsschlüssel verwenden"}},
-	{TEXT_USE_OTP, {L"Use One-Time-Password", L"Einmalpasswort verwenden" }},
-	{TEXT_WAN_PIN_HINT, {L"Security Key PIN", L"Sicherheitsschlüssel PIN" }},
-	{TEXT_TOUCH_SEC_KEY, {L"Touch your Security Key!", L"Berühren Sie Ihren Sicherheitsschlüssel!" }},
-	{TEXT_CONNECTING, {L"Connecting to privacyIDEA...", L"Verbinde mit privacyIDEA..." }},
-	{TEXT_LOGIN_TEXT, {L"privacyIDEA Login", L"privacyIDEA Login" }},
-	{TEXT_OTP_PROMPT, {L"Please enter your One-Time-Password", L"Bitte geben Sie Ihr Einmalpasswort ein" }},
-	{TEXT_FIDO_NO_CREDENTIALS, {L"No matching credentials on this security key found!", L"Auf diesem Sicherheitsschlüssel sind keine passenden Anmeldedaten!" }},
-	{TEXT_FIDO_WAITING_FOR_DEVICE, {L"Connect your security key!", L"Schließen Sie Ihren Sicherheitsschlüssel an!" }},
-	{TEXT_FIDO_CHECKING_OFFLINE_STATUS, {L"Authentication successful!\nChecking offline status for this token...", L"Authentisierung erfolgreich! \nOffline Status für diesen Token wird geprüft..." }},
-	{TEXT_OFFLINE_REFILL, {L"Refilling offline token...", L"Offline Token werden aufgefüllt..." }},
-	{TEXT_FIDO_ERR_PIN_BLOCKED, {L"Please remove and insert your device again!", L"Bitte entfernen Sie Ihren Sicherheitsschlüssel und verbinden Sie Ihn erneut!" }},
-	{TEXT_FIDO_ERR_TX, {L"Communicating with the device failed. Try another authentication method or device.", L"Kommunikation mit dem Gerät fehlgeschlagen. Versuchen Sie eine andere Anmeldeoption oder ein anderes Gerät." }},
-};
 
 std::wstring Utilities::GetText(int id)
 {

@@ -59,6 +59,9 @@
 		<Property Id="HOSTNAME" Value="hostname">
 			<RegistrySearch Id="SearchHostname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hostname" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="CUSTOM_PORT">
+			<RegistrySearch Id="SearchCustomPort" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="custom_port" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Property Id="PATH" Value="/path/to/pi">
 			<RegistrySearch Id="SearchPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="path" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -77,7 +80,7 @@
 		<Property Id="TWO_STEP_SEND_PASSWORD">
 			<RegistrySearch Id="SearchTwoStepSendPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_password" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="TWO_STEP_EMPTY_SEND_PASSWORD">
+		<Property Id="TWO_STEP_SEND_EMPTY_PASSWORD">
 			<RegistrySearch Id="SearchTwoStepSendEmptyPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_empty_password" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="SSL_IGNORE_UNKNOWN_CA">
@@ -222,7 +225,7 @@
 						<RegistryValue Name="path" Type="string" Value="[PATH]" />
 						<RegistryValue Name="ssl_ignore_unknown_ca" Type="string" Value="[SSL_IGNORE_UNKNOWN_CA]" />
 						<RegistryValue Name="ssl_ignore_invalid_cn" Type="string" Value="[SSL_IGNORE_INVALID_CN]" />
-						<RegistryValue Name="custom_port" Type="string" Value="" />
+						<RegistryValue Name="custom_port" Type="string" Value="[CUSTOM_PORT]" />
 						<RegistryValue Name="resolve_timeout" Type="string" Value="" />
 						<RegistryValue Name="connect_timeout" Type="string" Value="" />
 						<RegistryValue Name="send_timeout" Type="string" Value="" />
