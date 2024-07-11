@@ -40,6 +40,7 @@ constexpr auto TEXT_FIDO_CHECKING_OFFLINE_STATUS = 21;
 constexpr auto TEXT_OFFLINE_REFILL = 22;
 constexpr auto TEXT_FIDO_ERR_PIN_BLOCKED = 23;
 constexpr auto TEXT_FIDO_ERR_TX = 24;
+constexpr auto TEXT_FIDO_ERR_PIN_INVALID = 25;
 
 class Utilities
 {
