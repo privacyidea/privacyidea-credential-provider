@@ -1067,6 +1067,10 @@ HRESULT CCredential::GetSerialization(
 					resetToFirstStep = true;
 					errorMessage = _util.GetText(TEXT_FIDO_ERR_TX);
 				}
+				else if (_lastStatus == FIDO_ERR_PIN_INVALID)
+				{
+					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
+				}
 				else if (_lastStatus != S_OK)
 				{
 					// Probably configuration or network error - details will be logged where the error occurs -> check log
