@@ -4,17 +4,17 @@
 SmartcardListener::SmartcardListener()
 {
 	LONG res = SCARD_S_SUCCESS;
-	res = SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &hContext);
+	res = SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &_hContext);
 	if (res == SCARD_S_SUCCESS)
 	{
 		LPTSTR mszReaders = NULL;
 		LPTSTR pReader = NULL;
 		DWORD pcchReaders = SCARD_AUTOALLOCATE;
-		res = SCardListReaders(hContext, NULL, (LPTSTR)&mszReaders, &pcchReaders);
+		res = SCardListReaders(_hContext, NULL, (LPTSTR)&mszReaders, &pcchReaders);
 		if (res == SCARD_S_SUCCESS)
 		{
 			pReader = mszReaders;
-			
+
 			while (pReader != nullptr && '\0' != *pReader)
 			{
 				PIDebug(L"Listening for smartcard on reader: " + std::wstring((wchar_t*)pReader, wcslen((wchar_t*)pReader)));
@@ -24,7 +24,7 @@ SmartcardListener::SmartcardListener()
 				readerState.dwCurrentState = NULL;
 				readerState.dwEventState = NULL;
 				readerState.cbAtr = NULL;
-				readerStates.push_back(readerState);
+				_readerStates.push_back(readerState);
 
 				pReader = pReader + wcslen((wchar_t*)pReader) + 1;
 			}
@@ -32,40 +32,45 @@ SmartcardListener::SmartcardListener()
 		else
 		{
 			PIError("SCardListReaders: " + std::to_string(res));
+			_hContext = NULL;
 		}
 	}
 	else
 	{
 		PIError("SCardEstablishContext: " + std::to_string(res));
+		_hContext = NULL;
 	}
 }
 
 SmartcardListener::~SmartcardListener()
 {
-	if (hContext != NULL)
+	if (_hContext != NULL)
 	{
-		SCardReleaseContext(hContext);
+		SCardReleaseContext(_hContext);
 	}
 }
 
 bool SmartcardListener::CheckForSmartcardPresence()
 {
-	LONG res = SCARD_S_SUCCESS;
-	const DWORD dwTimeout = 100;
-	res = SCardGetStatusChange(hContext, dwTimeout, readerStates.data(), readerStates.size());
-	if (res == SCARD_S_SUCCESS)
+	if (_hContext != NULL)
 	{
-		for (auto& readerState : readerStates)
+		LONG res = SCARD_S_SUCCESS;
+		constexpr DWORD dwTimeout = 100;
+		res = SCardGetStatusChange(_hContext, dwTimeout, _readerStates.data(), _readerStates.size());
+		if (res == SCARD_S_SUCCESS)
 		{
-			if (readerState.dwEventState & SCARD_STATE_PRESENT)
+			for (auto& readerState : _readerStates)
 			{
-				return true;
+				if (readerState.dwEventState & SCARD_STATE_PRESENT)
+				{
+					return true;
+				}
 			}
 		}
-	}
-	else
-	{
-		PIError("SCardGetStatusChange: " + std::to_string(res));
+		else
+		{
+			PIError("SCardGetStatusChange: " + std::to_string(res));
+		}
 	}
 	return false;
 }

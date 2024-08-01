@@ -28,6 +28,7 @@
 #include "WebAuthn.h"
 #include "DeviceNotification.h"
 #include "FIDO2Device.h"
+#include <SmartcardListener.h>
 #include <resource.h>
 #include <string>
 #include <thread>
@@ -39,7 +40,6 @@
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
 #endif
-#include <SmartcardListener.h>
 
 #pragma comment (lib, "Gdiplus.lib")
 
@@ -542,7 +542,7 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 	return hr;
 }
 
-// Determine the status of FIDO2 devices and return the scenario based on that.
+// Determine the status of FIDO2 devices, the local config and the last response from privacyidea to return the scenario based on that.
 // It can be one of the following:
 // - SCENARIO::SECURITY_KEY_PIN
 // - SCENARIO::SECURITY_KEY_NO_PIN
@@ -551,8 +551,9 @@ SCENARIO CCredential::SelectWebAuthnScenario()
 {
 	PIDebug(__FUNCTION__);
 	const bool uvDiscouraged = _config->lastResponse.GetWebAuthnSignRequest().userVerification == "discouraged";
-	PIDebug("User verification discouraged: " + to_string(uvDiscouraged));
+	const bool offline = _config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() == 0;
 	auto devices = FIDO2Device::GetDevices();
+
 	if (devices.size() == 0)
 	{
 		PIDebug("No FIDO2 devices found");
@@ -565,7 +566,7 @@ SCENARIO CCredential::SelectWebAuthnScenario()
 			PIDebug("Multiple FIDO2 devices found, using the first: " + devices[0].GetPath());
 		}
 
-		if (devices[0].HasPin() && !uvDiscouraged)
+		if (devices[0].HasPin() && ((!uvDiscouraged && !offline) || (!_config->webAuthnOfflineNoPIN && offline)))
 		{
 			return SCENARIO::SECURITY_KEY_PIN;
 		}
@@ -585,6 +586,9 @@ HRESULT CCredential::SetScenario(SCENARIO scenario)
 	{
 		_config->scenario = scenario;
 	}
+
+	// Reset some field states
+	_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_HIDDEN);
 
 	switch (scenario)
 	{
@@ -760,7 +764,8 @@ HRESULT CCredential::SetScenario(SCENARIO scenario)
 		PIDebug("Enabling link for online webauthn");
 	}
 
-	if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty())
+	if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty()
+		&& scenario == SCENARIO::SECOND_STEP)
 	{
 		_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
 		PIDebug("Enabling link for offline webauthn");
@@ -799,7 +804,6 @@ HRESULT CCredential::ResetScenario(__in bool resetToFirstStep)
 	{
 		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
 		{
-			PIDebug("Currently in a security key scenario, staying there..");
 			SetScenario(_config->scenario);
 		}
 		else
@@ -935,6 +939,7 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 	}
 	else if (dwFieldID == FID_WAN_LINK)
 	{
+		_modeSwitched = true;
 		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
 		{
 			PIDebug("Switching to OTP mode");
@@ -969,7 +974,7 @@ HRESULT CCredential::GetSerialization(
 )
 {
 	PIDebug(__FUNCTION__);
-
+	PIDebug("Last status: " + to_string(_lastStatus));
 	HRESULT hr = S_OK;
 	/*
 	CPGSR_NO_CREDENTIAL_NOT_FINISHED
@@ -1043,10 +1048,29 @@ HRESULT CCredential::GetSerialization(
 				continueWithWebAuthn = false;
 				_fidoDeviceSearchCancelled = false;
 			}
-			// Show an error message if authentication failed or there is an error
-			if (_lastStatus != S_OK || (lastResponse.challenges.empty() && !lastResponse.value && isSecondStep))
+
+			// Regular second step, asking for second factor. Can also be that the mode was switched (WebAuthn <-> OTP)
+			if (!isSecondStep && _config->twoStepHideOTP && _lastStatus == S_OK || _modeSwitched)
 			{
-				PIDebug("Last status: " + to_string(_lastStatus));
+				_modeSwitched = false;
+				_config->clearFields = false;
+				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
+				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				if (continueWithWebAuthn && webAuthnScenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
+				{
+					_config->doAutoLogon = true;
+					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+				}
+			}
+			// Another challenge was triggered: repeat the second step (privacyIDEA)
+			else if (isSecondStep && !lastResponse.challenges.empty() && _lastStatus == S_OK)
+			{
+				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
+				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+			}
+			// Show an error message if authentication failed or there is an error
+			else if (_lastStatus != S_OK || (lastResponse.challenges.empty() && !lastResponse.value && isSecondStep))
+			{
 				bool resetToFirstStep = false;
 				wstring errorMessage = _util.GetText(TEXT_WRONG_OTP);
 				if (!lastResponse.errorMessage.empty())
@@ -1061,6 +1085,12 @@ HRESULT CCredential::GetSerialization(
 				else if (_lastStatus == FIDO_ERR_PIN_AUTH_BLOCKED)
 				{
 					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_BLOCKED);
+					// If userVerificiation is discouraged, reset to the first step, otherwise there will be an infinite loop
+					// of directly retrying because no PIN is requested.
+					if (lastResponse.GetWebAuthnSignRequest().userVerification == "discouraged")
+					{
+						resetToFirstStep = true;
+					}
 				}
 				else if (_lastStatus == FIDO2DEVICE_ERR_TX)
 				{
@@ -1086,24 +1116,6 @@ HRESULT CCredential::GetSerialization(
 				}
 
 				ResetScenario(resetToFirstStep);
-				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-			}
-			// Regular second step, asking for second factor
-			else if (!isSecondStep && _config->twoStepHideOTP && _lastStatus == S_OK)
-			{
-				_config->clearFields = false;
-				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
-				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-				if (continueWithWebAuthn && webAuthnScenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
-				{
-					_config->doAutoLogon = true;
-					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
-				}
-			}
-			// Another challenge was triggered: repeat the second step (privacyIDEA)
-			else if (isSecondStep && !lastResponse.challenges.empty() && _lastStatus == S_OK)
-			{
-				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
@@ -1159,7 +1171,7 @@ HRESULT CCredential::GetSerialization(
 	return hr;
 }
 
-// if code == 0, the code won't be displayed
+// If code == 0, the code won't be displayed
 void CCredential::ShowErrorMessage(const std::wstring& message, const HRESULT& code)
 {
 	if (message.empty())
@@ -1170,6 +1182,7 @@ void CCredential::ShowErrorMessage(const std::wstring& message, const HRESULT& c
 	*_config->provider.status_icon = CPSI_ERROR;
 	wstring errorMessage = message;
 	if (code != 0) errorMessage += L" (" + to_wstring(code) + L")";
+	PIDebug("Error message: " + Convert::ToString(errorMessage));
 	SHStrDupW(errorMessage.c_str(), _config->provider.status_text);
 }
 
@@ -1192,7 +1205,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 {
 	PIDebug(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->IsSecondStep() ? "2" : "1"));
 
-	_lastStatus = S_OK; // reset error
+	_lastStatus = S_OK;
 	// Copy the input fields to the config
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.CopyInputFields();
@@ -1304,12 +1317,15 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		{
 			PIDebug("Trying WebAuthn...");
 			// Check if a WebAuthnSignRequest is available either from online or offline
-			if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.empty() && _privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty())
+			const bool offlineWebAuthnAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty();
+			const bool onlineWebAuthnAvailable = !_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.empty();
+			if (!onlineWebAuthnAvailable && !offlineWebAuthnAvailable)
 			{
 				PIDebug("No WebAuthnSignRequest available or no offline data found for user " + Convert::ToString(username));
 				return E_FAIL;
 			}
 
+			// DEVICE SEARCH
 			// Wait for a device to be connected if necessary. 
 			// Afterward, the scenario might be reset to get the PIN input or will continue if no PIN is required.
 			std::vector<FIDO2Device> devices;
@@ -1320,6 +1336,17 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				// Check for changes in HID (USB) and Smartcard (NFC)
 				DeviceNotification::Register();
 				SmartcardListener sCardListener;
+
+				// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message to indicate what the user should do.
+				if (_config->provider.cpu == CPUS_CREDUI)
+				{
+					PIDebug("CPUS CREDUI SPECIAL!!!");
+					_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
+					_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
+					_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_DISABLED);
+					_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
+				}
+
 				while (true)
 				{
 					this_thread::sleep_for(chrono::milliseconds(200));
@@ -1351,8 +1378,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				{
 					// Reset to get PIN input
 					SetScenario(scenario);
-					_config->doAutoLogon = true;
-					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+					_modeSwitched = true;
 				}
 			}
 
@@ -1365,11 +1391,11 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 
 			FIDO2Device device = devices.front();
-
+			// Check if a PIN is required. This can be different for on/offline.
 			auto pin = Convert::ToString(_config->credential.webAuthnPIN);
-
-			if (device.HasPin() && pin.empty()
-				&& _config->lastResponse.GetWebAuthnSignRequest().userVerification != "discouraged")
+			const bool pinOfflineRequired = _config->webAuthnOfflineNoPIN && offlineWebAuthnAvailable;
+			const bool pinOnlineRequired = _config->lastResponse.GetWebAuthnSignRequest().userVerification != "discouraged" && onlineWebAuthnAvailable;
+			if (device.HasPin() && pin.empty() && _config->scenario == SCENARIO::SECURITY_KEY_PIN)
 			{
 				PIDebug("No WebAuthn PIN input, but pin is required");
 				return E_FAIL;
@@ -1397,6 +1423,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				else
 				{
 					PIError("WebAuthn offline signing or verifying failed with error: " + to_string(res));
+					_lastStatus = res;
 				}
 			}
 

@@ -77,7 +77,9 @@ std::wstring Utilities::GetText(int id)
 			break;
 		}
 		default:
+		{
 			break;
+		}
 	}
 	// 
 	// Translate text.

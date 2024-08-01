@@ -99,6 +99,8 @@ public:
 	std::wstring webAuthnLinkText;
 	std::wstring webAuthnPinHint;
 	bool webAuthnPreferred = false;
+	bool webAuthnOfflineNoPIN = false;
+
 	bool otpFailReturnToFirstStep = false;
 
 	// Track the current state
