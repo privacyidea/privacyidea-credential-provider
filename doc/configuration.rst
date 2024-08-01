@@ -86,7 +86,6 @@ NOTE: Sending the windows or an empty password can be used to trigger token type
 
 Specify an account that should be excluded from 2FA. The format is required to be ``domain\username`` or ``computername\username``.
 
-
 **send_upn**
 Set to ``1`` to send the UPN instead of username and domain to privacyIDEA.The determination if the username input is a UPN is currently very basic and will assume an UPN if there is an @ and no \ contained in the input.
 If the input is not an UPN, the usual realm settings are applied.
@@ -236,7 +235,7 @@ WebAuthn
 To use WebAuthn, it is required to configure **two_step_hide_otp** and either of the other **two_step_send** options to trigger a challenge!
 NOTE: CURRENTLY SUPPORTS ONLY A SINGLE CONNECTED FIDO2 DEVICE. IF MORE THAN ONE DEVICE IS CONNECTED, THE "FIRST ENUMERATED" WILL BE USED, WHICH IS A NON-DETERMINISTIC SELECTION!
 NOTE: AFTER YOU ARE PROMPTED TO TOUCH YOUR SECURITY KEY, IT IS NOT POSSIBLE TO CANCEL THE OPERATION. EVENTHOUGH THERE IS A CANCEL BUTTON, THE CONTROL IS TRANSFERED TO THE DEVICE UNTIL THE OPERATION IS COMPLETED!
-
+NOTE: WINDOWS HELLO IS NOT SUPPORTED BECAUSE THE UI CAN NOT BE RENDERED IN LOGON/UNLOCK SCENARIOS.
 
 **webauthn_link_text**
 
@@ -249,6 +248,10 @@ Set to ``1`` to continue directly with webauthn mode after receiving a webauthn 
 **webauthn_pin_hint**
 
 Set this to overwrite the hint text (which is visible when the input is empty) when asking for the security key PIN. The default is "Security Key PIN".
+
+**webauthn_offline_no_pin**
+
+Set this to ``1`` to not be prompted for the security key PIN when doing offline authentication with WebAuthn. Online authentications remain controlled by privacyIDEA.
 
 
 Offline token

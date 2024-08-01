@@ -2,8 +2,8 @@
 
 ## Enhancement
 * WebAuthn via NFC. However, this feature is marked as experimental by libfido2, which is used here. So there might be devices that do not work or other problems.
-* WebAuthn token can be used for offline authentication if it marked as such in privacyIDEA.
-* Use of `user_verification=discouraged` policy in privacyIDEA is now considered.
+* WebAuthn token can be used for offline authentication if it is marked as such in privacyIDEA.
+* Use of `user_verification=discouraged` policy in privacyIDEA is now considered. In offline scenarios, the PIN prompt can be controlled via `webauthn_offline_no_pin` registry setting.
 * Changed translation system to allow adding or changing translations without the need to install a new version. Also added spanish translation. Both contributed by charlyR (#158)
 
 ## Fixes
