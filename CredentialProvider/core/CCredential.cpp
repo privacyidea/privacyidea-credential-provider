@@ -1340,7 +1340,6 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message to indicate what the user should do.
 				if (_config->provider.cpu == CPUS_CREDUI)
 				{
-					PIDebug("CPUS CREDUI SPECIAL!!!");
 					_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
 					_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
 					_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_DISABLED);
