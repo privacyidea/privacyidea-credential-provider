@@ -26,7 +26,6 @@
 std::vector<FIDO2Device> FIDO2Device::GetDevices()
 {
 	PIDebug("Searching for connected FIDO2 devices");
-	PIDebug("Filtering Windows Hello: " + std::to_string(filterWinHello));
 	fido_init(fidoFlags);
 	std::vector<FIDO2Device> ret;
 	size_t ndevs;
@@ -49,7 +48,7 @@ std::vector<FIDO2Device> FIDO2Device::GetDevices()
 	{
 		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
 		FIDO2Device dev(di);
-		if (!(dev.IsWinHello() && filterWinHello))
+		if (!dev.IsWinHello())
 		{
 			ret.push_back(dev);
 		}
@@ -176,7 +175,6 @@ int GetAssert(
 
 	// Get assert and close
 	res = fido_dev_get_assert(dev, *assert, pin.empty() ? NULL : pin.c_str());
-
 	fido_dev_close(dev);
 	return res;
 }
@@ -449,9 +447,4 @@ int FIDO2Device::SignAndVerifyAssertion(
 	}
 
 	return res;
-}
-
-bool FIDO2Device::isPCSC() const noexcept
-{
-	return _path.rfind("pcsc://", 0) == 0;
 }

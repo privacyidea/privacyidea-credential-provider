@@ -165,4 +165,6 @@ private:
 	bool									_authenticationComplete = false;
 
 	bool									_fidoDeviceSearchCancelled = false;
+
+	bool 								    _modeSwitched = false;
 };

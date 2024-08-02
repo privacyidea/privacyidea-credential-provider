@@ -23,6 +23,6 @@ public:
 	bool CheckForSmartcardPresence();
 
 private:
-	SCARDCONTEXT hContext = NULL;
-	std::vector<SCARD_READERSTATE> readerStates;
+	SCARDCONTEXT _hContext = NULL;
+	std::vector<SCARD_READERSTATE> _readerStates;
 };

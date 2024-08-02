@@ -143,6 +143,9 @@
 		<Property Id="WEBAUTHN_PIN_HINT">
 			<RegistrySearch Id="SearchWebAuthnPinHint" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="WEBAUTHN_OFFLINE_NO_PIN">
+			<RegistrySearch Id="SearchWebAuthnOfflineNoPIN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_offline_no_pin" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Property Id="OTP_FAIL_RETURN_TO_FIRST_STEP">
 			<RegistrySearch Id="SearchOtpFailReturnToFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_fail_return_to_first_step" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -257,6 +260,7 @@
 						<RegistryValue Name="webauthn_link_text" Type="string" Value="[WEBAUTHN_LINK_TEXT]" />
 						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
 						<RegistryValue Name="webauthn_pin_hint" Type="string" Value="[WEBAUTHN_PIN_HINT]" />
+						<RegistryValue Name="webauthn_offline_no_pin" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
 						<!-- END WEBAUTHN -->
 						<!-- MISC -->
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
@@ -331,10 +335,13 @@
 		<UI Id="MyWixUI_FeatureTree">
 			<UIRef Id="WixUI_FeatureTree" />
 			<DialogRef Id="ServerConfigurationDlg" />
+			<DialogRef Id="FilterConfigurationDlg" />
+			<DialogRef Id="OfflineConfigurationDlg" />
 			<DialogRef Id="UserConfigurationDlg" />
+			<DialogRef Id="WebAuthnDlg" />
 			<!-- Skip the component dialog which would be between License and ServerConfig-->
 			<Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
-			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="UserConfigurationDlg" Order="1">NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )</Publish>
+			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WebAuthnDlg" Order="1">NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )</Publish>
 			<!-- END Queue custom dialogs -->
 		</UI>
 		<!-- END UI Configuration -->

@@ -141,7 +141,6 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	{
 		parameters.try_emplace("transaction_id", transactionId);
 	}
-
 	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint

@@ -106,6 +106,7 @@ void Configuration::Load()
 	webAuthnLinkText = rr.GetWStringRegistry(L"webauthn_link_text");
 	webAuthnPreferred = rr.GetBoolRegistry(L"webauthn_preferred");
 	webAuthnPinHint = rr.GetWStringRegistry(L"webauthn_pin_hint");
+	webAuthnOfflineNoPIN = rr.GetBoolRegistry(L"webauthn_offline_no_pin");
 
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry

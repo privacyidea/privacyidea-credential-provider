@@ -170,6 +170,13 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 
 	string strData = EncodeRequestParameters(parameters);
 
+	PIDebug("Headers:");
+	PIDebug(L"User-Agent=" + _config.userAgent);
+	for (auto& entry : headers)
+	{
+		PIDebug(entry.first + "=" + entry.second);
+	}
+
 	LPSTR data = _strdup(strData.c_str());
 	const DWORD data_len = (DWORD)strnlen_s(strData.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
@@ -277,6 +284,11 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	}
 
 	// Add headers to the request
+	wstring userAgent = L"User-Agent: " + _config.userAgent;
+	if (!WinHttpAddRequestHeaders(hRequest, userAgent.c_str(), (DWORD)-1L, WINHTTP_ADDREQ_FLAG_ADD))
+	{
+		PIError("Failed to add User-Agent to header!");
+	}
 	for (auto& entry : headers)
 	{
 		if (!WinHttpAddRequestHeaders(hRequest, Convert::ToWString(entry.first + ": " + entry.second).c_str(), (DWORD)-1L, WINHTTP_ADDREQ_FLAG_ADD))
