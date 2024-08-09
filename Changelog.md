@@ -1,4 +1,4 @@
-# Version 3.6 TBD
+# Version 3.6 2024-08-09
 
 ## Enhancement
 * WebAuthn via NFC. However, this feature is marked as experimental by libfido2, which is used here. So there might be devices that do not work or other problems.
