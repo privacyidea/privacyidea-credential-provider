@@ -90,6 +90,8 @@ Specify an account that should be excluded from 2FA. The format is required to b
 Set to ``1`` to send the UPN instead of username and domain to privacyIDEA.The determination if the username input is a UPN is currently very basic and will assume an UPN if there is an @ and no \ contained in the input.
 If the input is not an UPN, the usual realm settings are applied.
 
+**otp_fail_return_to_first_step**
+Set to ``1`` to return to the first step (entering password) after entering a wrong OTP. Default is ``0``, so after entering a wrong OTP, you are prompted for the OTP again.
 
 Filter
 ~~~~~~
