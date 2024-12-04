@@ -450,10 +450,11 @@ HRESULT CCredential::SetStringValue(
 
 		if (dwFieldID == FID_USERNAME)
 		{
-			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
 			wstring input(pwz);
+			// Write the value back to the field so that changes from elsewhere (e.g. prefill_username) are overwritten
+			_pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, pwz);
+			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
 			wstring domain, username;
-
 			Utilities::SplitUserAndDomain(input, username, domain);
 			// Set the domain hint to the domain that was found or to the initial domain that was provided
 			// when the credential was created

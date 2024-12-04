@@ -125,6 +125,10 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const std::str
 				// If success, stop trying other dataSets
 				break;
 			}
+			else if (success == E_FAIL)
+			{
+				PIDebug("Offline authentication failed with token " + item.serial + ". The given OTP was not in the range of tested values!");
+			}
 		}
 	}
 
