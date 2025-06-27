@@ -25,12 +25,22 @@
 enum class SCENARIO
 {
 	NO_CHANGE = 0,
+	/*
 	LOGON_BASE = 1,
 	UNLOCK_BASE = 2,
 	SECOND_STEP = 3,
 	LOGON_TWO_STEP = 4,
 	UNLOCK_TWO_STEP = 5,
+	*/
 	CHANGE_PASSWORD = 6,
+
+	USERNAME = 10,
+	PASSWORD = 11,
+	USERNAMEPASSWORD = 12, // Required for send_pass.
+
+	PRIVACYIDEA = 15,
+
+	PASSKEY = 16,
 
 	SECURITY_KEY_ANY = 20,
 	SECURITY_KEY_PIN = 21,
@@ -45,20 +55,47 @@ public:
 
 	void LogConfig();
 
-	bool IsSecondStep() const noexcept;
-
 	PIConfig piconfig;
 
+	bool isNextScenarioPassword() const noexcept
+	{
+		return (scenario != SCENARIO::PASSWORD && scenario != SCENARIO::USERNAMEPASSWORD)
+			&& !(twoStepSendPassword || usernamePassword);
+	}
+
+	bool isPasswordInFirstStep() const noexcept
+	{
+		return twoStepSendPassword || usernamePassword;
+	}
+
+	bool isLastStep() const noexcept
+	{
+		return scenario == SCENARIO::PASSWORD || (scenario >= SCENARIO::PRIVACYIDEA && isPasswordInFirstStep());
+	}
+
+	bool isFirstStep() const noexcept
+	{
+		return scenario == SCENARIO::USERNAME || scenario == SCENARIO::USERNAMEPASSWORD || scenario == SCENARIO::NO_CHANGE;
+	}
+
+	// FIDO2
+	bool usePasskey = false;		// Online
+	bool useOfflineFIDO2 = false;	// Offline
+	bool disablePasskey = false;
+	std::wstring usePasskeyText = L"";
+
+	// Texts
 	std::wstring loginText = L"";
 	std::wstring otpFieldText = L"";
 	std::wstring otpFailureText = L"";
 	std::wstring useOtpLinkText;
 	std::wstring bitmapPath = L"";
+	std::wstring resetLinkText = L"";
 
 	// Add locales files path
 	std::wstring localesPath = L"";
 
-	bool twoStepHideOTP = false;
+	bool usernamePassword = false; // TODO add to installer
 	bool twoStepSendPassword = false;
 	bool twoStepSendEmptyPassword = false;
 
@@ -69,17 +106,16 @@ public:
 	bool prefillUsername = false;
 
 	bool showResetLink = false;
-	std::wstring resetLinkText = L"";
 
 	bool debugLog = false;
-	
+
 	bool noDefault = false;
 
 	int winVerMajor = 0;
 	int winVerMinor = 0;
 	int winBuildNr = 0;
 
-	bool pushAuthenticationSuccessful = false;
+	bool pushAuthenticationSuccess = false;
 
 	bool isRemoteSession = false;
 
@@ -95,6 +131,7 @@ public:
 
 	int offlineTreshold = 20;
 	bool offlineShowInfo = true;
+	bool credui_no_image = false;
 
 	std::wstring webAuthnLinkText;
 	std::wstring webAuthnPinHint;
@@ -129,7 +166,7 @@ public:
 		std::wstring password = L"";
 		std::wstring otp = L"";
 		std::wstring upn = L"";
-		std::wstring webAuthnPIN = L"";
+		std::wstring fido2PIN = L"";
 
 		bool passwordMustChange = false;
 		bool passwordChanged = false;

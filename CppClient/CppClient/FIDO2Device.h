@@ -18,9 +18,10 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "WebAuthnSignRequest.h"
-#include "WebAuthnSignResponse.h"
+#include "FIDO2SignRequest.h"
+#include "FIDO2SignResponse.h"
 #include "OfflineData.h"
+#include "FIDO2RegistrationRequest.h"
 #include <string>
 #include <fido.h>
 #include <vector>
@@ -34,14 +35,16 @@ constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 class FIDO2Device
 {
 public:
-	static std::vector<FIDO2Device> GetDevices();
+	static std::vector<FIDO2Device> GetDevices(bool log=true);
 
-	FIDO2Device(const fido_dev_info_t* devinfo);
+	FIDO2Device(const fido_dev_info_t* devinfo, bool log=true);
 	FIDO2Device() = default;
 
-	int Sign(const WebAuthnSignRequest& signRequest, const std::string& origin, const std::string& pin, WebAuthnSignResponse& signResponse) const;
-	
+	int Sign(const FIDO2SignRequest& signRequest, const std::string& origin, const std::string& pin, FIDO2SignResponse& signResponse) const;
+
 	int SignAndVerifyAssertion(const std::vector<OfflineData>& offlineData, const std::string& origin, const std::string& pin, std::string& serialUsed) const;
+
+	int Register(const FIDO2RegistrationRequest& registration, const std::string& pin);
 
 	std::string GetPath() const { return _path; }
 	std::string GetManufacturer() const { return _manufacturer; }
@@ -51,10 +54,15 @@ public:
 	bool HasUV() const noexcept { return _hasUV; }
 
 private:
+	int GetDeviceInfo();
+
 	std::string _path;
 	std::string _manufacturer;
 	std::string _product;
 	bool _hasPin = false;
 	bool _isWinHello = false;
 	bool _hasUV = false;
+	std::vector<int> _supportedAlgorithms;
+	int _remainingResidentKeys = -1;
+	bool _newPinRequired = false;
 };

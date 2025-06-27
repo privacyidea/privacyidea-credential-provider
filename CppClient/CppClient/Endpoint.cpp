@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright	2019 NetKnights GmbH
+** Copyright	2025 NetKnights GmbH
 ** Author:		Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,6 +90,7 @@ std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::s
 	{
 		ret = ret.substr(0, ret.size() - 1);
 	}
+
 	return ret;
 }
 
@@ -160,7 +161,8 @@ void CALLBACK WinHttpStatusCallback(
 	}
 }
 
-string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const std::map<std::string, std::string>& headers, const RequestMethod& method)
+string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters,
+	const std::map<std::string, std::string>& headers, const RequestMethod& method)
 {
 	PIDebug(string(__FUNCTION__) + " to " + endpoint);
 	// Prepare the parameters
@@ -178,8 +180,15 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	}
 
 	LPSTR data = _strdup(strData.c_str());
-	const DWORD data_len = (DWORD)strnlen_s(strData.c_str(), MAXDWORD32);
+	DWORD data_len = (DWORD)strnlen_s(strData.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
+
+	if (method == RequestMethod::GET)
+	{
+		fullPath += L"?" + EncodeUTF16(strData, CP_UTF8);
+		data = nullptr; // No data needed for GET requests
+		data_len = 0; // No data length for GET requests
+	}
 
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
@@ -289,11 +298,15 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	{
 		PIError("Failed to add User-Agent to header!");
 	}
-	for (auto& entry : headers)
+	if (!headers.empty())
 	{
-		if (!WinHttpAddRequestHeaders(hRequest, Convert::ToWString(entry.first + ": " + entry.second).c_str(), (DWORD)-1L, WINHTTP_ADDREQ_FLAG_ADD))
+		for (auto& entry : headers)
 		{
-			PIError("Failed to add header " + entry.first + ": " + entry.second + " to request: " + to_string(GetLastError()));
+			if (!entry.first.empty() && !WinHttpAddRequestHeaders(hRequest,	Convert::ToWString(entry.first + ": " + entry.second).c_str(),
+				(DWORD)-1L,	WINHTTP_ADDREQ_FLAG_ADD))
+			{
+				PIError("Failed to add header " + entry.first + ": " + entry.second + " to request: " + to_string(GetLastError()));
+			}
 		}
 	}
 

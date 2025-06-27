@@ -41,7 +41,9 @@ CProvider::CProvider() :
 
 	_config = std::make_shared<Configuration>();
 	_config->Load();
+	auto c = _config->scenario;
 	Logger::Get().logDebug = _config->debugLog;
+	PIDebug("CProvider created with scenario: " + std::to_string(static_cast<int>(c)));
 }
 
 CProvider::~CProvider()
@@ -243,6 +245,8 @@ HRESULT CProvider::UnAdvise()
 {
 	PIDebug(std::string(__FUNCTION__) + " - AUTHENTICATION END");
 
+	_credential->StopPoll();
+
 	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
 		_config->provider.pCredentialProviderEvents->Release();
@@ -294,7 +298,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 			case FID_USERNAME:
 				label = util.GetText(TEXT_USERNAME);
 				break;
-			case FID_LDAP_PASS:
+			case FID_PASSWORD:
 				label = util.GetText(TEXT_PASSWORD);
 				break;
 			case FID_NEW_PASS_1:
@@ -361,17 +365,9 @@ HRESULT CProvider::GetCredentialCount(
 		&& _SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD)
 		&& _config->provider.cpu != CPUS_CREDUI)
 	{
-		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
-		if (_config->isRemoteSession && !_config->twoStepHideOTP)
-		{
-			*pbAutoLogonWithDefault = FALSE;
-		}
-		else
-		{
-			PIDebug("Setting AutoLogon to true");
-			*pdwDefault = 0;
-			*pbAutoLogonWithDefault = TRUE;
-		}
+		PIDebug("Setting AutoLogon to true");
+		*pdwDefault = 0;
+		*pbAutoLogonWithDefault = TRUE;
 	}
 	return S_OK;
 }
@@ -437,10 +433,8 @@ HRESULT CProvider::GetCredentialAt(
 
 				NETSETUP_JOIN_STATUS join_status;
 
-				if (!NetGetJoinInformation(
-					nullptr,
-					&serializedDomain,
-					&join_status) == NERR_Success || join_status == NetSetupUnjoined || join_status == NetSetupUnknownStatus)
+				if (!NetGetJoinInformation(nullptr, &serializedDomain, &join_status) == NERR_Success 
+					|| join_status == NetSetupUnjoined || join_status == NetSetupUnknownStatus)
 				{
 					serializedDomain = nullptr;
 				}
@@ -454,11 +448,11 @@ HRESULT CProvider::GetCredentialAt(
 		const FIELD_STATE_PAIR* pfsp = nullptr;
 		if (cpus == CPUS_UNLOCK_WORKSTATION)
 		{
-			pfsp = _config->twoStepHideOTP ? s_rgScenarioUnlockFirstStepPassword : s_rgScenarioUnlockPasswordOTP;
+			pfsp = s_rgScenarioPassword;
 		}
 		else
 		{
-			pfsp = _config->twoStepHideOTP ? s_rgScenarioLogonFirstStepUserLDAP : s_rgScenarioDisplayAllFields;
+			pfsp = s_rgScenarioUsername;
 		}
 
 		hr = _credential->Initialize(

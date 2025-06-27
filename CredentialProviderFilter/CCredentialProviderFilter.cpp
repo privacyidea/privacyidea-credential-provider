@@ -35,7 +35,7 @@
 HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 {
 	RegistryReader rr(CONFIG_REGISTRY_PATH);
-	Logger::Get().logDebug = rr.GetBoolRegistry(L"debug_log");
+	Logger::Get().logDebug = rr.GetBool(L"debug_log");
 
 	PIDebug(std::string(__FUNCTION__) + " - FILTER START");
 	HRESULT hr;
@@ -62,7 +62,7 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 	PIDebug(std::string(__FUNCTION__) + " " + Shared::CPUStoString(cpus));
 
 	RegistryReader rr(CONFIG_REGISTRY_PATH);
-	_filterEnabled = rr.GetBoolRegistry(L"enable_filter");
+	_filterEnabled = rr.GetBool(L"enable_filter");
 
 	if (!_filterEnabled)
 	{
@@ -90,6 +90,11 @@ HRESULT CCredentialProviderFilter::Filter(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpu
 
 	std::vector<GUID> whitelistedGUIDs;
 	auto whitelist = rr.GetMultiSZ(L"filter_whitelist");
+	// If its CredUI, add the FIDO CP to the whitelist, so security keys can be selected
+	if (cpus == CPUS_CREDUI)
+	{
+		whitelist.push_back(L"{F8A1793B-7873-4046-B2A7-1F318747F427}");
+	}
 	if (!whitelist.empty())
 	{
 		PIDebug("Entries for filter whitelist found:");

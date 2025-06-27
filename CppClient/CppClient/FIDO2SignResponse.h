@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-struct WebAuthnSignResponse
+struct FIDO2SignResponse
 {
 	std::string credentialid;
 	std::string clientdata;

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +19,10 @@
 
 #pragma once
 #include "Challenge.h"
-#include "WebAuthnSignRequest.h"
+#include "FIDO2RegistrationRequest.h"
+#include "FIDO2SignRequest.h"
+#include "AuthenticationStatus.h"
+#include <optional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,7 +32,7 @@ class PIResponse
 public:
 	bool status = false;
 	bool value = false;
-
+	AuthenticationStatus authenticationStatus = AuthenticationStatus::NOT_SET;
 	std::string transactionId;
 	std::string message;
 
@@ -40,12 +43,20 @@ public:
 
 	bool IsPushAvailable();
 
+	bool isAuthenticationSuccessful() const;
+
 	std::string GetPushMessage();
 
-	WebAuthnSignRequest GetWebAuthnSignRequest();
+	std::optional<FIDO2SignRequest> GetFIDO2SignRequest();
 
 	std::string GetDeduplicatedMessage();
 
 	std::string preferredMode;
+
+	std::optional<std::string> username = std::nullopt;
+
+	std::optional<FIDO2RegistrationRequest> passkeyRegistration = std::nullopt;
+
+	std::optional<FIDO2SignRequest> passkeyChallenge = std::nullopt;
 };
 

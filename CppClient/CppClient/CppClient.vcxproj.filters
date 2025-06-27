@@ -25,9 +25,11 @@
     <ClInclude Include="PIResponse.h" />
     <ClInclude Include="PrivacyIDEA.h" />
     <ClInclude Include="RegistryReader.h" />
-    <ClInclude Include="AllowCredential.h" />
-    <ClInclude Include="WebAuthnSignRequest.h" />
-    <ClInclude Include="WebAuthnSignResponse.h" />
+    <ClInclude Include="FIDO2SignRequest.h" />
+    <ClInclude Include="FIDO2SignResponse.h" />
     <ClInclude Include="FIDO2Device.h" />
+    <ClInclude Include="FIDO2RegistrationRequest.h" />
+    <ClInclude Include="FIDO2RegistrationResponse.h" />
+    <ClInclude Include="AuthenticationStatus.h" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,9 @@
+# Version 3.6.1 TBD
+## Enhancement
+
+## Fixes
+* Fixed a bug where `prefill_username` would still overwrite another username that was entered after the field was prefilled, resulting in a logon attempt of the wrong user.
+
 # Version 3.6.0 2024-08-09
 
 ## Enhancement

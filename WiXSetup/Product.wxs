@@ -74,9 +74,6 @@
 		<Property Id="V1_BITMAP_PATH">
 			<RegistrySearch Id="SearchV1BitmapPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="v1_bitmap_path" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="TWO_STEP_HIDE_OTP">
-			<RegistrySearch Id="SearchTwoStepHideOTP" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_hide_otp" Win64="$(var.Win64)" Type="raw" />
-		</Property>
 		<Property Id="TWO_STEP_SEND_PASSWORD">
 			<RegistrySearch Id="SearchTwoStepSendPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_password" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -149,7 +146,16 @@
 		<Property Id="OTP_FAIL_RETURN_TO_FIRST_STEP">
 			<RegistrySearch Id="SearchOtpFailReturnToFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_fail_return_to_first_step" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
+		<Property Id="USERNAME_PASSWORD">
+			<RegistrySearch Id="SearchUsernamePassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="username_password" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="DISABLE_PASSKEY">
+			<RegistrySearch Id="SearchDisablePasskey" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="disable_passkey" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="CREDUI_NO_IMAGE">
+			<RegistrySearch Id="SearchCreduiNoImage" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="credui_no_image" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		
 		<!-- END PROPERTIES -->
 		<!-- Directory definitions -->
 		<Directory Id="TARGETDIR" Name="SourceDir">
@@ -239,11 +245,15 @@
 						<RegistryValue Name="otp_text" Type="string" Value="[OTP_TEXT]" />
 						<RegistryValue Name="otp_fail_text" Type="string" Value="" />
 						<RegistryValue Name="v1_bitmap_path" Type="string" Value="[V1_BITMAP_PATH]" />
-						<RegistryValue Name="two_step_hide_otp" Type="string" Value="[TWO_STEP_HIDE_OTP]" />
+						<RegistryValue Name="credui_no_image" Type="string" Value="[CREDUI_NO_IMAGE]" />
+						
 						<RegistryValue Name="two_step_send_password" Type="string" Value="[TWO_STEP_SEND_PASSWORD]" />
 						<RegistryValue Name="two_step_send_empty_password" Type="string" Value="[TWO_STEP_SEND_EMPTY_PASSWORD]" />
+						<RegistryValue Name="username_password" Type="string" Value="[USERNAME_PASSWORD]" />
+						
 						<RegistryValue Name="hide_fullname" Type="string" Value="[HIDE_FULLNAME]" />
 						<RegistryValue Name="hide_domainname" Type="string" Value="[HIDE_DOMAINNAME]" />
+						
 						<RegistryValue Name="show_domain_hint" Type="string" Value="" />
 						<RegistryValue Name="prefill_username" Type="string" Value="" />
 						<RegistryValue Name="enable_reset" Type="string" Value="" />
@@ -261,6 +271,7 @@
 						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
 						<RegistryValue Name="webauthn_pin_hint" Type="string" Value="[WEBAUTHN_PIN_HINT]" />
 						<RegistryValue Name="webauthn_offline_no_pin" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
+						<RegistryValue Name="disable_passkey" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
 						<!-- END WEBAUTHN -->
 						<!-- MISC -->
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />

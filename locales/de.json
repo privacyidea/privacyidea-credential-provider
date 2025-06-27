@@ -24,5 +24,9 @@
   "22": "Offline Token werden aufgefüllt...",
   "23": "Bitte entfernen Sie Ihren Sicherheitsschlüssel und verbinden Sie Ihn erneut!",
   "24": "Kommunikation mit dem Gerät fehlgeschlagen. Versuchen Sie eine andere Anmeldeoption oder ein anderes Gerät.",
-  "25": "Falsche Sicherheitsschlüssel-PIN!"
+  "25": "Falsche Sicherheitsschlüssel-PIN!",
+  "26": "Passkey verwenden",
+  "27": "Geben Sie Ihren Benutzernamen ein",
+  "28": "Geben Sie Ihr Kennwort ein",
+  "29": "Geben Sie Ihren Benutzernamen und Kennwort ein"
 }

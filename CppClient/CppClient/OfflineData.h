@@ -45,5 +45,5 @@ public:
 	std::string credId;
 	std::string rpId;
 
-	bool isWebAuthn() const { return !pubKey.empty() && !credId.empty() && !rpId.empty(); }
+	bool isWebAuthn() const noexcept { return !pubKey.empty() && !credId.empty() && !rpId.empty(); }
 };

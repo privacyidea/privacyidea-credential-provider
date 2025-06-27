@@ -76,6 +76,14 @@ std::wstring Utilities::GetText(int id)
 			}
 			break;
 		}
+		case TEXT_USE_PASSKEY:
+		{
+			if (!_config->usePasskeyText.empty())
+			{
+				return _config->usePasskeyText;
+			}
+			break;
+		}
 		default:
 		{
 			break;
@@ -462,7 +470,7 @@ HRESULT Utilities::InitializeField(
 			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
 			break;
 		}
-		case FID_LDAP_PASS:
+		case FID_PASSWORD:
 		{
 			if (!_config->credential.password.empty())
 			{
@@ -550,7 +558,7 @@ HRESULT Utilities::InitializeField(
 			hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[field_index]);
 			break;
 		}
-		case FID_WAN_LINK:
+		case FID_FIDO2_ONLINE:
 		{
 			hr = SHStrDupW(GetText(TEXT_USE_WEBAUTHN).c_str(), &rgFieldStrings[field_index]);
 			break;
@@ -593,7 +601,7 @@ HRESULT Utilities::CopyInputFields()
 
 HRESULT Utilities::CopyPasswordChangeFields()
 {
-	_config->credential.password = _config->provider.field_strings[FID_LDAP_PASS];
+	_config->credential.password = _config->provider.field_strings[FID_PASSWORD];
 	PIDebug(L"Old pw: " + _config->credential.password);
 	_config->credential.newPassword1 = _config->provider.field_strings[FID_NEW_PASS_1];
 	PIDebug(L"new pw1: " + _config->credential.newPassword1);
@@ -646,7 +654,7 @@ HRESULT Utilities::CopyUsernameField()
 
 HRESULT Utilities::CopyPasswordField()
 {
-	std::wstring newPassword(_config->provider.field_strings[FID_LDAP_PASS]);
+	std::wstring newPassword(_config->provider.field_strings[FID_PASSWORD]);
 
 	if (newPassword.empty())
 	{
@@ -695,7 +703,7 @@ HRESULT Utilities::CopyWANPinField()
 	else
 	{
 		PIDebug(L"Copying PIN from GUI");
-		_config->credential.webAuthnPIN = pin;
+		_config->credential.fido2PIN = pin;
 	}
 	return S_OK;
 }

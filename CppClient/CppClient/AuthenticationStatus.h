@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2024 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +18,10 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include <string>
-#include <vector>
-
-struct AllowCredential
+enum class AuthenticationStatus
 {
-	std::string id;
-	std::vector<std::string> transports;
-	std::string type = "public-key";
+	NOT_SET = 0,
+	ACCEPT = 1,
+	CHALLENGE = 2,
+	REJECT = 3,
 };

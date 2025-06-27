@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2024 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,7 @@
 #include "JsonParser.h"
 #include "Logger.h"
 #include "nlohmann/json.hpp"
-#include "WebAuthnSignRequest.h"
+#include "FIDO2SignRequest.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -35,7 +35,7 @@ int GetIntOrZero(json& input, string fieldName)
 	}
 	else
 	{
-		PIDebug(fieldName + " was expected to be int, but was not.");
+		//PIDebug(fieldName + " was expected to be int, but was not.");
 	}
 	return 0;
 }
@@ -49,7 +49,7 @@ string GetStringOrEmpty(json& input, string fieldName)
 	}
 	else
 	{
-		PIDebug(fieldName + " was expected to be string, but was not.");
+		//PIDebug(fieldName + " was expected to be string, but was not.");
 	}
 	return "";
 }
@@ -63,7 +63,7 @@ bool GetBoolOrFalse(json& input, string fieldName)
 	}
 	else
 	{
-		PIDebug(fieldName + " was expected to be bool, but was not.");
+		//PIDebug(fieldName + " was expected to be bool, but was not.");
 	}
 	return false;
 }
@@ -104,6 +104,23 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 		response.value = GetBoolOrFalse(jResult, "value");
 		response.status = GetBoolOrFalse(jResult, "status");
 
+		string authStatus = GetStringOrEmpty(jResult, "authentication");
+		if (!authStatus.empty())
+		{
+			if (authStatus == "ACCEPT")
+			{
+				response.authenticationStatus = AuthenticationStatus::ACCEPT;
+			}
+			else if (authStatus == "REJECT")
+			{
+				response.authenticationStatus = AuthenticationStatus::REJECT;
+			}
+			else if (authStatus == "CHALLENGE")
+			{
+				response.authenticationStatus = AuthenticationStatus::CHALLENGE;
+			}
+		}
+
 		if (jResult.contains("error"))
 		{
 			auto& jError = jResult["error"];
@@ -119,51 +136,115 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 
 	auto& jDetail = jRoot["detail"];
 
+	// Passkey challenge
+	auto& passkey = jDetail["passkey"];
+	if (!passkey.empty())
+	{
+		response.passkeyChallenge = FIDO2SignRequest(
+			GetStringOrEmpty(passkey, "challenge"),
+			GetStringOrEmpty(passkey, "rpId"),
+			GetStringOrEmpty(passkey, "user_verification"),
+			GetStringOrEmpty(passkey, "transaction_id"),
+			GetStringOrEmpty(passkey, "message"),
+			"passkey");
+	}
+
 	response.message = GetStringOrEmpty(jDetail, "message");
 
+	auto username = GetStringOrEmpty(jDetail, "username");
+	if (!username.empty())
+	{
+		response.username = username;
+	}
+
+	// Multi-challenge
 	auto& multiChallenge = jDetail["multi_challenge"];
 	if (!multiChallenge.empty())
 	{
 		response.transactionId = GetStringOrEmpty(jDetail, "transaction_id");
 		response.preferredMode = GetStringOrEmpty(jDetail, "preferred_client_mode");
 
-		for (auto& item : multiChallenge.items())
+		for (auto& challenge : multiChallenge.items())
 		{
-			json jChallenge = item.value();
-			string type = GetStringOrEmpty(jChallenge, "type");
-			Challenge c;
-			c.type = type;
-			c.message = GetStringOrEmpty(jChallenge, "message");
-			c.serial = GetStringOrEmpty(jChallenge, "serial");
-			c.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
-			c.image = GetStringOrEmpty(jChallenge, "image");
-
-			if (type == "webauthn")
+			json jChallenge = challenge.value();
+			if (jChallenge.contains("passkey_registration"))
 			{
-				auto& jSignRequest = jChallenge["attributes"]["webAuthnSignRequest"];
-				vector<AllowCredential> allowCredentials;
-				for (auto& tmp : jSignRequest["allowCredentials"])
-				{
-					AllowCredential ac;
-					ac.id = GetStringOrEmpty(tmp, "id");
-					ac.type = GetStringOrEmpty(tmp, "type");
-					for (auto& transport : tmp["transports"])
-					{
-						ac.transports.push_back(transport.get<string>());
-					}
-					allowCredentials.push_back(ac);
-				}
-				WebAuthnSignRequest signRequest;
-				signRequest.challenge = GetStringOrEmpty(jSignRequest, "challenge");
-				signRequest.rpId = GetStringOrEmpty(jSignRequest, "rpId");
-				signRequest.userVerification = GetStringOrEmpty(jSignRequest, "userVerification");
-				signRequest.timeout = GetIntOrZero(jSignRequest, "timeout");
-				signRequest.allowCredentials = allowCredentials;
-				signRequest.type = allowCredentials[0].type; // TODO does this matter? Currently not
-				c.webAuthnSignRequest = signRequest;
-			}
+				auto& pkreg = jChallenge["passkey_registration"];
+				auto& rp = pkreg["rp"];
+				auto tmp = FIDO2RegistrationRequest();
+				tmp.rpId = GetStringOrEmpty(rp, "id");
+				tmp.rpName = GetStringOrEmpty(rp, "name");
+				auto& user = pkreg["user"];
+				tmp.userName = GetStringOrEmpty(user, "name");
+				tmp.userDisplayName = GetStringOrEmpty(user, "displayName");
+				tmp.userId = GetStringOrEmpty(user, "id");
 
-			response.challenges.push_back(c);
+				tmp.challenge = GetStringOrEmpty(pkreg, "challenge");
+				tmp.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
+				tmp.serial = GetStringOrEmpty(jChallenge, "serial");
+
+				auto& authenticatorSelection = pkreg["authenticatorSelection"];
+				if (authenticatorSelection.is_object())
+				{
+					for (auto& item : authenticatorSelection.items())
+					{
+						string key = item.key();
+						string value = item.value();
+						if (key == "residentKey")
+						{
+							tmp.residentKey = value == "required";
+						}
+						else if (key == "userVerification")
+						{
+							tmp.userVerification = value == "required";
+						}
+						// TODO
+						//response.fido2RegistrationRequest.authenticatorSelection.push_back({ key, value });
+					}
+				}
+				else
+				{
+					PIDebug("authenticatorSelection in passkey_registration was expected to be object, but was not.");
+				}
+				response.passkeyRegistration = tmp;
+			}
+			else
+			{
+				// Standard challenge
+				string type = GetStringOrEmpty(jChallenge, "type");
+				Challenge c;
+				c.type = type;
+				c.message = GetStringOrEmpty(jChallenge, "message");
+				c.serial = GetStringOrEmpty(jChallenge, "serial");
+				c.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
+				c.image = GetStringOrEmpty(jChallenge, "image");
+
+				if (type == "webauthn")
+				{
+					auto& jSignRequest = jChallenge["attributes"]["webAuthnSignRequest"];
+					vector<AllowCredential> allowCredentials;
+					for (auto& tmp : jSignRequest["allowCredentials"])
+					{
+						AllowCredential ac;
+						ac.id = GetStringOrEmpty(tmp, "id");
+						ac.type = GetStringOrEmpty(tmp, "type");
+						for (auto& transport : tmp["transports"])
+						{
+							ac.transports.push_back(transport.get<string>());
+						}
+						allowCredentials.push_back(ac);
+					}
+					FIDO2SignRequest signRequest;
+					signRequest.challenge = GetStringOrEmpty(jSignRequest, "challenge");
+					signRequest.rpId = GetStringOrEmpty(jSignRequest, "rpId");
+					signRequest.userVerification = GetStringOrEmpty(jSignRequest, "userVerification");
+					signRequest.timeout = GetIntOrZero(jSignRequest, "timeout");
+					signRequest.allowCredentials = allowCredentials;
+					signRequest.type = "webauthn";
+					c.webAuthnSignRequest = signRequest;
+				}
+				response.challenges.push_back(c);
+			}
 		}
 	}
 
@@ -227,7 +308,7 @@ HRESULT ParseOfflineDataItem(json jRoot, OfflineData& data)
 		PIDebug("Offline data item did not contain 'response'");
 		return PI_JSON_PARSE_ERROR;
 	}
-	
+
 	const bool isWebAuthn = response.contains("credentialId") && response.contains("rpId") && response.contains("pubKey");
 	if (isWebAuthn)
 	{

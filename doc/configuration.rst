@@ -261,6 +261,7 @@ Offline token
 
 HOTP token can be configured to be usable without a connection to privacyIDEA. On the detail page of the token, select Application => offline at the bottom.
 Now the token has to be used online once with the Credential Provider, to get the configured amount of OTPs in advance.
+
 The following settings can be useful with offline token:
 
 **offline_file**

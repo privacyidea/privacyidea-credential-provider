@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright	2019 NetKnights GmbH
+** Copyright	2025 NetKnights GmbH
 ** Author:		Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -204,12 +204,25 @@ std::vector<std::pair<std::string, size_t>> OfflineHandler::GetTokenInfo(const s
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetWebAuthnOfflineData(const std::string& username)
+std::vector<OfflineData> OfflineHandler::GetFIDO2OfflineDataFor(const std::string& username)
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
 	{
 		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username) && item.isWebAuthn())
+		{
+			ret.push_back(item);
+		}
+	}
+	return ret;
+}
+
+std::vector<OfflineData> OfflineHandler::GetAllFIDO2OfflineData()
+{
+	std::vector<OfflineData> ret;
+	for (auto& item : _dataSets)
+	{
+		if (item.isWebAuthn())
 		{
 			ret.push_back(item);
 		}
@@ -251,8 +264,28 @@ bool OfflineHandler::UpdateRefilltoken(std::string serial, std::string refilltok
 	return false;
 }
 
+std::optional<std::string> OfflineHandler::GetUsernameForSerial(const std::string& serial)
+{
+	std::optional<std::string> ret = std::nullopt;
+	for (auto& item : _dataSets)
+	{
+		if (item.serial == serial)
+		{
+			ret = item.username;
+			break;
+		}
+	}
+	return ret;
+}
+
 HRESULT OfflineHandler::SaveToFile()
 {
+	if (_dataSets.empty())
+	{
+		PIDebug("No offline data to save, skipping file write.");
+		return S_OK;
+	}
+
 	ofstream o;
 	o.open(_filePath, ios_base::out); // Destroy contents | create new
 

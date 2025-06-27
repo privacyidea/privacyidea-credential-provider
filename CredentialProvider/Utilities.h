@@ -41,6 +41,11 @@ constexpr auto TEXT_OFFLINE_REFILL = 22;
 constexpr auto TEXT_FIDO_ERR_PIN_BLOCKED = 23;
 constexpr auto TEXT_FIDO_ERR_TX = 24;
 constexpr auto TEXT_FIDO_ERR_PIN_INVALID = 25;
+constexpr auto TEXT_USE_PASSKEY = 26;
+constexpr auto TEXT_ENTER_USERNAME = 27;
+constexpr auto TEXT_ENTER_PASSWORD = 28;
+constexpr auto TEXT_ENTER_USERNAME_PASSWORD = 28;
+
 
 class Utilities
 {

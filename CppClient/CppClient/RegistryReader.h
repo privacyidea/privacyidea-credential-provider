@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,13 +34,13 @@ public:
 	std::wstring path;
 
 	// puts all keys and values from the current path into a map, the keys will be converted to uppercase
-	bool GetAllEntries(const std::wstring & pathToKey, std::map<std::wstring, std::wstring>& map) noexcept;
+	bool GetAll(const std::wstring& pathToKey, std::map<std::wstring, std::wstring>& map) noexcept;
 
-	std::wstring GetWStringRegistry(std::wstring name) noexcept;
+	std::wstring GetWString(std::wstring name) noexcept;
 
-	bool GetBoolRegistry(std::wstring name) noexcept;
+	bool GetBool(std::wstring name) noexcept;
 
-	int GetIntRegistry(std::wstring name) noexcept;
+	int GetInt(std::wstring name) noexcept;
 
 	std::vector<std::wstring> GetMultiSZ(const std::wstring& valueName) noexcept;
 };

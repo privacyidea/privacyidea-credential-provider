@@ -31,6 +31,7 @@
 #include <helpers.h>
 #include <string>
 #include <map>
+#include <optional>
 
 #define NOT_EMPTY(NAME) \
 	(NAME != NULL && NAME[0] != NULL)
@@ -119,6 +120,8 @@ public:
 		__in_opt PWSTR domain_name,
 		__in_opt PWSTR password);
 
+	HRESULT StopPoll();
+
 private:
 	HRESULT SetScenario(__in SCENARIO scenario);
 
@@ -127,30 +130,34 @@ private:
 	HRESULT SetDomainHint(std::wstring domain);
 	HRESULT SetOfflineInfo(std::string username);
 
-	SCENARIO SelectWebAuthnScenario();
+	SCENARIO SelectWebAuthnScenario(std::string userVerification = "", bool offline = false);
 
 	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
-	void PushAuthenticationCallback(bool success);
+	void PushAuthenticationCallback(const PIResponse& response);
+
+	void PasskeyAuthInitCallback();
+
+	void BackgroundDeviceSearch(std::function<void()> callback);
 
 	HBITMAP CreateBitmapFromBase64PNG(const std::wstring& base64);
 
 	LONG									_cRef;
 
 	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[FID_NUM_FIELDS];	// An array holding the type and 
-																							// name of each field in the tile.
+	// name of each field in the tile.
 
 	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];				// An array holding the state of 
-																							// each field in the tile.
+	// each field in the tile.
 
-	wchar_t*								_rgFieldStrings[FID_NUM_FIELDS];				// An array holding the string 
-																							// value of each field. This is 
-																							// different from the name of 
-																							// the field held in 
-																							// _rgCredProvFieldDescriptors.
-	ICredentialProviderCredentialEvents*	_pCredProvCredentialEvents;
+	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];				// An array holding the string 
+	// value of each field. This is 
+	// different from the name of 
+	// the field held in 
+	// _rgCredProvFieldDescriptors.
+	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
 
-	DWORD                                   _dwComboIndex;									// Tracks the current index of our combobox.
+	DWORD                                   _dwComboIndex;
 
 	PrivacyIDEA								_privacyIDEA;
 
@@ -162,9 +169,14 @@ private:
 
 	HRESULT									_lastStatus = S_OK;
 
-	bool									_authenticationComplete = false;
+	bool									_privacyIDEASuccess = false;
 
 	bool									_fidoDeviceSearchCancelled = false;
 
 	bool 								    _modeSwitched = false;
+	std::atomic<bool> _runBackgroundDeviceSearch = false;
+	bool _passkeyAttemptedOnce = false;
+	std::atomic<bool> _threadStarted = false;
+
+	std::optional<FIDO2SignRequest> _passkeyChallenge = std::nullopt;
 };

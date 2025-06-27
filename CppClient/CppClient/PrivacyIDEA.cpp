@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,26 @@
 #include <stdexcept>
 
 using namespace std;
+
+std::optional<FIDO2SignRequest> PrivacyIDEA::GetOfflineFIDO2SignRequest()
+{
+	std::optional<FIDO2SignRequest> ret = std::nullopt;
+
+	auto offlineData = offlineHandler.GetAllFIDO2OfflineData();
+	if (!offlineData.empty())
+	{
+		FIDO2SignRequest signRequest;
+		for (const auto& item : offlineData)
+		{
+			AllowCredential ac;
+			ac.id = item.credId;
+			signRequest.allowCredentials.push_back(ac);
+		}
+		ret = signRequest;
+	}
+
+	return ret;
+}
 
 // Check if there is a mapping for the given domain or - if not - a default realm is set
 HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std::string>& parameters)
@@ -70,7 +90,7 @@ void PrivacyIDEA::PollThread(
 	const std::wstring& domain,
 	const std::wstring& upn,
 	const std::string& transactionId,
-	std::function<void(bool)> callback)
+	std::function<void(const PIResponse&)> callback)
 {
 	PIDebug("Starting poll thread...");
 	bool success = false;
@@ -97,11 +117,11 @@ void PrivacyIDEA::PollThread(
 		if (FAILED(res))
 		{
 			PIDebug("/validate/check failed with " + to_string(res));
-			callback(false);
+			callback(pir);
 		}
 		else
 		{
-			callback(pir.value);
+			callback(pir);
 		}
 	}
 }
@@ -156,7 +176,7 @@ HRESULT PrivacyIDEA::ValidateCheck(
 HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	const std::wstring& username,
 	const std::wstring& domain,
-	const WebAuthnSignResponse& webAuthnSignResponse,
+	const FIDO2SignResponse& webAuthnSignResponse,
 	const std::string& origin,
 	PIResponse& responseObj,
 	const std::string& transactionId,
@@ -173,8 +193,12 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	}
 	else
 	{
-		string strUsername = Convert::ToString(username);
-		parameters.try_emplace("user", strUsername);
+		if (!username.empty())
+		{
+			string strUsername = Convert::ToString(username);
+			parameters.try_emplace("user", strUsername);
+		}
+
 		AppendRealm(domain, parameters);
 	}
 
@@ -208,6 +232,14 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	}
 
 	return ProcessResponse(response, responseObj);
+}
+
+HRESULT PrivacyIDEA::ValidateInitialize(PIResponse& response, const std::string& type)
+{
+	PIDebug(__FUNCTION__);
+	map<string, string> parameters = { { "type", type } };
+	string r = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_INITIALIZE, parameters, {}, RequestMethod::POST);
+	return ProcessResponse(r, response);
 }
 
 /*!
@@ -302,7 +334,7 @@ HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const s
 		}
 		if (!offlineHandler.UpdateRefilltoken(serial, refilltoken))
 		{
-            PIDebug("Failed to update refilltoken for serial " + serial);
+			PIDebug("Failed to update refilltoken for serial " + serial);
 			return E_FAIL;
 		}
 	}
@@ -317,7 +349,7 @@ bool PrivacyIDEA::StopPoll()
 	return true;
 }
 
-void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transactionId, std::function<void(bool)> callback)
+void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transactionId, std::function<void(const PIResponse&)> callback)
 {
 	_runPoll.store(true);
 	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);
@@ -331,5 +363,6 @@ bool PrivacyIDEA::PollTransaction(std::string transactionId)
 	};
 
 	string response = _endpoint.SendRequest(PI_ENDPOINT_POLLTRANSACTION, parameters, map<string, string>(), RequestMethod::GET);
+	PIDebug("Polltransaction response: " + response);
 	return _parser.ParsePollTransaction(response);
 }

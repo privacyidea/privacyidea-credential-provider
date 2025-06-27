@@ -11,11 +11,11 @@ using namespace std;
 using json = nlohmann::json;
 
 RegistryReader rr(CONFIG_REGISTRY_PATH); // Gets registry keys
+std::wstring Translator::_localesPath = rr.GetWString(L"localesPath"); // Get locales path
 
 std::unordered_map<int, std::wstring> Translator::_translations;
 std::string Translator::_currentLanguage;
 std::string Translator::_currentRegion;
-std::wstring Translator::_localesPath = rr.GetWStringRegistry(L"localesPath"); // Get locales path
 
 Translator::Translator()
 {
