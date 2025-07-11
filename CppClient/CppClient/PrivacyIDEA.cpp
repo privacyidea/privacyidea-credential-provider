@@ -22,6 +22,7 @@
 #include "Convert.h"
 #include <thread>
 #include <stdexcept>
+#include "FIDO2Device.cpp"
 
 using namespace std;
 
@@ -38,6 +39,14 @@ std::optional<FIDO2SignRequest> PrivacyIDEA::GetOfflineFIDO2SignRequest()
 			AllowCredential ac;
 			ac.id = item.credId;
 			signRequest.allowCredentials.push_back(ac);
+			if (signRequest.rpId.empty())
+			{
+				signRequest.rpId = item.rpId;
+			}
+			if (signRequest.challenge.empty())
+			{
+				signRequest.challenge = GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE); // TODO
+			}
 		}
 		ret = signRequest;
 	}
@@ -232,6 +241,34 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	}
 
 	return ProcessResponse(response, responseObj);
+}
+
+HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
+	const std::string& transactionId,
+	const std::string& serial,
+	const std::wstring& username,
+	const std::wstring& domain,
+	FIDO2RegistrationResponse registrationResponse,
+	const std::string& origin,
+	PIResponse& piresponse)
+{
+	map<string, string> parameters = {
+		{"user", Convert::ToString(username)},
+		{"serial", serial},
+		{"type", "passkey"},
+		{"transaction_id", transactionId},
+		{"credential_id", registrationResponse.credentialId},
+		{"clientDataJSON", registrationResponse.clientDataJSON},
+		{"attestationObject", registrationResponse.attestationObject},
+		{"authenticatorAttachment", registrationResponse.authenticatorAttachment},
+		{"rawId", registrationResponse.credentialId}
+	};
+
+	map<string, string> headers = { { "Origin", origin } };
+
+	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+
+	return ProcessResponse(response, piresponse);
 }
 
 HRESULT PrivacyIDEA::ValidateInitialize(PIResponse& response, const std::string& type)

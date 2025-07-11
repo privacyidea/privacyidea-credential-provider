@@ -171,42 +171,68 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 			{
 				auto& pkreg = jChallenge["passkey_registration"];
 				auto& rp = pkreg["rp"];
-				auto tmp = FIDO2RegistrationRequest();
-				tmp.rpId = GetStringOrEmpty(rp, "id");
-				tmp.rpName = GetStringOrEmpty(rp, "name");
+				
+				auto registrationRequest = FIDO2RegistrationRequest();
+				registrationRequest.rpId = GetStringOrEmpty(rp, "id");
+				registrationRequest.rpName = GetStringOrEmpty(rp, "name");
 				auto& user = pkreg["user"];
-				tmp.userName = GetStringOrEmpty(user, "name");
-				tmp.userDisplayName = GetStringOrEmpty(user, "displayName");
-				tmp.userId = GetStringOrEmpty(user, "id");
+				registrationRequest.userName = GetStringOrEmpty(user, "name");
+				registrationRequest.userDisplayName = GetStringOrEmpty(user, "displayName");
+				registrationRequest.userId = GetStringOrEmpty(user, "id");
 
-				tmp.challenge = GetStringOrEmpty(pkreg, "challenge");
-				tmp.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
-				tmp.serial = GetStringOrEmpty(jChallenge, "serial");
-
+				registrationRequest.challenge = GetStringOrEmpty(pkreg, "challenge");
+				registrationRequest.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
+				registrationRequest.serial = GetStringOrEmpty(jChallenge, "serial");
+				registrationRequest.type = "passkey";
 				auto& authenticatorSelection = pkreg["authenticatorSelection"];
 				if (authenticatorSelection.is_object())
 				{
 					for (auto& item : authenticatorSelection.items())
 					{
 						string key = item.key();
-						string value = item.value();
+						json value = item.value();
 						if (key == "residentKey")
 						{
-							tmp.residentKey = value == "required";
+							registrationRequest.residentKey = value.get<std::string>() == "required";
 						}
 						else if (key == "userVerification")
 						{
-							tmp.userVerification = value == "required";
+							registrationRequest.userVerification = value.get<std::string>() == "required";
 						}
-						// TODO
-						//response.fido2RegistrationRequest.authenticatorSelection.push_back({ key, value });
+						else if (key == "requireResidentKey")
+						{
+							registrationRequest.residentKey = value.get<bool>();
+						}
 					}
 				}
 				else
 				{
 					PIDebug("authenticatorSelection in passkey_registration was expected to be object, but was not.");
 				}
-				response.passkeyRegistration = tmp;
+				// PubKeyCredParams				
+				auto& pubKeyCredParams = pkreg["pubKeyCredParams"];
+				if (pubKeyCredParams.is_array())
+				{
+					for (const auto& item : pubKeyCredParams)
+					{
+						if (item.is_object())
+						{
+							std::string type = item.at("type").get<std::string>();
+							int alg = item.at("alg").get<int>();
+							registrationRequest.pubKeyCredParams.emplace_back(type, alg);
+						}
+						else
+						{
+							PIDebug("Warning: Found non-object element in pubKeyCredParams array.");
+						}
+					}
+				}
+				else
+				{
+					PIDebug("pubKeyCredParams in passkey_registration was expected to be array, but was not.");
+				}
+
+				response.passkeyRegistration = registrationRequest;
 			}
 			else
 			{
@@ -445,8 +471,13 @@ std::vector<OfflineData> JsonParser::ParseResponseForOfflineData(std::string ser
 		OfflineData newData;
 		if (ParseOfflineDataItem(jItem, newData) == S_OK)
 		{
-			// Add the serial explicitly because it is not part of the 'offline' section of the response, but required for refill later
-			newData.serial = serial;
+			if (newData.serial.empty())
+			{
+				// Add the serial explicitly if it is not part of the 'offline' section of the response,
+				// but a serial is required for refill later
+				newData.serial = serial;
+			}
+
 			ret.push_back(newData);
 			PIDebug("Received offline data for user '" + newData.username + "'");
 		}

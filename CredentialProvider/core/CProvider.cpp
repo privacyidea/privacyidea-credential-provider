@@ -41,7 +41,7 @@ CProvider::CProvider() :
 
 	_config = std::make_shared<Configuration>();
 	_config->Load();
-	auto c = _config->scenario;
+	auto c = _config->mode;
 	Logger::Get().logDebug = _config->debugLog;
 	PIDebug("CProvider created with scenario: " + std::to_string(static_cast<int>(c)));
 }
@@ -258,7 +258,7 @@ HRESULT CProvider::UnAdvise()
 	return S_OK;
 }
 
-// Called by LogonUI to determine the number of fields in your tiles.  This
+// Called by LogonUI to determine the number of fields in your tiles. This
 // does mean that all your tiles must have the same number of fields.
 // This number must include both visible and invisible fields. If you want a tile
 // to have different fields from the other tiles you enumerate for a given usage

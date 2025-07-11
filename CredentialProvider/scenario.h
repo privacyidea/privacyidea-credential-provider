@@ -4,23 +4,22 @@
 // The indexes of each of the fields in our credential provider's appended tiles.
 enum FIELD_ID
 {
-	FID_LOGO = 0,
-	FID_LARGE_TEXT = 1,
-	FID_SMALL_TEXT = 2,
-	FID_USERNAME = 3,
-	FID_PASSWORD = 4,
-	FID_OTP = 5,
-	FID_WAN_PIN = 6,
-	FID_NEW_PASS_1 = 7,
-	FID_NEW_PASS_2 = 8,
-	FID_SUBMIT_BUTTON = 9,
-	FID_SUBTEXT = 10,
-	FID_RESET_LINK = 11,
-	FID_OFFLINE_INFO = 12,
-	FID_FIDO2_ONLINE = 13, // Passkey in first step, WebAuthn in second if triggered
-	FID_FIDO2_OFFLINE = 14, // Shown if offline FIDO2 is available (both Passkey/WebAuthn)
+	FID_LARGE_TEXT = 0,
+	FID_SMALL_TEXT = 1,
+	FID_USERNAME = 2,
+	FID_PASSWORD = 3,
+	FID_OTP = 4,
+	FID_WAN_PIN = 5,
+	FID_NEW_PASS_1 = 6,
+	FID_NEW_PASS_2 = 7,
+	FID_SUBMIT_BUTTON = 8,
+	FID_SUBTEXT = 9,
+	FID_RESET_LINK = 10,
+	FID_OFFLINE_INFO = 11,
+	FID_FIDO2_ONLINE = 12, // Passkey in first step, WebAuthn in second if triggered
+	FID_FIDO2_OFFLINE = 13, // Shown if offline FIDO2 is available (both Passkey/WebAuthn)
 
-	FID_NUM_FIELDS = 15, // Double check the numbers!
+	FID_NUM_FIELDS = 14, // Double check the numbers!
 };
 
 // The first value indicates when the tile is displayed (selected, not selected)
@@ -42,7 +41,6 @@ struct FIELD_STATE_PAIR
 // USERNAME
 static const FIELD_STATE_PAIR s_rgScenarioUsername[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_LARGE_TEXT
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SMALL_TEXT
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// FID_USERNAME
@@ -62,7 +60,6 @@ static const FIELD_STATE_PAIR s_rgScenarioUsername[] =
 // USERNAMEPASSWORD
 static const FIELD_STATE_PAIR s_rgScenarioUsernamePassword[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_LARGE_TEXT
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SMALL_TEXT
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// FID_USERNAME
@@ -82,7 +79,6 @@ static const FIELD_STATE_PAIR s_rgScenarioUsernamePassword[] =
 // PRIVACYIDEA
 static const FIELD_STATE_PAIR s_rgScenarioPrivacyIDEA[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_LARGE_TEXT
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SMALL_TEXT
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USERNAME
@@ -102,7 +98,6 @@ static const FIELD_STATE_PAIR s_rgScenarioPrivacyIDEA[] =
 // PASSWORD
 static const FIELD_STATE_PAIR s_rgScenarioPassword[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_LARGE_TEXT
 	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SMALL_TEXT
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USERNAME
@@ -122,7 +117,6 @@ static const FIELD_STATE_PAIR s_rgScenarioPassword[] =
 // CHANGE PASSWORD
 static const FIELD_STATE_PAIR s_rgScenarioPasswordChange[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LARGE_TEXT
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_SMALL_TEXT
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USERNAME
@@ -141,7 +135,6 @@ static const FIELD_STATE_PAIR s_rgScenarioPasswordChange[] =
 
 static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LARGE_TEXT
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_SMALL_TEXT
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USERNAME
@@ -161,7 +154,6 @@ static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
 // Show only FID_PASSWORD to get the PIN of the Device
 static const FIELD_STATE_PAIR s_rgScenarioSecurityKey[] =
 {
-	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LARGE_TEXT
 	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_SMALL_TEXT
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USERNAME
@@ -184,7 +176,6 @@ static const FIELD_STATE_PAIR s_rgScenarioSecurityKey[] =
 // The third is the name of the field, NOT the value which will appear in the field.
 static CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors[] =
 {
-	{ FID_LOGO, CPFT_TILE_IMAGE, L"privacyIDEA Login" },
 	{ FID_LARGE_TEXT, CPFT_LARGE_TEXT, L"LargeText" },
 	{ FID_SMALL_TEXT, CPFT_SMALL_TEXT, L"SmallText" },
 	{ FID_USERNAME, CPFT_EDIT_TEXT, L"Username" },

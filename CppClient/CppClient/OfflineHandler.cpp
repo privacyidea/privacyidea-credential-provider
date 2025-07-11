@@ -82,7 +82,7 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const std::str
 	HRESULT success = E_FAIL;
 	for (auto& item : _dataSets)
 	{
-		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
+		if (!item.isWebAuthn() && Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username))
 		{
 			PIDebug("Trying token " + item.serial);
 			const int lowestKey = item.GetLowestKey();

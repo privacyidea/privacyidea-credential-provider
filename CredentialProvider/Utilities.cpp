@@ -548,11 +548,11 @@ HRESULT Utilities::InitializeField(
 			//PIDebug(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
-		case FID_LOGO:
+		/*case FID_LOGO:
 		{
 			hr = S_OK;
 			break;
-		}
+		}*/
 		case FID_RESET_LINK:
 		{
 			hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[field_index]);

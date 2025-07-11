@@ -23,6 +23,7 @@
 #include "Convert.h"
 #include <winhttp.h>
 #include <atlutil.h>
+#include <set>
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -69,29 +70,41 @@ std::string Endpoint::URLEncode(const std::string& in)
 
 std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::string>& parameters)
 {
-	PIDebug("Request parameters:");
-	string ret;
-	for (auto& entry : parameters)
-	{
-		auto encoded = URLEncode(entry.second);
-		ret += entry.first + "=" + encoded + "&";
-		if (entry.first != "pass" || _config.logPasswords)
-		{
-			PIDebug(entry.first + "=" + encoded);
-		}
-		else
-		{
-			PIDebug("pass parameter is not logged");
-		}
-	}
+    PIDebug("Request parameters:");
+    static const std::set<std::string> noEncodeKeys = {
+        "credential_id",
+        "clientDataJSON",
+        "attestationObject",
+        "rawId"
+    };
 
-	// Cut trailing &
-	if (ret.size() > 1)
-	{
-		ret = ret.substr(0, ret.size() - 1);
-	}
+    std::string ret;
+    for (const auto& entry : parameters)
+    {
+        std::string encoded;
+        if (noEncodeKeys.count(entry.first) > 0) {
+            encoded = entry.second; // Do not encode
+        } else {
+            encoded = URLEncode(entry.second);
+        }
+        ret += entry.first + "=" + encoded + "&";
+        if (entry.first != "pass" || _config.logPasswords)
+        {
+            PIDebug(entry.first + "=" + encoded);
+        }
+        else
+        {
+            PIDebug("pass parameter is not logged");
+        }
+    }
 
-	return ret;
+    // Cut trailing &
+    if (ret.size() > 1)
+    {
+        ret = ret.substr(0, ret.size() - 1);
+    }
+
+    return ret;
 }
 
 wstring Endpoint::EncodeUTF16(const std::string& str, int codepage)

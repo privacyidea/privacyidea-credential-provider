@@ -26,6 +26,7 @@
 #include "Utilities.h"
 #include "Configuration.h"
 #include "PrivacyIDEA.h"
+#include "FIDO2Device.h"
 #include <scenario.h>
 #include <unknwn.h>
 #include <helpers.h>
@@ -113,7 +114,7 @@ public:
 	virtual ~CCredential();
 
 public:
-	HRESULT Initialize(//__in CProvider* pProvider,
+	HRESULT Initialize(
 		__in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* rgcpfd,
 		__in const FIELD_STATE_PAIR* rgfsp,
 		__in_opt PWSTR user_name,
@@ -123,60 +124,54 @@ public:
 	HRESULT StopPoll();
 
 private:
-	HRESULT SetScenario(__in SCENARIO scenario);
+	HRESULT SetMode(MODE mode);
 
-	HRESULT ResetScenario(__in bool resetToFirstStep = false);
+	HRESULT ResetMode(bool resetToFirstStep = false);
 
 	HRESULT SetDomainHint(std::wstring domain);
+
 	HRESULT SetOfflineInfo(std::string username);
 
-	SCENARIO SelectWebAuthnScenario(std::string userVerification = "", bool offline = false);
+	MODE SelectFIDOMode(std::string userVerification = "", bool offline = false);
 
 	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
 	void PushAuthenticationCallback(const PIResponse& response);
 
-	void PasskeyAuthInitCallback();
-
-	void BackgroundDeviceSearch(std::function<void()> callback);
-
 	HBITMAP CreateBitmapFromBase64PNG(const std::wstring& base64);
 
-	LONG									_cRef;
+	bool CheckExcludedAccount();
 
-	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR	_rgCredProvFieldDescriptors[FID_NUM_FIELDS];	// An array holding the type and 
-	// name of each field in the tile.
+	HRESULT FIDOAuthentication(IQueryContinueWithStatus* pqcws);
+	HRESULT FIDORegistration(IQueryContinueWithStatus* pqcws);
 
-	FIELD_STATE_PAIR						_rgFieldStatePairs[FID_NUM_FIELDS];				// An array holding the state of 
-	// each field in the tile.
+	// Waits until a FIDO2 device is found or the search is cancelled. If the search is cancelled, an empty optional is returned
+	// and _fidoDeviceSearchCancelled is set to true.
+	// Checks every 200ms if a device is found. Default timeout is 5 minutes.
+	std::optional<FIDO2Device> WaitForFIDODevice(IQueryContinueWithStatus* pqcws, int timeoutMs = 300000);
 
-	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];				// An array holding the string 
-	// value of each field. This is 
-	// different from the name of 
-	// the field held in 
-	// _rgCredProvFieldDescriptors.
+	void HandleFirstStep();
+
+	LONG _cRef;
+	// An array holding the type and name of each field in the tile.
+	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR _rgCredProvFieldDescriptors[FID_NUM_FIELDS];
+
+	// An array holding the state of each field in the tile.
+	FIELD_STATE_PAIR _rgFieldStatePairs[FID_NUM_FIELDS];				
+	
+	// An array holding the string value of each field. This is different from the name of 
+	// the field held in _rgCredProvFieldDescriptors.
+	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];
 	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
-
-	DWORD                                   _dwComboIndex;
-
-	PrivacyIDEA								_privacyIDEA;
-
-	std::shared_ptr<Configuration>			_config;
-
-	Utilities								_util;
-
-	std::wstring							_initialDomain;
-
-	HRESULT									_lastStatus = S_OK;
-
-	bool									_privacyIDEASuccess = false;
-
-	bool									_fidoDeviceSearchCancelled = false;
-
-	bool 								    _modeSwitched = false;
-	std::atomic<bool> _runBackgroundDeviceSearch = false;
-	bool _passkeyAttemptedOnce = false;
-	std::atomic<bool> _threadStarted = false;
-
+	DWORD _dwComboIndex;
+	PrivacyIDEA	_privacyIDEA;
+	std::shared_ptr<Configuration> _config;
+	Utilities _util;
+	std::wstring _initialDomain;
+	HRESULT _lastStatus = S_OK;
+	bool _privacyIDEASuccess = false;
+	bool _fidoDeviceSearchCancelled = false;
+	bool _modeSwitched = false;
 	std::optional<FIDO2SignRequest> _passkeyChallenge = std::nullopt;
+	bool _passkeyRegistrationFailed = false;
 };

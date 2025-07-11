@@ -22,31 +22,27 @@
 #include "PIResponse.h"
 #include <credentialprovider.h>
 
-enum class SCENARIO
+enum class MODE
 {
 	NO_CHANGE = 0,
-	/*
-	LOGON_BASE = 1,
-	UNLOCK_BASE = 2,
-	SECOND_STEP = 3,
-	LOGON_TWO_STEP = 4,
-	UNLOCK_TWO_STEP = 5,
-	*/
 	CHANGE_PASSWORD = 6,
 
 	USERNAME = 10,
 	PASSWORD = 11,
 	USERNAMEPASSWORD = 12, // Required for send_pass.
 
-	PRIVACYIDEA = 15,
-
+	PRIVACYIDEA = 13,
+	SECURITY_KEY_ANY = 15,
 	PASSKEY = 16,
 
-	SECURITY_KEY_ANY = 20,
-	SECURITY_KEY_PIN = 21,
-	SECURITY_KEY_NO_PIN = 22, // Requires reset with autoLogon to get to CCredential::Connect directly
-	SECURITY_KEY_NO_DEVICE = 23, // Requires reset with autoLogon to get to CCredential::Connect directly
+	SEC_KEY_REG = 17,
+	SEC_KEY_REG_PIN = 18,
+
+	SEC_KEY_PIN = 21,
+	SEC_KEY_NO_PIN = 22, // Requires reset with autoLogon to get to CCredential::Connect directly
+	SEC_KEY_NO_DEVICE = 23, // Requires reset with autoLogon to get to CCredential::Connect directly
 };
+
 
 class Configuration
 {
@@ -57,9 +53,36 @@ public:
 
 	PIConfig piconfig;
 
-	bool isNextScenarioPassword() const noexcept
+	template<typename... Modes>
+	bool ModeOneOf(Modes... modes) const noexcept
 	{
-		return (scenario != SCENARIO::PASSWORD && scenario != SCENARIO::USERNAMEPASSWORD)
+		return ((mode == modes) || ...);
+	}
+
+	inline std::string ModeString()
+	{
+		switch (mode)
+		{
+			case MODE::NO_CHANGE:						return "NO_CHANGE";
+			case MODE::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
+			case MODE::USERNAME:						return "USERNAME";
+			case MODE::PASSWORD:						return "PASSWORD";
+			case MODE::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
+			case MODE::PRIVACYIDEA:						return "PRIVACYIDEA";
+			case MODE::PASSKEY:							return "PASSKEY";
+			case MODE::SEC_KEY_REG:						return "SECURITY_KEY_REGISTRATION";
+			case MODE::SEC_KEY_REG_PIN:					return "SECURITY_KEY_REGISTRATION_PIN";
+			case MODE::SECURITY_KEY_ANY:				return "SECURITY_KEY_ANY";
+			case MODE::SEC_KEY_PIN:						return "SECURITY_KEY_PIN";
+			case MODE::SEC_KEY_NO_PIN:					return "SECURITY_KEY_NO_PIN";
+			case MODE::SEC_KEY_NO_DEVICE:				return "SECURITY_KEY_NO_DEVICE";
+			default:									return "UNKNOWN_MODE";
+		}
+	}
+
+	bool isNextModePassword() const noexcept
+	{
+		return (mode != MODE::PASSWORD && mode != MODE::USERNAMEPASSWORD)
 			&& !(twoStepSendPassword || usernamePassword);
 	}
 
@@ -70,12 +93,12 @@ public:
 
 	bool isLastStep() const noexcept
 	{
-		return scenario == SCENARIO::PASSWORD || (scenario >= SCENARIO::PRIVACYIDEA && isPasswordInFirstStep());
+		return mode == MODE::PASSWORD || (mode >= MODE::PRIVACYIDEA && isPasswordInFirstStep());
 	}
 
 	bool isFirstStep() const noexcept
 	{
-		return scenario == SCENARIO::USERNAME || scenario == SCENARIO::USERNAMEPASSWORD || scenario == SCENARIO::NO_CHANGE;
+		return mode == MODE::USERNAME || mode == MODE::USERNAMEPASSWORD || mode == MODE::NO_CHANGE;
 	}
 
 	// FIDO2
@@ -121,7 +144,7 @@ public:
 
 	bool doAutoLogon = false;
 
-	PIResponse lastResponse;
+	PIResponse lastResponse; // TODO optional
 	std::string lastTransactionId = "";
 
 	std::wstring excludedAccount = L"";
@@ -141,7 +164,7 @@ public:
 	bool otpFailReturnToFirstStep = false;
 
 	// Track the current state
-	SCENARIO scenario = SCENARIO::NO_CHANGE;
+	MODE mode = MODE::NO_CHANGE;
 
 	struct PROVIDER
 	{

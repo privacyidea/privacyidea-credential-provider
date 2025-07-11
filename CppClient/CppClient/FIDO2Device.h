@@ -22,9 +22,11 @@
 #include "FIDO2SignResponse.h"
 #include "OfflineData.h"
 #include "FIDO2RegistrationRequest.h"
+#include "FIDO2RegistrationResponse.h"
 #include <string>
 #include <fido.h>
 #include <vector>
+#include <optional>
 
 constexpr auto fidoFlags = FIDO_DISABLE_U2F_FALLBACK | FIDO_DEBUG;
 
@@ -44,7 +46,7 @@ public:
 
 	int SignAndVerifyAssertion(const std::vector<OfflineData>& offlineData, const std::string& origin, const std::string& pin, std::string& serialUsed) const;
 
-	int Register(const FIDO2RegistrationRequest& registration, const std::string& pin);
+	std::optional<FIDO2RegistrationResponse> Register(const FIDO2RegistrationRequest& registration, const std::string& pin);
 
 	std::string GetPath() const { return _path; }
 	std::string GetManufacturer() const { return _manufacturer; }
@@ -55,6 +57,8 @@ public:
 
 private:
 	int GetDeviceInfo();
+
+	std::string BuildAttestationObject(fido_cred_t* cred);
 
 	std::string _path;
 	std::string _manufacturer;

@@ -145,6 +145,7 @@
     <ClInclude Include="Convert.h" />
     <ClInclude Include="Endpoint.h" />
     <ClInclude Include="FIDO2Device.h" />
+    <ClInclude Include="FIDO2Exception.h" />
     <ClInclude Include="FIDO2RegistrationResponse.h" />
     <ClInclude Include="JsonParser.h" />
     <ClInclude Include="Logger.h" />

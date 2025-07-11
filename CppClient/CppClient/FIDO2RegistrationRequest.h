@@ -14,6 +14,7 @@ public:
 	std::string challenge = "";
 	std::string serial = "";
 	std::string transactionId = "";
+	std::string type = "";
 	// List of {"type", identifier}, e.g. {"public-key", "-7"} for ES256
 	std::vector<std::pair<std::string, int>> pubKeyCredParams;
 	std::vector<std::string> excludeCredentials;

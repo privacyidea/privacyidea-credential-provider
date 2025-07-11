@@ -25,6 +25,7 @@
 #include "Endpoint.h"
 #include "PIConfig.h"
 #include "FIDO2SignResponse.h"
+#include "FIDO2RegistrationResponse.h"
 #include <Windows.h>
 #include <map>
 #include <functional>
@@ -91,6 +92,24 @@ public:
 		PIResponse& response,
 		const std::string& transactionId,
 		const std::wstring& upn = std::wstring());
+
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="transactionId"></param>
+	/// <param name="serial"></param>
+	/// <param name="username"></param>
+	/// <param name="registrationResponse"></param>
+	/// <param name="origin"></param>
+	/// <returns></returns>
+	HRESULT ValidateCheckCompletePasskeyRegistration(
+		const std::string& transactionId,
+		const std::string& serial,
+		const std::wstring& username,
+		const std::wstring& domain,
+		FIDO2RegistrationResponse registrationResponse,
+		const std::string& origin,
+		PIResponse& piresponse);
 
 	/// <summary>
 	/// 
