@@ -71,10 +71,6 @@ OfflineHandler::~OfflineHandler()
 	{
 		PIDebug(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
 	}
-	else
-	{
-		PIDebug("Offline data saved successfully!");
-	}
 }
 
 HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const std::string& username, std::string& serialUsed)
@@ -204,7 +200,7 @@ std::vector<std::pair<std::string, size_t>> OfflineHandler::GetTokenInfo(const s
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetFIDO2OfflineDataFor(const std::string& username)
+std::vector<OfflineData> OfflineHandler::GetFIDODataFor(const std::string& username)
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
@@ -217,7 +213,7 @@ std::vector<OfflineData> OfflineHandler::GetFIDO2OfflineDataFor(const std::strin
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetAllFIDO2OfflineData()
+std::vector<OfflineData> OfflineHandler::GetAllFIDOData()
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
@@ -280,12 +276,6 @@ std::optional<std::string> OfflineHandler::GetUsernameForSerial(const std::strin
 
 HRESULT OfflineHandler::SaveToFile()
 {
-	if (_dataSets.empty())
-	{
-		PIDebug("No offline data to save, skipping file write.");
-		return S_OK;
-	}
-
 	ofstream o;
 	o.open(_filePath, ios_base::out); // Destroy contents | create new
 

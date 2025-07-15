@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2024 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,19 +22,19 @@
 #include <algorithm>
 
 #include "Convert.h"
-#include "FIDO2Device.h"
+#include "FIDODevice.h"
 #include "Logger.h"
 #include "PrivacyIDEA.h"
-#include "FIDO2Exception.h"
-#include "FIDO2RegistrationResponse.h"
+#include "FIDOException.h"
+#include "FIDORegistrationResponse.h"
 
 
-std::vector<FIDO2Device> FIDO2Device::GetDevices(bool log)
+std::vector<FIDODevice> FIDODevice::GetDevices(bool log)
 {
 	if (log)
 		PIDebug("Searching for connected FIDO2 devices");
 	fido_init(fidoFlags);
-	std::vector<FIDO2Device> ret;
+	std::vector<FIDODevice> ret;
 	size_t ndevs;
 	int res = FIDO_OK;
 	fido_dev_info_t* deviceList = nullptr;
@@ -54,7 +54,7 @@ std::vector<FIDO2Device> FIDO2Device::GetDevices(bool log)
 	for (size_t i = 0; i < ndevs; i++)
 	{
 		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
-		FIDO2Device dev(di);
+		FIDODevice dev(di);
 		if (!dev.IsWinHello())
 		{
 			ret.push_back(dev);
@@ -64,7 +64,7 @@ std::vector<FIDO2Device> FIDO2Device::GetDevices(bool log)
 	return ret;
 }
 
-FIDO2Device::FIDO2Device(const fido_dev_info_t* devinfo, bool log)
+FIDODevice::FIDODevice(const fido_dev_info_t* devinfo, bool log)
 {
 	fido_dev_t* dev = fido_dev_new_with_info(devinfo);
 	if (dev == NULL)
@@ -95,7 +95,7 @@ FIDO2Device::FIDO2Device(const fido_dev_info_t* devinfo, bool log)
 }
 
 int GetAssert(
-	const FIDO2SignRequest& signRequest,
+	const FIDOSignRequest& signRequest,
 	const std::string& origin,
 	const std::string& pin,
 	const std::string& devicePath,
@@ -194,11 +194,11 @@ int GetAssert(
 	return res;
 }
 
-int FIDO2Device::Sign(
-	const FIDO2SignRequest& signRequest,
+int FIDODevice::Sign(
+	const FIDOSignRequest& signRequest,
 	const std::string& origin,
 	const std::string& pin,
-	FIDO2SignResponse& signResponse) const
+	FIDOSignResponse& signResponse) const
 {
 	fido_assert_t* assert = nullptr;
 	std::vector<unsigned char> vecClientData;
@@ -362,14 +362,14 @@ std::string GenerateRandomAsBase64URL(long size)
 	return ret;
 }
 
-int FIDO2Device::SignAndVerifyAssertion(
+int FIDODevice::SignAndVerifyAssertion(
 	const std::vector<OfflineData>& offlineData,
 	const std::string& origin,
 	const std::string& pin,
 	std::string& serialUsed) const
 {
 	// Make a signRequest from the offlineData
-	FIDO2SignRequest signRequest;
+	FIDOSignRequest signRequest;
 	signRequest.rpId = offlineData.front().rpId;
 	signRequest.challenge = GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE);
 	for (auto& item : offlineData)
@@ -497,43 +497,43 @@ struct FidoCredDeleter
 using unique_fido_dev_t = std::unique_ptr<fido_dev_t, FidoDevDeleter>;
 using unique_fido_cred_t = std::unique_ptr<fido_cred_t, FidoCredDeleter>;
 
-std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
-	const FIDO2RegistrationRequest& registration,
+std::optional<FIDORegistrationResponse> FIDODevice::Register(
+	const FIDORegistrationRequest& registration,
 	const std::string& pin)
 {
 	// 1. Validate device path
 	if (_path.empty())
 	{
 		PIError("No device path provided");
-		throw FIDO2Exception("No device path available to register credential."); // Throw here
+		throw FIDOException("No device path available to register credential."); // Throw here
 	}
 
 	unique_fido_dev_t dev(fido_dev_new());
 	if (!dev)
 	{
 		PIError("fido_dev_new failed.");
-		throw FIDO2Exception(FIDO_ERR_INTERNAL, "Failed to initialize FIDO device context.");
+		throw FIDOException(FIDO_ERR_INTERNAL, "Failed to initialize FIDO device context.");
 	}
 
 	int res = fido_dev_open(dev.get(), _path.c_str());
 	if (res != FIDO_OK)
 	{
 		PIError("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to open FIDO device.");
+		throw FIDOException(res, "Failed to open FIDO device.");
 	}
 
 	unique_fido_cred_t cred(fido_cred_new());
 	if (!cred)
 	{
 		PIError("fido_cred_new failed.");
-		throw FIDO2Exception(FIDO_ERR_INTERNAL, "Failed to initialize FIDO credential context.");
+		throw FIDOException(FIDO_ERR_INTERNAL, "Failed to initialize FIDO credential context.");
 	}
 
 	int type = COSE_ES256;
 	if (_supportedAlgorithms.empty())
 	{
 		PIError("No supported algorithms found");
-		throw FIDO2Exception("No supported algorithms found in device configuration.");
+		throw FIDOException("No supported algorithms found in device configuration.");
 	}
 
 	// Find the first supported algorithm from the registration request
@@ -551,20 +551,20 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	if (!algoFound)
 	{
 		PIError("None of the requested algorithms are supported by the device.");
-		throw FIDO2Exception("Requested public key credential parameters not supported by FIDO device.");
+		throw FIDOException("Requested public key credential parameters not supported by FIDO device.");
 	}
 
 	// Cred Type
 	if ((res = fido_cred_set_type(cred.get(), type)) != FIDO_OK)
 	{
 		PIError("fido_cred_set_type: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set credential type.");
+		throw FIDOException(res, "Failed to set credential type.");
 	}
 	// RP
 	if ((res = fido_cred_set_rp(cred.get(), registration.rpId.c_str(), registration.rpName.c_str())) != FIDO_OK)
 	{
 		PIError("fido_cred_set_rp: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set relying party.");
+		throw FIDOException(res, "Failed to set relying party.");
 	}
 
 	// Client Data
@@ -582,7 +582,7 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	if (res != FIDO_OK)
 	{
 		PIDebug("fido_cred_set_clientdata: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set client data for credential creation.");
+		throw FIDOException(res, "Failed to set client data for credential creation.");
 	}
 
 	// FMT
@@ -591,7 +591,7 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	if (res != FIDO_OK)
 	{
 		PIError("fido_cred_set_fmt: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set credential format.");
+		throw FIDOException(res, "Failed to set credential format.");
 	}
 
 	// User ID
@@ -604,7 +604,7 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 		NULL)) != FIDO_OK)
 	{
 		PIError("fido_cred_set_user: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set user information.");
+		throw FIDOException(res, "Failed to set user information.");
 	}
 
 	// Resident Key (RK)
@@ -612,7 +612,7 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	if ((res = fido_cred_set_rk(cred.get(), rk)) != FIDO_OK)
 	{
 		PIError("fido_cred_set_rk: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set resident key option.");
+		throw FIDOException(res, "Failed to set resident key option.");
 	}
 
 	// UV
@@ -620,14 +620,14 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	if ((res = fido_cred_set_uv(cred.get(), uv)) != FIDO_OK)
 	{
 		PIError("fido_cred_set_uv: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set user verification option.");
+		throw FIDOException(res, "Failed to set user verification option.");
 	}
 
 	// Timeout
 	if ((res = fido_dev_set_timeout(dev.get(), 120000)) != FIDO_OK)
 	{
 		PIError("fido_dev_set_timeout: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to set device timeout.");
+		throw FIDOException(res, "Failed to set device timeout.");
 	}
 
 	// TODO fido_cred_exclude, fido_cred_empty_exclude_list
@@ -639,12 +639,12 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	{
 		fido_dev_cancel(dev.get());
 		PIError("fido_dev_make_cred: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		throw FIDO2Exception(res, "Failed to create credential on FIDO device.");
+		throw FIDOException(res, "Failed to create credential on FIDO device.");
 	}
 
 	// Extract data from the created credential
-	FIDO2RegistrationResponse response;
-	
+	FIDORegistrationResponse response;
+
 	response.credentialId = Convert::Base64URLEncode(fido_cred_id_ptr(cred.get()), fido_cred_id_len(cred.get()));
 	PIDebug("Credential ID: " + response.credentialId);
 	response.clientDataJSON = Convert::Base64Encode(clientDataBytes);
@@ -668,17 +668,17 @@ std::optional<FIDO2RegistrationResponse> FIDO2Device::Register(
 	PIDebug("Authenticator Data: " + response.authenticatorData);
 	response.signature = Convert::Base64URLEncode(fido_cred_sig_ptr(cred.get()), fido_cred_sig_len(cred.get()));
 	PIDebug("Signature: " + response.signature);
-	*/	
+	*/
 	auto attestationObject = BuildAttestationObject(cred.get());
 	if (attestationObject.empty())
 	{
-		throw FIDO2Exception("Unable to create attestation statement!");
+		throw FIDOException("Unable to create attestation statement!");
 	}
 	response.attestationObject = attestationObject;
 	return response;
 }
 
-int FIDO2Device::GetDeviceInfo()
+int FIDODevice::GetDeviceInfo()
 {
 	// Open device
 	if (_path.empty())
@@ -875,7 +875,7 @@ inline cbor_item_t* cbor_map_from_bytes(const std::vector<unsigned char>& data)
 	return item;
 }
 
-std::string FIDO2Device::BuildAttestationObject(fido_cred_t* cred)
+std::string FIDODevice::BuildAttestationObject(fido_cred_t* cred)
 {
 	cbor_item_t* map = cbor_new_indefinite_map();
 	if (!map)
@@ -912,7 +912,7 @@ std::string FIDO2Device::BuildAttestationObject(fido_cred_t* cred)
 	cbor_item_t* emptyMap = cbor_new_definite_map(0);
 	add_cbor_map_to_cbor_map(map, "attStmt", emptyMap);
 	*/
-	
+
 	// AttStmt
 	auto pAttStmt = fido_cred_attstmt_ptr(cred);
 	size_t attStmtLen = fido_cred_attstmt_len(cred);
@@ -932,7 +932,7 @@ std::string FIDO2Device::BuildAttestationObject(fido_cred_t* cred)
 		cbor_decref(&attStmtMap);
 		return {};
 	}
-	
+
 	// Serialize and return
 	auto mapBytes = cbor_map_to_bytes(map);
 	cbor_decref(&map);

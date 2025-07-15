@@ -28,7 +28,12 @@ struct PIConfig
 {
 	std::wstring hostname = L"";
 	std::wstring path = L"";
-	int customPort = 0;
+	int port = 0;
+
+	std::wstring fallbackHostname = L"";
+	std::wstring fallbackPath = L"";
+	int fallbackPort = 0;
+
 	bool ignoreInvalidCN = false;
 	bool ignoreUnknownCA = false;
 	std::wstring userAgent = L"privacyidea-cpp-client";
@@ -38,7 +43,7 @@ struct PIConfig
 	std::wstring offlineFilePath = L"C:\\offlineFile.json";
 	int offlineTryWindow = 10;
 	bool sendUPN = false;
-
+	std::wstring fallbackURL = L"";
 	// optionals
 	int resolveTimeout = 0; // = infinite
 	int connectTimeout = 60000;

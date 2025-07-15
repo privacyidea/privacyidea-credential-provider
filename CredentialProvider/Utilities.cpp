@@ -20,7 +20,7 @@ std::wstring Utilities::GetText(int id)
 	// TODO if a new, configurable text is introduced, add it here
 	switch (id)
 	{
-		case TEXT_WAN_PIN_HINT:
+		case TEXT_FIDO_PIN_HINT:
 		{
 			if (!_config->webAuthnPinHint.empty())
 			{
@@ -558,7 +558,7 @@ HRESULT Utilities::InitializeField(
 			hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[field_index]);
 			break;
 		}
-		case FID_FIDO2_ONLINE:
+		case FID_FIDO_ONLINE:
 		{
 			hr = SHStrDupW(GetText(TEXT_USE_WEBAUTHN).c_str(), &rgFieldStrings[field_index]);
 			break;

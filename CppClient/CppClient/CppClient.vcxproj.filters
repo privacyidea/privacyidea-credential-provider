@@ -10,8 +10,8 @@
     <ClCompile Include="PIResponse.cpp" />
     <ClCompile Include="PrivacyIDEA.cpp" />
     <ClCompile Include="RegistryReader.cpp" />
-    <ClCompile Include="FIDO2Device.cpp">
-      <Filter>FIDO2</Filter>
+    <ClCompile Include="FIDODevice.cpp">
+      <Filter>FIDO</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -28,27 +28,27 @@
     <ClInclude Include="PrivacyIDEA.h" />
     <ClInclude Include="RegistryReader.h" />
     <ClInclude Include="AuthenticationStatus.h" />
-    <ClInclude Include="FIDO2Device.h">
-      <Filter>FIDO2</Filter>
+    <ClInclude Include="FIDODevice.h">
+      <Filter>FIDO</Filter>
     </ClInclude>
-    <ClInclude Include="FIDO2RegistrationRequest.h">
-      <Filter>FIDO2</Filter>
+    <ClInclude Include="FIDORegistrationRequest.h">
+      <Filter>FIDO</Filter>
     </ClInclude>
-    <ClInclude Include="FIDO2RegistrationResponse.h">
-      <Filter>FIDO2</Filter>
+    <ClInclude Include="FIDORegistrationResponse.h">
+      <Filter>FIDO</Filter>
     </ClInclude>
-    <ClInclude Include="FIDO2SignRequest.h">
-      <Filter>FIDO2</Filter>
+    <ClInclude Include="FIDOSignRequest.h">
+      <Filter>FIDO</Filter>
     </ClInclude>
-    <ClInclude Include="FIDO2SignResponse.h">
-      <Filter>FIDO2</Filter>
+    <ClInclude Include="FIDOSignResponse.h">
+      <Filter>FIDO</Filter>
     </ClInclude>
-    <ClInclude Include="FIDO2Exception.h">
-      <Filter>FIDO2</Filter>
+    <ClInclude Include="FIDOException.h">
+      <Filter>FIDO</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="FIDO2">
+    <Filter Include="FIDO">
       <UniqueIdentifier>{fe3f4fa5-c3aa-4300-808b-d570ee577685}</UniqueIdentifier>
     </Filter>
   </ItemGroup>

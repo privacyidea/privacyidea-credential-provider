@@ -129,7 +129,7 @@
   <ItemGroup>
     <ClCompile Include="Convert.cpp" />
     <ClCompile Include="Endpoint.cpp" />
-    <ClCompile Include="FIDO2Device.cpp" />
+    <ClCompile Include="FIDODevice.cpp" />
     <ClCompile Include="JsonParser.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="OfflineData.cpp" />
@@ -144,20 +144,20 @@
     <ClInclude Include="Challenge.h" />
     <ClInclude Include="Convert.h" />
     <ClInclude Include="Endpoint.h" />
-    <ClInclude Include="FIDO2Device.h" />
-    <ClInclude Include="FIDO2Exception.h" />
-    <ClInclude Include="FIDO2RegistrationResponse.h" />
+    <ClInclude Include="FIDODevice.h" />
+    <ClInclude Include="FIDOException.h" />
+    <ClInclude Include="FIDORegistrationResponse.h" />
     <ClInclude Include="JsonParser.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="OfflineData.h" />
     <ClInclude Include="OfflineHandler.h" />
-    <ClInclude Include="FIDO2RegistrationRequest.h" />
+    <ClInclude Include="FIDORegistrationRequest.h" />
     <ClInclude Include="PIConfig.h" />
     <ClInclude Include="PIResponse.h" />
     <ClInclude Include="PrivacyIDEA.h" />
     <ClInclude Include="RegistryReader.h" />
-    <ClInclude Include="FIDO2SignRequest.h" />
-    <ClInclude Include="FIDO2SignResponse.h" />
+    <ClInclude Include="FIDOSignRequest.h" />
+    <ClInclude Include="FIDOSignResponse.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -179,11 +179,11 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 {
 	PIDebug(string(__FUNCTION__) + " to " + endpoint);
 	// Prepare the parameters
-	wstring wHostname = EncodeUTF16(Convert::ToString(_config.hostname), CP_UTF8);
+	wstring wHostname = EncodeUTF16(Convert::ToString(hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
-	wstring fullPath = EncodeUTF16((Convert::ToString(_config.path) + endpoint), CP_UTF8);
+	wstring fullPath = EncodeUTF16((Convert::ToString(path) + endpoint), CP_UTF8);
 
-	string strData = EncodeRequestParameters(parameters);
+	string encodedData = EncodeRequestParameters(parameters);
 
 	PIDebug("Headers:");
 	PIDebug(L"User-Agent=" + _config.userAgent);
@@ -192,15 +192,15 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 		PIDebug(entry.first + "=" + entry.second);
 	}
 
-	LPSTR data = _strdup(strData.c_str());
-	DWORD data_len = (DWORD)strnlen_s(strData.c_str(), MAXDWORD32);
+	LPSTR data = _strdup(encodedData.c_str());
+	DWORD dataLen = (DWORD)strnlen_s(encodedData.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
 	if (method == RequestMethod::GET)
 	{
-		fullPath += L"?" + EncodeUTF16(strData, CP_UTF8);
+		fullPath += L"?" + EncodeUTF16(encodedData, CP_UTF8);
 		data = nullptr; // No data needed for GET requests
-		data_len = 0; // No data length for GET requests
+		dataLen = 0; // No data length for GET requests
 	}
 
 	DWORD dwSize = 0;
@@ -238,8 +238,8 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,
 			NULL);
 
-		int port = (_config.customPort != 0) ? _config.customPort : INTERNET_DEFAULT_HTTPS_PORT;
-		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)port, 0);
+		int realPort = (port != 0) ? port : INTERNET_DEFAULT_HTTPS_PORT;
+		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)realPort, 0);
 	}
 	else
 	{
@@ -331,8 +331,8 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			L"Content-Type: application/x-www-form-urlencoded\r\n",
 			(DWORD)-1,
 			(LPVOID)data,
-			data_len,
-			data_len,
+			dataLen,
+			dataLen,
 			0);
 	}
 
@@ -401,7 +401,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
 
-	SecureZeroMemory(data, data_len);
+	SecureZeroMemory(data, dataLen);
 
 	if (std::find(_excludedEndpoints.begin(), _excludedEndpoints.end(), endpoint) == _excludedEndpoints.end())
 	{

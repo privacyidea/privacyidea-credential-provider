@@ -17,7 +17,7 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
-#include "FIDO2SignRequest.h"
+#include "FIDOSignRequest.h"
 #include <string>
 #include <optional>
 
@@ -30,5 +30,5 @@ public:
 	std::string type;
 	std::string image;
 	std::string clientMode;
-	std::optional<FIDO2SignRequest> webAuthnSignRequest = std::nullopt;
+	std::optional<FIDOSignRequest> webAuthnSignRequest = std::nullopt;
 };

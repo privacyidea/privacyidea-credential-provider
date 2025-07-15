@@ -246,7 +246,6 @@ HRESULT CProvider::UnAdvise()
 	PIDebug(std::string(__FUNCTION__) + " - AUTHENTICATION END");
 
 	_credential->StopPoll();
-
 	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
 		_config->provider.pCredentialProviderEvents->Release();
@@ -254,7 +253,7 @@ HRESULT CProvider::UnAdvise()
 
 	_config->provider.pCredentialProviderEvents = nullptr;
 	_config->provider.upAdviseContext = NULL;
-
+	_credential->Reset();
 	return S_OK;
 }
 
@@ -311,7 +310,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 				label = util.GetText(TEXT_OTP_FIELD);
 				break;
 			case FID_WAN_PIN:
-				label = util.GetText(TEXT_WAN_PIN_HINT);
+				label = util.GetText(TEXT_FIDO_PIN_HINT);
 				break;
 			default: break;
 		}

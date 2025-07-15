@@ -10,7 +10,7 @@ struct AllowCredential
 };
 
 
-struct FIDO2SignRequest
+struct FIDOSignRequest
 {
 	std::vector<AllowCredential> allowCredentials;
 	std::string challenge;
@@ -22,9 +22,9 @@ struct FIDO2SignRequest
 	std::string message;
 	int timeout = 0;
 
-	FIDO2SignRequest() = default;
+	FIDOSignRequest() = default;
 
-	FIDO2SignRequest(
+	FIDOSignRequest(
 		const std::string& challenge,
 		const std::string& rpId,
 		const std::string& userVerification,

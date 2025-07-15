@@ -26,7 +26,7 @@
 #include "Utilities.h"
 #include "Configuration.h"
 #include "PrivacyIDEA.h"
-#include "FIDO2Device.h"
+#include "FIDODevice.h"
 #include <scenario.h>
 #include <unknwn.h>
 #include <helpers.h>
@@ -117,14 +117,18 @@ public:
 	HRESULT Initialize(
 		__in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* rgcpfd,
 		__in const FIELD_STATE_PAIR* rgfsp,
-		__in_opt PWSTR user_name,
-		__in_opt PWSTR domain_name,
+		__in_opt PWSTR userName,
+		__in_opt PWSTR domainName,
 		__in_opt PWSTR password);
 
 	HRESULT StopPoll();
 
+	// Called when UnAdvise is called for the Provider.
+	// This happens when there is inactivity while logging in and the screen goes into "locked mode".
+	HRESULT Reset(); 
+
 private:
-	HRESULT SetMode(MODE mode);
+	HRESULT SetMode(Mode mode);
 
 	HRESULT ResetMode(bool resetToFirstStep = false);
 
@@ -132,7 +136,7 @@ private:
 
 	HRESULT SetOfflineInfo(std::string username);
 
-	MODE SelectFIDOMode(std::string userVerification = "", bool offline = false);
+	Mode SelectFIDOMode(std::string userVerification = "", bool offline = false);
 
 	void ShowErrorMessage(const std::wstring& message, const HRESULT& code = 0);
 
@@ -148,7 +152,7 @@ private:
 	// Waits until a FIDO2 device is found or the search is cancelled. If the search is cancelled, an empty optional is returned
 	// and _fidoDeviceSearchCancelled is set to true.
 	// Checks every 200ms if a device is found. Default timeout is 5 minutes.
-	std::optional<FIDO2Device> WaitForFIDODevice(IQueryContinueWithStatus* pqcws, int timeoutMs = 300000);
+	std::optional<FIDODevice> WaitForFIDODevice(IQueryContinueWithStatus* pqcws, int timeoutMs = 300000);
 
 	void HandleFirstStep();
 
@@ -168,10 +172,10 @@ private:
 	std::shared_ptr<Configuration> _config;
 	Utilities _util;
 	std::wstring _initialDomain;
-	HRESULT _lastStatus = S_OK;
+	int _lastStatus = S_OK;
 	bool _privacyIDEASuccess = false;
 	bool _fidoDeviceSearchCancelled = false;
 	bool _modeSwitched = false;
-	std::optional<FIDO2SignRequest> _passkeyChallenge = std::nullopt;
+	std::optional<FIDOSignRequest> _passkeyChallenge = std::nullopt;
 	bool _passkeyRegistrationFailed = false;
 };

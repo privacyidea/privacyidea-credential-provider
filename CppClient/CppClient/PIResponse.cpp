@@ -56,16 +56,16 @@ std::string PIResponse::GetPushMessage()
 	return "";
 }
 
-std::optional<FIDO2SignRequest> PIResponse::GetFIDO2SignRequest()
+std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 {
-	std::optional<FIDO2SignRequest> ret = std::nullopt;
+	std::optional<FIDOSignRequest> ret = std::nullopt;
 	std::vector<AllowCredential> allowCredentials;
-	FIDO2SignRequest signRequest;
+	FIDOSignRequest signRequest;
 	for (auto& challenge : challenges)
 	{
 		if (challenge.type == "webauthn")
 		{
-			if (challenge.webAuthnSignRequest.has_value() && !challenge.webAuthnSignRequest.value().allowCredentials.empty())
+			if (challenge.webAuthnSignRequest && !challenge.webAuthnSignRequest.value().allowCredentials.empty())
 			{
 				allowCredentials.push_back(challenge.webAuthnSignRequest.value().allowCredentials.at(0));
 			}

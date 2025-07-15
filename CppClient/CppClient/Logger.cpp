@@ -17,10 +17,11 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "Logger.h"
 #include <Windows.h>
 #include <chrono>
-#include <fstream>
 #include <iostream>
 #include <codecvt>
 
@@ -53,9 +54,11 @@ void Logger::LogS(const string& message, const char* file, int line, bool isDebu
 	CoTaskMemFree(timeinfo);
 	string fullMessage = "[" + string(buffer) + "] [" + string(file) + ":" + to_string(line) + "] " + message;
 
-	ofstream os;
-	os.open(logfilePath.c_str(), std::ios_base::app);
-	os << fullMessage << endl;
+	std::lock_guard<std::mutex> lock(_mutex);
+	if (_logStream.is_open())
+	{
+		_logStream << fullMessage << std::endl;
+	}
 
 #ifndef _OUTPUT_TO_COUT
 	OutputDebugStringA(fullMessage.c_str());

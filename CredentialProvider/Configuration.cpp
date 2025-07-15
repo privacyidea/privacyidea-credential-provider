@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,14 +53,14 @@ void Configuration::Load()
 #endif // _DEBUG
 
 	showDomainHint = rr.GetBool(L"show_domain_hint");
+
 	// Custom field texts: check if set, otherwise use defaults (from header)
 	wstring tmp = rr.GetWString(L"login_text");
 	loginText = tmp.empty() ? L"privacyIDEA Login" : tmp;
-
 	otpFieldText = rr.GetWString(L"otp_text");
-
 	otpFailureText = rr.GetWString(L"otp_fail_text");
 
+	hideFirstStepResponse = rr.GetBool(L"hide_first_step_response");
 	prefillUsername = rr.GetBool(L"prefill_username");
 	showResetLink = rr.GetBool(L"enable_reset");
 	resetLinkText = rr.GetWString(L"reset_link_text");
@@ -82,7 +82,7 @@ void Configuration::Load()
 		piconfig.userAgent += L" Windows/" + Utilities::ComputerName();
 	}
 
-	piconfig.customPort = rr.GetInt(L"custom_port");
+	piconfig.port = rr.GetInt(L"custom_port");
 	piconfig.offlineFilePath = rr.GetWString(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetInt(L"offline_try_window");
 	piconfig.sendUPN = rr.GetBool(L"send_upn");
@@ -163,7 +163,7 @@ void Configuration::LogConfig()
 	PIDebug("------- Configuration -------");
 	PIDebug(L"Hostname: " + piconfig.hostname);
 	PrintIfStringNotEmpty(L"Path", piconfig.path);
-	PrintIfIntIsNotNull("Custom Port", piconfig.customPort);
+	PrintIfIntIsNotNull("Custom Port", piconfig.port);
 
 	PrintIfIntIsNotNull("Resolve timeout", piconfig.resolveTimeout);
 	PrintIfIntIsNotNull("Connect timeout", piconfig.connectTimeout);

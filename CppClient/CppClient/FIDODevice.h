@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2024 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +18,11 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "FIDO2SignRequest.h"
-#include "FIDO2SignResponse.h"
+#include "FIDOSignRequest.h"
+#include "FIDOSignResponse.h"
 #include "OfflineData.h"
-#include "FIDO2RegistrationRequest.h"
-#include "FIDO2RegistrationResponse.h"
+#include "FIDORegistrationRequest.h"
+#include "FIDORegistrationResponse.h"
 #include <string>
 #include <fido.h>
 #include <vector>
@@ -30,23 +30,23 @@
 
 constexpr auto fidoFlags = FIDO_DISABLE_U2F_FALLBACK | FIDO_DEBUG;
 
-constexpr auto FIDO2DEVICE_ERR_TX = 0x88809089;
+constexpr auto FIDO_DEVICE_ERR_TX = 0x88809089;
 
 constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 
-class FIDO2Device
+class FIDODevice
 {
 public:
-	static std::vector<FIDO2Device> GetDevices(bool log=true);
+	static std::vector<FIDODevice> GetDevices(bool log=true);
 
-	FIDO2Device(const fido_dev_info_t* devinfo, bool log=true);
-	FIDO2Device() = default;
+	FIDODevice(const fido_dev_info_t* devinfo, bool log=true);
+	FIDODevice() = default;
 
-	int Sign(const FIDO2SignRequest& signRequest, const std::string& origin, const std::string& pin, FIDO2SignResponse& signResponse) const;
+	int Sign(const FIDOSignRequest& signRequest, const std::string& origin, const std::string& pin, FIDOSignResponse& signResponse) const;
 
 	int SignAndVerifyAssertion(const std::vector<OfflineData>& offlineData, const std::string& origin, const std::string& pin, std::string& serialUsed) const;
 
-	std::optional<FIDO2RegistrationResponse> Register(const FIDO2RegistrationRequest& registration, const std::string& pin);
+	std::optional<FIDORegistrationResponse> Register(const FIDORegistrationRequest& registration, const std::string& pin);
 
 	std::string GetPath() const { return _path; }
 	std::string GetManufacturer() const { return _manufacturer; }

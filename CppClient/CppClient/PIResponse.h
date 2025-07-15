@@ -19,8 +19,8 @@
 
 #pragma once
 #include "Challenge.h"
-#include "FIDO2RegistrationRequest.h"
-#include "FIDO2SignRequest.h"
+#include "FIDORegistrationRequest.h"
+#include "FIDOSignRequest.h"
 #include "AuthenticationStatus.h"
 #include <optional>
 #include <memory>
@@ -47,7 +47,7 @@ public:
 
 	std::string GetPushMessage();
 
-	std::optional<FIDO2SignRequest> GetFIDO2SignRequest();
+	std::optional<FIDOSignRequest> GetFIDOSignRequest();
 
 	std::string GetDeduplicatedMessage();
 
@@ -55,8 +55,8 @@ public:
 
 	std::optional<std::string> username = std::nullopt;
 
-	std::optional<FIDO2RegistrationRequest> passkeyRegistration = std::nullopt;
+	std::optional<FIDORegistrationRequest> passkeyRegistration = std::nullopt;
 
-	std::optional<FIDO2SignRequest> passkeyChallenge = std::nullopt;
+	std::optional<FIDOSignRequest> passkeyChallenge = std::nullopt;
 };
 

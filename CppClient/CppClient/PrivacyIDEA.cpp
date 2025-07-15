@@ -22,18 +22,18 @@
 #include "Convert.h"
 #include <thread>
 #include <stdexcept>
-#include "FIDO2Device.cpp"
+#include "FIDODevice.cpp"
 
 using namespace std;
 
-std::optional<FIDO2SignRequest> PrivacyIDEA::GetOfflineFIDO2SignRequest()
+std::optional<FIDOSignRequest> PrivacyIDEA::GetOfflineFIDOSignRequest()
 {
-	std::optional<FIDO2SignRequest> ret = std::nullopt;
+	std::optional<FIDOSignRequest> ret = std::nullopt;
 
-	auto offlineData = offlineHandler.GetAllFIDO2OfflineData();
+	auto offlineData = offlineHandler.GetAllFIDOData();
 	if (!offlineData.empty())
 	{
-		FIDO2SignRequest signRequest;
+		FIDOSignRequest signRequest;
 		for (const auto& item : offlineData)
 		{
 			AllowCredential ac;
@@ -60,15 +60,15 @@ HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std:
 	wstring realm = L"";
 	try
 	{
-		realm = _realmMap.at(Convert::ToUpperCase(domain));
+		realm = _config.realmMap.at(Convert::ToUpperCase(domain));
 	}
 	catch (const std::out_of_range& e)
 	{
 		UNREFERENCED_PARAMETER(e);
 		// no mapping - if default domain exists use that
-		if (!_defaultRealm.empty())
+		if (!_config.defaultRealm.empty())
 		{
-			realm = _defaultRealm;
+			realm = _config.defaultRealm;
 		}
 	}
 
@@ -153,7 +153,7 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	};
 
 	// Username+Domain/Realm or just UPN
-	if (_sendUPN && !upn.empty())
+	if (_config.sendUPN && !upn.empty())
 	{
 		string strUPN = Convert::ToString(upn);
 		PIDebug("Sending UPN " + strUPN);
@@ -170,7 +170,7 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	{
 		parameters.try_emplace("transaction_id", transactionId);
 	}
-	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
@@ -182,10 +182,30 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	return ProcessResponse(response, responseObj);
 }
 
+std::string PrivacyIDEA::SendRequestWithFallback(
+	const std::string& endpoint,
+	const std::map<std::string, std::string>& parameters,
+	const std::map<std::string, std::string>& headers,
+	RequestMethod method)
+{
+	std::string response = _endpoint.SendRequest(endpoint, parameters, headers, method);
+
+	// Just check for hostname since path and port are optional
+	if (response.empty() && !_config.fallbackHostname.empty() && _endpoint.hostname != _config.fallbackHostname)
+	{
+		PIError(L"Primary host failed to respond, switching to fallback host: " + _config.fallbackHostname + L" for the rest of the authentication.");
+		_endpoint.hostname = _config.fallbackHostname;
+		_endpoint.path = _config.fallbackPath;
+		_endpoint.port = _config.fallbackPort;
+		response = _endpoint.SendRequest(endpoint, parameters, headers, method);
+	}
+	return response;
+}
+
 HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	const std::wstring& username,
 	const std::wstring& domain,
-	const FIDO2SignResponse& webAuthnSignResponse,
+	const FIDOSignResponse& webAuthnSignResponse,
 	const std::string& origin,
 	PIResponse& responseObj,
 	const std::string& transactionId,
@@ -194,7 +214,7 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	map<string, string> parameters = { { "pass", "" } };
 
 	// Username+Domain/Realm or just UPN
-	if (_sendUPN && !upn.empty())
+	if (_config.sendUPN && !upn.empty())
 	{
 		string strUPN = Convert::ToString(upn);
 		PIDebug("Sending UPN " + strUPN);
@@ -231,7 +251,7 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 
 	map<string, string> headers = { { "Origin", origin } };
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
@@ -248,7 +268,7 @@ HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
 	const std::string& serial,
 	const std::wstring& username,
 	const std::wstring& domain,
-	FIDO2RegistrationResponse registrationResponse,
+	FIDORegistrationResponse registrationResponse,
 	const std::string& origin,
 	PIResponse& piresponse)
 {
@@ -266,7 +286,7 @@ HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
 
 	map<string, string> headers = { { "Origin", origin } };
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	return ProcessResponse(response, piresponse);
 }
@@ -275,7 +295,7 @@ HRESULT PrivacyIDEA::ValidateInitialize(PIResponse& response, const std::string&
 {
 	PIDebug(__FUNCTION__);
 	map<string, string> parameters = { { "type", type } };
-	string r = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_INITIALIZE, parameters, {}, RequestMethod::POST);
+	string r = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_INITIALIZE, parameters, {}, RequestMethod::POST);
 	return ProcessResponse(r, response);
 }
 
@@ -313,7 +333,7 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 		{"serial", serial}
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -348,7 +368,7 @@ HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const s
 		{"pass", ""}
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -399,7 +419,7 @@ bool PrivacyIDEA::PollTransaction(std::string transactionId)
 		{"transaction_id", transactionId }
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_POLLTRANSACTION, parameters, map<string, string>(), RequestMethod::GET);
+	string response = SendRequestWithFallback(PI_ENDPOINT_POLLTRANSACTION, parameters, map<string, string>(), RequestMethod::GET);
 	PIDebug("Polltransaction response: " + response);
 	return _parser.ParsePollTransaction(response);
 }

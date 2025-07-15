@@ -61,9 +61,9 @@ public:
 
 	std::vector<std::pair<std::string, size_t>> GetTokenInfo(const std::string& username);
 
-	std::vector<OfflineData> GetFIDO2OfflineDataFor(const std::string& username);
+	std::vector<OfflineData> GetFIDODataFor(const std::string& username);
 	
-	std::vector<OfflineData> GetAllFIDO2OfflineData();
+	std::vector<OfflineData> GetAllFIDOData();
 
 	bool RemoveOfflineData(const std::string& username, const std::string& serial);
 

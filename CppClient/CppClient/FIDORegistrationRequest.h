@@ -3,7 +3,7 @@
 #include <vector>
 #include <map>
 
-class FIDO2RegistrationRequest
+class FIDORegistrationRequest
 {
 public:
 	std::string rpId = "";

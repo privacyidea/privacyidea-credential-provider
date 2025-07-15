@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-struct FIDO2SignResponse
+struct FIDOSignResponse
 {
 	std::string credentialid;
 	std::string clientdata;

@@ -21,7 +21,7 @@
 #include "JsonParser.h"
 #include "Logger.h"
 #include "nlohmann/json.hpp"
-#include "FIDO2SignRequest.h"
+#include "FIDOSignRequest.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -140,7 +140,7 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 	auto& passkey = jDetail["passkey"];
 	if (!passkey.empty())
 	{
-		response.passkeyChallenge = FIDO2SignRequest(
+		response.passkeyChallenge = FIDOSignRequest(
 			GetStringOrEmpty(passkey, "challenge"),
 			GetStringOrEmpty(passkey, "rpId"),
 			GetStringOrEmpty(passkey, "user_verification"),
@@ -172,7 +172,7 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 				auto& pkreg = jChallenge["passkey_registration"];
 				auto& rp = pkreg["rp"];
 				
-				auto registrationRequest = FIDO2RegistrationRequest();
+				auto registrationRequest = FIDORegistrationRequest();
 				registrationRequest.rpId = GetStringOrEmpty(rp, "id");
 				registrationRequest.rpName = GetStringOrEmpty(rp, "name");
 				auto& user = pkreg["user"];
@@ -260,7 +260,7 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 						}
 						allowCredentials.push_back(ac);
 					}
-					FIDO2SignRequest signRequest;
+					FIDOSignRequest signRequest;
 					signRequest.challenge = GetStringOrEmpty(jSignRequest, "challenge");
 					signRequest.rpId = GetStringOrEmpty(jSignRequest, "rpId");
 					signRequest.userVerification = GetStringOrEmpty(jSignRequest, "userVerification");

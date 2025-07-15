@@ -1,12 +1,12 @@
 #pragma once
 #include <string>
 
-class FIDO2RegistrationResponse
+class FIDORegistrationResponse
 {
 public:
-    FIDO2RegistrationResponse() = default;
+    FIDORegistrationResponse() = default;
 
-    FIDO2RegistrationResponse(
+    FIDORegistrationResponse(
         std::string authenticatorData,
         std::string signature,
         std::string credentialId,

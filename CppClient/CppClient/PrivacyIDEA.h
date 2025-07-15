@@ -24,8 +24,8 @@
 #include "Logger.h"
 #include "Endpoint.h"
 #include "PIConfig.h"
-#include "FIDO2SignResponse.h"
-#include "FIDO2RegistrationResponse.h"
+#include "FIDOSignResponse.h"
+#include "FIDORegistrationResponse.h"
 #include <Windows.h>
 #include <map>
 #include <functional>
@@ -44,13 +44,10 @@ constexpr auto PI_ERR_AUTH_FAILED = 0x88809099;
 class PrivacyIDEA
 {
 public:
-	PrivacyIDEA(PIConfig conf) :
-		_realmMap(conf.realmMap),
-		_defaultRealm(conf.defaultRealm),
-		_logPasswords(conf.logPasswords),
-		_sendUPN(conf.sendUPN),
-		_endpoint(conf),
-		offlineHandler(conf.offlineFilePath, conf.offlineTryWindow)
+	PrivacyIDEA(const PIConfig& config) :
+		_config(config),
+		_endpoint(config),
+		offlineHandler(config.offlineFilePath, config.offlineTryWindow)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA) = delete;
@@ -87,7 +84,7 @@ public:
 	HRESULT ValidateCheckWebAuthn(
 		const std::wstring& username,
 		const std::wstring& domain,
-		const FIDO2SignResponse& webAuthnSignResponse,
+		const FIDOSignResponse& webAuthnSignResponse,
 		const std::string& origin,
 		PIResponse& response,
 		const std::string& transactionId,
@@ -107,7 +104,7 @@ public:
 		const std::string& serial,
 		const std::wstring& username,
 		const std::wstring& domain,
-		FIDO2RegistrationResponse registrationResponse,
+		FIDORegistrationResponse registrationResponse,
 		const std::string& origin,
 		PIResponse& piresponse);
 
@@ -161,30 +158,26 @@ public:
 	/// allowed_credential
 	/// </summary>
 	/// <returns>std::optional<FIDO2SignRequest></returns>
-	std::optional<FIDO2SignRequest> GetOfflineFIDO2SignRequest();
+	std::optional<FIDOSignRequest> GetOfflineFIDOSignRequest();
 	
 private:
 	HRESULT AppendRealm(std::wstring domain, std::map<std::string, std::string>& parameters);
 
-	//
-	// Bundle steps that should be done with the server response from /validate/check before returning the resultObj
-	//
+	std::string SendRequestWithFallback(
+		const std::string& endpoint,
+		const std::map<std::string, std::string>& parameters,
+		const std::map<std::string, std::string>& headers,
+		RequestMethod method);
+
 	HRESULT ProcessResponse(std::string response, _Inout_ PIResponse& responseObj);
 
 	void PollThread(const std::wstring& username, const std::wstring& domain, const std::wstring& upn, const std::string& transactionId, 
 		std::function<void(const PIResponse&)> callback);
 
-	std::map<std::wstring, std::wstring> _realmMap;
-
-	std::wstring _defaultRealm = L"";
-
 	Endpoint _endpoint;
-
-	bool _logPasswords = false;
-	bool _sendUPN = false;
+	PIConfig _config;
 
 	std::atomic<bool> _runPoll = false;
-
 	JsonParser _parser;
 };
 

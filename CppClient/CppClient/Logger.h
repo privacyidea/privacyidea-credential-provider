@@ -19,6 +19,8 @@
 #pragma once
 
 #include <string>
+#include <fstream>
+#include <mutex>
 
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
@@ -29,12 +31,11 @@
 class Logger
 {
 public:
-	std::string logfilePath = "C:\\PICredentialProviderLog.txt";
-
 	Logger(Logger const&) = delete;
 	void operator=(Logger const&) = delete;
 
-	static Logger& Get() {
+	static Logger& Get()
+	{
 		static Logger instance;
 		return instance;
 	}
@@ -52,7 +53,20 @@ public:
 	bool logDebug = false;
 
 private:
-	Logger() = default;
+	Logger()
+		: _logStream("C:\\PICredentialProviderLog.txt", std::ios_base::app)
+	{}
+
+	~Logger()
+	{
+		if (_logStream.is_open())
+		{
+			_logStream.close();
+		}
+	}
+
+	std::ofstream _logStream;
+	std::mutex _mutex;
 
 	void LogS(const std::string& message, const char* file, int line, bool isDebugMessage);
 

@@ -29,7 +29,7 @@ constexpr auto TEXT_OTPS_REMAINING = 10;
 constexpr auto TEXT_GENERIC_ERROR = 11;
 constexpr auto TEXT_USE_WEBAUTHN = 12;
 constexpr auto TEXT_USE_OTP = 13;
-constexpr auto TEXT_WAN_PIN_HINT = 14;
+constexpr auto TEXT_FIDO_PIN_HINT = 14;
 constexpr auto TEXT_TOUCH_SEC_KEY = 15;
 constexpr auto TEXT_CONNECTING = 16;
 constexpr auto TEXT_LOGIN_TEXT = 17;
@@ -44,8 +44,11 @@ constexpr auto TEXT_FIDO_ERR_PIN_INVALID = 25;
 constexpr auto TEXT_USE_PASSKEY = 26;
 constexpr auto TEXT_ENTER_USERNAME = 27;
 constexpr auto TEXT_ENTER_PASSWORD = 28;
-constexpr auto TEXT_ENTER_USERNAME_PASSWORD = 28;
-
+constexpr auto TEXT_ENTER_USERNAME_PASSWORD = 29;
+constexpr auto TEXT_PASSKEY_REGISTER_TOUCH = 30;
+constexpr auto TEXT_SEC_KEY_ENTER_PIN_PROMPT = 31;
+constexpr auto TEXT_PASSKEY_REGISTRATION = 32;
+constexpr auto TEXT_LOGIN_WITH_USERNAME = 33;
 
 class Utilities
 {

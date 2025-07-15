@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,29 +20,8 @@
 #pragma once
 #include "PIConfig.h"
 #include "PIResponse.h"
+#include "Mode.h"
 #include <credentialprovider.h>
-
-enum class MODE
-{
-	NO_CHANGE = 0,
-	CHANGE_PASSWORD = 6,
-
-	USERNAME = 10,
-	PASSWORD = 11,
-	USERNAMEPASSWORD = 12, // Required for send_pass.
-
-	PRIVACYIDEA = 13,
-	SECURITY_KEY_ANY = 15,
-	PASSKEY = 16,
-
-	SEC_KEY_REG = 17,
-	SEC_KEY_REG_PIN = 18,
-
-	SEC_KEY_PIN = 21,
-	SEC_KEY_NO_PIN = 22, // Requires reset with autoLogon to get to CCredential::Connect directly
-	SEC_KEY_NO_DEVICE = 23, // Requires reset with autoLogon to get to CCredential::Connect directly
-};
-
 
 class Configuration
 {
@@ -63,26 +42,26 @@ public:
 	{
 		switch (mode)
 		{
-			case MODE::NO_CHANGE:						return "NO_CHANGE";
-			case MODE::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
-			case MODE::USERNAME:						return "USERNAME";
-			case MODE::PASSWORD:						return "PASSWORD";
-			case MODE::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
-			case MODE::PRIVACYIDEA:						return "PRIVACYIDEA";
-			case MODE::PASSKEY:							return "PASSKEY";
-			case MODE::SEC_KEY_REG:						return "SECURITY_KEY_REGISTRATION";
-			case MODE::SEC_KEY_REG_PIN:					return "SECURITY_KEY_REGISTRATION_PIN";
-			case MODE::SECURITY_KEY_ANY:				return "SECURITY_KEY_ANY";
-			case MODE::SEC_KEY_PIN:						return "SECURITY_KEY_PIN";
-			case MODE::SEC_KEY_NO_PIN:					return "SECURITY_KEY_NO_PIN";
-			case MODE::SEC_KEY_NO_DEVICE:				return "SECURITY_KEY_NO_DEVICE";
+			case Mode::NO_CHANGE:						return "NO_CHANGE";
+			case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
+			case Mode::USERNAME:						return "USERNAME";
+			case Mode::PASSWORD:						return "PASSWORD";
+			case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
+			case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
+			case Mode::SEC_KEY_ANY:						return "SECURITY_KEY_ANY";
+			case Mode::PASSKEY:							return "PASSKEY";
+			case Mode::SEC_KEY_REG:						return "SECURITY_KEY_REGISTRATION";
+			case Mode::SEC_KEY_REG_PIN:					return "SECURITY_KEY_REGISTRATION_PIN";
+			case Mode::SEC_KEY_PIN:						return "SECURITY_KEY_PIN";
+			case Mode::SEC_KEY_NO_PIN:					return "SECURITY_KEY_NO_PIN";
+			case Mode::SEC_KEY_NO_DEVICE:				return "SECURITY_KEY_NO_DEVICE";
 			default:									return "UNKNOWN_MODE";
 		}
 	}
 
 	bool isNextModePassword() const noexcept
 	{
-		return (mode != MODE::PASSWORD && mode != MODE::USERNAMEPASSWORD)
+		return (mode != Mode::PASSWORD && mode != Mode::USERNAMEPASSWORD)
 			&& !(twoStepSendPassword || usernamePassword);
 	}
 
@@ -93,17 +72,26 @@ public:
 
 	bool isLastStep() const noexcept
 	{
-		return mode == MODE::PASSWORD || (mode >= MODE::PRIVACYIDEA && isPasswordInFirstStep());
+		return mode == Mode::PASSWORD || (mode >= Mode::PRIVACYIDEA && isPasswordInFirstStep());
 	}
 
 	bool isFirstStep() const noexcept
 	{
-		return mode == MODE::USERNAME || mode == MODE::USERNAMEPASSWORD || mode == MODE::NO_CHANGE;
+		return mode == Mode::USERNAME || mode == Mode::USERNAMEPASSWORD || mode == Mode::NO_CHANGE;
+	}
+
+	Mode GetFirstStepMode() const noexcept
+	{
+		if (twoStepSendPassword || usernamePassword)
+		{
+			return Mode::USERNAMEPASSWORD;
+		}
+		return Mode::USERNAME;
 	}
 
 	// FIDO2
 	bool usePasskey = false;		// Online
-	bool useOfflineFIDO2 = false;	// Offline
+	bool useOfflineFIDO = false;	// Offline
 	bool disablePasskey = false;
 	std::wstring usePasskeyText = L"";
 
@@ -114,6 +102,8 @@ public:
 	std::wstring useOtpLinkText;
 	std::wstring bitmapPath = L"";
 	std::wstring resetLinkText = L"";
+
+	std::wstring prompt = L"";
 
 	// Add locales files path
 	std::wstring localesPath = L"";
@@ -131,7 +121,7 @@ public:
 	bool showResetLink = false;
 
 	bool debugLog = false;
-
+	bool hideFirstStepResponse = false;
 	bool noDefault = false;
 
 	int winVerMajor = 0;
@@ -144,7 +134,7 @@ public:
 
 	bool doAutoLogon = false;
 
-	PIResponse lastResponse; // TODO optional
+	std::optional<PIResponse> lastResponse;
 	std::string lastTransactionId = "";
 
 	std::wstring excludedAccount = L"";
@@ -164,7 +154,7 @@ public:
 	bool otpFailReturnToFirstStep = false;
 
 	// Track the current state
-	MODE mode = MODE::NO_CHANGE;
+	Mode mode = Mode::NO_CHANGE;
 
 	struct PROVIDER
 	{

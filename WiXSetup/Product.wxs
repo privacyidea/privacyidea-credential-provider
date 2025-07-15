@@ -101,6 +101,9 @@
 		<Property Id="ENABLE_FILTER">
 			<RegistrySearch Id="SearchEnableFilter" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_filter" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="ENABLE_RESET">
+			<RegistrySearch Id="SearchEnableReset" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_reset" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Property Id="FILTER_WHITELIST">
 			<RegistrySearch Id="SearchFilterWhitelist" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="filter_whitelist" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -155,8 +158,38 @@
 		<Property Id="CREDUI_NO_IMAGE">
 			<RegistrySearch Id="SearchCreduiNoImage" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="credui_no_image" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		
+		<Property Id="SHOW_DOMAIN_HINT">
+			<RegistrySearch Id="SearchShowDomainHint" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="show_domain_hint" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="PREFILL_USERNAME">
+			<RegistrySearch Id="SearchPrefillUsername" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="prefill_username" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="NO_DEFAULT">
+			<RegistrySearch Id="SearchNoDefault" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="no_default" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="EXCLUDED_ACCOUNT">
+			<RegistrySearch Id="SearchExcludedAccount" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_account" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="RESOLVE_TIMEOUT">
+			<RegistrySearch Id="SearchResolveTimeout" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="resolve_timeout" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="CONNECT_TIMEOUT">
+			<RegistrySearch Id="SearchConnectTimeout" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="connect_timeout" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="SEND_TIMEOUT">
+			<RegistrySearch Id="SearchSendTimeout" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="send_timeout" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="RECEIVE_TIMEOUT">
+			<RegistrySearch Id="SearchReceiveTimeout" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="receive_timeout" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="DEFAULT_REALM">
+			<RegistrySearch Id="SearchDefaultRealm" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="default_realm" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="HIDE_FIRST_STEP_RESPONSE">
+			<RegistrySearch Id="SearchHideFirstStepResponse" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_first_step_response" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<!-- END PROPERTIES -->
+		
 		<!-- Directory definitions -->
 		<Directory Id="TARGETDIR" Name="SourceDir">
 			<!-- Visual Studio C++ Redistributable -->
@@ -235,11 +268,12 @@
 						<RegistryValue Name="ssl_ignore_unknown_ca" Type="string" Value="[SSL_IGNORE_UNKNOWN_CA]" />
 						<RegistryValue Name="ssl_ignore_invalid_cn" Type="string" Value="[SSL_IGNORE_INVALID_CN]" />
 						<RegistryValue Name="custom_port" Type="string" Value="[CUSTOM_PORT]" />
-						<RegistryValue Name="resolve_timeout" Type="string" Value="" />
-						<RegistryValue Name="connect_timeout" Type="string" Value="" />
-						<RegistryValue Name="send_timeout" Type="string" Value="" />
-						<RegistryValue Name="receive_timeout" Type="string" Value="" />
+						<RegistryValue Name="resolve_timeout" Type="string" Value="[RESOLVE_TIMEOUT]" />
+						<RegistryValue Name="connect_timeout" Type="string" Value="[CONNECT_TIMEOUT]" />
+						<RegistryValue Name="send_timeout" Type="string" Value="[SEND_TIMEOUT]" />
+						<RegistryValue Name="receive_timeout" Type="string" Value="[RECEIVE_TIMEOUT]" />
 						<!-- END CONNECTION -->
+						
 						<!-- CUSTOMIZATION -->
 						<RegistryValue Name="login_text" Type="string" Value="[LOGIN_TEXT]" />
 						<RegistryValue Name="otp_text" Type="string" Value="[OTP_TEXT]" />
@@ -253,33 +287,38 @@
 						
 						<RegistryValue Name="hide_fullname" Type="string" Value="[HIDE_FULLNAME]" />
 						<RegistryValue Name="hide_domainname" Type="string" Value="[HIDE_DOMAINNAME]" />
-						
-						<RegistryValue Name="show_domain_hint" Type="string" Value="" />
-						<RegistryValue Name="prefill_username" Type="string" Value="" />
-						<RegistryValue Name="enable_reset" Type="string" Value="" />
+						<RegistryValue Name="hide_first_step_response" Type="string" Value="[HIDE_FIRST_STEP_RESPONSE]" />
+						<RegistryValue Name="show_domain_hint" Type="string" Value="[SHOW_DOMAIN_HINT]" />
+						<RegistryValue Name="prefill_username" Type="string" Value="[PREFILL_USERNAME]" />
+						<RegistryValue Name="enable_reset" Type="string" Value="[ENABLE_RESET]" />
 						<RegistryValue Name="reset_link_text" Type="string" Value="[RESET_LINK_TEXT]" />
 						<RegistryValue Name="send_upn" Type="string" Value="[SEND_UPN]" />
 						<RegistryValue Name="otp_link_text" Type="string" Value="[OTP_LINK_TEXT]" />
 						<!-- END CUSTOMIZATION -->
+						
+						<!-- CREDENTIAL PROVIDER USAGE SCENARIOS -->
 						<RegistryValue Name="cpus_logon" Type="string" Value="[CPUS_LOGON]" />
 						<RegistryValue Name="cpus_unlock" Type="string" Value="[CPUS_UNLOCK]" />
 						<RegistryValue Name="cpus_credui" Type="string" Value="[CPUS_CREDUI]" />
 						<RegistryValue Name="enable_filter" Type="string" Value="[ENABLE_FILTER]" />
 						<RegistryValue Name="filter_whitelist" Type="multiString" Value="[FILTER_WHITELIST]" />
-						<!-- WEBAUTHN -->
+						<!-- END CREDENTIAL PROVIDER USAGE SCENARIOS -->
+						
+						<!-- FIDO -->
 						<RegistryValue Name="webauthn_link_text" Type="string" Value="[WEBAUTHN_LINK_TEXT]" />
 						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
 						<RegistryValue Name="webauthn_pin_hint" Type="string" Value="[WEBAUTHN_PIN_HINT]" />
 						<RegistryValue Name="webauthn_offline_no_pin" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
-						<RegistryValue Name="disable_passkey" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
-						<!-- END WEBAUTHN -->
+						<RegistryValue Name="disable_passkey" Type="string" Value="[DISABLE_PASSKEY]" />
+						<!-- END FIDO -->
+						
 						<!-- MISC -->
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
 						<RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
-						<RegistryValue Name="excluded_account" Type="string" Value="" />
-						<RegistryValue Name="no_default" Type="string" Value="" />
+						<RegistryValue Name="excluded_account" Type="string" Value="[EXCLUDED_ACCOUNT]" />
+						<RegistryValue Name="no_default" Type="string" Value="[NO_DEFAULT]" />
 						<RegistryValue Name="log_sensitive" Type="string" Value="" />
-						<RegistryValue Name="default_realm" Type="string" Value="" />
+						<RegistryValue Name="default_realm" Type="string" Value="[DEFAULT_REALM]" />
 						<RegistryValue Name="offline_file" Type="string" Value="[OFFLINE_FILE_PATH]" />
 						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
 						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
