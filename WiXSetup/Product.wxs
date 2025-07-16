@@ -313,6 +313,7 @@
 						<!-- END FIDO -->
 						
 						<!-- MISC -->
+						<RegistryValue Name="header_accept_language" Type="string" Value="system" />
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
 						<RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
 						<RegistryValue Name="excluded_account" Type="string" Value="[EXCLUDED_ACCOUNT]" />

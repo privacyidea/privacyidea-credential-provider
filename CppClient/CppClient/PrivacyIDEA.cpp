@@ -26,6 +26,9 @@
 
 using namespace std;
 
+constexpr int POLL_THREAD_TIMEOUT_SECONDS = 300; // 5 minutes
+constexpr int POLL_THREAD_SLEEP_MILLISECONDS = 500;
+
 std::optional<FIDOSignRequest> PrivacyIDEA::GetOfflineFIDOSignRequest()
 {
 	std::optional<FIDOSignRequest> ret = std::nullopt;
@@ -45,7 +48,7 @@ std::optional<FIDOSignRequest> PrivacyIDEA::GetOfflineFIDOSignRequest()
 			}
 			if (signRequest.challenge.empty())
 			{
-				signRequest.challenge = GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE); // TODO
+				signRequest.challenge = FIDODevice::GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE); // TODO
 			}
 		}
 		ret = signRequest;
@@ -103,10 +106,9 @@ void PrivacyIDEA::PollThread(
 {
 	PIDebug("Starting poll thread...");
 	bool success = false;
-
 	this_thread::sleep_for(chrono::milliseconds(300));
-
-	while (_runPoll.load())
+	int maxIterations = POLL_THREAD_TIMEOUT_SECONDS * 1000 / POLL_THREAD_SLEEP_MILLISECONDS;
+	while (_runPoll.load() && maxIterations)
 	{
 		if (PollTransaction(transactionId))
 		{
@@ -114,9 +116,10 @@ void PrivacyIDEA::PollThread(
 			_runPoll.store(false);
 			break;
 		}
-		this_thread::sleep_for(chrono::milliseconds(500));
+		this_thread::sleep_for(chrono::milliseconds(POLL_THREAD_SLEEP_MILLISECONDS));
+		maxIterations--;
 	}
-	PIDebug("Polling stopped");
+	PIDebug("Polling stopped" + string((maxIterations == 0 ? " because of timeout" : "")));
 	// Only finalize if there was success while polling. If the authentication finishes otherwise, the polling is stopped without finalizing.
 	if (success)
 	{
@@ -126,12 +129,8 @@ void PrivacyIDEA::PollThread(
 		if (FAILED(res))
 		{
 			PIDebug("/validate/check failed with " + to_string(res));
-			callback(pir);
 		}
-		else
-		{
-			callback(pir);
-		}
+		callback(pir);
 	}
 }
 
@@ -283,7 +282,7 @@ HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
 		{"authenticatorAttachment", registrationResponse.authenticatorAttachment},
 		{"rawId", registrationResponse.credentialId}
 	};
-
+	AppendRealm(domain, parameters);
 	map<string, string> headers = { { "Origin", origin } };
 
 	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
@@ -406,7 +405,12 @@ bool PrivacyIDEA::StopPoll()
 	return true;
 }
 
-void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transactionId, std::function<void(const PIResponse&)> callback)
+void PrivacyIDEA::PollTransactionAsync(
+	std::wstring username,
+	std::wstring domain,
+	std::wstring upn,
+	std::string transactionId,
+	std::function<void(const PIResponse&)> callback)
 {
 	_runPoll.store(true);
 	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);

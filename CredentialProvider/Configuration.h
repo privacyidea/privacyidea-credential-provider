@@ -30,6 +30,8 @@ public:
 
 	void LogConfig();
 
+	std::string ValidateAcceptLanguage(std::wstring configEntry);
+
 	PIConfig piconfig;
 
 	template<typename... Modes>
@@ -138,6 +140,7 @@ public:
 	std::string lastTransactionId = "";
 
 	std::wstring excludedAccount = L"";
+	std::wstring excludedGroup = L"";
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;

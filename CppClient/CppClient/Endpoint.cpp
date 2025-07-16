@@ -185,12 +185,18 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 
 	string encodedData = EncodeRequestParameters(parameters);
 
+	std::map<std::string, std::string> headersCopy = headers;
+	// Validation of _config.acceptLanguage is done prior to this
+	headersCopy.try_emplace("Accept-Language", _config.acceptLanguage);
+
+#ifdef _DEBUG
 	PIDebug("Headers:");
 	PIDebug(L"User-Agent=" + _config.userAgent);
-	for (auto& entry : headers)
+	for (auto& entry : headersCopy)
 	{
 		PIDebug(entry.first + "=" + entry.second);
 	}
+#endif //_DEBUG
 
 	LPSTR data = _strdup(encodedData.c_str());
 	DWORD dataLen = (DWORD)strnlen_s(encodedData.c_str(), MAXDWORD32);
@@ -311,9 +317,9 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	{
 		PIError("Failed to add User-Agent to header!");
 	}
-	if (!headers.empty())
+	if (!headersCopy.empty())
 	{
-		for (auto& entry : headers)
+		for (auto& entry : headersCopy)
 		{
 			if (!entry.first.empty() && !WinHttpAddRequestHeaders(hRequest,	Convert::ToWString(entry.first + ": " + entry.second).c_str(),
 				(DWORD)-1L,	WINHTTP_ADDREQ_FLAG_ADD))

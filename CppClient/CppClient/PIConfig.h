@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@ struct PIConfig
 	bool ignoreInvalidCN = false;
 	bool ignoreUnknownCA = false;
 	std::wstring userAgent = L"privacyidea-cpp-client";
+
 	std::map<std::wstring, std::wstring> realmMap = std::map<std::wstring, std::wstring>();
 	std::wstring defaultRealm = L"";
 	bool logPasswords = false;
@@ -49,4 +50,8 @@ struct PIConfig
 	int connectTimeout = 60000;
 	int sendTimeout = 30000;
 	int receiveTimeout = 30000;
+
+	// Can be "system" or a valid language code like "en-US" or "de-DE"
+	// If format is wrong, use system
+	std::string acceptLanguage = "system";
 };

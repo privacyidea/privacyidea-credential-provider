@@ -17,6 +17,9 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 
+#include <Windows.h>
+#include <string>
+#include <locale>
 #include "Configuration.h"
 #include "Utilities.h"
 #include "version.h"
@@ -38,7 +41,7 @@ void Configuration::Load()
 	twoStepSendEmptyPassword = rr.GetBool(L"two_step_send_empty_password");
 	twoStepSendPassword = rr.GetBool(L"two_step_send_password");
 	usernamePassword = rr.GetBool(L"username_password");
-	
+
 	disablePasskey = rr.GetBool(L"disable_passkey");
 	usePasskeyText = rr.GetWString(L"passkey_text");
 
@@ -91,9 +94,11 @@ void Configuration::Load()
 	piconfig.sendTimeout = rr.GetInt(L"send_timeout");
 	piconfig.receiveTimeout = rr.GetInt(L"receive_timeout");
 
+	piconfig.acceptLanguage = ValidateAcceptLanguage(rr.GetWString(L"header_accept_language"));
+
 	// Format domain\username or computername\username
 	excludedAccount = rr.GetWString(L"excluded_account");
-
+	excludedGroup = rr.GetWString(L"excluded_group");
 	// Realm Mapping
 	piconfig.defaultRealm = rr.GetWString(L"default_realm");
 
@@ -133,7 +138,58 @@ void Configuration::Load()
 	winBuildNr = info.dwBuildNumber;
 }
 
-void PrintIfIntIsNotValue(string message, int value, int comparable)
+std::string Configuration::ValidateAcceptLanguage(std::wstring configEntry)
+{
+	if (configEntry.empty() || configEntry == L"system")
+	{
+		const LANGID langId = GetUserDefaultUILanguage();
+		// Get the ISO 639 language name (e.g., "en")
+		char language[9] = { 0 };
+		if (GetLocaleInfoA(MAKELCID(langId, SORT_DEFAULT), LOCALE_SISO639LANGNAME, language, sizeof(language)) == 0)
+		{
+			PIError("Unable to get ISO 639 language name, using default en-US.");
+			return "en-US";
+		}
+
+		// Get the ISO 3166 country/region name (e.g., "US")
+		char country[9] = { 0 };
+		if (GetLocaleInfoA(MAKELCID(langId, SORT_DEFAULT), LOCALE_SISO3166CTRYNAME, country, sizeof(country)) == 0)
+		{
+			PIError("Unable to get ISO 3166 country name, using default en-US.");
+			return "en-US";
+		}
+
+		std::string result = language;
+		PIDebug("Language result: " + result);
+		result += "-";
+		// Lowercase language, lowercase country for Accept-Language
+		for (char& c : result) c = tolower(c);
+		for (char& c : country) c = tolower(c);
+		result += country;
+		return result;
+	}
+	else
+	{
+		// very simple format check
+		auto str = Convert::ToString(configEntry);
+		if (str.length() != 5)
+		{
+			PIError("Configured Accept-Language format is invalid: " + str + ". Using default en-US.");
+			return "en-US";
+		}
+		else if (std::isalpha(str[0]) && std::isalpha(str[1]) && str[2] == '-' && std::isalpha(str[3]) && std::isalpha(str[4]))
+		{
+			return str;
+		}
+		else
+		{
+			PIError("Configured Accept-Language format is invalid: " + str + ". Using default en-US.");
+			return "en-US";
+		}
+	}
+}
+
+static void PrintIfIntIsNotValue(string message, int value, int comparable)
 {
 	if (value != comparable)
 	{
@@ -141,12 +197,12 @@ void PrintIfIntIsNotValue(string message, int value, int comparable)
 	}
 }
 
-void PrintIfIntIsNotNull(string message, int value)
+static void PrintIfIntIsNotNull(string message, int value)
 {
 	PrintIfIntIsNotValue(message, value, 0);
 }
 
-void PrintIfStringNotEmpty(wstring message, wstring value)
+static void PrintIfStringNotEmpty(wstring message, wstring value)
 {
 	if (!value.empty())
 	{
@@ -156,6 +212,7 @@ void PrintIfStringNotEmpty(wstring message, wstring value)
 
 void Configuration::LogConfig()
 {
+	// TODO update
 	PIDebug("-----------------------------");
 	PIDebug("CP Version: " + string(VER_FILE_VERSION_STR));
 	PIDebug(L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)

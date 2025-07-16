@@ -30,6 +30,7 @@
 #include <thread>
 #include <future>
 #include <sstream>
+
 #include "CCredential.h"
 #include "Configuration.h"
 #include "RegistryReader.h"
@@ -41,8 +42,10 @@
 #include "SmartcardListener.h"
 #include "FIDOException.h"
 #include "Mode.h"
+#include <lm.h>
 #include <gdiplus.h>
 #pragma comment (lib, "Gdiplus.lib")
+#pragma comment(lib, "Netapi32.lib")
 
 const std::wstring IMAGE_BASE64_PREFIX = L"data:image/png;base64,";
 
@@ -1391,6 +1394,84 @@ void CCredential::PushAuthenticationCallback(const PIResponse& response)
 
 bool CCredential::CheckExcludedAccount()
 {
+	// Check if the user is in the excluded group
+	if (!_config->excludedGroup.empty())
+	{
+		std::vector<std::wstring> groups;
+
+		LPCWSTR serverName = _config->credential.domain.empty() ? nullptr : _config->credential.domain.c_str();
+		LPCWSTR userName = _config->credential.username.c_str();
+
+		// Global groups
+		DWORD entriesRead = 0, totalEntries = 0;
+		GROUP_USERS_INFO_0* pGroupInfo = nullptr;
+		NET_API_STATUS nStatus = NetUserGetGroups(
+			serverName,
+			userName,
+			0,
+			(LPBYTE*)&pGroupInfo,
+			MAX_PREFERRED_LENGTH,
+			&entriesRead,
+			&totalEntries
+		);
+
+		if (nStatus == NERR_Success && pGroupInfo)
+		{
+			for (DWORD i = 0; i < entriesRead; ++i)
+			{
+				groups.push_back(pGroupInfo[i].grui0_name);
+			}
+			NetApiBufferFree(pGroupInfo);
+		}
+		else
+		{
+			std::wstringstream ss;
+			ss << L"NetUserGetGroups failed for user '" << userName << L"' in domain '"
+				<< (serverName ? serverName : L"(local)") << L"' with error: " << nStatus;
+			PIError(Convert::ToString(ss.str()));
+		}
+
+		// Local groups
+		LOCALGROUP_USERS_INFO_0* pLocalGroupInfo = nullptr;
+		entriesRead = totalEntries = 0;
+		nStatus = NetUserGetLocalGroups(
+			serverName,
+			userName,
+			0,
+			LG_INCLUDE_INDIRECT, // 0 would be only direct groups
+			(LPBYTE*)&pLocalGroupInfo,
+			MAX_PREFERRED_LENGTH,
+			&entriesRead,
+			&totalEntries
+		);
+
+		if (nStatus == NERR_Success && pLocalGroupInfo)
+		{
+			for (DWORD i = 0; i < entriesRead; ++i)
+			{
+				groups.push_back(pLocalGroupInfo[i].lgrui0_name);
+			}
+			NetApiBufferFree(pLocalGroupInfo);
+		}
+		else
+		{
+			std::wstringstream ss;
+			ss << L"NetUserGetLocalGroups failed for user '" << userName << L"' in domain '"
+				<< (serverName ? serverName : L"(local)") << L"' with error: " << nStatus;
+			PIError(Convert::ToString(ss.str()));
+		}
+
+		// Check if the user is in the excluded group
+		for (const auto& group : groups)
+		{
+			if (Convert::ToUpperCase(group) == Convert::ToUpperCase(_config->excludedGroup))
+			{
+				PIDebug(L"User is in excluded group: " + _config->excludedGroup);
+				return true;
+			}
+		}
+		PIDebug(L"User " + _config->credential.username + L" is not in excluded group: " + _config->excludedGroup);
+	}
 	// Check if the user is the excluded account
 	if (!_config->excludedAccount.empty())
 	{

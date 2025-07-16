@@ -37,16 +37,26 @@ constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 class FIDODevice
 {
 public:
-	static std::vector<FIDODevice> GetDevices(bool log=true);
+	static std::vector<FIDODevice> GetDevices(bool log = true);
 
-	FIDODevice(const fido_dev_info_t* devinfo, bool log=true);
+	FIDODevice(const fido_dev_info_t* devinfo, bool log = true);
 	FIDODevice() = default;
 
-	int Sign(const FIDOSignRequest& signRequest, const std::string& origin, const std::string& pin, FIDOSignResponse& signResponse) const;
+	int Sign(
+		const FIDOSignRequest& signRequest,
+		const std::string& origin,
+		const std::string& pin,
+		FIDOSignResponse& signResponse) const;
 
-	int SignAndVerifyAssertion(const std::vector<OfflineData>& offlineData, const std::string& origin, const std::string& pin, std::string& serialUsed) const;
+	int SignAndVerifyAssertion(
+		const std::vector<OfflineData>& offlineData,
+		const std::string& origin,
+		const std::string& pin,
+		std::string& serialUsed) const;
 
-	std::optional<FIDORegistrationResponse> Register(const FIDORegistrationRequest& registration, const std::string& pin);
+	std::optional<FIDORegistrationResponse> Register(
+		const FIDORegistrationRequest& registration,
+		const std::string& pin);
 
 	std::string GetPath() const { return _path; }
 	std::string GetManufacturer() const { return _manufacturer; }
@@ -54,6 +64,8 @@ public:
 	bool HasPin() const noexcept { return _hasPin; }
 	bool IsWinHello() const noexcept { return _isWinHello; }
 	bool HasUV() const noexcept { return _hasUV; }
+
+	static std::string GenerateRandomAsBase64URL(long size);
 
 private:
 	int GetDeviceInfo();
@@ -67,6 +79,6 @@ private:
 	bool _isWinHello = false;
 	bool _hasUV = false;
 	std::vector<int> _supportedAlgorithms;
-	int _remainingResidentKeys = -1;
+	long _remainingResidentKeys = -1;
 	bool _newPinRequired = false;
 };

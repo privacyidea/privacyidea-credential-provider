@@ -38,7 +38,7 @@ CProvider::CProvider() :
 	_pkiulSetSerialization(nullptr)
 {
 	DllAddRef();
-
+	Logger::Get().logDebug = true;
 	_config = std::make_shared<Configuration>();
 	_config->Load();
 	auto c = _config->mode;
