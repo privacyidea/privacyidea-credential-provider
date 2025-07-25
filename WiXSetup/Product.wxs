@@ -185,8 +185,26 @@
 		<Property Id="DEFAULT_REALM">
 			<RegistrySearch Id="SearchDefaultRealm" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="default_realm" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="HIDE_FIRST_STEP_RESPONSE">
-			<RegistrySearch Id="SearchHideFirstStepResponse" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_first_step_response" Win64="$(var.Win64)" Type="raw" />
+		<Property Id="HIDE_FIRST_STEP_RESPONSE_ERROR">
+			<RegistrySearch Id="SearchHideFirstStepResponseError" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_fist_step_response_error" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="FALLBACK_HOSTNAME">
+			<RegistrySearch Id="SearchFallbackHostname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="fallback_hostname" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="FALLBACK_PORT">
+			<RegistrySearch Id="SearchFallbackPort" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="fallback_port" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="FALLBACK_PATH">
+			<RegistrySearch Id="SearchFallbackPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="fallback_path" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="EXCLUDED_GROUP">
+			<RegistrySearch Id="SearchExcludedGroup" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="EXCLUDED_GROUP_NETBIOS_ADDRESS">
+			<RegistrySearch Id="SearchNetBiosAddress" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_address" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="LOCALES_PATH">
+			<RegistrySearch Id="SearchLocalesPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="locales_path" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<!-- END PROPERTIES -->
 		
@@ -262,22 +280,29 @@
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}" Action="removeOnUninstall" />
 					<!-- Configuration values (from dialogs/registry/unattended) -->
 					<RegistryKey Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" ForceCreateOnInstall="yes">
-						<!-- CONNECTION -->
+						<!-- CONNECTION & RECOVERY -->
 						<RegistryValue Name="hostname" Type="string" Value="[HOSTNAME]" />
 						<RegistryValue Name="path" Type="string" Value="[PATH]" />
+						<RegistryValue Name="custom_port" Type="string" Value="[CUSTOM_PORT]" />
+
+						<RegistryValue Name="fallback_hostname" Type="string" Value="[FALLBACK_HOSTNAME]" />
+						<RegistryValue Name="fallback_path" Type="string" Value="[FALLBACK_PATH]" />
+						<RegistryValue Name="fallback_port" Type="string" Value="[FALLBACK_PORT]" />
+						
 						<RegistryValue Name="ssl_ignore_unknown_ca" Type="string" Value="[SSL_IGNORE_UNKNOWN_CA]" />
 						<RegistryValue Name="ssl_ignore_invalid_cn" Type="string" Value="[SSL_IGNORE_INVALID_CN]" />
-						<RegistryValue Name="custom_port" Type="string" Value="[CUSTOM_PORT]" />
+
 						<RegistryValue Name="resolve_timeout" Type="string" Value="[RESOLVE_TIMEOUT]" />
 						<RegistryValue Name="connect_timeout" Type="string" Value="[CONNECT_TIMEOUT]" />
 						<RegistryValue Name="send_timeout" Type="string" Value="[SEND_TIMEOUT]" />
 						<RegistryValue Name="receive_timeout" Type="string" Value="[RECEIVE_TIMEOUT]" />
+						
+						<RegistryValue Name="excluded_account" Type="string" Value="[EXCLUDED_ACCOUNT]" />
+						<RegistryValue Name="excluded_group" Type="string" Value="[EXCLUDED_GROUP]" />
+						<RegistryValue Name="excluded_group_netbios_address" Type="string" Value="[EXCLUDED_GROUP_NETBIOS_ADDRESS]" />
 						<!-- END CONNECTION -->
 						
 						<!-- CUSTOMIZATION -->
-						<RegistryValue Name="login_text" Type="string" Value="[LOGIN_TEXT]" />
-						<RegistryValue Name="otp_text" Type="string" Value="[OTP_TEXT]" />
-						<RegistryValue Name="otp_fail_text" Type="string" Value="" />
 						<RegistryValue Name="v1_bitmap_path" Type="string" Value="[V1_BITMAP_PATH]" />
 						<RegistryValue Name="credui_no_image" Type="string" Value="[CREDUI_NO_IMAGE]" />
 						
@@ -287,13 +312,11 @@
 						
 						<RegistryValue Name="hide_fullname" Type="string" Value="[HIDE_FULLNAME]" />
 						<RegistryValue Name="hide_domainname" Type="string" Value="[HIDE_DOMAINNAME]" />
-						<RegistryValue Name="hide_first_step_response" Type="string" Value="[HIDE_FIRST_STEP_RESPONSE]" />
+						<RegistryValue Name="hide_fist_step_response_error" Type="string" Value="[HIDE_FIRST_STEP_RESPONSE_ERROR]" />
 						<RegistryValue Name="show_domain_hint" Type="string" Value="[SHOW_DOMAIN_HINT]" />
 						<RegistryValue Name="prefill_username" Type="string" Value="[PREFILL_USERNAME]" />
 						<RegistryValue Name="enable_reset" Type="string" Value="[ENABLE_RESET]" />
-						<RegistryValue Name="reset_link_text" Type="string" Value="[RESET_LINK_TEXT]" />
 						<RegistryValue Name="send_upn" Type="string" Value="[SEND_UPN]" />
-						<RegistryValue Name="otp_link_text" Type="string" Value="[OTP_LINK_TEXT]" />
 						<!-- END CUSTOMIZATION -->
 						
 						<!-- CREDENTIAL PROVIDER USAGE SCENARIOS -->
@@ -305,9 +328,7 @@
 						<!-- END CREDENTIAL PROVIDER USAGE SCENARIOS -->
 						
 						<!-- FIDO -->
-						<RegistryValue Name="webauthn_link_text" Type="string" Value="[WEBAUTHN_LINK_TEXT]" />
 						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
-						<RegistryValue Name="webauthn_pin_hint" Type="string" Value="[WEBAUTHN_PIN_HINT]" />
 						<RegistryValue Name="webauthn_offline_no_pin" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
 						<RegistryValue Name="disable_passkey" Type="string" Value="[DISABLE_PASSKEY]" />
 						<!-- END FIDO -->
@@ -315,8 +336,8 @@
 						<!-- MISC -->
 						<RegistryValue Name="header_accept_language" Type="string" Value="system" />
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
+						<RegistryValue Name="locales_path" Type="string" Value="[LOCALES_PATH]" />
 						<RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
-						<RegistryValue Name="excluded_account" Type="string" Value="[EXCLUDED_ACCOUNT]" />
 						<RegistryValue Name="no_default" Type="string" Value="[NO_DEFAULT]" />
 						<RegistryValue Name="log_sensitive" Type="string" Value="" />
 						<RegistryValue Name="default_realm" Type="string" Value="[DEFAULT_REALM]" />
@@ -326,6 +347,7 @@
 						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
 						<RegistryValue Name="otp_fail_return_to_first_step" Type="string" Value="[OTP_FAIL_RETURN_TO_FIRST_STEP]" />
 						<!-- END MISC -->
+						
 						<!-- LOCALIZATION-->
 						<RegistryValue Name="localesPath" Type="string" Value="[$(var.PlatformProgramDataFolder)]$(var.Publisher)\$(var.ProductFolderName)\locales" />
 						<!-- END LOCALIZATION -->
@@ -335,6 +357,7 @@
 					<!-- END Registry -->
 				</Component>
 				<!-- END Core components -->
+				
 				<!-- ProviderFilter component -->
 				<Component Location="local" Guid="a6d595a6-58b4-4541-8171-65f3f364b58c">
 					<!-- Files -->
@@ -352,12 +375,36 @@
 					<!-- END Registry -->
 				</Component>
 				<!-- END ProviderFilter component -->
+				
 				<!-- Activate ProviderFilter (InstallAsDefault) component -->
 				<Component Id="ActivateCredentialProviderFilter" Location="local" Guid="ddc94b52-e7f2-4632-9f04-37f1b2b3c7a3">
 					<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Type="string" Value="$(var.CredentialProviderFilter.TargetName)" KeyPath="yes" />
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Action="removeOnUninstall" />
 				</Component>
 				<!-- END Activate ProviderFilter component -->
+				
+				<!-- Remove old registry entries component -->
+				<Component Id="RemoveObsoleteRegistryValues" Location="local" Guid="1D247BD9-A548-4904-A3E0-3C6F3234A111">
+					<CreateFolder />
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_link_text"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="reset_link_text"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_fail_text"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_text"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_hide_otp"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="login_text"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint"/>
+				</Component>
+				<!-- END remove old registry entries -->
+				
+				<!-- Register for Safe Mode (optional) -->
+				<Component Id="RegisterForSafeMode" Location="local" Guid="49BB889F-6F08-48A9-9284-E0FF0F166F78">
+					<Condition>REGISTER_FOR_SAFEMODE=1</Condition>
+					<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers" Name="ProhibitFallbacks" Type="integer" Value="1" />
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers" Name="ProhibitFallbacks"/>
+				</Component>
+				
+				<!-- END register for Safe Mode -->
 			</Directory>
 			<!-- END Directories/Components to be placed in System-folder -->
 		</Directory>
@@ -369,6 +416,8 @@
 				<ComponentRef Id="CredentialProviderFilter" />
 				<ComponentRef Id="ActivateCredentialProviderFilter" />
 				<ComponentRef Id="LocalizationFilesInProgramDataFolder"/>
+				<ComponentRef Id="RemoveObsoleteRegistryValues"/>
+				<ComponentRef Id="RegisterForSafeMode" />
 			</Feature>
 			<!-- These are installed anyway: -->
 			<Feature Id="VCRedist" Title="Visual C++ Runtime" AllowAdvertise="no" Display="hidden" Level="1">
@@ -385,14 +434,14 @@
 		<!-- UI Configuration -->
 		<UI Id="MyWixUI_FeatureTree">
 			<UIRef Id="WixUI_FeatureTree" />
-			<DialogRef Id="ServerConfigurationDlg" />
-			<DialogRef Id="FilterConfigurationDlg" />
-			<DialogRef Id="OfflineConfigurationDlg" />
-			<DialogRef Id="UserConfigurationDlg" />
-			<DialogRef Id="WebAuthnDlg" />
+			<DialogRef Id="ServerDlg" />
+			<DialogRef Id="UIDlg" />
+			<DialogRef Id="FilterDlg" />
+			<DialogRef Id="FidoDlg" />
+			<DialogRef Id="OfflineDlg" />
 			<!-- Skip the component dialog which would be between License and ServerConfig-->
-			<Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
-			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WebAuthnDlg" Order="1">NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )</Publish>
+			<Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerDlg">1</Publish>
+			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OfflineDlg" Order="1">NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )</Publish>
 			<!-- END Queue custom dialogs -->
 		</UI>
 		<!-- END UI Configuration -->

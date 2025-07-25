@@ -44,7 +44,7 @@ struct PIConfig
 	std::wstring offlineFilePath = L"C:\\offlineFile.json";
 	int offlineTryWindow = 10;
 	bool sendUPN = false;
-	std::wstring fallbackURL = L"";
+	
 	// optionals
 	int resolveTimeout = 0; // = infinite
 	int connectTimeout = 60000;

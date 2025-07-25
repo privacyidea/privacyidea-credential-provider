@@ -227,9 +227,10 @@ namespace
 			}
 		}
 
-		// Client data: Passkey challenge has different encoding, so encode it here again
+		// Passkey challenges are not bound to a specific credential, so allowCredentials are empty. The encoding of the challenge is different in this case.
+		bool isPasskeyChallenge = signRequest.allowCredentials.empty();
 		std::string challenge = signRequest.challenge;
-		if (signRequest.type == "passkey")
+		if (signRequest.type == "passkey" || isPasskeyChallenge)
 		{
 			std::vector<unsigned char> bytes(signRequest.challenge.begin(), signRequest.challenge.end());
 			challenge = Convert::Base64URLEncode(bytes.data(), bytes.size());
@@ -408,10 +409,10 @@ namespace
 	}
 }
 
-std::vector<FIDODevice> FIDODevice::GetDevices(bool log)
+std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log)
 {
 	if (log)
-		PIDebug("Searching for connected FIDO2 devices");
+		PIDebug("Searching for connected FIDO devices, filterWindowsHello=" + std::to_string(filterWindowsHello));
 	fido_init(fidoFlags);
 	std::vector<FIDODevice> ret;
 	size_t ndevs;
@@ -434,12 +435,13 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool log)
 	{
 		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
 		FIDODevice dev(di);
-		if (!dev.IsWinHello())
+		if (dev.IsWinHello() && filterWindowsHello)
 		{
-			ret.push_back(dev);
+			continue;
 		}
+		ret.push_back(dev);
 	}
-
+	PIDebug("Found " + std::to_string(ret.size()) + " FIDO device(s)");
 	return ret;
 }
 
@@ -466,9 +468,14 @@ FIDODevice::FIDODevice(const fido_dev_info_t* devinfo, bool log)
 		_isWinHello = fido_dev_is_winhello(dev.get());
 		_hasUV = fido_dev_has_uv(dev.get());
 		if (log)
-			PIDebug("New FIDO2 device: " + _manufacturer + " " + _product + " " + _path + " hasPin: " + std::to_string(_hasPin) + " isWinHello: " + std::to_string(_isWinHello));
+			PIDebug("New FIDO device: " + ToString() + " hasPin: " + std::to_string(_hasPin) + " isWinHello: " + std::to_string(_isWinHello));
 	}
 	GetDeviceInfo();
+}
+
+std::string FIDODevice::ToString() const
+{
+	return "[" + _manufacturer + "][" + _product + "][" + _path + "]";
 }
 
 int FIDODevice::Sign(
@@ -666,28 +673,35 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 	}
 
 	int type = COSE_ES256;
-	if (_supportedAlgorithms.empty())
+	if (!_isWinHello)
 	{
-		PIError("No supported algorithms found");
-		throw FIDOException("No supported algorithms found in device configuration.");
-	}
-
-	// Find the first supported algorithm from the registration request
-	bool algoFound = false;
-	for (const auto& item : registration.pubKeyCredParams)
-	{
-		if (std::find(_supportedAlgorithms.begin(), _supportedAlgorithms.end(), item.second) != _supportedAlgorithms.end())
+		if (_supportedAlgorithms.empty())
 		{
-			type = item.second;
-			algoFound = true;
-			break;
+			PIError("No supported algorithms found");
+			throw FIDOException("No supported algorithms found in device configuration.");
+		}
+
+		// Find the first supported algorithm from the registration request
+		bool algoFound = false;
+		for (const auto& item : registration.pubKeyCredParams)
+		{
+			if (std::find(_supportedAlgorithms.begin(), _supportedAlgorithms.end(), item.second) != _supportedAlgorithms.end())
+			{
+				type = item.second;
+				algoFound = true;
+				break;
+			}
+		}
+
+		if (!algoFound)
+		{
+			PIError("None of the requested algorithms are supported by the device.");
+			throw FIDOException("Requested public key credential parameters not supported by FIDO device.");
 		}
 	}
-
-	if (!algoFound)
+	else
 	{
-		PIError("None of the requested algorithms are supported by the device.");
-		throw FIDOException("Requested public key credential parameters not supported by FIDO device.");
+		PIDebug("Device is Windows Hello, using ES256 as default algorithm.");
 	}
 
 	// Cred Type

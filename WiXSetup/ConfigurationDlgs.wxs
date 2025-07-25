@@ -25,44 +25,33 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Fragment>
         <UI>
-            <!-- PAGE 1-->
+            <!-- PAGE 1: ServerDlg -->
             <TextStyle Id="Tahoma_Bold" FaceName="Tahoma" Size="8" Bold="yes" />
-            <Dialog Id="ServerConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <!-- Text inputs (hostname, path, opt texts) -->
-                <Control Id="HttpsLabel" Type="Text" X="45" Y="58" Width="220" Height="15" TabSkip="no" Text="https://" />
-                <Control Id="HostnameEdit" Type="Edit" X="75" Y="55" Width="115" Height="15" Property="HOSTNAME" />
-                <Control Id="PathEdit" Type="Edit" X="195" Y="55" Width="90" Height="18" Property="PATH" />
-                <Control Id="PathOptLabel" Type="Text" X="290" Y="58" Width="220" Height="15" TabSkip="no" Text="(optional)" />
-                <!-- Checkboxes -->
-                <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="45" Y="80" Width="220" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA Errors when using SSL." />
-                <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="45" Y="100" Width="220" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name Errors when using SSL." />
-                <Control Id="TwoStepHideOTP" Type="CheckBox" X="45" Y="120" Width="220" Height="17" Property="TWO_STEP_HIDE_OTP" CheckBoxValue="1" Text="Display OTP field in second step." />
-                <Control Id="TwoStepSendPassword" Type="CheckBox" X="60" Y="137" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA.">
-                    <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
-                    <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
-                    <Publish Property="TWO_STEP_SEND_EMPTY_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_PASSWORD</Publish>
+            <Dialog Id="ServerDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Id="HttpsLabel" Type="Text" X="20" Y="48" Width="220" Height="15" TabSkip="no" Text="https://" />
+                <Control Id="HostnameEdit" Type="Edit" X="56" Y="45" Width="115" Height="15" Property="HOSTNAME" />
+                <Control Id="PathEdit" Type="Edit" X="176" Y="45" Width="90" Height="15" Property="PATH" />
+                <Control Id="PathOptLabel" Type="Text" X="274" Y="48" Width="220" Height="15" TabSkip="no" Text="(optional)" />
+                <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="20" Y="65" Width="101" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA" />
+                <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="20" Y="80" Width="130" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name" />
+                <Control Type="Edit" Id="DefaultRealmEdit" Width="90" Height="15" X="82" Y="102" Property="DEFAULT_REALM" />
+                <Control Type="Text" Id="DefaultRealmLabel" Width="70" Height="17" X="20" Y="105" Text="Default Realm:" />
+                <Control Type="CheckBox" Id="SendUPN" Property="SEND_UPN" CheckBoxValue="1" Width="268" Height="26" X="20" Y="124">
+                    <Text>Send the UPN if detected in username field. UPN is assumed if @ is entered and no \. When the UPN is sent, the realm is omitted.</Text>
                 </Control>
-                <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="60" Y="152" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send empty password to privacyIDEA.">
-                    <Condition Action="disable">TWO_STEP_HIDE_OTP &lt;&gt; 1</Condition>
-                    <Condition Action="enable">TWO_STEP_HIDE_OTP=1</Condition>
-                    <Publish Property="TWO_STEP_SEND_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_EMPTY_PASSWORD</Publish>
-                </Control>
-                <Control Id="HideUserOrDomain" Type="Text" X="45" Y="175" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>Hide when the desktop is locked:</Text>
-                </Control>
-                <Control Id="HideFullName" Type="CheckBox" X="45" Y="187" Width="220" Height="17" Property="HIDE_FULLNAME" CheckBoxValue="1" Text="Hide the username and domain.">
-                    <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_FULLNAME</Publish>
-                </Control>
-                <Control Id="HideDomainName" Type="CheckBox" X="45" Y="202" Width="220" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
-                    <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
-                </Control>
-                <Control Id="ChangeSettingsLabel" Type="Text" X="94" Y="222" Width="220" Height="15" TabSkip="no" Text="{\Tahoma_Bold}All settings can be changed in the registry." />
+                <Control Type="Text" Id="ExcludedAccountLabel" Width="86" Height="17" X="20" Y="170" Text="Excluded Account:" />
+                <Control Type="Edit" Id="ExcludedAccountEdit" Width="120" Height="15" X="105" Y="168" Property="EXCLUDED_ACCOUNT" />
+                <Control Type="Text" Id="ExcludedGroupLabel" Width="72" Height="17" X="20" Y="190" Text="Excluded Group:" />
+                <Control Type="Edit" Id="ExcludedGroupEdit" Width="120" Height="15" X="105" Y="188" Property="EXCLUDED_GROUP" />
+                <Control Type="Text" Id="ExcludedGroupNetBiosLabel" Width="76" Height="17" X="20" Y="210" Text="NetBIOS Address:" />
+                <Control Type="Edit" Id="NetBIOSAddressEdit" Width="120" Height="15" X="105" Y="208" Property="EXCLUDED_GROUP_NETBIOS_ADDRESS" />
+                <Control Type="Text" Id="NetBiosHintLabel" Width="122" Height="39" X="236" Y="184" Text="To look up global groups, specify a NetBIOS address of the computer to query. List DCs with &quot;netdom query dc&quot;." />
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
                     <Publish Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
                 </Control>
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-                    <Publish Event="NewDialog" Value="FilterConfigurationDlg">HOSTNAME</Publish>
+                    <Publish Event="NewDialog" Value="UIDlg">HOSTNAME</Publish>
                     <Publish Event="SpawnDialog" Value="NoServerURLMessageDlg">HOSTNAME="hostname"</Publish>
                 </Control>
                 <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
@@ -70,7 +59,7 @@
                 </Control>
                 <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
                 <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>Setup hostname, path and properties.</Text>
+                    <Text>Connection and Recovery.</Text>
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
@@ -80,14 +69,60 @@
             </Dialog>
         </UI>
     </Fragment>
-    <!-- PAGE 2 FILTER CONFIGURATION -->
+    <!-- PAGE 2: UIDlg -->
     <Fragment>
         <UI>
-            <Dialog Id="FilterConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Type="CheckBox" Id="EnableFilter" Property="ENABLE_FILTER" CheckBoxValue="1" Width="300" Height="35" X="35" Y="45" Text="Enable Filter. This will by default remove all other Credential Providers. It is also required to be able to use the scenario specifc configurations below.">
+            <Dialog Id="UIDlg" Width="370" Height="270">
+                <Control Id="V1BitmapPathLabel" Type="Text" X="20" Y="52" Width="200" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
+                <Control Id="V1BitmapPathEdit" Type="Edit" X="20" Y="71" Width="200" Height="15" Property="V1_BITMAP_PATH" Text="{1024}" />
+                <Control Type="CheckBox" Id="UsernamePassword" Width="194" Height="17" X="20" Y="105" Property="USERNAME_PASSWORD" Text="Prompt for username and password in first step" />
+                <Control Id="TwoStepSendPassword" Type="CheckBox" X="20" Y="120" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA.">
+                    <Publish Property="TWO_STEP_SEND_EMPTY_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_PASSWORD</Publish>
                 </Control>
-                <Control Type="Text" Id="Label_Logon" Width="300" Height="10" X="33" Y="90" Text="{\Tahoma_Bold}Logon" />
-                <Control Type="RadioButtonGroup" Property="CPUS_LOGON" Id="RadioButtonGroupCPUSLogon" Width="274" Height="20" X="35" Y="105">
+                <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="20" Y="135" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send empty password to privacyIDEA.">
+                    <Publish Property="TWO_STEP_SEND_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_EMPTY_PASSWORD</Publish>
+                </Control>
+                <Control Type="CheckBox" Id="HideFirstStepResponseError" Width="208" Height="17" X="35" Y="150" Text="Hide response message of first step when failed" Property="HIDE_FIRST_STEP_RESPONSE_ERROR" />
+                <Control Type="CheckBox" Id="EnableReset" Width="190" Height="17" X="20" Y="165" Property="ENABLE_RESET" Text="Show an option to reset the authentication" />
+                <Control Type="CheckBox" Id="PrefillUsername" Width="182" Height="17" X="20" Y="180" Property="PREFILL_USERNAME" Text="Prefill username with last logged-in user" />
+                <Control Id="DebugLog" Type="CheckBox" X="20" Y="195" Width="220" Height="17" Property="DEBUG_LOG" CheckBoxValue="1" Text="Create a detailed logfile. Use this for debugging." />
+                <Control Id="HideFullName" Type="CheckBox" X="20" Y="210" Width="183" Height="17" Property="HIDE_FULLNAME" CheckBoxValue="1" Text="Hide the username and domain when locked.">
+                    <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_FULLNAME</Publish>
+                </Control>
+                <Control Id="HideDomainName" Type="CheckBox" X="210" Y="210" Width="99" Height="17" Property="HIDE_DOMAINNAME" CheckBoxValue="1" Text="Hide only the domain.">
+                    <Publish Property="HIDE_FULLNAME" Value="{}" Order="1">HIDE_DOMAINNAME</Publish>
+                </Control>
+                <!-- Bottom Controls NEXT / BACK, Top Banner -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="ServerDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="FilterDlg">HOSTNAME</Publish>
+                    <Publish Event="SpawnDialog" Value="NoServerURLMessageDlg">HOSTNAME="hostname"</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>User Interface and Behaviour.</Text>
+                </Control>
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
+                    <Text>{\WixUI_Font_Title}Configuration 2/5</Text>
+                </Control>
+                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="2" />
+            </Dialog>
+        </UI>
+    </Fragment>
+    <!-- PAGE 3: FilterDlg -->
+    <Fragment>
+        <UI>
+            <Dialog Id="FilterDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Type="CheckBox" Id="EnableFilter" Property="ENABLE_FILTER" CheckBoxValue="1" Width="300" Height="35" X="30" Y="45" Text="Enable Filter. This will by default remove all other Credential Providers. It is also required to use the scenario specifc configurations below.">
+                </Control>
+                <Control Type="Text" Id="Label_Logon" Width="300" Height="10" X="30" Y="90" Text="{\Tahoma_Bold}Logon" />
+                <Control Type="RadioButtonGroup" Property="CPUS_LOGON" Id="RadioButtonGroupCPUSLogon" Width="274" Height="20" X="30" Y="103">
                     <RadioButtonGroup Property="CPUS_LOGON">
                         <RadioButton Text="Local and Remote" Height="17" Value="0e" Width="85" X="0" Y="0" />
                         <RadioButton Text="Local only" Height="17" Value="2e" Width="60" X="87" Y="0" />
@@ -97,8 +132,8 @@
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
                 </Control>
-                <Control Type="Text" Id="Label_Unlock" Width="50" Height="10" X="33" Y="135" Text="{\Tahoma_Bold} Unlock" />
-                <Control Type="RadioButtonGroup" Property="CPUS_UNLOCK" Id="RadioButtonGroupCPUSUnlock" Width="274" Height="20" X="35" Y="150">
+                <Control Type="Text" Id="Label_Unlock" Width="50" Height="10" X="30" Y="123" Text="{\Tahoma_Bold}Unlock" />
+                <Control Type="RadioButtonGroup" Property="CPUS_UNLOCK" Id="RadioButtonGroupCPUSUnlock" Width="274" Height="20" X="30" Y="136">
                     <RadioButtonGroup Property="CPUS_UNLOCK">
                         <RadioButton Text="Local and Remote" Height="17" Value="0e" Width="85" X="0" Y="0" />
                         <RadioButton Text="Local only" Height="17" Value="2e" Width="60" X="87" Y="0" />
@@ -108,8 +143,8 @@
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
                 </Control>
-                <Control Type="Text" Id="Label_Credui" Width="200" Height="10" X="33" Y="180" Text="{\Tahoma_Bold}CredUI (e.g. Run as Administrator prompt)" />
-                <Control Type="RadioButtonGroup" Property="CPUS_CREDUI" Id="RadioButtonGroupCPUSCredUI" Width="274" Height="20" X="35" Y="195">
+                <Control Type="Text" Id="Label_Credui" Width="200" Height="10" X="30" Y="156" Text="{\Tahoma_Bold}CredUI (e.g. Run as Administrator prompt)" />
+                <Control Type="RadioButtonGroup" Property="CPUS_CREDUI" Id="RadioButtonGroupCPUSCredUI" Width="274" Height="20" X="30" Y="169">
                     <RadioButtonGroup Property="CPUS_CREDUI">
                         <RadioButton Text="Local and Remote" Height="17" Value="0e" Width="85" X="0" Y="0" />
                         <RadioButton Text="Local only" Height="17" Value="2e" Width="60" X="87" Y="0" />
@@ -119,12 +154,13 @@
                     <Condition Action="disable">ENABLE_FILTER &lt;&gt; 0</Condition>
                     <Condition Action="enable">ENABLE_FILTER=1</Condition>
                 </Control>
+				<Control Type="CheckBox" Id="RegisterSafeMode" CheckBoxValue="1" Width="230" Height="17" X="30" Y="210" Text="Enable the Credential Provider for Safe Mode" Property="REGISTER_FOR_SAFEMODE" />
                 <!-- Bottom Controls NEXT / BACK, Top Banner-->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
-                    <Publish Event="NewDialog" Value="ServerConfigurationDlg">1</Publish>
+                    <Publish Event="NewDialog" Value="UIDlg">1</Publish>
                 </Control>
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-                    <Publish Event="NewDialog" Value="OfflineConfigurationDlg">1</Publish>
+                    <Publish Event="NewDialog" Value="FidoDlg">1</Publish>
                     <!-- Re-populate the configuration to the registry -->
                     <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
                     <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
@@ -138,30 +174,26 @@
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>{\WixUI_Font_Title}Configuration 2/5</Text>
+                    <Text>{\WixUI_Font_Title}Configuration 3/5</Text>
                 </Control>
                 <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="2" />
                 <Control Type="Line" Id="Line1" Width="370" Height="2" X="0" Y="82" />
             </Dialog>
         </UI>
     </Fragment>
-    <!-- PAGE 3 OFFLINE CONFIG -->
+    <!-- PAGE 4: FidoDlg -->
     <Fragment>
         <UI>
-            <Dialog Id="OfflineConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Type="Edit" Id="OfflineFileLocation" Width="270" Height="15" X="30" Y="90" Property="OFFLINE_FILE_PATH" />
-                <Control Type="Text" Id="OfflineFileLabel" Width="270" Height="30" X="30" Y="49" Text="Absolute path (including file name!) to where the offline file should be stored. Possible file formats are txt and json. The default is C:\offlineFile.json." />
-                <Control Type="Edit" Id="OfflineThreshold" Width="30" Height="15" X="266" Y="120" Integer="yes" Property="OFFLINE_THRESHOLD" />
-                <Control Type="Text" Id="OfflineThresholdLabel" Width="228" Height="22" X="30" Y="120" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted." />
-                <Control Type="Edit" Id="OfflineTryWindow" Width="30" Height="15" X="266" Y="154" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
-                <Control Type="Text" Id="OfflineTryWindowLabel" Width="211" Height="22" X="30" Y="154" Text="Offline try window. Set the range of values for the counter to be tried with an offline token." />
-                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="30" Y="184" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
+            <Dialog Id="FidoDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Type="CheckBox" Id="WebAuthnPreferred" Width="270" Height="20" X="20" Y="50" Property="WEBAUTHN_PREFERRED" CheckBoxValue="1" Text="Prefer to use FIDO if available. The Credential Provider will be in FIDO mode automatically if possible." />
+                <Control Type="CheckBox" Id="UserVerification" Width="255" Height="17" X="20" Y="80" Property="WEBAUTHN_OFFLINE_NO_PIN" Text="Do not request PIN when doing FIDO offline authentications." />
+                <Control Type="CheckBox" Id="DisablePasskey" Width="100" Height="17" X="20" Y="105" Property="DISABLE_PASSKEY" Text="Disable Passkey" />
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
-                    <Publish Event="NewDialog" Value="FilterConfigurationDlg">1</Publish>
+                    <Publish Event="NewDialog" Value="FilterDlg">1</Publish>
                 </Control>
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-                    <Publish Event="NewDialog" Value="UserConfigurationDlg">1</Publish>
+                    <Publish Event="NewDialog" Value="OfflineDlg">1</Publish>
                     <!-- Re-populate the configuration to the registry -->
                     <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
                     <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
@@ -171,52 +203,7 @@
                 </Control>
                 <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
                 <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>Offline configuration.</Text>
-                </Control>
-                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-                <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>{\WixUI_Font_Title}Configuration 3/5</Text>
-                </Control>
-                <Control Id="BannerLine" Type="Line" X="0" Y="37" Width="370" Height="0" />
-            </Dialog>
-        </UI>
-    </Fragment>
-    <!-- PAGE 4 CUSTOM TEXTS/BITMAP -->
-    <Fragment>
-        <UI>
-            <Dialog Id="UserConfigurationDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Type="CheckBox" Id="SendUPN" Property="SEND_UPN" CheckBoxValue="1" Width="210" Height="38" X="45" Y="45">
-                    <Text>Send the UPN if detected in Username field. UPN is assumed if @ is entered and no \. When UPN is sent, the realm is omitted.</Text>
-                </Control>
-                <Control Id="V1BitmapPathLabel" Type="Text" X="45" Y="88" Width="220" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
-                <Control Id="V1BitmapPathEdit" Type="Edit" X="45" Y="100" Width="220" Height="18" Property="V1_BITMAP_PATH" Text="{1024}" />
-                <Control Id="V1BitmapPathInfo" Type="PushButton" X="270" Y="99" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
-                    <Publish Event="SpawnDialog" Value="V1BitmapPathInfoDlg">1</Publish>
-                </Control>
-                <Control Id="LoginTextLabel" Type="Text" X="45" Y="120" Width="220" Height="15" TabSkip="no" Text="&amp;Login Text: (optional)" />
-                <Control Id="LoginTextEdit" Type="Edit" X="45" Y="132" Width="220" Height="15" Property="LOGIN_TEXT" Text="{64}" />
-                <Control Id="LoginTextInfo" Type="PushButton" X="270" Y="131" Width="18" Height="18" FixedSize="yes" IconSize="16" Text="HelpIcon" Icon="yes">
-                    <Publish Event="SpawnDialog" Value="LoginTextInfoDlg">1</Publish>
-                </Control>
-                <Control Id="OTPTextLabel" Type="Text" X="45" Y="152" Width="220" Height="15" TabSkip="no" Text="&amp;OTP Field Text: (optional)" />
-                <Control Id="OTPTextEdit" Type="Edit" X="45" Y="164" Width="220" Height="18" Property="OTP_TEXT" Text="{64}" />
-                <Control Id="DebugLog" Type="CheckBox" X="45" Y="185" Width="220" Height="17" Property="DEBUG_LOG" CheckBoxValue="1" Text="Create a detailed logfile. Use this for debugging." />
-                <!-- Bottom Controls NEXT / BACK, Top Banner -->
-                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
-                    <Publish Event="NewDialog" Value="OfflineConfigurationDlg">1</Publish>
-                </Control>
-                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
-                    <Publish Event="NewDialog" Value="WebAuthnDlg">1</Publish>
-                    <!-- Re-populate the configuration to the registry -->
-                    <Publish Event="ReinstallMode" Value="m" Order="1">Installed</Publish>
-                    <Publish Event="Reinstall" Value="MainInstall" Order="2">Installed</Publish>
-                </Control>
-                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
-                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
-                </Control>
-                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
-                <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>Customize the login.</Text>
+                    <Text>FIDO configuration.</Text>
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">
@@ -226,21 +213,24 @@
             </Dialog>
         </UI>
     </Fragment>
-    <!-- PAGE 5 WEBAUTHN -->
+    <!-- PAGE 5: OfflineDlg -->
     <Fragment>
         <UI>
-            <Dialog Id="WebAuthnDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
-                <Control Type="Edit" Id="WebAuthnLinkText" Width="270" Height="15" X="30" Y="82" Property="WEBAUTHN_LINK_TEXT" />
-                <Control Type="Text" Id="WebAuthnLinkTextLabel" Width="270" Height="21" X="30" Y="56" Text="WebAuthn Link Text: The text on the link the user can click to switch to WebAuthn mode. Default: &quot;Use Security Key&quot;." />
-                <Control Type="Edit" Id="OTPLinkText" Width="270" Height="15" X="30" Y="131" Property="OTP_LINK_TEXT" />
-                <Control Type="Text" Id="OTPLinkTextLabel" Width="270" Height="21" X="30" Y="105" Text="OTP Link Text: The text of the link the user can click to switch to OTP mode. Default: &quot;Use One-Time-Password&quot;." />
-                <Control Type="Text" Id="WebAuthnPINHintLabel" Width="270" Height="21" X="30" Y="154" Text="WebAuthn PIN Hint: Hint text of the input field in WebAuthn mode in which the security PIN should be entered. Default: &quot;Security Key PIN&quot;." />
-                <Control Type="Edit" Id="WebAuthnPINHint" Width="270" Height="15" X="30" Y="180" Property="WEBAUTHN_PIN_HINT" />
-                <Control Type="CheckBox" Id="WebAuthnPreferred" Width="270" Height="20" X="30" Y="206" Property="WEBAUTHN_PREFERRED" CheckBoxValue="1" Text="Prefer to use WebAuthn if available. The Credential Provider will be in WebAuthn mode automatically if possible." />
-                <Control Type="Text" Id="WebAuthn2StepHint" Width="270" Height="10" X="30" Y="41" Text="{\Tahoma_Bold}To use WebAuthn, it is required to the 2step." />
+            <Dialog Id="OfflineDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+                <Control Type="Edit" Id="OfflineFileLocation" Width="270" Height="15" X="20" Y="79" Property="OFFLINE_FILE_PATH" />
+                <Control Type="Text" Id="OfflineFileLabel" Width="270" Height="30" X="20" Y="45" Text="Absolute path (including file name!) to where the offline file should be stored. Possible file formats are txt and json. The default is C:\offlineFile.json." />
+                <Control Type="Edit" Id="OfflineThreshold" Width="40" Height="15" X="248" Y="109" Integer="yes" Property="OFFLINE_THRESHOLD" />
+                <Control Type="Text" Id="OfflineThresholdLabel" Width="218" Height="22" X="20" Y="105" Text="Offline threshold. Set the remaining offline OTPs at which refill should be attempted:" />
+                <Control Type="Edit" Id="OfflineTryWindow" Width="40" Height="15" X="248" Y="135" Integer="yes" Property="OFFLINE_TRY_WINDOW" />
+                <Control Type="Text" Id="OfflineTryWindowLabel" Width="211" Height="22" X="20" Y="131" Text="Offline try window. Set the range of values for the counter to be tried with an offline token:" />
+                <Control Type="CheckBox" Id="OfflineShowInfo" Width="218" Height="17" X="20" Y="154" Text="Show token info if a offline token is found for the user" CheckBoxValue="1" Property="OFFLINE_SHOW_INFO" />
+                <Control Type="Text" Id="DocLabel" Width="278" Height="21" X="20" Y="175" Text="{\Tahoma_Bold}The settings can be adjusted in the registry after installation. Check the documentation for all available options:" />
+                <Control Id="DocumentationLink" Type="Hyperlink" X="20" Y="200" Width="100" Height="20" Transparent="no" Text="Documentation">
+                    <Text><![CDATA[<a href="https://privacyidea-credential-provider.readthedocs.io/en/latest/configuration.html">Documentation</a>]]></Text>
+                </Control>
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
-                    <Publish Event="NewDialog" Value="UserConfigurationDlg">1</Publish>
+                    <Publish Event="NewDialog" Value="FidoDlg">1</Publish>
                 </Control>
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
                     <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
@@ -253,7 +243,7 @@
                 </Control>
                 <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="37" TabSkip="no" Text="WixUI_Bmp_Banner" />
                 <Control Id="Description" Type="Text" X="25" Y="21" Width="280" Height="15" Transparent="yes" NoPrefix="yes">
-                    <Text>Customize the login.</Text>
+                    <Text>Offline configuration.</Text>
                 </Control>
                 <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
                 <Control Id="Title" Type="Text" X="15" Y="5" Width="200" Height="15" Transparent="yes" NoPrefix="yes">

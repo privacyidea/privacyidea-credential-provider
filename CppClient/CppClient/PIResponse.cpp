@@ -23,7 +23,7 @@ bool PIResponse::IsPushAvailable()
 {
 	for (auto& challenge : challenges)
 	{
-		if (challenge.type == "push")
+		if (challenge.type == "push" || challenge.type == "smartphone")
 		{
 			return true;
 		}
@@ -63,21 +63,22 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 	FIDOSignRequest signRequest;
 	for (auto& challenge : challenges)
 	{
-		if (challenge.type == "webauthn")
+		if (challenge.type == "webauthn" || challenge.type == "passkey")
 		{
-			if (challenge.webAuthnSignRequest && !challenge.webAuthnSignRequest.value().allowCredentials.empty())
+			if (challenge.type == "webauthn" && challenge.fidoSignRequest
+				&& !challenge.fidoSignRequest.value().allowCredentials.empty())
 			{
-				allowCredentials.push_back(challenge.webAuthnSignRequest.value().allowCredentials.at(0));
+				allowCredentials.push_back(challenge.fidoSignRequest.value().allowCredentials.at(0));
 			}
 			// Set the RP ID only once
 			if (signRequest.rpId.empty())
 			{
-				signRequest = challenge.webAuthnSignRequest.value();
+				signRequest = challenge.fidoSignRequest.value();
 			}
 		}
 	}
 
-	if (allowCredentials.size() > 0)
+	if (!signRequest.challenge.empty() && !signRequest.rpId.empty())
 	{
 		signRequest.allowCredentials = allowCredentials;
 		ret = signRequest;

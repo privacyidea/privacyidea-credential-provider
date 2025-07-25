@@ -81,10 +81,8 @@ public:
 	/// <param name="responseObj">This will be filled with the response of the server if no error occurred</param>
 	/// <param name="transaction_id">Required for this function. WebAuthn is always challenge-response</param>
 	/// <returns>S_OK if the request was processed correctly. Possible error codes: PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE, PI_JSON_PARSE_ERROR</returns>
-	HRESULT ValidateCheckWebAuthn(
-		const std::wstring& username,
-		const std::wstring& domain,
-		const FIDOSignResponse& webAuthnSignResponse,
+	HRESULT ValidateCheckFIDO(const std::wstring& username,
+		const std::wstring& domain, const FIDOSignResponse & fidoSignResponse,
 		const std::string& origin,
 		PIResponse& response,
 		const std::string& transactionId,
@@ -132,7 +130,7 @@ public:
 	/// <returns>S_OK, E_FAIL, PI_JSON_PARSE_ERROR, PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE</returns>
 	HRESULT OfflineRefill(const std::wstring& username, const std::wstring& lastOTP, const std::string& serial);
 
-	HRESULT OfflineRefillWebAuthn(const std::wstring& username, const std::string& serial);
+	HRESULT OfflineRefillFIDO(const std::wstring& username, const std::string& serial);
 
 	bool StopPoll();
 
@@ -169,7 +167,7 @@ private:
 		const std::map<std::string, std::string>& headers,
 		RequestMethod method);
 
-	HRESULT ProcessResponse(std::string response, _Inout_ PIResponse& responseObj);
+	HRESULT EvaluateResponse(std::string response, _Inout_ PIResponse& responseObj);
 
 	void PollThread(const std::wstring& username, const std::wstring& domain, const std::wstring& upn, const std::string& transactionId, 
 		std::function<void(const PIResponse&)> callback);

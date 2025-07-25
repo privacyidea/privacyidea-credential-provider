@@ -30,5 +30,5 @@ public:
 	std::string type;
 	std::string image;
 	std::string clientMode;
-	std::optional<FIDOSignRequest> webAuthnSignRequest = std::nullopt;
+	std::optional<FIDOSignRequest> fidoSignRequest = std::nullopt;
 };

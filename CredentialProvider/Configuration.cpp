@@ -26,12 +26,42 @@
 #include "Logger.h"
 #include "RegistryReader.h"
 #include "Convert.h"
+#include <Shared.h>
 
 using namespace std;
 
 void Configuration::Load()
 {
 	RegistryReader rr(CONFIG_REGISTRY_PATH);
+
+	// Connection settings
+	piconfig.hostname = rr.GetWString(L"hostname");
+	wstring tmp = rr.GetWString(L"path");
+	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
+	piconfig.port = rr.GetInt(L"custom_port");
+
+	piconfig.ignoreUnknownCA = rr.GetBool(L"ssl_ignore_unknown_ca");
+	piconfig.ignoreInvalidCN = rr.GetBool(L"ssl_ignore_invalid_cn");
+
+	piconfig.userAgent = L"privacyidea-cp/" + Convert::ToWString(string(VER_FILE_VERSION_STR));
+	if (!rr.GetBool(L"user_agent_hide_computer_name"))
+	{
+		piconfig.userAgent += L" Windows/" + Utilities::ComputerName();
+	}
+
+	piconfig.resolveTimeout = rr.GetInt(L"resolve_timeout");
+	piconfig.connectTimeout = rr.GetInt(L"connect_timeout");
+	piconfig.sendTimeout = rr.GetInt(L"send_timeout");
+	piconfig.receiveTimeout = rr.GetInt(L"receive_timeout");
+
+	// Recovery
+	piconfig.fallbackHostname = rr.GetWString(L"fallback_hostname");
+	piconfig.fallbackPath = rr.GetWString(L"fallback_path");
+	piconfig.fallbackPort = rr.GetInt(L"fallback_port");
+
+	excludedAccount = rr.GetWString(L"excluded_account");
+	excludedGroup = rr.GetWString(L"excluded_group");
+	exludedGroupNetBIOSaddress = rr.GetWString(L"excluded_group_netbios_address");
 
 	// Credential Provider specific config
 	bitmapPath = rr.GetWString(L"v1_bitmap_path");
@@ -42,63 +72,34 @@ void Configuration::Load()
 	twoStepSendPassword = rr.GetBool(L"two_step_send_password");
 	usernamePassword = rr.GetBool(L"username_password");
 
-	disablePasskey = rr.GetBool(L"disable_passkey");
-	usePasskeyText = rr.GetWString(L"passkey_text");
-
 	// Set locales files path from registry
-	localesPath = rr.GetWString(L"localesPath");
+	localesPath = rr.GetWString(L"locales_path");
 
-	piconfig.logPasswords = rr.GetBool(L"log_sensitive");
 	debugLog = rr.GetBool(L"debug_log");
 #ifdef _DEBUG
 	// Always on for debug builds
 	debugLog = true;
 #endif // _DEBUG
+	piconfig.logPasswords = rr.GetBool(L"log_sensitive");
 
 	showDomainHint = rr.GetBool(L"show_domain_hint");
 
 	// Custom field texts: check if set, otherwise use defaults (from header)
-	wstring tmp = rr.GetWString(L"login_text");
-	loginText = tmp.empty() ? L"privacyIDEA Login" : tmp;
-	otpFieldText = rr.GetWString(L"otp_text");
-	otpFailureText = rr.GetWString(L"otp_fail_text");
 
-	hideFirstStepResponse = rr.GetBool(L"hide_first_step_response");
+	hideFirstStepResponseError = rr.GetBool(L"hide_first_step_response_error");
+
 	prefillUsername = rr.GetBool(L"prefill_username");
 	showResetLink = rr.GetBool(L"enable_reset");
-	resetLinkText = rr.GetWString(L"reset_link_text");
 	offlineTreshold = rr.GetInt(L"offline_threshold");
 	offlineShowInfo = rr.GetBool(L"offline_show_info");
-	credui_no_image = rr.GetBool(L"credui_no_image");
-	// Config for PrivacyIDEA
-	piconfig.hostname = rr.GetWString(L"hostname");
-	// Check if the path contains the placeholder, if so set path to empty string
-	tmp = rr.GetWString(L"path");
-	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
+	creduiNoImage = rr.GetBool(L"credui_no_image");
 
-	piconfig.ignoreUnknownCA = rr.GetBool(L"ssl_ignore_unknown_ca");
-	piconfig.ignoreInvalidCN = rr.GetBool(L"ssl_ignore_invalid_cn");
-	auto version = string(VER_FILE_VERSION_STR);
-	piconfig.userAgent = L"privacyidea-cp/" + Convert::ToWString(version);
-	if (!rr.GetBool(L"user_agent_hide_computer_name"))
-	{
-		piconfig.userAgent += L" Windows/" + Utilities::ComputerName();
-	}
-
-	piconfig.port = rr.GetInt(L"custom_port");
 	piconfig.offlineFilePath = rr.GetWString(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetInt(L"offline_try_window");
 	piconfig.sendUPN = rr.GetBool(L"send_upn");
-	piconfig.resolveTimeout = rr.GetInt(L"resolve_timeout");
-	piconfig.connectTimeout = rr.GetInt(L"connect_timeout");
-	piconfig.sendTimeout = rr.GetInt(L"send_timeout");
-	piconfig.receiveTimeout = rr.GetInt(L"receive_timeout");
 
 	piconfig.acceptLanguage = ValidateAcceptLanguage(rr.GetWString(L"header_accept_language"));
 
-	// Format domain\username or computername\username
-	excludedAccount = rr.GetWString(L"excluded_account");
-	excludedGroup = rr.GetWString(L"excluded_group");
 	// Realm Mapping
 	piconfig.defaultRealm = rr.GetWString(L"default_realm");
 
@@ -107,14 +108,12 @@ void Configuration::Load()
 		piconfig.realmMap.clear();
 	}
 
-	useOtpLinkText = rr.GetWString(L"otp_link_text");
 	otpFailReturnToFirstStep = rr.GetBool(L"otp_fail_return_to_first_step");
 
-	// WebAuthn
-	webAuthnLinkText = rr.GetWString(L"webauthn_link_text");
+	// FIDO / WebAuthn
 	webAuthnPreferred = rr.GetBool(L"webauthn_preferred");
-	webAuthnPinHint = rr.GetWString(L"webauthn_pin_hint");
 	webAuthnOfflineNoPIN = rr.GetBool(L"webauthn_offline_no_pin");
+	disablePasskey = rr.GetBool(L"disable_passkey");
 
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
@@ -126,6 +125,8 @@ void Configuration::Load()
 	{
 		twoStepSendEmptyPassword = false;
 	}
+
+	isRemoteSession = Shared::IsCurrentSessionRemote();
 
 	// Get the Windows Version, deprecated 
 	OSVERSIONINFOEX info;
@@ -144,29 +145,28 @@ std::string Configuration::ValidateAcceptLanguage(std::wstring configEntry)
 	{
 		const LANGID langId = GetUserDefaultUILanguage();
 		// Get the ISO 639 language name (e.g., "en")
-		char language[9] = { 0 };
-		if (GetLocaleInfoA(MAKELCID(langId, SORT_DEFAULT), LOCALE_SISO639LANGNAME, language, sizeof(language)) == 0)
+		wchar_t language[9] = { 0 };
+		if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO639LANGNAME, language, sizeof(language) / sizeof(wchar_t)) == 0)
 		{
 			PIError("Unable to get ISO 639 language name, using default en-US.");
 			return "en-US";
 		}
 
 		// Get the ISO 3166 country/region name (e.g., "US")
-		char country[9] = { 0 };
-		if (GetLocaleInfoA(MAKELCID(langId, SORT_DEFAULT), LOCALE_SISO3166CTRYNAME, country, sizeof(country)) == 0)
+		wchar_t country[9] = { 0 };
+		if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO3166CTRYNAME, country, sizeof(country) / sizeof(wchar_t)) == 0)
 		{
 			PIError("Unable to get ISO 3166 country name, using default en-US.");
 			return "en-US";
 		}
 
-		std::string result = language;
-		PIDebug("Language result: " + result);
-		result += "-";
-		// Lowercase language, lowercase country for Accept-Language
-		for (char& c : result) c = tolower(c);
-		for (char& c : country) c = tolower(c);
-		result += country;
-		return result;
+		std::wstring wresult = language;
+		PIDebug("Language result: " + Convert::ToString(wresult));
+		wresult += L"-";
+		for (wchar_t& c : wresult) c = towlower(c);
+		for (wchar_t& c : country) c = towlower(c);
+		wresult += country;
+		return Convert::ToString(wresult);
 	}
 	else
 	{
@@ -227,10 +227,6 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("Send timeout", piconfig.sendTimeout);
 	PrintIfIntIsNotNull("Receive timeout", piconfig.receiveTimeout);
 
-	PrintIfStringNotEmpty(L"Login text", loginText);
-	PrintIfStringNotEmpty(L"OTP field text", otpFieldText);
-	PrintIfStringNotEmpty(L"OTP failure text", otpFailureText);
-
 	PrintIfStringNotEmpty(L"Locales Path", localesPath);
 
 	PIDebug("Hide domain/full name: " + Convert::ToString(hideDomainName) + "/" + Convert::ToString(hideFullName));
@@ -247,7 +243,7 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("Offline try window", piconfig.offlineTryWindow);
 	PrintIfIntIsNotValue("Offline refill threshold", offlineTreshold, 10);
 	PrintIfStringNotEmpty(L"Default realm", piconfig.defaultRealm);
-
+	PIDebug("hideFirstStepResponseError: " + Convert::ToString(hideFirstStepResponseError));
 	if (piconfig.realmMap.size() > 0)
 	{
 		wstring tmp;

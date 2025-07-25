@@ -83,7 +83,7 @@ HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std:
 	return S_OK;
 }
 
-HRESULT PrivacyIDEA::ProcessResponse(std::string response, _Inout_ PIResponse& responseObj)
+HRESULT PrivacyIDEA::EvaluateResponse(std::string response, _Inout_ PIResponse& responseObj)
 {
 	auto offlineData = _parser.ParseResponseForOfflineData(response);
 	if (!offlineData.empty())
@@ -178,7 +178,7 @@ HRESULT PrivacyIDEA::ValidateCheck(
 		return _endpoint.GetLastErrorCode();
 	}
 
-	return ProcessResponse(response, responseObj);
+	return EvaluateResponse(response, responseObj);
 }
 
 std::string PrivacyIDEA::SendRequestWithFallback(
@@ -201,10 +201,8 @@ std::string PrivacyIDEA::SendRequestWithFallback(
 	return response;
 }
 
-HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
-	const std::wstring& username,
-	const std::wstring& domain,
-	const FIDOSignResponse& webAuthnSignResponse,
+HRESULT PrivacyIDEA::ValidateCheckFIDO(const std::wstring& username,
+	const std::wstring& domain, const FIDOSignResponse& fidoSignResponse,
 	const std::string& origin,
 	PIResponse& responseObj,
 	const std::string& transactionId,
@@ -236,15 +234,15 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	}
 	else
 	{
-		PIError("Unable to send WebAuthnSignResponse without transactionId!");
+		PIError("Unable to send FIDOSignResponse without transactionId!");
 		return PI_ERROR_WRONG_PARAMETER;
 	}
 
-	// Add webauthn parameters, each member of the response is a parameter
-	parameters.try_emplace("credentialid", webAuthnSignResponse.credentialid);
-	parameters.try_emplace("clientdata", webAuthnSignResponse.clientdata);
-	parameters.try_emplace("signaturedata", webAuthnSignResponse.signaturedata);
-	parameters.try_emplace("authenticatordata", webAuthnSignResponse.authenticatordata);
+	// Add FIDO parameters, each member of the response is a parameter
+	parameters.try_emplace("credentialid", fidoSignResponse.credentialid);
+	parameters.try_emplace("clientdata", fidoSignResponse.clientdata);
+	parameters.try_emplace("signaturedata", fidoSignResponse.signaturedata);
+	parameters.try_emplace("authenticatordata", fidoSignResponse.authenticatordata);
 
 	// TODO userhandle, exstensions
 
@@ -259,7 +257,7 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 		return _endpoint.GetLastErrorCode();
 	}
 
-	return ProcessResponse(response, responseObj);
+	return EvaluateResponse(response, responseObj);
 }
 
 HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
@@ -287,7 +285,7 @@ HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
 
 	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
-	return ProcessResponse(response, piresponse);
+	return EvaluateResponse(response, piresponse);
 }
 
 HRESULT PrivacyIDEA::ValidateInitialize(PIResponse& response, const std::string& type)
@@ -295,7 +293,7 @@ HRESULT PrivacyIDEA::ValidateInitialize(PIResponse& response, const std::string&
 	PIDebug(__FUNCTION__);
 	map<string, string> parameters = { { "type", type } };
 	string r = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_INITIALIZE, parameters, {}, RequestMethod::POST);
-	return ProcessResponse(r, response);
+	return EvaluateResponse(r, response);
 }
 
 /*!
@@ -348,7 +346,7 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 	return hr;
 }
 
-HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const std::string& serial)
+HRESULT PrivacyIDEA::OfflineRefillFIDO(const std::wstring& username, const std::string& serial)
 {
 	PIDebug(__FUNCTION__);
 	string refilltoken;

@@ -76,8 +76,8 @@ public:
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__in std::wstring username,
-		__in std::wstring password_old,
-		__in std::wstring password_new,
+		__in std::wstring passwordOld,
+		__in std::wstring passwordNew,
 		__in std::wstring domain
 	);
 
@@ -106,7 +106,7 @@ public:
 
 	HRESULT InitializeField(
 		LPWSTR rgFieldStrings[FID_NUM_FIELDS],
-		DWORD field_index
+		DWORD fieldIndex
 	);
 
 	static std::wstring ComputerName();
@@ -127,7 +127,7 @@ public:
 	/// <param name="input"></param>
 	/// <param name="config"></param>
 	/// <returns>bool if upn detected, false otherwise</returns>
-	static bool CheckForUPN(const std::wstring& input);
+	static bool CheckForUPN(const std::wstring& input) noexcept;
 	
 	HRESULT CopyInputFields();
 

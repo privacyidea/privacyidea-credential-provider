@@ -37,7 +37,7 @@ constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 class FIDODevice
 {
 public:
-	static std::vector<FIDODevice> GetDevices(bool log = true);
+	static std::vector<FIDODevice> GetDevices(bool filterWindowsHello = true, bool log = true);
 
 	FIDODevice(const fido_dev_info_t* devinfo, bool log = true);
 	FIDODevice() = default;
@@ -66,6 +66,7 @@ public:
 	bool HasUV() const noexcept { return _hasUV; }
 
 	static std::string GenerateRandomAsBase64URL(long size);
+	std::string ToString() const;
 
 private:
 	int GetDeviceInfo();

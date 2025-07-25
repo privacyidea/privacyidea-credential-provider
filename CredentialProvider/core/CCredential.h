@@ -149,12 +149,12 @@ private:
 	HRESULT FIDOAuthentication(IQueryContinueWithStatus* pqcws);
 	HRESULT FIDORegistration(IQueryContinueWithStatus* pqcws);
 
+	HRESULT EvaluateResponse(PIResponse& response);
+
 	// Waits until a FIDO2 device is found or the search is cancelled. If the search is cancelled, an empty optional is returned
 	// and _fidoDeviceSearchCancelled is set to true.
 	// Checks every 200ms if a device is found. Default timeout is 5 minutes.
 	std::optional<FIDODevice> WaitForFIDODevice(IQueryContinueWithStatus* pqcws, int timeoutMs = 300000);
-
-	void HandleFirstStep();
 
 	LONG _cRef;
 	// An array holding the type and name of each field in the tile.
@@ -178,4 +178,9 @@ private:
 	bool _modeSwitched = false;
 	std::optional<FIDOSignRequest> _passkeyChallenge = std::nullopt;
 	bool _passkeyRegistrationFailed = false;
+	
+	// Save the default bitmap
+	HBITMAP _hBitmap = nullptr;
+	// Flag to indicate that the FID_OTP field should be hidden
+	bool _pollEnrollmentInProgress = false;
 };

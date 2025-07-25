@@ -38,12 +38,9 @@ CProvider::CProvider() :
 	_pkiulSetSerialization(nullptr)
 {
 	DllAddRef();
-	Logger::Get().logDebug = true;
 	_config = std::make_shared<Configuration>();
 	_config->Load();
-	auto c = _config->mode;
 	Logger::Get().logDebug = _config->debugLog;
-	PIDebug("CProvider created with scenario: " + std::to_string(static_cast<int>(c)));
 }
 
 CProvider::~CProvider()

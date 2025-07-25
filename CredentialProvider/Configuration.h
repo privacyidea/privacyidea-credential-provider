@@ -40,9 +40,9 @@ public:
 		return ((mode == modes) || ...);
 	}
 
-	inline std::string ModeString()
+	inline std::string ModeToString(Mode m)
 	{
-		switch (mode)
+		switch (m)
 		{
 			case Mode::NO_CHANGE:						return "NO_CHANGE";
 			case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
@@ -50,15 +50,25 @@ public:
 			case Mode::PASSWORD:						return "PASSWORD";
 			case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
 			case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
-			case Mode::SEC_KEY_ANY:						return "SECURITY_KEY_ANY";
+			case Mode::SEC_KEY_ANY:						return "SEC_KEY_ANY";
 			case Mode::PASSKEY:							return "PASSKEY";
-			case Mode::SEC_KEY_REG:						return "SECURITY_KEY_REGISTRATION";
-			case Mode::SEC_KEY_REG_PIN:					return "SECURITY_KEY_REGISTRATION_PIN";
-			case Mode::SEC_KEY_PIN:						return "SECURITY_KEY_PIN";
-			case Mode::SEC_KEY_NO_PIN:					return "SECURITY_KEY_NO_PIN";
-			case Mode::SEC_KEY_NO_DEVICE:				return "SECURITY_KEY_NO_DEVICE";
+			case Mode::SEC_KEY_REG:						return "SEC_KEY_REG";
+			case Mode::SEC_KEY_REG_PIN:					return "SEC_KEY_REG_PIN";
+			case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
+			case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
+			case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
 			default:									return "UNKNOWN_MODE";
 		}
+	}
+
+	bool isCredentialComplete() const noexcept
+	{
+		return !credential.username.empty() && !credential.password.empty() && !credential.domain.empty();
+	}
+
+	inline std::string ModeString()
+	{
+		return ModeToString(mode);
 	}
 
 	bool isNextModePassword() const noexcept
@@ -70,11 +80,6 @@ public:
 	bool isPasswordInFirstStep() const noexcept
 	{
 		return twoStepSendPassword || usernamePassword;
-	}
-
-	bool isLastStep() const noexcept
-	{
-		return mode == Mode::PASSWORD || (mode >= Mode::PRIVACYIDEA && isPasswordInFirstStep());
 	}
 
 	bool isFirstStep() const noexcept
@@ -95,17 +100,8 @@ public:
 	bool usePasskey = false;		// Online
 	bool useOfflineFIDO = false;	// Offline
 	bool disablePasskey = false;
-	std::wstring usePasskeyText = L"";
 
-	// Texts
-	std::wstring loginText = L"";
-	std::wstring otpFieldText = L"";
-	std::wstring otpFailureText = L"";
-	std::wstring useOtpLinkText;
 	std::wstring bitmapPath = L"";
-	std::wstring resetLinkText = L"";
-
-	std::wstring prompt = L"";
 
 	// Add locales files path
 	std::wstring localesPath = L"";
@@ -123,7 +119,7 @@ public:
 	bool showResetLink = false;
 
 	bool debugLog = false;
-	bool hideFirstStepResponse = false;
+	bool hideFirstStepResponseError = false;
 	bool noDefault = false;
 
 	int winVerMajor = 0;
@@ -141,16 +137,15 @@ public:
 
 	std::wstring excludedAccount = L"";
 	std::wstring excludedGroup = L"";
+	std::wstring exludedGroupNetBIOSaddress = L"";
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
 	int offlineTreshold = 20;
 	bool offlineShowInfo = true;
-	bool credui_no_image = false;
+	bool creduiNoImage = false;
 
-	std::wstring webAuthnLinkText;
-	std::wstring webAuthnPinHint;
 	bool webAuthnPreferred = false;
 	bool webAuthnOfflineNoPIN = false;
 

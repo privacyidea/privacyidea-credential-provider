@@ -171,7 +171,7 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 			{
 				auto& pkreg = jChallenge["passkey_registration"];
 				auto& rp = pkreg["rp"];
-				
+
 				auto registrationRequest = FIDORegistrationRequest();
 				registrationRequest.rpId = GetStringOrEmpty(rp, "id");
 				registrationRequest.rpName = GetStringOrEmpty(rp, "name");
@@ -267,7 +267,15 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 					signRequest.timeout = GetIntOrZero(jSignRequest, "timeout");
 					signRequest.allowCredentials = allowCredentials;
 					signRequest.type = "webauthn";
-					c.webAuthnSignRequest = signRequest;
+					c.fidoSignRequest = signRequest;
+				}
+				else if (type == "passkey")
+				{
+					FIDOSignRequest signRequest;
+					signRequest.challenge = GetStringOrEmpty(jChallenge, "challenge");
+					signRequest.userVerification = GetStringOrEmpty(jChallenge, "userVerification");
+					signRequest.rpId = GetStringOrEmpty(jChallenge, "rpId");
+					c.fidoSignRequest = signRequest;
 				}
 				response.challenges.push_back(c);
 			}
