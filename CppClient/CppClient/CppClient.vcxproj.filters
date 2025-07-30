@@ -5,7 +5,6 @@
     <ClCompile Include="Endpoint.cpp" />
     <ClCompile Include="JsonParser.cpp" />
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="OfflineData.cpp" />
     <ClCompile Include="OfflineHandler.cpp" />
     <ClCompile Include="PIResponse.cpp" />
     <ClCompile Include="PrivacyIDEA.cpp" />

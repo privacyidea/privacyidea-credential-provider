@@ -93,8 +93,8 @@ HRESULT PrivacyIDEA::EvaluateResponse(std::string response, _Inout_ PIResponse& 
 			offlineHandler.AddOfflineData(item);
 		}
 	}
-	HRESULT res = _parser.ParseResponse(response, responseObj);
-	return res;
+	HRESULT hr = _parser.ParseResponse(response, responseObj);
+	return hr;
 }
 
 void PrivacyIDEA::PollThread(
@@ -125,10 +125,10 @@ void PrivacyIDEA::PollThread(
 	{
 		PIDebug("Finalizing transaction...");
 		PIResponse pir;
-		HRESULT res = ValidateCheck(username, domain, L"", pir, transactionId, upn);
-		if (FAILED(res))
+		HRESULT hr = ValidateCheck(username, domain, L"", pir, transactionId, upn);
+		if (FAILED(hr))
 		{
-			PIDebug("/validate/check failed with " + to_string(res));
+			PIDebug("/validate/check failed with " + to_string(hr));
 		}
 		callback(pir);
 	}
@@ -305,9 +305,9 @@ HRESULT PrivacyIDEA::OfflineCheck(const std::wstring& username, const std::wstri
 	PIDebug(__FUNCTION__);
 	string szUsername = Convert::ToString(username);
 
-	HRESULT res = offlineHandler.VerifyOfflineOTP(otp, szUsername, serialUsed);
-	PIDebug("Offline verification result: " + Convert::LongToHexString(res));
-	return res;
+	HRESULT hr = offlineHandler.VerifyOfflineOTP(otp, szUsername, serialUsed);
+	PIDebug("Offline verification result: " + Convert::LongToHexString(hr));
+	return hr;
 }
 
 HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstring& lastOTP, const std::string& serial)

@@ -49,6 +49,8 @@ constexpr auto TEXT_PASSKEY_REGISTER_TOUCH = 30;
 constexpr auto TEXT_SEC_KEY_ENTER_PIN_PROMPT = 31;
 constexpr auto TEXT_PASSKEY_REGISTRATION = 32;
 constexpr auto TEXT_LOGIN_WITH_USERNAME = 33;
+constexpr auto TEXT_FIDO_CANCELLED = 34;
+constexpr auto TEXT_CANCEL_ENROLLMENT = 35;
 
 class Utilities
 {

@@ -1,3 +1,5 @@
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "Translator.h"
 #include <codecvt> 
 #include <fstream>
@@ -26,9 +28,7 @@ Translator::Translator()
 void Translator::SetLanguage(const std::string& language)
 {
 	std::string languageOnly = GetLanguageFromLocale(language);
-	PIDebug("Setting translation language to " + languageOnly);
 	std::string region = GetRegionFromLocale(language);
-	PIDebug("Setting translation region to " + region);
 	PIDebug("Translation language " + languageOnly + ", region " + region);
 	if (TryLoadTranslations(languageOnly, region))
 	{

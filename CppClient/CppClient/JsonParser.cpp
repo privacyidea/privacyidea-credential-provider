@@ -17,6 +17,7 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 
+#include <regex>
 #include "Convert.h"
 #include "JsonParser.h"
 #include "Logger.h"
@@ -25,6 +26,35 @@
 
 using json = nlohmann::json;
 using namespace std;
+
+
+void ParseVersionString(const std::string& version, PIResponse& response)
+{
+	int major = 0, minor = 0, patch = 0;
+	std::string suffix;
+
+	// Regex: major.minor(.patch)?(.suffix)?
+	// Examples matched: 3.10, 3.10.dev1, 3.10.2, 3.10.2.beta, 3.10.2dev1
+	std::regex re(R"(^\s*(\d+)\.(\d+)(?:\.(\d+))?(?:[.\-]?([a-zA-Z0-9]+))?\s*$)");
+	std::smatch match;
+	if (std::regex_match(version, match, re))
+	{
+		major = std::stoi(match[1]);
+		minor = std::stoi(match[2]);
+		if (match[3].matched)
+			patch = std::stoi(match[3]);
+		else
+			patch = 0;
+		if (match[4].matched)
+			suffix = match[4];
+		else
+			suffix.clear();
+	}
+	response.privacyIDEAVersionMajor = major;
+	response.privacyIDEAVersionMinor = minor;
+	response.privacyIDEAVersionPatch = patch;
+	response.privacyIDEAVersionSuffix = suffix;
+}
 
 int GetIntOrZero(json& input, string fieldName)
 {
@@ -282,6 +312,16 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 		}
 	}
 
+	// Version
+	if (jRoot.contains("versionnumber")) 
+	{
+		ParseVersionString(jRoot["versionnumber"].get<std::string>(), response);
+		PIDebug("Parsed version: " + 
+			std::to_string(response.privacyIDEAVersionMajor) + "." +
+			std::to_string(response.privacyIDEAVersionMinor) + "." +
+			std::to_string(response.privacyIDEAVersionPatch) + response.privacyIDEAVersionSuffix);
+	}
+
 	return S_OK;
 }
 
@@ -349,6 +389,7 @@ HRESULT ParseOfflineDataItem(json jRoot, OfflineData& data)
 		data.pubKey = GetStringOrEmpty(response, "pubKey");
 		data.credId = GetStringOrEmpty(response, "credentialId");
 		data.rpId = GetStringOrEmpty(response, "rpId");
+		data.userId = GetStringOrEmpty(response, "userId");
 	}
 	else // HOTP
 	{
@@ -413,6 +454,7 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 			jResponse["pubKey"] = item.pubKey;
 			jResponse["credentialId"] = item.credId;
 			jResponse["rpId"] = item.rpId;
+			jResponse["userId"] = item.userId;
 		}
 		else // HOTP
 		{

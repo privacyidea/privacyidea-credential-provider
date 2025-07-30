@@ -32,5 +32,7 @@
   "30": "Registro de Passkey. ¡Toca tu llave de seguridad!",
   "31": "¡Por favor, ingrese el PIN de su llave de seguridad!",
   "32": "Registro de Passkey",
-  "33": "Iniciar sesión con nombre de usuario"
+  "33": "Iniciar sesión con nombre de usuario",
+  "34": "Autenticación FIDO cancelada. Pruebe otra forma.",
+  "35": "No ahora"
 }

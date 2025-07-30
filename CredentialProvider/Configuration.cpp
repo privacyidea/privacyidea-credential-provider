@@ -27,6 +27,7 @@
 #include "RegistryReader.h"
 #include "Convert.h"
 #include <Shared.h>
+#include <Translator.h>
 
 using namespace std;
 
@@ -73,7 +74,7 @@ void Configuration::Load()
 	usernamePassword = rr.GetBool(L"username_password");
 
 	// Set locales files path from registry
-	localesPath = rr.GetWString(L"locales_path");
+	localesPath = rr.GetWString(L"localesPath");
 
 	debugLog = rr.GetBool(L"debug_log");
 #ifdef _DEBUG
@@ -99,6 +100,19 @@ void Configuration::Load()
 	piconfig.sendUPN = rr.GetBool(L"send_upn");
 
 	piconfig.acceptLanguage = ValidateAcceptLanguage(rr.GetWString(L"header_accept_language"));
+
+	language = Convert::ToString(rr.GetWString(L"language"));
+	if (!language.empty())
+	{
+		if (language.size() != 2)
+		{
+			PIError("Configured language code is invalid: " + language + ", only 2 characters allowed, like 'en' or 'de'. Using language from system.");
+		}
+		else
+		{
+			Translator::GetInstance().SetLanguage(language);
+		}
+	}
 
 	// Realm Mapping
 	piconfig.defaultRealm = rr.GetWString(L"default_realm");
@@ -143,10 +157,9 @@ std::string Configuration::ValidateAcceptLanguage(std::wstring configEntry)
 {
 	if (configEntry.empty() || configEntry == L"system")
 	{
-		const LANGID langId = GetUserDefaultUILanguage();
 		// Get the ISO 639 language name (e.g., "en")
-		wchar_t language[9] = { 0 };
-		if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO639LANGNAME, language, sizeof(language) / sizeof(wchar_t)) == 0)
+		wchar_t wlanguage[9] = { 0 };
+		if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SISO639LANGNAME, wlanguage, sizeof(wlanguage) / sizeof(wchar_t)) == 0)
 		{
 			PIError("Unable to get ISO 639 language name, using default en-US.");
 			return "en-US";
@@ -160,7 +173,7 @@ std::string Configuration::ValidateAcceptLanguage(std::wstring configEntry)
 			return "en-US";
 		}
 
-		std::wstring wresult = language;
+		std::wstring wresult = wlanguage;
 		PIDebug("Language result: " + Convert::ToString(wresult));
 		wresult += L"-";
 		for (wchar_t& c : wresult) c = towlower(c);

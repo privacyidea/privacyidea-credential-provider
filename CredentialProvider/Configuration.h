@@ -71,12 +71,6 @@ public:
 		return ModeToString(mode);
 	}
 
-	bool isNextModePassword() const noexcept
-	{
-		return (mode != Mode::PASSWORD && mode != Mode::USERNAMEPASSWORD)
-			&& !(twoStepSendPassword || usernamePassword);
-	}
-
 	bool isPasswordInFirstStep() const noexcept
 	{
 		return twoStepSendPassword || usernamePassword;
@@ -105,6 +99,7 @@ public:
 
 	// Add locales files path
 	std::wstring localesPath = L"";
+	std::string language = "";
 
 	bool usernamePassword = false; // TODO add to installer
 	bool twoStepSendPassword = false;

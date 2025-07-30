@@ -125,7 +125,7 @@ public:
 
 	// Called when UnAdvise is called for the Provider.
 	// This happens when there is inactivity while logging in and the screen goes into "locked mode".
-	HRESULT Reset(); 
+	HRESULT FullReset(); 
 
 private:
 	HRESULT SetMode(Mode mode);
@@ -147,9 +147,14 @@ private:
 	bool CheckExcludedAccount();
 
 	HRESULT FIDOAuthentication(IQueryContinueWithStatus* pqcws);
+
 	HRESULT FIDORegistration(IQueryContinueWithStatus* pqcws);
 
 	HRESULT EvaluateResponse(PIResponse& response);
+
+	HRESULT LoadBitmapFromPathOrResource(const std::wstring& bitmapPath, HBITMAP* phbmp);
+
+	HRESULT SetDefaultBitmap();
 
 	// Waits until a FIDO2 device is found or the search is cancelled. If the search is cancelled, an empty optional is returned
 	// and _fidoDeviceSearchCancelled is set to true.
@@ -179,8 +184,8 @@ private:
 	std::optional<FIDOSignRequest> _passkeyChallenge = std::nullopt;
 	bool _passkeyRegistrationFailed = false;
 	
-	// Save the default bitmap
-	HBITMAP _hBitmap = nullptr;
 	// Flag to indicate that the FID_OTP field should be hidden
+	// TODO should be modes?
 	bool _pollEnrollmentInProgress = false;
+	bool _enrollmentInProgress = false;
 };

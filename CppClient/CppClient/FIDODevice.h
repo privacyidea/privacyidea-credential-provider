@@ -68,6 +68,10 @@ public:
 	static std::string GenerateRandomAsBase64URL(long size);
 	std::string ToString() const;
 
+	std::vector<std::string> GetRpIds(std::string pin) const;
+
+	std::vector<std::string> GetUsersForRpId(std::string pin, std::string rpId) const;
+
 private:
 	int GetDeviceInfo();
 

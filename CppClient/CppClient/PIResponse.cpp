@@ -87,33 +87,75 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 	return ret;
 }
 
-std::string PIResponse::GetDeduplicatedMessage()
+std::string Concatenate(std::vector<std::string> vec)
+{
+	std::string msg;
+	for (auto& m : vec)
+	{
+		msg += m + ", ";
+	}
+	// Remove the last comma and space
+	if (!msg.empty())
+	{
+		msg.pop_back();
+		msg.pop_back();
+	}
+
+	return msg;
+}
+
+std::string PIResponse::GetFIDOMessage()
 {
 	if (challenges.empty())
 	{
-		return message;
+		return "";
 	}
 	std::vector<std::string> messages;
-	// Add the message of each challenge to the vector, only if it is not already in there
 	for (auto& challenge : challenges)
 	{
-		if (std::find(messages.begin(), messages.end(), challenge.message) == messages.end())
+		if (std::find(messages.begin(), messages.end(), challenge.message) == messages.end()
+			&& (challenge.type == "webauthn" || challenge.type == "passkey"))
 		{
 			messages.push_back(challenge.message);
 		}
 	}
-	// Concatenate all messages
-	std::string deduplicatedMessage;
-	for (auto& m : messages)
-	{
-		deduplicatedMessage += m + ", ";
-	}
-	// Remove the last comma and space
-	if (!deduplicatedMessage.empty())
-	{
-		deduplicatedMessage.pop_back();
-		deduplicatedMessage.pop_back();
-	}
+	return Concatenate(messages);
+}
 
-	return deduplicatedMessage;
+std::string PIResponse::GetNonFIDOMessage()
+{
+	if (challenges.empty())
+	{
+		return "";
+	}
+	std::vector<std::string> messages;
+	for (auto& challenge : challenges)
+	{
+		if (std::find(messages.begin(), messages.end(), challenge.message) == messages.end()
+			&& challenge.type != "webauthn" && challenge.type != "passkey")
+		{
+			messages.push_back(challenge.message);
+		}
+	}
+	return Concatenate(messages);
+}
+
+bool PIResponse::IsVersionHigherThan(int major, int minor, int patch) const
+{
+	if (privacyIDEAVersionMajor > major)
+	{
+		return true;
+	}
+	else if (privacyIDEAVersionMajor == major)
+	{
+		if (privacyIDEAVersionMinor > minor)
+		{
+			return true;
+		}
+		else if (privacyIDEAVersionMinor == minor)
+		{
+			return privacyIDEAVersionPatch > patch;
+		}
+	}
+	return false;
 }

@@ -49,27 +49,27 @@ OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
 	// Load the offline file on startup
 	_filePath = filePath.empty() ? _filePath : filePath;
 	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
-	const HRESULT res = LoadFromFile();
-	if (res == S_OK)
+	const HRESULT hr = LoadFromFile();
+	if (hr == S_OK)
 	{
 		PIDebug("Offline data loaded successfully!");
 	}
-	else if (res == ERROR_FILE_NOT_FOUND)
+	else if (hr == ERROR_FILE_NOT_FOUND)
 	{
 		// File not found can be ignored as it expected when not using offline OTPs
 	}
 	else
 	{
-		PIDebug(L"Unable to load offline file: " + to_wstring(res) + L": " + getErrorText(res));
+		PIDebug(L"Unable to load offline file: " + to_wstring(hr) + L": " + getErrorText(hr));
 	}
 }
 
 OfflineHandler::~OfflineHandler()
 {
-	const HRESULT res = SaveToFile();
-	if (res != S_OK)
+	const HRESULT hr = SaveToFile();
+	if (hr != S_OK)
 	{
-		PIDebug(L"Unable to save offline file: " + to_wstring(res) + L": " + getErrorText(res));
+		PIDebug(L"Unable to save offline file: " + to_wstring(hr) + L": " + getErrorText(hr));
 	}
 }
 

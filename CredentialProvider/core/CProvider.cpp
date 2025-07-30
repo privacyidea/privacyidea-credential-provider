@@ -139,14 +139,14 @@ HRESULT CProvider::SetSerialization(
 )
 {
 	PIDebug(__FUNCTION__);
-	HRESULT result = E_NOTIMPL;
+	HRESULT hr = E_NOTIMPL;
 	ULONG authPackage = NULL;
-	result = RetrieveNegotiateAuthPackage(&authPackage);
+	hr = RetrieveNegotiateAuthPackage(&authPackage);
 
-	if (!SUCCEEDED(result))
+	if (!SUCCEEDED(hr))
 	{
 		PIDebug("Failed to retrieve authPackage");
-		return result;
+		return hr;
 	}
 
 	if (_config->provider.cpu == CPUS_CREDUI)
@@ -161,7 +161,7 @@ HRESULT CProvider::SetSerialization(
 		if (_config->provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY)
 		{
 			PIDebug("CPUS_CREDUI but not CREDUIWIN_AUTHPACKAGE_ONLY");
-			result = S_FALSE;
+			hr = S_FALSE;
 		}
 	}
 
@@ -181,7 +181,7 @@ HRESULT CProvider::SetSerialization(
 					if (!SUCCEEDED(KerbInteractiveUnlockLogonRepackNative(pcpcs->rgbSerialization, pcpcs->cbSerialization,
 						&nativeSerialization, &nativeSerializationSize)))
 					{
-						return result;
+						return hr;
 					}
 				}
 				else
@@ -206,13 +206,13 @@ HRESULT CProvider::SetSerialization(
 
 				_pkiulSetSerialization = (KERB_INTERACTIVE_UNLOCK_LOGON*)nativeSerialization;
 
-				result = S_OK;
+				hr = S_OK;
 			}
 		}
 	}
-	PIDebug("SetSerialization result: " + Convert::LongToHexString(result));
+	PIDebug("SetSerialization result: " + Convert::LongToHexString(hr));
 
-	return result;
+	return hr;
 }
 
 // Called by LogonUI to give you a callback.  Providers often use the callback if they
@@ -250,7 +250,7 @@ HRESULT CProvider::UnAdvise()
 
 	_config->provider.pCredentialProviderEvents = nullptr;
 	_config->provider.upAdviseContext = NULL;
-	_credential->Reset();
+	_credential->FullReset();
 	return S_OK;
 }
 
@@ -306,7 +306,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 			case FID_OTP:
 				label = util.GetText(TEXT_OTP_FIELD);
 				break;
-			case FID_WAN_PIN:
+			case FID_FIDO_PIN:
 				label = util.GetText(TEXT_FIDO_PIN_HINT);
 				break;
 			default: break;

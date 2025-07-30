@@ -32,5 +32,7 @@
   "30": "Passkey Registrierung. Berühren Sie Ihren Sicherheitsschlüssel!",
   "31": "Geben Sie die PIN Ihres Sicherheitsschlüssels ein!",
   "32": "Passkey Registrierung",
-  "33": "Mit Benutzername anmelden"
+  "33": "Mit Benutzername anmelden",
+  "34": "FIDO-Authentifizierung abgebrochen. Versuchen Sie eine andere Methode.",
+  "35": "Nicht jetzt ausrollen"
 }

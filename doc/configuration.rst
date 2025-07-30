@@ -170,6 +170,10 @@ Here is a list of the old configuration options and their corresponding ID in th
 * webauthn_link_text = 12
 * webauthn_pin_hint = 14
 
+**language**
+
+You can overwrite the language of the Credential Provider by setting this to a valid language code, like "en" or "de". A translation file for that language has to exist in the locales folder.
+
 ------------------------------------------
 Filter and Scenario Specific Configuration
 ------------------------------------------

@@ -20,7 +20,7 @@
 #include <fido/es256.h>
 #include <memory>
 #include <algorithm>
-
+#include <fido/credman.h>
 #include "Convert.h"
 #include "FIDODevice.h"
 #include "Logger.h"
@@ -179,6 +179,35 @@ namespace
 		return res;
 	}
 
+	static unique_fido_dev_t OpenFidoDevice(const std::string& devicePath, int& outError)
+	{
+		outError = FIDO_OK;
+		if (devicePath.empty())
+		{
+			PIError("No device path provided");
+			outError = FIDO_ERR_INVALID_ARGUMENT;
+			return nullptr;
+		}
+
+		unique_fido_dev_t dev(fido_dev_new());
+		if (!dev)
+		{
+			PIError("fido_dev_new failed.");
+			outError = FIDO_ERR_INTERNAL;
+			return nullptr;
+		}
+
+		int res = fido_dev_open(dev.get(), devicePath.c_str());
+		if (res != FIDO_OK)
+		{
+			PIError("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+			outError = FIDO_ERR_INTERNAL;
+			return nullptr;
+		}
+
+		return dev;
+	}
+
 	static int GetAssert(
 		const FIDOSignRequest& signRequest,
 		const std::string& origin,
@@ -187,26 +216,8 @@ namespace
 		fido_assert_t** assert,
 		std::vector<unsigned char>& clientDataOut)
 	{
-		if (devicePath.empty())
-		{
-			PIError("No device path provided");
-			return FIDO_ERR_INVALID_ARGUMENT;
-		}
-
 		int res = FIDO_OK;
-		unique_fido_dev_t dev(fido_dev_new());
-		if (dev == NULL)
-		{
-			PIError("fido_dev_new failed.");
-			return FIDO_ERR_INTERNAL;
-		}
-
-		res = fido_dev_open(dev.get(), devicePath.c_str());
-		if (res != FIDO_OK)
-		{
-			PIError("fido_dev_open: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-			return FIDO_ERR_INTERNAL;
-		}
+		auto dev = OpenFidoDevice(devicePath, res);
 
 		// Create assertion
 		if ((*assert = fido_assert_new()) == NULL)
@@ -412,7 +423,9 @@ namespace
 std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log)
 {
 	if (log)
+	{
 		PIDebug("Searching for connected FIDO devices, filterWindowsHello=" + std::to_string(filterWindowsHello));
+	}
 	fido_init(fidoFlags);
 	std::vector<FIDODevice> ret;
 	size_t ndevs;
@@ -441,7 +454,10 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 		}
 		ret.push_back(dev);
 	}
-	PIDebug("Found " + std::to_string(ret.size()) + " FIDO device(s)");
+	if (log)
+	{
+		PIDebug("Found " + std::to_string(ret.size()) + " FIDO device(s)");
+	}
 	return ret;
 }
 
@@ -478,6 +494,83 @@ std::string FIDODevice::ToString() const
 	return "[" + _manufacturer + "][" + _product + "][" + _path + "]";
 }
 
+std::vector<std::string> FIDODevice::GetRpIds(std::string pin) const
+{
+	PIDebug(__FUNCTION__);
+	std::vector<std::string> ret;
+	int res = FIDO_OK;
+	auto dev = OpenFidoDevice(_path, res);
+
+	fido_credman_rp_t* rp = fido_credman_rp_new();
+	if (!rp)
+	{
+		PIError("fido_credman_rp_new failed.");
+		fido_dev_close(dev.get());
+		return ret; // throw exception
+	}
+
+	res = fido_credman_get_dev_rp(dev.get(), rp, pin.empty() ? NULL : pin.c_str());
+	if (res != FIDO_OK)
+	{
+		PIError("fido_credman_get_dev_rp: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		fido_credman_rp_free(&rp);
+		fido_dev_close(dev.get());
+		return ret; // throw exception
+	}
+
+	size_t rp_count = fido_credman_rp_count(rp);
+	for (size_t i = 0; i < rp_count; ++i)
+	{
+		const char* rp_id = fido_credman_rp_id(rp, i);
+		if (rp_id)
+		{
+			ret.push_back(rp_id);
+		}
+	}
+
+	fido_credman_rp_free(&rp);
+	return ret;
+}
+
+std::vector<std::string> FIDODevice::GetUsersForRpId(std::string pin, std::string rpId) const
+{
+	PIDebug(__FUNCTION__);
+	std::vector<std::string> ret;
+
+	int res = FIDO_OK;
+	auto dev = OpenFidoDevice(_path, res);
+	if (res != FIDO_OK)
+	{
+		PIError("Failed to open FIDO device: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		return ret; // throw exception
+	}
+
+	fido_credman_rk_t* rk = fido_credman_rk_new();
+	if (!rk)
+	{
+		PIError("fido_credman_rk_new failed.");
+		return ret; // throw exception
+	}
+
+	res = fido_credman_get_dev_rk(dev.get(), rpId.c_str(), rk, pin.empty() ? NULL : pin.c_str());
+	if (res != FIDO_OK)
+	{
+		PIError("fido_credman_get_dev_rk: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		fido_credman_rk_free(&rk);
+		return ret; // throw exception
+	}
+
+	size_t rk_count = fido_credman_rk_count(rk);
+	for (size_t i = 0; i < rk_count; ++i)
+	{
+		auto cred = fido_credman_rk(rk, i);
+		ret.push_back(fido_cred_user_name(cred));
+	}
+
+	fido_credman_rk_free(&rk);
+	return ret;
+}
+
 int FIDODevice::Sign(
 	const FIDOSignRequest& signRequest,
 	const std::string& origin,
@@ -508,6 +601,10 @@ int FIDODevice::Sign(
 		auto pbSig = fido_assert_sig_ptr(assert, 0);
 		auto cbSig = fido_assert_sig_len(assert, 0);
 		signResponse.signaturedata = Convert::Base64URLEncode(pbSig, cbSig);
+
+		auto pbUserHandle = fido_assert_user_id_ptr(assert, 0);
+		auto cbUserHandle = fido_assert_user_id_len(assert, 0);
+		signResponse.userHandle = Convert::Base64URLEncode(pbUserHandle, cbUserHandle);
 	}
 
 	fido_assert_free(&assert);
@@ -644,7 +741,6 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 	const FIDORegistrationRequest& registration,
 	const std::string& pin)
 {
-	// 1. Validate device path
 	if (_path.empty())
 	{
 		PIError("No device path provided");
@@ -830,7 +926,6 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 
 int FIDODevice::GetDeviceInfo()
 {
-	// Open device
 	if (_path.empty())
 	{
 		PIError("No device path provided");

@@ -49,7 +49,9 @@ public:
 
 	std::optional<FIDOSignRequest> GetFIDOSignRequest();
 
-	std::string GetDeduplicatedMessage();
+	std::string GetFIDOMessage();
+
+	std::string GetNonFIDOMessage(); // everything except FIDO token
 
 	std::string preferredMode;
 
@@ -58,5 +60,12 @@ public:
 	std::optional<FIDORegistrationRequest> passkeyRegistration = std::nullopt;
 
 	std::optional<FIDOSignRequest> passkeyChallenge = std::nullopt;
+
+	bool IsVersionHigherThan(int major, int minor, int patch = 0) const;
+
+	int privacyIDEAVersionMajor = 99;
+	int privacyIDEAVersionMinor = 99;
+	int privacyIDEAVersionPatch = 99;
+	std::string privacyIDEAVersionSuffix = ""; // like dev0, beta1
 };
 
