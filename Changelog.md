@@ -1,4 +1,4 @@
-# Version 3.7.0 2024-07-30
+# Version 3.7.0 2024-08-05
 This version introduces a few changes, especially in the order the user is prompted for inputs. Please take a moment to read the [updated configuration documentation](https://github.com/privacyidea/privacyidea-credential-provider/blob/master/doc/configuration.rst).
 ## Summary of Changes
 The default order of prompts is now username -> MFA -> password. This allows for a meaningful usernameless passkey login. While the password is still required, the Credential Provider is prepared for a solution that does not need the password input from the user. 
