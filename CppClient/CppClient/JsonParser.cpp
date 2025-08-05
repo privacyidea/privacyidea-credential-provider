@@ -70,10 +70,6 @@ int GetIntOrZero(json& input, string fieldName)
 	{
 		return t.get<int>();
 	}
-	else
-	{
-		//PIDebug(fieldName + " was expected to be int, but was not.");
-	}
 	return 0;
 }
 
@@ -84,10 +80,6 @@ string GetStringOrEmpty(json& input, string fieldName)
 	{
 		return t.get<string>();
 	}
-	else
-	{
-		//PIDebug(fieldName + " was expected to be string, but was not.");
-	}
 	return "";
 }
 
@@ -97,10 +89,6 @@ bool GetBoolOrFalse(json& input, string fieldName)
 	if (t.is_boolean())
 	{
 		return t.get<bool>();
-	}
-	else
-	{
-		//PIDebug(fieldName + " was expected to be bool, but was not.");
 	}
 	return false;
 }

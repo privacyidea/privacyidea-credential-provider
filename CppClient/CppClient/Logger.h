@@ -56,19 +56,7 @@ private:
 	std::string logfilePath = "C:\\PICredentialProviderLog.txt";
 	
 	Logger() = default;
-	/*
-	Logger()
-		: _logStream("C:\\PICredentialProviderLog.txt", std::ios_base::app)
-	{}
 
-	~Logger()
-	{
-		if (_logStream.is_open())
-		{
-			_logStream.close();
-		}
-	}
-	*/
 	std::ofstream _logStream;
 	std::mutex _mutex;
 

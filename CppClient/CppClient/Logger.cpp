@@ -54,13 +54,6 @@ void Logger::LogS(const string& message, const char* file, int line, bool isDebu
 	CoTaskMemFree(timeinfo);
 	string fullMessage = "[" + string(buffer) + "] [" + string(file) + ":" + to_string(line) + "] " + message;
 
-	/*
-	std::lock_guard<std::mutex> lock(_mutex);
-	if (_logStream.is_open())
-	{
-		_logStream << fullMessage << std::endl;
-	}*/
-
 	ofstream os;
 	os.open(logfilePath.c_str(), std::ios_base::app);
 	os << fullMessage << endl;
