@@ -363,8 +363,6 @@ HRESULT Utilities::SetFieldStatePairBatch(
 
 	for (unsigned int i = 0; i < FID_NUM_FIELDS && SUCCEEDED(hr); i++)
 	{
-		PIDebug("Setting field state for field ID: " + to_string(i) + " with state: " +
-			to_string(static_cast<int>(pFSP[i].cpfs)));
 		hr = pCPCE->SetFieldState(self, i, pFSP[i].cpfs);
 
 		if (SUCCEEDED(hr))

@@ -148,8 +148,10 @@ public:
 	//
 	bool PollTransaction(std::string transactionId);
 
-	OfflineHandler offlineHandler;
 
+	bool CancelEnrollmentViaMultichallenge(std::string transactionId);
+
+	OfflineHandler offlineHandler;
 
 	/// <summary>
 	/// Return an offline FIDO2 sign request if offline FIDO2 token data is available. For every token, the credential_id will be in

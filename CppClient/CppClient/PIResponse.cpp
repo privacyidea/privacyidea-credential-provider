@@ -140,7 +140,7 @@ std::string PIResponse::GetNonFIDOMessage()
 	return Concatenate(messages);
 }
 
-bool PIResponse::IsVersionHigherThan(int major, int minor, int patch) const
+bool PIResponse::IsVersionHigherOrEqual(int major, int minor, int patch) const
 {
 	if (privacyIDEAVersionMajor > major)
 	{
@@ -154,7 +154,7 @@ bool PIResponse::IsVersionHigherThan(int major, int minor, int patch) const
 		}
 		else if (privacyIDEAVersionMinor == minor)
 		{
-			return privacyIDEAVersionPatch > patch;
+			return privacyIDEAVersionPatch >= patch;
 		}
 	}
 	return false;

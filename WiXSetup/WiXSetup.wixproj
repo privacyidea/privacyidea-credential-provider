@@ -15,19 +15,16 @@
     <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Platform)\$(Configuration)\</IntermediateOutputPath>
   </PropertyGroup>
-
   <!-- Debug and test configurations -->
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' Or '$(Configuration)' == 'test' ">
     <DefineConstants>Debug</DefineConstants>
     <SuppressIces>ICE09;</SuppressIces>
   </PropertyGroup>
-
   <!-- Release configuration -->
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <SuppressIces>ICE09;</SuppressIces>
     <SuppressValidation>False</SuppressValidation>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="ConfigurationDlgs.wxs" />
     <Compile Include="Product.wxs" />
@@ -63,4 +60,7 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(WixTargetsPath)" />
+  <PropertyGroup>
+    <PostBuildEvent />
+  </PropertyGroup>
 </Project>

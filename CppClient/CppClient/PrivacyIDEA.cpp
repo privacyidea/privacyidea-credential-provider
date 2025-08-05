@@ -425,3 +425,19 @@ bool PrivacyIDEA::PollTransaction(std::string transactionId)
 	PIDebug("Polltransaction response: " + response);
 	return _parser.ParsePollTransaction(response);
 }
+
+bool PrivacyIDEA::CancelEnrollmentViaMultichallenge(std::string transactionId)
+{
+	map<string, string> parameters = {
+		{"transaction_id", transactionId },
+		{"cancel_enrollment", "true"}
+	};
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, map<string, string>(), RequestMethod::POST);
+	PIDebug("Cancel enrollment response: " + response);
+	PIResponse pir;
+	HRESULT hr = _parser.ParseResponse(response, pir);
+	if (SUCCEEDED(hr))
+	{
+		return pir.isAuthenticationSuccessful();
+	}
+}

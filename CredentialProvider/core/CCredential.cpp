@@ -36,7 +36,6 @@
 #include "RegistryReader.h"
 #include "Convert.h"
 #include "Logger.h"
-#include "WebAuthn.h"
 #include "FIDODevice.h"
 #include "FIDOException.h"
 #include "Mode.h"
@@ -524,24 +523,6 @@ HRESULT CCredential::SetStringValue(
 			{
 				SetOfflineInfo(Convert::ToString(username));
 			}
-
-			/*
-			// Check if offline webauthn is available for the user and if so, show the link
-			// TODO indicate offline by suffixing the link text?
-			if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty())
-			{
-				_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
-				PIDebug("Enabling WebAuthn link because of available offline data");
-			}
-			else
-			{
-				// Disable if no match for the user and no "online" webauthn request
-				if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0)
-				{
-					_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_HIDDEN);
-				}
-			}
-			*/
 		}
 	}
 	else
@@ -665,25 +646,22 @@ Mode CCredential::SelectFIDOMode(std::string userVerification, bool offline)
 	return Mode::NO_CHANGE;
 }
 
+// TODO refactor this function by splitting it into smaller functions, like SetFIDOLinks, SetResetLink, SetOfflineLink etc.
 HRESULT CCredential::SetMode(Mode mode)
 {
-	PIDebug("SetMode: New Mode=" + _config->ModeToString(mode) + ", old Mode=" + _config->ModeString() + ", passkey = " + to_string(_config->usePasskey) + ", offlineFIDO = " + to_string(_config->useOfflineFIDO));
-	HRESULT hr = S_OK;
-	const Mode oldMode = _config->mode;
-	if (mode != Mode::NO_CHANGE)
-	{
-		_config->mode = mode;
-	}
-
+	PIDebug("SetMode: New Mode=" + _config->ModeToString(mode) + ", old Mode=" + _config->ModeString() +
+		", passkey = " + to_string(_config->usePasskey) + ", offlineFIDO = " + to_string(_config->useOfflineFIDO));
 	if (_pCredProvCredentialEvents == nullptr)
 	{
 		PIError("SetMode called without CredentialEvents available!");
 		return E_FAIL;
 	}
-
-	// Reset some field states
-	_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_HIDDEN);
-	_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
+	if (mode != Mode::NO_CHANGE)
+	{
+		_config->mode = mode;
+	}
+	HRESULT hr = S_OK;
+	const Mode oldMode = _config->mode;
 
 	// Small text is used to display a prompt to the user, like "Please enter your username" or the message of 
 	// the last server response.
@@ -935,19 +913,10 @@ HRESULT CCredential::SetMode(Mode mode)
 		SetOfflineInfo(Convert::ToString(wstring(pwszUsername)));
 	}
 
-	// Overwriting previous things by disabling stuff
-	if (_config->ModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN))
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
-	}
-	// If its the last step, password, there is no need for offline info or fido2 offline anymore
-	if (mode == Mode::PASSWORD)
+
+	if (_config->ModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::PASSWORD))
 	{
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_HIDDEN);
 	}
 
 	// Disable offline FIDO and offline info in privacyidea step
@@ -962,16 +931,12 @@ HRESULT CCredential::SetMode(Mode mode)
 	}
 
 	// If enroll_via_multichallenge with either push or smartphone is happening, hide the OTP field
-	// As the only way to progress is to scan the QR code and let the polling finish
-	if (_pollEnrollmentInProgress)
+	// Offer to cancel the enrollment, which is available with privacyIDEA 3.12+
+	const bool versionHigherThan312 = _config->lastResponse && _config->lastResponse->IsVersionHigherOrEqual(3, 12);
+	if ((_enrollmentInProgress || _pollEnrollmentInProgress) && versionHigherThan312 && _config->lastResponse->isEnrollCancellable)
 	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
-	}
-	if (_enrollmentInProgress)
-	{
-		// OTP token enrollment
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldString(this, FID_CANCEL_ENROLLMENT, _util.GetText(TEXT_CANCEL_ENROLLMENT).c_str());
+		_pCredProvCredentialEvents->SetFieldState(this, FID_CANCEL_ENROLLMENT, CPFS_DISPLAY_IN_SELECTED_TILE);
 	}
 
 	// CredUI no image setting
@@ -1215,6 +1180,25 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 			_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
 		}
 	}
+	else if (dwFieldID == FID_CANCEL_ENROLLMENT)
+	{
+		PIDebug("Cancel enrollment link clicked");
+		if (!_config->lastTransactionId.empty())
+		{
+			if (_privacyIDEA.CancelEnrollmentViaMultichallenge(_config->lastTransactionId))
+			{
+				_enrollmentInProgress = false;
+				_pollEnrollmentInProgress = false;
+				_privacyIDEASuccess = true;
+				_config->doAutoLogon = true;
+				_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+			}
+		}
+	}
+	else
+	{
+		PIDebug("Unknown command link clicked: " + to_string(dwFieldID));
+	}
 
 	return S_OK;
 }
@@ -1284,9 +1268,9 @@ HRESULT CCredential::GetSerialization(
 		if (_privacyIDEASuccess == false && _config->pushAuthenticationSuccess == false)
 		{
 			auto& lastResponse = _config->lastResponse;
-			// Continue with webauthn in the following cases:
+			// Continue with fido in the following cases:
 			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request,
-			// or when continuing webauthn (e.g. from NO_DEVICE to PIN)
+			// or when continuing fido (e.g. from NO_DEVICE to PIN)
 			bool continueWithFIDO = false;
 			if (lastResponse)
 			{
@@ -1680,8 +1664,21 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 		PIDebug("No FIDO2 PIN input, but pin is required");
 		return E_FAIL;
 	}
-
-	pqcws->SetStatusMessage(_util.GetText(TEXT_TOUCH_SEC_KEY).c_str());
+	auto text = _util.GetText(TEXT_TOUCH_SEC_KEY);
+	// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message 
+	// to indicate what the user should do.
+	if (_config->provider.cpu == CPUS_CREDUI)
+	{
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT,text.c_str());
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_DISABLED);
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
+	}
+	else
+	{
+		pqcws->SetStatusMessage(text.c_str());
+	}
+	
 	FIDOSignResponse signResponse;
 	string origin = Convert::ToString(Utilities::ComputerName());
 

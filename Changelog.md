@@ -22,6 +22,7 @@ Installing this version will remove unused registry entries automatically.
 * Background thread that does the polling when doing push authentication will now timeout after 5 minutes in case of ghost sessions
 * `hide_first_step_response_error` to hide the message when sending an empty password or the password in the first step did not trigger a challenge
 * Smartphone container can be enrolled with the enroll_via_multichallenge policy
+* Added option to cancel enroll_via_multichallenge enrollments with privacyIDEA 3.12+
 * Added `register for safe mode` to installer
 * Updated installer to reflect most of the new configuration options and removed old options
 

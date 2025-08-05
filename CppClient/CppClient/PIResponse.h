@@ -61,11 +61,14 @@ public:
 
 	std::optional<FIDOSignRequest> passkeyChallenge = std::nullopt;
 
-	bool IsVersionHigherThan(int major, int minor, int patch = 0) const;
+	bool IsVersionHigherOrEqual(int major, int minor = 0, int patch = 0) const;
 
 	int privacyIDEAVersionMajor = 99;
 	int privacyIDEAVersionMinor = 99;
 	int privacyIDEAVersionPatch = 99;
 	std::string privacyIDEAVersionSuffix = ""; // like dev0, beta1
+
+	bool isEnrollViaMultichallenge = false; // true if the response is a multichallenge response, e.g. for FIDO2 registration
+	bool isEnrollCancellable = false; // true if the enrollment can be cancelled by the user
 };
 

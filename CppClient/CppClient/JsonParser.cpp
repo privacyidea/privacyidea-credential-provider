@@ -33,11 +33,18 @@ void ParseVersionString(const std::string& version, PIResponse& response)
 	int major = 0, minor = 0, patch = 0;
 	std::string suffix;
 
-	// Regex: major.minor(.patch)?(.suffix)?
-	// Examples matched: 3.10, 3.10.dev1, 3.10.2, 3.10.2.beta, 3.10.2dev1
-	std::regex re(R"(^\s*(\d+)\.(\d+)(?:\.(\d+))?(?:[.\-]?([a-zA-Z0-9]+))?\s*$)");
+	// Cut off at the first '+', if present
+	std::string mainVersion = version;
+	size_t plusPos = version.find('+');
+	if (plusPos != std::string::npos)
+	{
+		mainVersion = version.substr(0, plusPos);
+	}
+
+	// Improved regex: matches 3.10, 3.10.dev1, 3.10.2, 3.10.2.beta, 3.10.2dev1, etc.
+	std::regex re(R"(^\s*(\d+)\.(\d+)(?:\.(\d+))?(?:[.\-]?([a-zA-Z0-9][a-zA-Z0-9._-]*))?\s*$)");
 	std::smatch match;
-	if (std::regex_match(version, match, re))
+	if (std::regex_match(mainVersion, match, re))
 	{
 		major = std::stoi(match[1]);
 		minor = std::stoi(match[2]);
@@ -165,6 +172,9 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 	}
 
 	auto& jDetail = jRoot["detail"];
+
+	response.isEnrollCancellable = GetBoolOrFalse(jDetail, "enroll_via_multichallenge_optional");
+	response.isEnrollViaMultichallenge = GetBoolOrFalse(jDetail, "enroll_via_multichallenge");
 
 	// Passkey challenge
 	auto& passkey = jDetail["passkey"];
