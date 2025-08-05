@@ -17,71 +17,6 @@ Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 
 std::wstring Utilities::GetText(int id)
 {
-	// TODO if a new, configurable text is introduced, add it here
-	switch (id)
-	{
-		case TEXT_WAN_PIN_HINT:
-		{
-			if (!_config->webAuthnPinHint.empty())
-			{
-				return _config->webAuthnPinHint;
-			}
-			break;
-		}
-		case TEXT_OTP_FIELD:
-		{
-			if (!_config->otpFieldText.empty())
-			{
-				return _config->otpFieldText;
-			}
-			break;
-		}
-		case TEXT_WRONG_OTP:
-		{
-			if (!_config->otpFailureText.empty())
-			{
-				return _config->otpFailureText;
-			}
-			break;
-		}
-		case TEXT_USE_WEBAUTHN:
-		{
-			if (!_config->webAuthnLinkText.empty())
-			{
-				return _config->webAuthnLinkText;
-			}
-			break;
-		}
-		case TEXT_USE_OTP:
-		{
-			if (!_config->useOtpLinkText.empty())
-			{
-				return _config->useOtpLinkText;
-			}
-			break;
-		}
-		case TEXT_RESET_LINK:
-		{
-			if (!_config->resetLinkText.empty())
-			{
-				return _config->resetLinkText;
-			}
-			break;
-		}
-		case TEXT_LOGIN_TEXT:
-		{
-			if (!_config->loginText.empty())
-			{
-				return _config->loginText;
-			}
-			break;
-		}
-		default:
-		{
-			break;
-		}
-	}
-	// 
 	// Translate text.
 	try {
 		// Get translated text by ID using the Translator instance
@@ -178,8 +113,8 @@ HRESULT Utilities::KerberosChangePassword(
 	__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 	__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 	__in std::wstring username,
-	__in std::wstring password_old,
-	__in std::wstring password_new,
+	__in std::wstring passwordOld,
+	__in std::wstring passwordNew,
 	__in std::wstring domain)
 {
 	PIDebug(__FUNCTION__);
@@ -203,10 +138,10 @@ HRESULT Utilities::KerberosChangePassword(
 
 	PIDebug(L"User: " + username);
 	PIDebug(L"Domain: " + wstring(wsz));
-	PIDebug(L"Pw old: " + (_config->piconfig.logPasswords ? password_old :
-		(password_old.empty() ? L"no value" : L"hidden but has value")));
-	PIDebug(L"Pw new: " + (_config->piconfig.logPasswords ? password_new :
-		(password_new.empty() ? L"no value" : L"hidden but has value")));
+	PIDebug(L"Pw old: " + (_config->piconfig.logPasswords ? passwordOld :
+		(passwordOld.empty() ? L"no value" : L"hidden but has value")));
+	PIDebug(L"Pw new: " + (_config->piconfig.logPasswords ? passwordNew :
+		(passwordNew.empty() ? L"no value" : L"hidden but has value")));
 
 	if (!domain.empty() || bGetCompName)
 	{
@@ -220,11 +155,11 @@ HRESULT Utilities::KerberosChangePassword(
 			if (SUCCEEDED(hr))
 			{
 				// These buffers cant be zeroed since they are passed to LSA
-				PWSTR lpwszPasswordOld = new wchar_t[(password_old.size() + 1)];
-				wcscpy_s(lpwszPasswordOld, (password_old.size() + 1), password_old.c_str());
+				PWSTR lpwszPasswordOld = new wchar_t[(passwordOld.size() + 1)];
+				wcscpy_s(lpwszPasswordOld, (passwordOld.size() + 1), passwordOld.c_str());
 
-				PWSTR lpwszPasswordNew = new wchar_t[(password_new.size() + 1)];
-				wcscpy_s(lpwszPasswordNew, (password_new.size() + 1), password_new.c_str());
+				PWSTR lpwszPasswordNew = new wchar_t[(passwordNew.size() + 1)];
+				wcscpy_s(lpwszPasswordNew, (passwordNew.size() + 1), passwordNew.c_str());
 				// vvvv they just copy the pointer vvvv
 				hr = UnicodeStringInitWithString(lpwszPasswordOld, &kcpr.OldPassword);
 				hr = UnicodeStringInitWithString(lpwszPasswordNew, &kcpr.NewPassword);
@@ -283,7 +218,7 @@ HRESULT Utilities::CredPackAuthentication(
 	}
 	if (bGetCompName)
 	{
-		domain = wsz;
+        domain = std::wstring(wsz);
 	}
 
 	if (SUCCEEDED(hr))
@@ -441,36 +376,36 @@ HRESULT Utilities::SetFieldStatePairBatch(
 
 HRESULT Utilities::InitializeField(
 	LPWSTR rgFieldStrings[FID_NUM_FIELDS],
-	DWORD field_index)
+	DWORD fieldIndex)
 {
 	HRESULT hr = E_INVALIDARG;
 	const int hide_fullname = _config->hideFullName;
 	const int hide_domainname = _config->hideDomainName;
 
-	wstring loginText = _config->loginText;
+	wstring loginText = GetText(TEXT_LOGIN_TEXT);
 	wstring user_name = _config->credential.username;
 	wstring domain_name = _config->credential.domain;
 	wstring text;
 
-	switch (field_index)
+	switch (fieldIndex)
 	{
 		case FID_NEW_PASS_1:
 		case FID_NEW_PASS_2:
 		case FID_OTP:
 		case FID_SUBMIT_BUTTON:
 		{
-			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 			break;
 		}
-		case FID_LDAP_PASS:
+		case FID_PASSWORD:
 		{
 			if (!_config->credential.password.empty())
 			{
-				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[field_index]);
+				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[fieldIndex]);
 			}
 			else
 			{
-				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+				hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 			}
 			break;
 		}
@@ -480,12 +415,12 @@ HRESULT Utilities::InitializeField(
 			{
 				text = GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
 			}
-			hr = SHStrDupW(text.c_str(), &rgFieldStrings[field_index]);
+			hr = SHStrDupW(text.c_str(), &rgFieldStrings[fieldIndex]);
 			break;
 		}
 		case FID_USERNAME:
 		{
-			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[field_index]);
+			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[fieldIndex]);
 			//PIDebug(L"Setting username: " + wstring(rgFieldStrings[field_index]));
 			break;
 		}
@@ -494,13 +429,13 @@ HRESULT Utilities::InitializeField(
 			// This is the USERNAME field which is displayed in the list of users to the right
 			if (!loginText.empty())
 			{
-				hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[field_index]);
+				hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[fieldIndex]);
 			}
 			else
 			{
-				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[field_index]);
+				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[fieldIndex]);
 			}
-			//PIDebug(L"Setting large text: " + wstring(rgFieldStrings[field_index]));
+			//PIDebug(L"Setting large text: " + wstring(rgFieldStrings[fieldIndex]));
 			break;
 		}
 		case FID_SMALL_TEXT:
@@ -514,50 +449,50 @@ HRESULT Utilities::InitializeField(
 				{
 					wstring fullName = user_name + L"@" + domain_name;
 
-					hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[field_index]);
+					hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[fieldIndex]);
 				}
 				else if (!user_name.empty())
 				{
-					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[fieldIndex]);
 				}
 				else
 				{
-					hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+					hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 				}
 			}
 			else if (!user_name.empty() && hide_domainname && !hide_fullname)
 			{
-				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[field_index]);
+				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[fieldIndex]);
 			}
 			else if (hide_fullname)
 			{
-				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+				hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 			}
 			else
 			{
-				hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+				hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 			}
-			//PIDebug(L"Setting small text: " + wstring(rgFieldStrings[field_index]));
+			//PIDebug(L"Setting small text: " + wstring(rgFieldStrings[fieldIndex]));
 			break;
 		}
-		case FID_LOGO:
+		/*case FID_LOGO:
 		{
 			hr = S_OK;
 			break;
-		}
+		}*/
 		case FID_RESET_LINK:
 		{
-			hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[field_index]);
+			hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[fieldIndex]);
 			break;
 		}
-		case FID_WAN_LINK:
+		case FID_FIDO_ONLINE:
 		{
-			hr = SHStrDupW(GetText(TEXT_USE_WEBAUTHN).c_str(), &rgFieldStrings[field_index]);
+			hr = SHStrDupW(GetText(TEXT_USE_WEBAUTHN).c_str(), &rgFieldStrings[fieldIndex]);
 			break;
 		}
 		default:
 		{
-			hr = SHStrDupW(L"", &rgFieldStrings[field_index]);
+			hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 			break;
 		}
 	}
@@ -593,7 +528,7 @@ HRESULT Utilities::CopyInputFields()
 
 HRESULT Utilities::CopyPasswordChangeFields()
 {
-	_config->credential.password = _config->provider.field_strings[FID_LDAP_PASS];
+	_config->credential.password = _config->provider.field_strings[FID_PASSWORD];
 	PIDebug(L"Old pw: " + _config->credential.password);
 	_config->credential.newPassword1 = _config->provider.field_strings[FID_NEW_PASS_1];
 	PIDebug(L"new pw1: " + _config->credential.newPassword1);
@@ -646,7 +581,7 @@ HRESULT Utilities::CopyUsernameField()
 
 HRESULT Utilities::CopyPasswordField()
 {
-	std::wstring newPassword(_config->provider.field_strings[FID_LDAP_PASS]);
+	std::wstring newPassword(_config->provider.field_strings[FID_PASSWORD]);
 
 	if (newPassword.empty())
 	{
@@ -687,7 +622,7 @@ HRESULT Utilities::CopyOTPField()
 
 HRESULT Utilities::CopyWANPinField()
 {
-	std::wstring pin(_config->provider.field_strings[FID_WAN_PIN]);
+	std::wstring pin(_config->provider.field_strings[FID_FIDO_PIN]);
 	if (pin.empty())
 	{
 		PIDebug("New PIN empty, keeping old value");
@@ -695,7 +630,7 @@ HRESULT Utilities::CopyWANPinField()
 	else
 	{
 		PIDebug(L"Copying PIN from GUI");
-		_config->credential.webAuthnPIN = pin;
+		_config->credential.fido2PIN = pin;
 	}
 	return S_OK;
 }
@@ -748,7 +683,7 @@ void Utilities::SplitUserAndDomain(const std::wstring& input, std::wstring& user
 	}
 }
 
-bool Utilities::CheckForUPN(const std::wstring& input)
+bool Utilities::CheckForUPN(const std::wstring& input) noexcept
 {
 	return input.find(L"@") != string::npos && input.find(L"\\") == string::npos;
 }

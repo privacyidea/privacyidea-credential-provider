@@ -31,7 +31,7 @@ RegistryReader::RegistryReader(const std::wstring& pathToKey) noexcept
 	path = pathToKey;
 }
 
-bool RegistryReader::GetAllEntries(const std::wstring & pathToKey, std::map<std::wstring, std::wstring>& map) noexcept
+bool RegistryReader::GetAll(const std::wstring & pathToKey, std::map<std::wstring, std::wstring>& map) noexcept
 {
 	// Open handle to realm-mapping key
 	HKEY hKey = nullptr;
@@ -118,7 +118,7 @@ bool RegistryReader::GetAllEntries(const std::wstring & pathToKey, std::map<std:
 	return true;
 }
 
-std::wstring RegistryReader::GetWStringRegistry(std::wstring name) noexcept
+std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 {
 	DWORD dwRet = NULL;
 	HKEY hKey = nullptr;
@@ -147,15 +147,15 @@ std::wstring RegistryReader::GetWStringRegistry(std::wstring name) noexcept
 	return wstring(szValue);
 }
 
-bool RegistryReader::GetBoolRegistry(std::wstring name) noexcept
+bool RegistryReader::GetBool(std::wstring name) noexcept
 {
 	// Non existing keys evaluate to false.
-	return GetWStringRegistry(name) == L"1";
+	return GetWString(name) == L"1";
 }
 
-int RegistryReader::GetIntRegistry(std::wstring name) noexcept
+int RegistryReader::GetInt(std::wstring name) noexcept
 {
-	return _wtoi(GetWStringRegistry(name).c_str()); // Invalid parameter returns 0
+	return _wtoi(GetWString(name).c_str()); // Invalid parameter returns 0
 }
 
 std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueName) noexcept

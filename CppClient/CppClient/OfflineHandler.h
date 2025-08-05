@@ -22,6 +22,7 @@
 #include <map>
 #include <Windows.h>
 #include <vector>
+#include <optional>
 
 // 888090-2X OFFLINE
 #define PI_OFFLINE_DATA_NO_OTPS_LEFT				((HRESULT)0x88809020)
@@ -60,11 +61,15 @@ public:
 
 	std::vector<std::pair<std::string, size_t>> GetTokenInfo(const std::string& username);
 
-	std::vector<OfflineData> GetWebAuthnOfflineData(const std::string& username);
+	std::vector<OfflineData> GetFIDODataFor(const std::string& username);
+	
+	std::vector<OfflineData> GetAllFIDOData();
 
 	bool RemoveOfflineData(const std::string& username, const std::string& serial);
 
 	bool UpdateRefilltoken(std::string serial, std::string refilltoken);
+
+	std::optional<std::string> GetUsernameForSerial(const std::string& serial);
 
 private:
 	std::vector<OfflineData> _dataSets = std::vector<OfflineData>();

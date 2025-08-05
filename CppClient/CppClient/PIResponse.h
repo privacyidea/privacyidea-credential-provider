@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +19,10 @@
 
 #pragma once
 #include "Challenge.h"
-#include "WebAuthnSignRequest.h"
+#include "FIDORegistrationRequest.h"
+#include "FIDOSignRequest.h"
+#include "AuthenticationStatus.h"
+#include <optional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,7 +32,7 @@ class PIResponse
 public:
 	bool status = false;
 	bool value = false;
-
+	AuthenticationStatus authenticationStatus = AuthenticationStatus::NOT_SET;
 	std::string transactionId;
 	std::string message;
 
@@ -40,12 +43,32 @@ public:
 
 	bool IsPushAvailable();
 
+	bool isAuthenticationSuccessful() const;
+
 	std::string GetPushMessage();
 
-	WebAuthnSignRequest GetWebAuthnSignRequest();
+	std::optional<FIDOSignRequest> GetFIDOSignRequest();
 
-	std::string GetDeduplicatedMessage();
+	std::string GetFIDOMessage();
+
+	std::string GetNonFIDOMessage(); // everything except FIDO token
 
 	std::string preferredMode;
+
+	std::optional<std::string> username = std::nullopt;
+
+	std::optional<FIDORegistrationRequest> passkeyRegistration = std::nullopt;
+
+	std::optional<FIDOSignRequest> passkeyChallenge = std::nullopt;
+
+	bool IsVersionHigherOrEqual(int major, int minor = 0, int patch = 0) const;
+
+	int privacyIDEAVersionMajor = 99;
+	int privacyIDEAVersionMinor = 99;
+	int privacyIDEAVersionPatch = 99;
+	std::string privacyIDEAVersionSuffix = ""; // like dev0, beta1
+
+	bool isEnrollViaMultichallenge = false; // true if the response is a multichallenge response, e.g. for FIDO2 registration
+	bool isEnrollCancellable = false; // true if the enrollment can be cancelled by the user
 };
 

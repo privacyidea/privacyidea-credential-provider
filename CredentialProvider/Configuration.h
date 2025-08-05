@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,23 +20,8 @@
 #pragma once
 #include "PIConfig.h"
 #include "PIResponse.h"
+#include "Mode.h"
 #include <credentialprovider.h>
-
-enum class SCENARIO
-{
-	NO_CHANGE = 0,
-	LOGON_BASE = 1,
-	UNLOCK_BASE = 2,
-	SECOND_STEP = 3,
-	LOGON_TWO_STEP = 4,
-	UNLOCK_TWO_STEP = 5,
-	CHANGE_PASSWORD = 6,
-
-	SECURITY_KEY_ANY = 20,
-	SECURITY_KEY_PIN = 21,
-	SECURITY_KEY_NO_PIN = 22, // Requires reset with autoLogon to get to CCredential::Connect directly
-	SECURITY_KEY_NO_DEVICE = 23, // Requires reset with autoLogon to get to CCredential::Connect directly
-};
 
 class Configuration
 {
@@ -45,20 +30,78 @@ public:
 
 	void LogConfig();
 
-	bool IsSecondStep() const noexcept;
+	std::string ValidateAcceptLanguage(std::wstring configEntry);
 
 	PIConfig piconfig;
 
-	std::wstring loginText = L"";
-	std::wstring otpFieldText = L"";
-	std::wstring otpFailureText = L"";
-	std::wstring useOtpLinkText;
+	template<typename... Modes>
+	bool ModeOneOf(Modes... modes) const noexcept
+	{
+		return ((mode == modes) || ...);
+	}
+
+	inline std::string ModeToString(Mode m)
+	{
+		switch (m)
+		{
+			case Mode::NO_CHANGE:						return "NO_CHANGE";
+			case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
+			case Mode::USERNAME:						return "USERNAME";
+			case Mode::PASSWORD:						return "PASSWORD";
+			case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
+			case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
+			case Mode::SEC_KEY_ANY:						return "SEC_KEY_ANY";
+			case Mode::PASSKEY:							return "PASSKEY";
+			case Mode::SEC_KEY_REG:						return "SEC_KEY_REG";
+			case Mode::SEC_KEY_REG_PIN:					return "SEC_KEY_REG_PIN";
+			case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
+			case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
+			case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
+			default:									return "UNKNOWN_MODE";
+		}
+	}
+
+	bool isCredentialComplete() const noexcept
+	{
+		return !credential.username.empty() && !credential.password.empty() && !credential.domain.empty();
+	}
+
+	inline std::string ModeString()
+	{
+		return ModeToString(mode);
+	}
+
+	bool isPasswordInFirstStep() const noexcept
+	{
+		return twoStepSendPassword || usernamePassword;
+	}
+
+	bool isFirstStep() const noexcept
+	{
+		return mode == Mode::USERNAME || mode == Mode::USERNAMEPASSWORD || mode == Mode::NO_CHANGE;
+	}
+
+	Mode GetFirstStepMode() const noexcept
+	{
+		if (twoStepSendPassword || usernamePassword)
+		{
+			return Mode::USERNAMEPASSWORD;
+		}
+		return Mode::USERNAME;
+	}
+
+	// FIDO2
+	bool usePasskey = false;		// Online
+	bool useOfflineFIDO = false;	// Offline
+	bool disablePasskey = false;
+
 	std::wstring bitmapPath = L"";
 
 	// Add locales files path
 	std::wstring localesPath = L"";
+	std::string language = "";
 
-	bool twoStepHideOTP = false;
+	bool usernamePassword = false; // TODO add to installer
 	bool twoStepSendPassword = false;
 	bool twoStepSendEmptyPassword = false;
 
@@ -69,42 +112,42 @@ public:
 	bool prefillUsername = false;
 
 	bool showResetLink = false;
-	std::wstring resetLinkText = L"";
 
 	bool debugLog = false;
-	
+	bool hideFirstStepResponseError = false;
 	bool noDefault = false;
 
 	int winVerMajor = 0;
 	int winVerMinor = 0;
 	int winBuildNr = 0;
 
-	bool pushAuthenticationSuccessful = false;
+	bool pushAuthenticationSuccess = false;
 
 	bool isRemoteSession = false;
 
 	bool doAutoLogon = false;
 
-	PIResponse lastResponse;
+	std::optional<PIResponse> lastResponse;
 	std::string lastTransactionId = "";
 
 	std::wstring excludedAccount = L"";
+	std::wstring excludedGroup = L"";
+	std::wstring exludedGroupNetBIOSaddress = L"";
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
 	int offlineTreshold = 20;
 	bool offlineShowInfo = true;
+	bool creduiNoImage = false;
 
-	std::wstring webAuthnLinkText;
-	std::wstring webAuthnPinHint;
 	bool webAuthnPreferred = false;
 	bool webAuthnOfflineNoPIN = false;
 
 	bool otpFailReturnToFirstStep = false;
 
 	// Track the current state
-	SCENARIO scenario = SCENARIO::NO_CHANGE;
+	Mode mode = Mode::NO_CHANGE;
 
 	struct PROVIDER
 	{
@@ -129,7 +172,7 @@ public:
 		std::wstring password = L"";
 		std::wstring otp = L"";
 		std::wstring upn = L"";
-		std::wstring webAuthnPIN = L"";
+		std::wstring fido2PIN = L"";
 
 		bool passwordMustChange = false;
 		bool passwordChanged = false;

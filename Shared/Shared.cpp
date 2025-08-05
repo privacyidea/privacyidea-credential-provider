@@ -41,17 +41,17 @@ namespace Shared
 		{
 			case CPUS_LOGON:
 			{
-				entry = rr.GetWStringRegistry(L"cpus_logon");
+				entry = rr.GetWString(L"cpus_logon");
 				break;
 			}
 			case CPUS_UNLOCK_WORKSTATION:
 			{
-				entry = rr.GetWStringRegistry(L"cpus_unlock");
+				entry = rr.GetWString(L"cpus_unlock");
 				break;
 			}
 			case CPUS_CREDUI:
 			{
-				entry = rr.GetWStringRegistry(L"cpus_credui");
+				entry = rr.GetWString(L"cpus_credui");
 				break;
 			}
 			case CPUS_CHANGE_PASSWORD:

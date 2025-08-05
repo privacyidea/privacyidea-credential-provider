@@ -29,7 +29,7 @@ constexpr auto TEXT_OTPS_REMAINING = 10;
 constexpr auto TEXT_GENERIC_ERROR = 11;
 constexpr auto TEXT_USE_WEBAUTHN = 12;
 constexpr auto TEXT_USE_OTP = 13;
-constexpr auto TEXT_WAN_PIN_HINT = 14;
+constexpr auto TEXT_FIDO_PIN_HINT = 14;
 constexpr auto TEXT_TOUCH_SEC_KEY = 15;
 constexpr auto TEXT_CONNECTING = 16;
 constexpr auto TEXT_LOGIN_TEXT = 17;
@@ -41,6 +41,16 @@ constexpr auto TEXT_OFFLINE_REFILL = 22;
 constexpr auto TEXT_FIDO_ERR_PIN_BLOCKED = 23;
 constexpr auto TEXT_FIDO_ERR_TX = 24;
 constexpr auto TEXT_FIDO_ERR_PIN_INVALID = 25;
+constexpr auto TEXT_USE_PASSKEY = 26;
+constexpr auto TEXT_ENTER_USERNAME = 27;
+constexpr auto TEXT_ENTER_PASSWORD = 28;
+constexpr auto TEXT_ENTER_USERNAME_PASSWORD = 29;
+constexpr auto TEXT_PASSKEY_REGISTER_TOUCH = 30;
+constexpr auto TEXT_SEC_KEY_ENTER_PIN_PROMPT = 31;
+constexpr auto TEXT_PASSKEY_REGISTRATION = 32;
+constexpr auto TEXT_LOGIN_WITH_USERNAME = 33;
+constexpr auto TEXT_FIDO_CANCELLED = 34;
+constexpr auto TEXT_CANCEL_ENROLLMENT = 35;
 
 class Utilities
 {
@@ -68,8 +78,8 @@ public:
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE* pcpgsr,
 		__out CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs,
 		__in std::wstring username,
-		__in std::wstring password_old,
-		__in std::wstring password_new,
+		__in std::wstring passwordOld,
+		__in std::wstring passwordNew,
 		__in std::wstring domain
 	);
 
@@ -98,7 +108,7 @@ public:
 
 	HRESULT InitializeField(
 		LPWSTR rgFieldStrings[FID_NUM_FIELDS],
-		DWORD field_index
+		DWORD fieldIndex
 	);
 
 	static std::wstring ComputerName();
@@ -119,7 +129,7 @@ public:
 	/// <param name="input"></param>
 	/// <param name="config"></param>
 	/// <returns>bool if upn detected, false otherwise</returns>
-	static bool CheckForUPN(const std::wstring& input);
+	static bool CheckForUPN(const std::wstring& input) noexcept;
 	
 	HRESULT CopyInputFields();
 

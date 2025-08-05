@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright	2019 NetKnights GmbH
+** Copyright	2025 NetKnights GmbH
 ** Author:		Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 #include "Convert.h"
 #include <winhttp.h>
 #include <atlutil.h>
+#include <set>
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -69,28 +70,41 @@ std::string Endpoint::URLEncode(const std::string& in)
 
 std::string Endpoint::EncodeRequestParameters(const std::map<std::string, std::string>& parameters)
 {
-	PIDebug("Request parameters:");
-	string ret;
-	for (auto& entry : parameters)
-	{
-		auto encoded = URLEncode(entry.second);
-		ret += entry.first + "=" + encoded + "&";
-		if (entry.first != "pass" || _config.logPasswords)
-		{
-			PIDebug(entry.first + "=" + encoded);
-		}
-		else
-		{
-			PIDebug("pass parameter is not logged");
-		}
-	}
+    PIDebug("Request parameters:");
+    static const std::set<std::string> noEncodeKeys = {
+        "credential_id",
+        "clientDataJSON",
+        "attestationObject",
+        "rawId"
+    };
 
-	// Cut trailing &
-	if (ret.size() > 1)
-	{
-		ret = ret.substr(0, ret.size() - 1);
-	}
-	return ret;
+    std::string ret;
+    for (const auto& entry : parameters)
+    {
+        std::string encoded;
+        if (noEncodeKeys.count(entry.first) > 0) {
+            encoded = entry.second; // Do not encode
+        } else {
+            encoded = URLEncode(entry.second);
+        }
+        ret += entry.first + "=" + encoded + "&";
+        if (entry.first != "pass" || _config.logPasswords)
+        {
+            PIDebug(entry.first + "=" + encoded);
+        }
+        else
+        {
+            PIDebug("pass parameter is not logged");
+        }
+    }
+
+    // Cut trailing &
+    if (ret.size() > 1)
+    {
+        ret = ret.substr(0, ret.size() - 1);
+    }
+
+    return ret;
 }
 
 wstring Endpoint::EncodeUTF16(const std::string& str, int codepage)
@@ -160,26 +174,40 @@ void CALLBACK WinHttpStatusCallback(
 	}
 }
 
-string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters, const std::map<std::string, std::string>& headers, const RequestMethod& method)
+string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::string, std::string>& parameters,
+	const std::map<std::string, std::string>& headers, const RequestMethod& method)
 {
 	PIDebug(string(__FUNCTION__) + " to " + endpoint);
 	// Prepare the parameters
-	wstring wHostname = EncodeUTF16(Convert::ToString(_config.hostname), CP_UTF8);
+	wstring wHostname = EncodeUTF16(Convert::ToString(hostname), CP_UTF8);
 	// the api endpoint needs to be appended to the path then converted, because the "full path" is set separately in winhttp
-	wstring fullPath = EncodeUTF16((Convert::ToString(_config.path) + endpoint), CP_UTF8);
+	wstring fullPath = EncodeUTF16((Convert::ToString(path) + endpoint), CP_UTF8);
 
-	string strData = EncodeRequestParameters(parameters);
+	string encodedData = EncodeRequestParameters(parameters);
 
+	std::map<std::string, std::string> headersCopy = headers;
+	// Validation of _config.acceptLanguage is done prior to this
+	headersCopy.try_emplace("Accept-Language", _config.acceptLanguage);
+
+#ifdef _DEBUG
 	PIDebug("Headers:");
 	PIDebug(L"User-Agent=" + _config.userAgent);
-	for (auto& entry : headers)
+	for (auto& entry : headersCopy)
 	{
 		PIDebug(entry.first + "=" + entry.second);
 	}
+#endif //_DEBUG
 
-	LPSTR data = _strdup(strData.c_str());
-	const DWORD data_len = (DWORD)strnlen_s(strData.c_str(), MAXDWORD32);
+	LPSTR data = _strdup(encodedData.c_str());
+	DWORD dataLen = (DWORD)strnlen_s(encodedData.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
+
+	if (method == RequestMethod::GET)
+	{
+		fullPath += L"?" + EncodeUTF16(encodedData, CP_UTF8);
+		data = nullptr; // No data needed for GET requests
+		dataLen = 0; // No data length for GET requests
+	}
 
 	DWORD dwSize = 0;
 	DWORD dwDownloaded = 0;
@@ -216,8 +244,8 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,
 			NULL);
 
-		int port = (_config.customPort != 0) ? _config.customPort : INTERNET_DEFAULT_HTTPS_PORT;
-		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)port, 0);
+		int realPort = (port != 0) ? port : INTERNET_DEFAULT_HTTPS_PORT;
+		hConnect = WinHttpConnect(hSession, wHostname.c_str(), (INTERNET_PORT)realPort, 0);
 	}
 	else
 	{
@@ -289,11 +317,15 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	{
 		PIError("Failed to add User-Agent to header!");
 	}
-	for (auto& entry : headers)
+	if (!headersCopy.empty())
 	{
-		if (!WinHttpAddRequestHeaders(hRequest, Convert::ToWString(entry.first + ": " + entry.second).c_str(), (DWORD)-1L, WINHTTP_ADDREQ_FLAG_ADD))
+		for (auto& entry : headersCopy)
 		{
-			PIError("Failed to add header " + entry.first + ": " + entry.second + " to request: " + to_string(GetLastError()));
+			if (!entry.first.empty() && !WinHttpAddRequestHeaders(hRequest,	Convert::ToWString(entry.first + ": " + entry.second).c_str(),
+				(DWORD)-1L,	WINHTTP_ADDREQ_FLAG_ADD))
+			{
+				PIError("Failed to add header " + entry.first + ": " + entry.second + " to request: " + to_string(GetLastError()));
+			}
 		}
 	}
 
@@ -305,8 +337,8 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 			L"Content-Type: application/x-www-form-urlencoded\r\n",
 			(DWORD)-1,
 			(LPVOID)data,
-			data_len,
-			data_len,
+			dataLen,
+			dataLen,
 			0);
 	}
 
@@ -375,7 +407,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
 
-	SecureZeroMemory(data, data_len);
+	SecureZeroMemory(data, dataLen);
 
 	if (std::find(_excludedEndpoints.begin(), _excludedEndpoints.end(), endpoint) == _excludedEndpoints.end())
 	{

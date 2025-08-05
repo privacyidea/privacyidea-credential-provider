@@ -36,7 +36,7 @@ enum class RequestMethod
 class Endpoint
 { 
 public:
-	Endpoint(PIConfig config) : _config(config) {};
+	Endpoint(PIConfig config) : _config(config), hostname(config.hostname), path(config.path), port(config.port) {};
 
 	std::string SendRequest(
 		const std::string& endpoint,
@@ -45,6 +45,10 @@ public:
 		const RequestMethod& method = RequestMethod::POST);
 
 	HRESULT GetLastErrorCode();
+
+	std::wstring hostname;
+	std::wstring path;
+	int port = 0;
 
 private:
 

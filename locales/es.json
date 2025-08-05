@@ -24,5 +24,15 @@
   "22": "Recargando token fuera de línea...",
   "23": "¡Quite e inserte su dispositivo nuevamente!",
   "24": "Falló la comunicación con el dispositivo. Pruebe con otro método o dispositivo de autenticación.",
-  "25": "¡Pin de llave de seguridad incorrecto!"
+  "25": "¡Pin de llave de seguridad incorrecto!",
+  "26": "Usar Passkey",
+  "27": "Ingrese su nombre de usuario",
+  "28": "Introduce tu contraseña",
+  "29": "Ingrese su nombre de usuario y contraseña",
+  "30": "Registro de Passkey. ¡Toca tu llave de seguridad!",
+  "31": "¡Por favor, ingrese el PIN de su llave de seguridad!",
+  "32": "Registro de Passkey",
+  "33": "Iniciar sesión con nombre de usuario",
+  "34": "Autenticación FIDO cancelada. Pruebe otra forma.",
+  "35": "No ahora"
 }

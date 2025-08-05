@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,40 @@
 #include "Convert.h"
 #include <thread>
 #include <stdexcept>
+#include "FIDODevice.cpp"
 
 using namespace std;
+
+constexpr int POLL_THREAD_TIMEOUT_SECONDS = 300; // 5 minutes
+constexpr int POLL_THREAD_SLEEP_MILLISECONDS = 500;
+
+std::optional<FIDOSignRequest> PrivacyIDEA::GetOfflineFIDOSignRequest()
+{
+	std::optional<FIDOSignRequest> ret = std::nullopt;
+
+	auto offlineData = offlineHandler.GetAllFIDOData();
+	if (!offlineData.empty())
+	{
+		FIDOSignRequest signRequest;
+		for (const auto& item : offlineData)
+		{
+			AllowCredential ac;
+			ac.id = item.credId;
+			signRequest.allowCredentials.push_back(ac);
+			if (signRequest.rpId.empty())
+			{
+				signRequest.rpId = item.rpId;
+			}
+			if (signRequest.challenge.empty())
+			{
+				signRequest.challenge = FIDODevice::GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE); // TODO
+			}
+		}
+		ret = signRequest;
+	}
+
+	return ret;
+}
 
 // Check if there is a mapping for the given domain or - if not - a default realm is set
 HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std::string>& parameters)
@@ -31,15 +63,15 @@ HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std:
 	wstring realm = L"";
 	try
 	{
-		realm = _realmMap.at(Convert::ToUpperCase(domain));
+		realm = _config.realmMap.at(Convert::ToUpperCase(domain));
 	}
 	catch (const std::out_of_range& e)
 	{
 		UNREFERENCED_PARAMETER(e);
 		// no mapping - if default domain exists use that
-		if (!_defaultRealm.empty())
+		if (!_config.defaultRealm.empty())
 		{
-			realm = _defaultRealm;
+			realm = _config.defaultRealm;
 		}
 	}
 
@@ -51,7 +83,7 @@ HRESULT PrivacyIDEA::AppendRealm(std::wstring domain, std::map<std::string, std:
 	return S_OK;
 }
 
-HRESULT PrivacyIDEA::ProcessResponse(std::string response, _Inout_ PIResponse& responseObj)
+HRESULT PrivacyIDEA::EvaluateResponse(std::string response, _Inout_ PIResponse& responseObj)
 {
 	auto offlineData = _parser.ParseResponseForOfflineData(response);
 	if (!offlineData.empty())
@@ -61,8 +93,8 @@ HRESULT PrivacyIDEA::ProcessResponse(std::string response, _Inout_ PIResponse& r
 			offlineHandler.AddOfflineData(item);
 		}
 	}
-	HRESULT res = _parser.ParseResponse(response, responseObj);
-	return res;
+	HRESULT hr = _parser.ParseResponse(response, responseObj);
+	return hr;
 }
 
 void PrivacyIDEA::PollThread(
@@ -70,14 +102,13 @@ void PrivacyIDEA::PollThread(
 	const std::wstring& domain,
 	const std::wstring& upn,
 	const std::string& transactionId,
-	std::function<void(bool)> callback)
+	std::function<void(const PIResponse&)> callback)
 {
 	PIDebug("Starting poll thread...");
 	bool success = false;
-
 	this_thread::sleep_for(chrono::milliseconds(300));
-
-	while (_runPoll.load())
+	int maxIterations = POLL_THREAD_TIMEOUT_SECONDS * 1000 / POLL_THREAD_SLEEP_MILLISECONDS;
+	while (_runPoll.load() && maxIterations)
 	{
 		if (PollTransaction(transactionId))
 		{
@@ -85,24 +116,21 @@ void PrivacyIDEA::PollThread(
 			_runPoll.store(false);
 			break;
 		}
-		this_thread::sleep_for(chrono::milliseconds(500));
+		this_thread::sleep_for(chrono::milliseconds(POLL_THREAD_SLEEP_MILLISECONDS));
+		maxIterations--;
 	}
-	PIDebug("Polling stopped");
+	PIDebug("Polling stopped" + string((maxIterations == 0 ? " because of timeout" : "")));
 	// Only finalize if there was success while polling. If the authentication finishes otherwise, the polling is stopped without finalizing.
 	if (success)
 	{
 		PIDebug("Finalizing transaction...");
 		PIResponse pir;
-		HRESULT res = ValidateCheck(username, domain, L"", pir, transactionId, upn);
-		if (FAILED(res))
+		HRESULT hr = ValidateCheck(username, domain, L"", pir, transactionId, upn);
+		if (FAILED(hr))
 		{
-			PIDebug("/validate/check failed with " + to_string(res));
-			callback(false);
+			PIDebug("/validate/check failed with " + to_string(hr));
 		}
-		else
-		{
-			callback(pir.value);
-		}
+		callback(pir);
 	}
 }
 
@@ -124,7 +152,7 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	};
 
 	// Username+Domain/Realm or just UPN
-	if (_sendUPN && !upn.empty())
+	if (_config.sendUPN && !upn.empty())
 	{
 		string strUPN = Convert::ToString(upn);
 		PIDebug("Sending UPN " + strUPN);
@@ -141,7 +169,7 @@ HRESULT PrivacyIDEA::ValidateCheck(
 	{
 		parameters.try_emplace("transaction_id", transactionId);
 	}
-	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
@@ -150,13 +178,31 @@ HRESULT PrivacyIDEA::ValidateCheck(
 		return _endpoint.GetLastErrorCode();
 	}
 
-	return ProcessResponse(response, responseObj);
+	return EvaluateResponse(response, responseObj);
 }
 
-HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
-	const std::wstring& username,
-	const std::wstring& domain,
-	const WebAuthnSignResponse& webAuthnSignResponse,
+std::string PrivacyIDEA::SendRequestWithFallback(
+	const std::string& endpoint,
+	const std::map<std::string, std::string>& parameters,
+	const std::map<std::string, std::string>& headers,
+	RequestMethod method)
+{
+	std::string response = _endpoint.SendRequest(endpoint, parameters, headers, method);
+
+	// Just check for hostname since path and port are optional
+	if (response.empty() && !_config.fallbackHostname.empty() && _endpoint.hostname != _config.fallbackHostname)
+	{
+		PIError(L"Primary host failed to respond, switching to fallback host: " + _config.fallbackHostname + L" for the rest of the authentication.");
+		_endpoint.hostname = _config.fallbackHostname;
+		_endpoint.path = _config.fallbackPath;
+		_endpoint.port = _config.fallbackPort;
+		response = _endpoint.SendRequest(endpoint, parameters, headers, method);
+	}
+	return response;
+}
+
+HRESULT PrivacyIDEA::ValidateCheckFIDO(const std::wstring& username,
+	const std::wstring& domain, const FIDOSignResponse& fidoSignResponse,
 	const std::string& origin,
 	PIResponse& responseObj,
 	const std::string& transactionId,
@@ -165,7 +211,7 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	map<string, string> parameters = { { "pass", "" } };
 
 	// Username+Domain/Realm or just UPN
-	if (_sendUPN && !upn.empty())
+	if (_config.sendUPN && !upn.empty())
 	{
 		string strUPN = Convert::ToString(upn);
 		PIDebug("Sending UPN " + strUPN);
@@ -173,8 +219,12 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	}
 	else
 	{
-		string strUsername = Convert::ToString(username);
-		parameters.try_emplace("user", strUsername);
+		if (!username.empty())
+		{
+			string strUsername = Convert::ToString(username);
+			parameters.try_emplace("user", strUsername);
+		}
+
 		AppendRealm(domain, parameters);
 	}
 
@@ -184,21 +234,21 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 	}
 	else
 	{
-		PIError("Unable to send WebAuthnSignResponse without transactionId!");
+		PIError("Unable to send FIDOSignResponse without transactionId!");
 		return PI_ERROR_WRONG_PARAMETER;
 	}
 
-	// Add webauthn parameters, each member of the response is a parameter
-	parameters.try_emplace("credentialid", webAuthnSignResponse.credentialid);
-	parameters.try_emplace("clientdata", webAuthnSignResponse.clientdata);
-	parameters.try_emplace("signaturedata", webAuthnSignResponse.signaturedata);
-	parameters.try_emplace("authenticatordata", webAuthnSignResponse.authenticatordata);
+	// Add FIDO parameters, each member of the response is a parameter
+	parameters.try_emplace("credentialid", fidoSignResponse.credentialid);
+	parameters.try_emplace("clientdata", fidoSignResponse.clientdata);
+	parameters.try_emplace("signaturedata", fidoSignResponse.signaturedata);
+	parameters.try_emplace("authenticatordata", fidoSignResponse.authenticatordata);
 
 	// TODO userhandle, exstensions
 
 	map<string, string> headers = { { "Origin", origin } };
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
 
 	// If the response is empty, there was an error in the endpoint
 	if (response.empty())
@@ -207,7 +257,43 @@ HRESULT PrivacyIDEA::ValidateCheckWebAuthn(
 		return _endpoint.GetLastErrorCode();
 	}
 
-	return ProcessResponse(response, responseObj);
+	return EvaluateResponse(response, responseObj);
+}
+
+HRESULT PrivacyIDEA::ValidateCheckCompletePasskeyRegistration(
+	const std::string& transactionId,
+	const std::string& serial,
+	const std::wstring& username,
+	const std::wstring& domain,
+	FIDORegistrationResponse registrationResponse,
+	const std::string& origin,
+	PIResponse& piresponse)
+{
+	map<string, string> parameters = {
+		{"user", Convert::ToString(username)},
+		{"serial", serial},
+		{"type", "passkey"},
+		{"transaction_id", transactionId},
+		{"credential_id", registrationResponse.credentialId},
+		{"clientDataJSON", registrationResponse.clientDataJSON},
+		{"attestationObject", registrationResponse.attestationObject},
+		{"authenticatorAttachment", registrationResponse.authenticatorAttachment},
+		{"rawId", registrationResponse.credentialId}
+	};
+	AppendRealm(domain, parameters);
+	map<string, string> headers = { { "Origin", origin } };
+
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, headers, RequestMethod::POST);
+
+	return EvaluateResponse(response, piresponse);
+}
+
+HRESULT PrivacyIDEA::ValidateInitialize(PIResponse& response, const std::string& type)
+{
+	PIDebug(__FUNCTION__);
+	map<string, string> parameters = { { "type", type } };
+	string r = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_INITIALIZE, parameters, {}, RequestMethod::POST);
+	return EvaluateResponse(r, response);
 }
 
 /*!
@@ -219,9 +305,9 @@ HRESULT PrivacyIDEA::OfflineCheck(const std::wstring& username, const std::wstri
 	PIDebug(__FUNCTION__);
 	string szUsername = Convert::ToString(username);
 
-	HRESULT res = offlineHandler.VerifyOfflineOTP(otp, szUsername, serialUsed);
-	PIDebug("Offline verification result: " + Convert::LongToHexString(res));
-	return res;
+	HRESULT hr = offlineHandler.VerifyOfflineOTP(otp, szUsername, serialUsed);
+	PIDebug("Offline verification result: " + Convert::LongToHexString(hr));
+	return hr;
 }
 
 HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstring& lastOTP, const std::string& serial)
@@ -244,7 +330,7 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 		{"serial", serial}
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -260,7 +346,7 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 	return hr;
 }
 
-HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const std::string& serial)
+HRESULT PrivacyIDEA::OfflineRefillFIDO(const std::wstring& username, const std::string& serial)
 {
 	PIDebug(__FUNCTION__);
 	string refilltoken;
@@ -279,7 +365,7 @@ HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const s
 		{"pass", ""}
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
+	string response = SendRequestWithFallback(PI_ENDPOINT_OFFLINE_REFILL, parameters, map<string, string>(), RequestMethod::POST);
 
 	if (response.empty())
 	{
@@ -302,7 +388,7 @@ HRESULT PrivacyIDEA::OfflineRefillWebAuthn(const std::wstring& username, const s
 		}
 		if (!offlineHandler.UpdateRefilltoken(serial, refilltoken))
 		{
-            PIDebug("Failed to update refilltoken for serial " + serial);
+			PIDebug("Failed to update refilltoken for serial " + serial);
 			return E_FAIL;
 		}
 	}
@@ -317,7 +403,12 @@ bool PrivacyIDEA::StopPoll()
 	return true;
 }
 
-void PrivacyIDEA::PollTransactionAsync(std::wstring username, std::wstring domain, std::wstring upn, std::string transactionId, std::function<void(bool)> callback)
+void PrivacyIDEA::PollTransactionAsync(
+	std::wstring username,
+	std::wstring domain,
+	std::wstring upn,
+	std::string transactionId,
+	std::function<void(const PIResponse&)> callback)
 {
 	_runPoll.store(true);
 	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);
@@ -330,6 +421,23 @@ bool PrivacyIDEA::PollTransaction(std::string transactionId)
 		{"transaction_id", transactionId }
 	};
 
-	string response = _endpoint.SendRequest(PI_ENDPOINT_POLLTRANSACTION, parameters, map<string, string>(), RequestMethod::GET);
+	string response = SendRequestWithFallback(PI_ENDPOINT_POLLTRANSACTION, parameters, map<string, string>(), RequestMethod::GET);
+	PIDebug("Polltransaction response: " + response);
 	return _parser.ParsePollTransaction(response);
+}
+
+bool PrivacyIDEA::CancelEnrollmentViaMultichallenge(std::string transactionId)
+{
+	map<string, string> parameters = {
+		{"transaction_id", transactionId },
+		{"cancel_enrollment", "true"}
+	};
+	string response = SendRequestWithFallback(PI_ENDPOINT_VALIDATE_CHECK, parameters, map<string, string>(), RequestMethod::POST);
+	PIDebug("Cancel enrollment response: " + response);
+	PIResponse pir;
+	HRESULT hr = _parser.ParseResponse(response, pir);
+	if (SUCCEEDED(hr))
+	{
+		return pir.isAuthenticationSuccessful();
+	}
 }

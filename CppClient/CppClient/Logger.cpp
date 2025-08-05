@@ -17,10 +17,11 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "Logger.h"
 #include <Windows.h>
 #include <chrono>
-#include <fstream>
 #include <iostream>
 #include <codecvt>
 

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2024 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,14 +17,51 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 
+#include <regex>
 #include "Convert.h"
 #include "JsonParser.h"
 #include "Logger.h"
 #include "nlohmann/json.hpp"
-#include "WebAuthnSignRequest.h"
+#include "FIDOSignRequest.h"
 
 using json = nlohmann::json;
 using namespace std;
+
+
+void ParseVersionString(const std::string& version, PIResponse& response)
+{
+	int major = 0, minor = 0, patch = 0;
+	std::string suffix;
+
+	// Cut off at the first '+', if present
+	std::string mainVersion = version;
+	size_t plusPos = version.find('+');
+	if (plusPos != std::string::npos)
+	{
+		mainVersion = version.substr(0, plusPos);
+	}
+
+	// Improved regex: matches 3.10, 3.10.dev1, 3.10.2, 3.10.2.beta, 3.10.2dev1, etc.
+	std::regex re(R"(^\s*(\d+)\.(\d+)(?:\.(\d+))?(?:[.\-]?([a-zA-Z0-9][a-zA-Z0-9._-]*))?\s*$)");
+	std::smatch match;
+	if (std::regex_match(mainVersion, match, re))
+	{
+		major = std::stoi(match[1]);
+		minor = std::stoi(match[2]);
+		if (match[3].matched)
+			patch = std::stoi(match[3]);
+		else
+			patch = 0;
+		if (match[4].matched)
+			suffix = match[4];
+		else
+			suffix.clear();
+	}
+	response.privacyIDEAVersionMajor = major;
+	response.privacyIDEAVersionMinor = minor;
+	response.privacyIDEAVersionPatch = patch;
+	response.privacyIDEAVersionSuffix = suffix;
+}
 
 int GetIntOrZero(json& input, string fieldName)
 {
@@ -32,10 +69,6 @@ int GetIntOrZero(json& input, string fieldName)
 	if (t.is_number_integer())
 	{
 		return t.get<int>();
-	}
-	else
-	{
-		PIDebug(fieldName + " was expected to be int, but was not.");
 	}
 	return 0;
 }
@@ -47,10 +80,6 @@ string GetStringOrEmpty(json& input, string fieldName)
 	{
 		return t.get<string>();
 	}
-	else
-	{
-		PIDebug(fieldName + " was expected to be string, but was not.");
-	}
 	return "";
 }
 
@@ -60,10 +89,6 @@ bool GetBoolOrFalse(json& input, string fieldName)
 	if (t.is_boolean())
 	{
 		return t.get<bool>();
-	}
-	else
-	{
-		PIDebug(fieldName + " was expected to be bool, but was not.");
 	}
 	return false;
 }
@@ -104,6 +129,23 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 		response.value = GetBoolOrFalse(jResult, "value");
 		response.status = GetBoolOrFalse(jResult, "status");
 
+		string authStatus = GetStringOrEmpty(jResult, "authentication");
+		if (!authStatus.empty())
+		{
+			if (authStatus == "ACCEPT")
+			{
+				response.authenticationStatus = AuthenticationStatus::ACCEPT;
+			}
+			else if (authStatus == "REJECT")
+			{
+				response.authenticationStatus = AuthenticationStatus::REJECT;
+			}
+			else if (authStatus == "CHALLENGE")
+			{
+				response.authenticationStatus = AuthenticationStatus::CHALLENGE;
+			}
+		}
+
 		if (jResult.contains("error"))
 		{
 			auto& jError = jResult["error"];
@@ -119,52 +161,163 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 
 	auto& jDetail = jRoot["detail"];
 
+	response.isEnrollCancellable = GetBoolOrFalse(jDetail, "enroll_via_multichallenge_optional");
+	response.isEnrollViaMultichallenge = GetBoolOrFalse(jDetail, "enroll_via_multichallenge");
+
+	// Passkey challenge
+	auto& passkey = jDetail["passkey"];
+	if (!passkey.empty())
+	{
+		response.passkeyChallenge = FIDOSignRequest(
+			GetStringOrEmpty(passkey, "challenge"),
+			GetStringOrEmpty(passkey, "rpId"),
+			GetStringOrEmpty(passkey, "user_verification"),
+			GetStringOrEmpty(passkey, "transaction_id"),
+			GetStringOrEmpty(passkey, "message"),
+			"passkey");
+	}
+
 	response.message = GetStringOrEmpty(jDetail, "message");
 
+	auto username = GetStringOrEmpty(jDetail, "username");
+	if (!username.empty())
+	{
+		response.username = username;
+	}
+
+	// Multi-challenge
 	auto& multiChallenge = jDetail["multi_challenge"];
 	if (!multiChallenge.empty())
 	{
 		response.transactionId = GetStringOrEmpty(jDetail, "transaction_id");
 		response.preferredMode = GetStringOrEmpty(jDetail, "preferred_client_mode");
 
-		for (auto& item : multiChallenge.items())
+		for (auto& challenge : multiChallenge.items())
 		{
-			json jChallenge = item.value();
-			string type = GetStringOrEmpty(jChallenge, "type");
-			Challenge c;
-			c.type = type;
-			c.message = GetStringOrEmpty(jChallenge, "message");
-			c.serial = GetStringOrEmpty(jChallenge, "serial");
-			c.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
-			c.image = GetStringOrEmpty(jChallenge, "image");
-
-			if (type == "webauthn")
+			json jChallenge = challenge.value();
+			if (jChallenge.contains("passkey_registration"))
 			{
-				auto& jSignRequest = jChallenge["attributes"]["webAuthnSignRequest"];
-				vector<AllowCredential> allowCredentials;
-				for (auto& tmp : jSignRequest["allowCredentials"])
-				{
-					AllowCredential ac;
-					ac.id = GetStringOrEmpty(tmp, "id");
-					ac.type = GetStringOrEmpty(tmp, "type");
-					for (auto& transport : tmp["transports"])
-					{
-						ac.transports.push_back(transport.get<string>());
-					}
-					allowCredentials.push_back(ac);
-				}
-				WebAuthnSignRequest signRequest;
-				signRequest.challenge = GetStringOrEmpty(jSignRequest, "challenge");
-				signRequest.rpId = GetStringOrEmpty(jSignRequest, "rpId");
-				signRequest.userVerification = GetStringOrEmpty(jSignRequest, "userVerification");
-				signRequest.timeout = GetIntOrZero(jSignRequest, "timeout");
-				signRequest.allowCredentials = allowCredentials;
-				signRequest.type = allowCredentials[0].type; // TODO does this matter? Currently not
-				c.webAuthnSignRequest = signRequest;
-			}
+				auto& pkreg = jChallenge["passkey_registration"];
+				auto& rp = pkreg["rp"];
 
-			response.challenges.push_back(c);
+				auto registrationRequest = FIDORegistrationRequest();
+				registrationRequest.rpId = GetStringOrEmpty(rp, "id");
+				registrationRequest.rpName = GetStringOrEmpty(rp, "name");
+				auto& user = pkreg["user"];
+				registrationRequest.userName = GetStringOrEmpty(user, "name");
+				registrationRequest.userDisplayName = GetStringOrEmpty(user, "displayName");
+				registrationRequest.userId = GetStringOrEmpty(user, "id");
+
+				registrationRequest.challenge = GetStringOrEmpty(pkreg, "challenge");
+				registrationRequest.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
+				registrationRequest.serial = GetStringOrEmpty(jChallenge, "serial");
+				registrationRequest.type = "passkey";
+				auto& authenticatorSelection = pkreg["authenticatorSelection"];
+				if (authenticatorSelection.is_object())
+				{
+					for (auto& item : authenticatorSelection.items())
+					{
+						string key = item.key();
+						json value = item.value();
+						if (key == "residentKey")
+						{
+							registrationRequest.residentKey = value.get<std::string>() == "required";
+						}
+						else if (key == "userVerification")
+						{
+							registrationRequest.userVerification = value.get<std::string>() == "required";
+						}
+						else if (key == "requireResidentKey")
+						{
+							registrationRequest.residentKey = value.get<bool>();
+						}
+					}
+				}
+				else
+				{
+					PIDebug("authenticatorSelection in passkey_registration was expected to be object, but was not.");
+				}
+				// PubKeyCredParams				
+				auto& pubKeyCredParams = pkreg["pubKeyCredParams"];
+				if (pubKeyCredParams.is_array())
+				{
+					for (const auto& item : pubKeyCredParams)
+					{
+						if (item.is_object())
+						{
+							std::string type = item.at("type").get<std::string>();
+							int alg = item.at("alg").get<int>();
+							registrationRequest.pubKeyCredParams.emplace_back(type, alg);
+						}
+						else
+						{
+							PIDebug("Warning: Found non-object element in pubKeyCredParams array.");
+						}
+					}
+				}
+				else
+				{
+					PIDebug("pubKeyCredParams in passkey_registration was expected to be array, but was not.");
+				}
+
+				response.passkeyRegistration = registrationRequest;
+			}
+			else
+			{
+				// Standard challenge
+				string type = GetStringOrEmpty(jChallenge, "type");
+				Challenge c;
+				c.type = type;
+				c.message = GetStringOrEmpty(jChallenge, "message");
+				c.serial = GetStringOrEmpty(jChallenge, "serial");
+				c.transactionId = GetStringOrEmpty(jChallenge, "transaction_id");
+				c.image = GetStringOrEmpty(jChallenge, "image");
+
+				if (type == "webauthn")
+				{
+					auto& jSignRequest = jChallenge["attributes"]["webAuthnSignRequest"];
+					vector<AllowCredential> allowCredentials;
+					for (auto& tmp : jSignRequest["allowCredentials"])
+					{
+						AllowCredential ac;
+						ac.id = GetStringOrEmpty(tmp, "id");
+						ac.type = GetStringOrEmpty(tmp, "type");
+						for (auto& transport : tmp["transports"])
+						{
+							ac.transports.push_back(transport.get<string>());
+						}
+						allowCredentials.push_back(ac);
+					}
+					FIDOSignRequest signRequest;
+					signRequest.challenge = GetStringOrEmpty(jSignRequest, "challenge");
+					signRequest.rpId = GetStringOrEmpty(jSignRequest, "rpId");
+					signRequest.userVerification = GetStringOrEmpty(jSignRequest, "userVerification");
+					signRequest.timeout = GetIntOrZero(jSignRequest, "timeout");
+					signRequest.allowCredentials = allowCredentials;
+					signRequest.type = "webauthn";
+					c.fidoSignRequest = signRequest;
+				}
+				else if (type == "passkey")
+				{
+					FIDOSignRequest signRequest;
+					signRequest.challenge = GetStringOrEmpty(jChallenge, "challenge");
+					signRequest.userVerification = GetStringOrEmpty(jChallenge, "userVerification");
+					signRequest.rpId = GetStringOrEmpty(jChallenge, "rpId");
+					c.fidoSignRequest = signRequest;
+				}
+				response.challenges.push_back(c);
+			}
 		}
+	}
+
+	// Version
+	if (jRoot.contains("versionnumber")) 
+	{
+		ParseVersionString(jRoot["versionnumber"].get<std::string>(), response);
+		PIDebug("Parsed version: " + 
+			std::to_string(response.privacyIDEAVersionMajor) + "." +
+			std::to_string(response.privacyIDEAVersionMinor) + "." +
+			std::to_string(response.privacyIDEAVersionPatch) + response.privacyIDEAVersionSuffix);
 	}
 
 	return S_OK;
@@ -227,13 +380,14 @@ HRESULT ParseOfflineDataItem(json jRoot, OfflineData& data)
 		PIDebug("Offline data item did not contain 'response'");
 		return PI_JSON_PARSE_ERROR;
 	}
-	
+
 	const bool isWebAuthn = response.contains("credentialId") && response.contains("rpId") && response.contains("pubKey");
 	if (isWebAuthn)
 	{
 		data.pubKey = GetStringOrEmpty(response, "pubKey");
 		data.credId = GetStringOrEmpty(response, "credentialId");
 		data.rpId = GetStringOrEmpty(response, "rpId");
+		data.userId = GetStringOrEmpty(response, "userId");
 	}
 	else // HOTP
 	{
@@ -298,6 +452,7 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 			jResponse["pubKey"] = item.pubKey;
 			jResponse["credentialId"] = item.credId;
 			jResponse["rpId"] = item.rpId;
+			jResponse["userId"] = item.userId;
 		}
 		else // HOTP
 		{
@@ -364,8 +519,13 @@ std::vector<OfflineData> JsonParser::ParseResponseForOfflineData(std::string ser
 		OfflineData newData;
 		if (ParseOfflineDataItem(jItem, newData) == S_OK)
 		{
-			// Add the serial explicitly because it is not part of the 'offline' section of the response, but required for refill later
-			newData.serial = serial;
+			if (newData.serial.empty())
+			{
+				// Add the serial explicitly if it is not part of the 'offline' section of the response,
+				// but a serial is required for refill later
+				newData.serial = serial;
+			}
+
 			ret.push_back(newData);
 			PIDebug("Received offline data for user '" + newData.username + "'");
 		}

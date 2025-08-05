@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2024 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,30 +18,45 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #pragma once
-#include "WebAuthnSignRequest.h"
-#include "WebAuthnSignResponse.h"
+#include "FIDOSignRequest.h"
+#include "FIDOSignResponse.h"
 #include "OfflineData.h"
+#include "FIDORegistrationRequest.h"
+#include "FIDORegistrationResponse.h"
 #include <string>
 #include <fido.h>
 #include <vector>
+#include <optional>
 
 constexpr auto fidoFlags = FIDO_DISABLE_U2F_FALLBACK | FIDO_DEBUG;
 
-constexpr auto FIDO2DEVICE_ERR_TX = 0x88809089;
+constexpr auto FIDO_DEVICE_ERR_TX = 0x88809089;
 
 constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 
-class FIDO2Device
+class FIDODevice
 {
 public:
-	static std::vector<FIDO2Device> GetDevices();
+	static std::vector<FIDODevice> GetDevices(bool filterWindowsHello = true, bool log = true);
 
-	FIDO2Device(const fido_dev_info_t* devinfo);
-	FIDO2Device() = default;
+	FIDODevice(const fido_dev_info_t* devinfo, bool log = true);
+	FIDODevice() = default;
 
-	int Sign(const WebAuthnSignRequest& signRequest, const std::string& origin, const std::string& pin, WebAuthnSignResponse& signResponse) const;
-	
-	int SignAndVerifyAssertion(const std::vector<OfflineData>& offlineData, const std::string& origin, const std::string& pin, std::string& serialUsed) const;
+	int Sign(
+		const FIDOSignRequest& signRequest,
+		const std::string& origin,
+		const std::string& pin,
+		FIDOSignResponse& signResponse) const;
+
+	int SignAndVerifyAssertion(
+		const std::vector<OfflineData>& offlineData,
+		const std::string& origin,
+		const std::string& pin,
+		std::string& serialUsed) const;
+
+	std::optional<FIDORegistrationResponse> Register(
+		const FIDORegistrationRequest& registration,
+		const std::string& pin);
 
 	std::string GetPath() const { return _path; }
 	std::string GetManufacturer() const { return _manufacturer; }
@@ -50,11 +65,25 @@ public:
 	bool IsWinHello() const noexcept { return _isWinHello; }
 	bool HasUV() const noexcept { return _hasUV; }
 
+	static std::string GenerateRandomAsBase64URL(long size);
+	std::string ToString() const;
+
+	std::vector<std::string> GetRpIds(std::string pin) const;
+
+	std::vector<std::string> GetUsersForRpId(std::string pin, std::string rpId) const;
+
 private:
+	int GetDeviceInfo();
+
+	std::string BuildAttestationObject(fido_cred_t* cred);
+
 	std::string _path;
 	std::string _manufacturer;
 	std::string _product;
 	bool _hasPin = false;
 	bool _isWinHello = false;
 	bool _hasUV = false;
+	std::vector<int> _supportedAlgorithms;
+	long _remainingResidentKeys = -1;
+	bool _newPinRequired = false;
 };

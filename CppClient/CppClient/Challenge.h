@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * *
 **
-** Copyright 2019 NetKnights GmbH
+** Copyright 2025 NetKnights GmbH
 ** Author: Nils Behlen
 **
 **    Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +17,9 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
-#include "WebAuthnSignRequest.h"
+#include "FIDOSignRequest.h"
 #include <string>
+#include <optional>
 
 class Challenge
 {
@@ -29,5 +30,5 @@ public:
 	std::string type;
 	std::string image;
 	std::string clientMode;
-	WebAuthnSignRequest webAuthnSignRequest;
+	std::optional<FIDOSignRequest> fidoSignRequest = std::nullopt;
 };

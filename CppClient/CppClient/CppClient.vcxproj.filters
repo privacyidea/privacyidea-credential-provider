@@ -5,12 +5,13 @@
     <ClCompile Include="Endpoint.cpp" />
     <ClCompile Include="JsonParser.cpp" />
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="OfflineData.cpp" />
     <ClCompile Include="OfflineHandler.cpp" />
     <ClCompile Include="PIResponse.cpp" />
     <ClCompile Include="PrivacyIDEA.cpp" />
     <ClCompile Include="RegistryReader.cpp" />
-    <ClCompile Include="FIDO2Device.cpp" />
+    <ClCompile Include="FIDODevice.cpp">
+      <Filter>FIDO</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Challenge.h" />
@@ -25,9 +26,29 @@
     <ClInclude Include="PIResponse.h" />
     <ClInclude Include="PrivacyIDEA.h" />
     <ClInclude Include="RegistryReader.h" />
-    <ClInclude Include="AllowCredential.h" />
-    <ClInclude Include="WebAuthnSignRequest.h" />
-    <ClInclude Include="WebAuthnSignResponse.h" />
-    <ClInclude Include="FIDO2Device.h" />
+    <ClInclude Include="AuthenticationStatus.h" />
+    <ClInclude Include="FIDODevice.h">
+      <Filter>FIDO</Filter>
+    </ClInclude>
+    <ClInclude Include="FIDORegistrationRequest.h">
+      <Filter>FIDO</Filter>
+    </ClInclude>
+    <ClInclude Include="FIDORegistrationResponse.h">
+      <Filter>FIDO</Filter>
+    </ClInclude>
+    <ClInclude Include="FIDOSignRequest.h">
+      <Filter>FIDO</Filter>
+    </ClInclude>
+    <ClInclude Include="FIDOSignResponse.h">
+      <Filter>FIDO</Filter>
+    </ClInclude>
+    <ClInclude Include="FIDOException.h">
+      <Filter>FIDO</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="FIDO">
+      <UniqueIdentifier>{fe3f4fa5-c3aa-4300-808b-d570ee577685}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

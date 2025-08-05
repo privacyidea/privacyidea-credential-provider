@@ -38,7 +38,6 @@ CProvider::CProvider() :
 	_pkiulSetSerialization(nullptr)
 {
 	DllAddRef();
-
 	_config = std::make_shared<Configuration>();
 	_config->Load();
 	Logger::Get().logDebug = _config->debugLog;
@@ -140,14 +139,14 @@ HRESULT CProvider::SetSerialization(
 )
 {
 	PIDebug(__FUNCTION__);
-	HRESULT result = E_NOTIMPL;
+	HRESULT hr = E_NOTIMPL;
 	ULONG authPackage = NULL;
-	result = RetrieveNegotiateAuthPackage(&authPackage);
+	hr = RetrieveNegotiateAuthPackage(&authPackage);
 
-	if (!SUCCEEDED(result))
+	if (!SUCCEEDED(hr))
 	{
 		PIDebug("Failed to retrieve authPackage");
-		return result;
+		return hr;
 	}
 
 	if (_config->provider.cpu == CPUS_CREDUI)
@@ -162,7 +161,7 @@ HRESULT CProvider::SetSerialization(
 		if (_config->provider.credPackFlags & CREDUIWIN_AUTHPACKAGE_ONLY)
 		{
 			PIDebug("CPUS_CREDUI but not CREDUIWIN_AUTHPACKAGE_ONLY");
-			result = S_FALSE;
+			hr = S_FALSE;
 		}
 	}
 
@@ -182,7 +181,7 @@ HRESULT CProvider::SetSerialization(
 					if (!SUCCEEDED(KerbInteractiveUnlockLogonRepackNative(pcpcs->rgbSerialization, pcpcs->cbSerialization,
 						&nativeSerialization, &nativeSerializationSize)))
 					{
-						return result;
+						return hr;
 					}
 				}
 				else
@@ -207,13 +206,13 @@ HRESULT CProvider::SetSerialization(
 
 				_pkiulSetSerialization = (KERB_INTERACTIVE_UNLOCK_LOGON*)nativeSerialization;
 
-				result = S_OK;
+				hr = S_OK;
 			}
 		}
 	}
-	PIDebug("SetSerialization result: " + Convert::LongToHexString(result));
+	PIDebug("SetSerialization result: " + Convert::LongToHexString(hr));
 
-	return result;
+	return hr;
 }
 
 // Called by LogonUI to give you a callback.  Providers often use the callback if they
@@ -243,6 +242,7 @@ HRESULT CProvider::UnAdvise()
 {
 	PIDebug(std::string(__FUNCTION__) + " - AUTHENTICATION END");
 
+	_credential->StopPoll();
 	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
 		_config->provider.pCredentialProviderEvents->Release();
@@ -250,11 +250,11 @@ HRESULT CProvider::UnAdvise()
 
 	_config->provider.pCredentialProviderEvents = nullptr;
 	_config->provider.upAdviseContext = NULL;
-
+	_credential->FullReset();
 	return S_OK;
 }
 
-// Called by LogonUI to determine the number of fields in your tiles.  This
+// Called by LogonUI to determine the number of fields in your tiles. This
 // does mean that all your tiles must have the same number of fields.
 // This number must include both visible and invisible fields. If you want a tile
 // to have different fields from the other tiles you enumerate for a given usage
@@ -294,7 +294,7 @@ HRESULT CProvider::GetFieldDescriptorAt(
 			case FID_USERNAME:
 				label = util.GetText(TEXT_USERNAME);
 				break;
-			case FID_LDAP_PASS:
+			case FID_PASSWORD:
 				label = util.GetText(TEXT_PASSWORD);
 				break;
 			case FID_NEW_PASS_1:
@@ -306,8 +306,8 @@ HRESULT CProvider::GetFieldDescriptorAt(
 			case FID_OTP:
 				label = util.GetText(TEXT_OTP_FIELD);
 				break;
-			case FID_WAN_PIN:
-				label = util.GetText(TEXT_WAN_PIN_HINT);
+			case FID_FIDO_PIN:
+				label = util.GetText(TEXT_FIDO_PIN_HINT);
 				break;
 			default: break;
 		}
@@ -361,17 +361,9 @@ HRESULT CProvider::GetCredentialCount(
 		&& _SerializationAvailable(SERIALIZATION_AVAILABLE::FOR_PASSWORD)
 		&& _config->provider.cpu != CPUS_CREDUI)
 	{
-		_config->isRemoteSession = Shared::IsCurrentSessionRemote();
-		if (_config->isRemoteSession && !_config->twoStepHideOTP)
-		{
-			*pbAutoLogonWithDefault = FALSE;
-		}
-		else
-		{
-			PIDebug("Setting AutoLogon to true");
-			*pdwDefault = 0;
-			*pbAutoLogonWithDefault = TRUE;
-		}
+		PIDebug("Setting AutoLogon to true");
+		*pdwDefault = 0;
+		*pbAutoLogonWithDefault = TRUE;
 	}
 	return S_OK;
 }
@@ -437,10 +429,8 @@ HRESULT CProvider::GetCredentialAt(
 
 				NETSETUP_JOIN_STATUS join_status;
 
-				if (!NetGetJoinInformation(
-					nullptr,
-					&serializedDomain,
-					&join_status) == NERR_Success || join_status == NetSetupUnjoined || join_status == NetSetupUnknownStatus)
+				if (!NetGetJoinInformation(nullptr, &serializedDomain, &join_status) == NERR_Success 
+					|| join_status == NetSetupUnjoined || join_status == NetSetupUnknownStatus)
 				{
 					serializedDomain = nullptr;
 				}
@@ -454,11 +444,11 @@ HRESULT CProvider::GetCredentialAt(
 		const FIELD_STATE_PAIR* pfsp = nullptr;
 		if (cpus == CPUS_UNLOCK_WORKSTATION)
 		{
-			pfsp = _config->twoStepHideOTP ? s_rgScenarioUnlockFirstStepPassword : s_rgScenarioUnlockPasswordOTP;
+			pfsp = s_rgScenarioPassword;
 		}
 		else
 		{
-			pfsp = _config->twoStepHideOTP ? s_rgScenarioLogonFirstStepUserLDAP : s_rgScenarioDisplayAllFields;
+			pfsp = s_rgScenarioUsername;
 		}
 
 		hr = _credential->Initialize(

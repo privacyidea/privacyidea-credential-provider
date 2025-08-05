@@ -1,3 +1,36 @@
+# Version 3.7.0 2024-07-30
+This version introduces a few changes, especially in the order the user is prompted for inputs. Please take a moment to read the [updated configuration documentation](https://github.com/privacyidea/privacyidea-credential-provider/blob/master/doc/configuration.rst).
+## Summary of Changes
+The default order of prompts is now username -> MFA -> password. This allows for a meaningful usernameless passkey login. While the password is still required, the Credential Provider is prepared for a solution that does not need the password input from the user. 
+
+Alternatively, you can configure the flow to be username+password -> MFA. **The option to have username+password+OTP in a single step has been removed.**
+
+All texts that have been configurable via dedicated registry entries are now configurable via the translation system. If you previously used one of these customized texts, please see the documentation on how to do it with the new system. There is also information on which old registry entry corresponds to which message ID.
+
+Installing this version will remove unused registry entries automatically.
+
+## Features
+* Passkey Login, allowing a usernameless FIDO authentication
+* Passkey enrollment during authentication with the enroll_via_multichallenge policy
+* Passkey offline
+* Exluded Group to exclude a group of users from MFA
+
+## Enhancements
+* FIDO authentication and registration will now work properly in RDP scenarios using windows hello
+* Configurable accept-language for http requests
+* Fallback url
+* Background thread that does the polling when doing push authentication will now timeout after 5 minutes in case of ghost sessions
+* `hide_first_step_response_error` to hide the message when sending an empty password or the password in the first step did not trigger a challenge
+* Smartphone container can be enrolled with the enroll_via_multichallenge policy
+* Added option to cancel enroll_via_multichallenge enrollments with privacyIDEA 3.12+
+* Added `register for safe mode` to installer
+* Updated installer to reflect most of the new configuration options and removed old options
+
+## Fixes
+* Fixed a bug where `prefill_username` would still overwrite another username that was entered after the field was prefilled, resulting in a logon attempt of the wrong user.
+* Fixed implementation of GET requests so that polling for push authentications works with privacyIDEA 3.11 and higher
+
+
 # Version 3.6.0 2024-08-09
 
 ## Enhancement

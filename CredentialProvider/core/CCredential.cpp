@@ -1,7 +1,7 @@
 ﻿/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 **
 ** Copyright	2012 Dominik Pretzsch
-**				2017 NetKnights GmbH
+**				2025 NetKnights GmbH
 **
 ** Author		Dominik Pretzsch
 **				Nils Behlen
@@ -20,28 +20,32 @@
 **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "CCredential.h"
-#include "Configuration.h"
-#include "RegistryReader.h"
-#include "Convert.h"
-#include "Logger.h"
-#include "WebAuthn.h"
-#include "DeviceNotification.h"
-#include "FIDO2Device.h"
-#include <SmartcardListener.h>
-#include <resource.h>
-#include <string>
-#include <thread>
-#include <future>
-#include <sstream>
-#include <gdiplus.h>
 
 #ifndef WIN32_NO_STATUS
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
 #endif
+#include <resource.h>
+#include <string>
+#include <thread>
+#include <future>
+#include <sstream>
+
+#include "CCredential.h"
+#include "Configuration.h"
+#include "RegistryReader.h"
+#include "Convert.h"
+#include "Logger.h"
+#include "FIDODevice.h"
+#include "FIDOException.h"
+#include "Mode.h"
+#include <lm.h>
+#include <gdiplus.h>
 
 #pragma comment (lib, "Gdiplus.lib")
+#pragma comment(lib, "Netapi32.lib")
+
+const std::wstring IMAGE_BASE64_PREFIX = L"data:image/png;base64,";
 
 using namespace std;
 
@@ -72,8 +76,8 @@ CCredential::~CCredential()
 HRESULT CCredential::Initialize(
 	__in const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* rgcpfd,
 	__in const FIELD_STATE_PAIR* rgfsp,
-	__in_opt PWSTR user_name,
-	__in_opt PWSTR domain_name,
+	__in_opt PWSTR userName,
+	__in_opt PWSTR domainName,
 	__in_opt PWSTR password
 )
 {
@@ -81,21 +85,23 @@ HRESULT CCredential::Initialize(
 
 	wstring wstrUsername, wstrDomainname;
 	std::wstring wstrPassword;
+	HRESULT hr = S_OK;
 
-	if (NOT_EMPTY(user_name))
+	if (NOT_EMPTY(userName))
 	{
-		wstrUsername = wstring(user_name);
+		wstrUsername = wstring(userName);
 	}
-	if (NOT_EMPTY(domain_name))
+
+	if (NOT_EMPTY(domainName))
 	{
-		wstrDomainname = wstring(domain_name);
+		wstrDomainname = wstring(domainName);
 		_initialDomain = wstrDomainname;
 	}
 
 	if (NOT_EMPTY(password))
 	{
 		PWSTR pwzProtectedPassword;
-		HRESULT hr = SHStrDupW(password, &pwzProtectedPassword);
+		hr = SHStrDupW(password, &pwzProtectedPassword);
 		if (SUCCEEDED(hr))
 		{
 			// If the password is coming from a remote login, it is encrypted and has to be decrypted
@@ -117,7 +123,6 @@ HRESULT CCredential::Initialize(
 	{
 		PIDebug(L"Password from provider: " + (wstrPassword.empty() ? L"empty" : wstrPassword));
 	}
-	HRESULT hr = S_OK;
 
 	// Check if the username is in UPN format. In that case we do not need the domain name.
 	// Otherwise, use the user and domain name from the provider.
@@ -167,8 +172,13 @@ HRESULT CCredential::Initialize(
 	}
 
 	PIDebug("Init result: " + Convert::LongToHexString(hr));
-
 	return hr;
+}
+
+HRESULT CCredential::StopPoll()
+{
+	_privacyIDEA.StopPoll();
+	return S_OK;
 }
 
 // LogonUI calls this in order to give us a callback in case we need to notify it of anything.
@@ -176,8 +186,7 @@ HRESULT CCredential::Advise(
 	__in ICredentialProviderCredentialEvents* pcpce
 )
 {
-	//PIDebugLn(__FUNCTION__);
-
+	PIDebug(__FUNCTION__);
 	if (_pCredProvCredentialEvents != nullptr)
 	{
 		_pCredProvCredentialEvents->Release();
@@ -185,19 +194,28 @@ HRESULT CCredential::Advise(
 	_pCredProvCredentialEvents = pcpce;
 	_pCredProvCredentialEvents->AddRef();
 
+	if (!_config->doAutoLogon)
+	{
+		SetMode(_config->GetFirstStepMode());
+	}
+
 	return S_OK;
 }
 
 // LogonUI calls this to tell us to release the callback.
+// This is also called when the screen is locked during the authentication process because of inactivity.
 HRESULT CCredential::UnAdvise()
 {
-	//PIDebugLn(__FUNCTION__);
-
+	PIDebug(__FUNCTION__);
 	if (_pCredProvCredentialEvents)
 	{
 		_pCredProvCredentialEvents->Release();
 	}
-	_pCredProvCredentialEvents = nullptr;
+	if (!_config->doAutoLogon)
+	{
+		FullReset();
+	}
+
 	return S_OK;
 }
 
@@ -209,52 +227,66 @@ HRESULT CCredential::UnAdvise()
 // selected, you would do it here.
 HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 {
-	PIDebug(__FUNCTION__);
+	PIDebug("CCredential::SetSelected Mode=" + _config->ModeString());
 	*pbAutoLogon = false;
 	HRESULT hr = S_OK;
 
 	if (_config->doAutoLogon)
 	{
+		// If auto login is enabled, something has happened before, so do not change the mode!
 		*pbAutoLogon = TRUE;
-		PIDebug("AUTOLOGON ENABLED!");
+		PIDebug("AutoLogon enabled!");
 		_config->doAutoLogon = false;
 	}
-
-	if (_config->credential.passwordMustChange
-		&& _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
-		&& _config->winVerMajor != 10)
+	else
 	{
-		// We cant handle a password change while the machine is locked, so we guide the user to sign out and in again like windows does
-		PIDebug("Password must change in CPUS_UNLOCK_WORKSTATION");
-		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, L"Go back until you are asked to sign in.");
-		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, L"To change your password, sign out and in again.");
-		_pCredProvCredentialEvents->SetFieldState(this, FID_LDAP_PASS, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
-	}
-
-	if (_config->credential.passwordMustChange)
-	{
-		hr = SetScenario(SCENARIO::CHANGE_PASSWORD);
-		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+		// This is the initial setup, setting the mode etc.
+		if (_config->credential.passwordMustChange
+			&& _config->provider.cpu == CPUS_UNLOCK_WORKSTATION
+			&& _config->winVerMajor != 10)
 		{
-			_config->bypassPrivacyIDEA = true;
+			// We cant handle a password change while the machine is locked, so we guide the user to sign
+			// out and in again like windows does
+			PIDebug("Password must change in CPUS_UNLOCK_WORKSTATION");
+			_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, L"Go back until you are asked to sign in.");
+			_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, L"To change your password, sign out and in again.");
+			_pCredProvCredentialEvents->SetFieldState(this, FID_PASSWORD, CPFS_HIDDEN);
+			_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
+		}
+		else if (_config->credential.passwordMustChange)
+		{
+			hr = SetMode(Mode::CHANGE_PASSWORD);
+			if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+			{
+				_config->bypassPrivacyIDEA = true;
+			}
+		}
+		else
+		{
+			// Only set the mode intially. Afterwards, keep the mode
+			if (_config->isFirstStep())
+			{
+				hr = SetMode(_config->GetFirstStepMode());
+			}
 		}
 	}
 
-	if (_config->prefillUsername)
+	// Do not prefill the username if auto logon is enabled. In that case, the username that has been entered should be used.
+	if (_config->prefillUsername && !*pbAutoLogon)
 	{
 		RegistryReader rr(LAST_USER_REGISTRY_PATH);
-		wstring wszEntry = rr.GetWStringRegistry(L"LastLoggedOnUser");
+		wstring wszEntry = rr.GetWString(L"LastLoggedOnUser");
 		wstring wszLastUser = wszEntry.substr(wszEntry.find(L"\\") + 1, wszEntry.length() - 1);
 		hr = _pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, wszLastUser.c_str());
-		hr = _pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_FOCUSED);
+		hr = _pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_FOCUSED);
 	}
 
+	/*
 	if (_config->showResetLink)
 	{
 		hr = _pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
 	}
-
+	*/
 	// In case of wrong password or other resets, the offline values will be consumed anyway. Therefore update the values remaining.
 	if (_config->offlineShowInfo)
 	{
@@ -266,7 +298,6 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	{
 		*pbAutoLogon = TRUE;
 	}
-
 	return hr;
 }
 
@@ -281,17 +312,15 @@ HRESULT CCredential::SetDeselected()
 
 	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
 	hr = SetOfflineInfo("");
-	hr = ResetScenario();
+	hr = ResetMode();
 	_config->credential.domain = L"";
 	_config->credential.username = L"";
 	_config->credential.password = L"";
-
+	_config->lastTransactionId = "";
 	// Reset password changing in case another user wants to log in
 	_config->credential.passwordChanged = false;
 	_config->credential.passwordMustChange = false;
-
 	// Possible cleanup
-	DeviceNotification::Unregister();
 
 	return hr;
 }
@@ -304,11 +333,8 @@ HRESULT CCredential::GetFieldState(
 	__out CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis
 )
 {
-	//PIDebugLn(__FUNCTION__);
-
 	HRESULT hr = S_OK;
 
-	// Validate paramters.
 	if (dwFieldID < FID_NUM_FIELDS && pcpfs && pcpfis)
 	{
 		*pcpfs = _rgFieldStatePairs[dwFieldID].cpfs;
@@ -320,8 +346,6 @@ HRESULT CCredential::GetFieldState(
 		hr = E_INVALIDARG;
 	}
 
-	//PIDebugLn(hr);
-
 	return hr;
 }
 
@@ -331,8 +355,6 @@ HRESULT CCredential::GetStringValue(
 	__deref_out PWSTR* ppwsz
 )
 {
-	//PIDebugLn(__FUNCTION__);
-
 	HRESULT hr = S_OK;
 
 	// Check to make sure dwFieldID is a legitimate index.
@@ -347,8 +369,71 @@ HRESULT CCredential::GetStringValue(
 		hr = E_INVALIDARG;
 	}
 
-	//PIDebugLn(hr);
+	return hr;
+}
 
+// Loads a bitmap from a file path, or falls back to a resource if loading fails.
+// Returns S_OK and sets *phbmp on success, or an HRESULT error code on failure.
+HRESULT CCredential::LoadBitmapFromPathOrResource(const std::wstring& bitmapPath, HBITMAP* phbmp)
+{
+	if (!phbmp) return E_POINTER;
+	*phbmp = nullptr;
+	HBITMAP hbmp = nullptr;
+	std::string szPath = Convert::ToString(bitmapPath);
+	LPCSTR lpszBitmapPath = szPath.c_str();
+
+	if (NOT_EMPTY(lpszBitmapPath))
+	{
+		DWORD const dwAttrib = GetFileAttributesA(lpszBitmapPath);
+		PIDebug(dwAttrib);
+
+		if (dwAttrib != INVALID_FILE_ATTRIBUTES
+			&& !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			hbmp = (HBITMAP)LoadImageA(nullptr, lpszBitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+			if (hbmp == nullptr)
+			{
+				PIDebug(GetLastError());
+			}
+		}
+	}
+
+	if (hbmp == nullptr)
+	{
+		hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
+	}
+
+	if (hbmp != nullptr)
+	{
+		*phbmp = hbmp;
+		return S_OK;
+	}
+	else
+	{
+		const auto hr = HRESULT_FROM_WIN32(GetLastError());
+		PIDebug("Failed to load bitmap: " + Convert::LongToHexString(hr));
+		return hr;
+	}
+}
+
+HRESULT CCredential::SetDefaultBitmap()
+{
+	// Set the original bitmap
+	HBITMAP hBitmap = nullptr;
+	HRESULT hr = LoadBitmapFromPathOrResource(_config->bitmapPath, &hBitmap);
+	if (SUCCEEDED(hr) && hBitmap != nullptr)
+	{
+		hr = _pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
+		if (FAILED(hr))
+		{
+			PIError("Failed to set bitmap in FullReset: " + Convert::LongToHexString(hr));
+		}
+	}
+	else
+	{
+		PIError("Failed to set bitmap in FullReset: " + Convert::LongToHexString(hr));
+	}
 	return hr;
 }
 
@@ -363,42 +448,7 @@ HRESULT CCredential::GetBitmapValue(
 	HRESULT hr = E_INVALIDARG;
 	if ((FID_LOGO == dwFieldID) && phbmp)
 	{
-		HBITMAP hbmp = nullptr;
-		string szPath = Convert::ToString(_config->bitmapPath);
-		LPCSTR lpszBitmapPath = szPath.c_str();
-
-		if (NOT_EMPTY(lpszBitmapPath))
-		{
-			DWORD const dwAttrib = GetFileAttributesA(lpszBitmapPath);
-
-			PIDebug(dwAttrib);
-
-			if (dwAttrib != INVALID_FILE_ATTRIBUTES
-				&& !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
-			{
-				hbmp = (HBITMAP)LoadImageA(nullptr, lpszBitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-
-				if (hbmp == nullptr)
-				{
-					PIDebug(GetLastError());
-				}
-			}
-		}
-
-		if (hbmp == nullptr)
-		{
-			hbmp = LoadBitmap(HINST_THISDLL, MAKEINTRESOURCE(IDB_TILE_IMAGE));
-		}
-
-		if (hbmp != nullptr)
-		{
-			hr = S_OK;
-			*phbmp = hbmp;
-		}
-		else
-		{
-			hr = HRESULT_FROM_WIN32(GetLastError());
-		}
+		hr = LoadBitmapFromPathOrResource(_config->bitmapPath, phbmp);
 	}
 	else
 	{
@@ -425,7 +475,7 @@ HRESULT CCredential::GetSubmitButtonValue(
 	{
 		// This is only called once when the credential is created.
 		// When switching to the second step, the button is set via CredentialEvents
-		*pdwAdjacentTo = _config->twoStepHideOTP ? FID_LDAP_PASS : FID_OTP;
+		*pdwAdjacentTo = FID_USERNAME;
 		return S_OK;
 	}
 	return E_INVALIDARG;
@@ -440,7 +490,6 @@ HRESULT CCredential::SetStringValue(
 {
 	HRESULT hr = S_OK;
 
-	// Validate parameters.
 	const CREDENTIAL_PROVIDER_FIELD_TYPE fieldType = _rgCredProvFieldDescriptors[dwFieldID].cpft;
 	if (dwFieldID < FID_NUM_FIELDS && (CPFT_EDIT_TEXT == fieldType || CPFT_PASSWORD_TEXT == fieldType))
 	{
@@ -474,24 +523,6 @@ HRESULT CCredential::SetStringValue(
 			{
 				SetOfflineInfo(Convert::ToString(username));
 			}
-
-			/*
-			// Check if offline webauthn is available for the user and if so, show the link
-			// TODO indicate offline by suffixing the link text?
-			if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty())
-			{
-				_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
-				PIDebug("Enabling WebAuthn link because of available offline data");
-			}
-			else
-			{
-				// Disable if no match for the user and no "online" webauthn request
-				if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0)
-				{
-					_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_HIDDEN);
-				}
-			}
-			*/
 		}
 	}
 	else
@@ -504,7 +535,6 @@ HRESULT CCredential::SetStringValue(
 
 HRESULT CCredential::SetOfflineInfo(std::string username)
 {
-	//PIDebug("Setting offline info for " + username);
 	bool infoSet = false;
 	HRESULT hr = S_OK;
 
@@ -516,10 +546,10 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 			wstring message = _util.GetText(TEXT_AVAILABLE_OFFLINE_TOKEN);
 			for (auto& pair : offlineInfo)
 			{
-				if (pair.first.rfind("WAN", 0) == 0)
+				if (pair.first.rfind("WAN", 0) == 0 || pair.first.rfind("PIPK", 0) == 0)
 				{
-					// <serial> (WebAuthn)
-					message.append(Convert::ToWString(pair.first)).append(L" (WebAuthn)\n");
+					// <serial> (FIDO2)
+					message.append(Convert::ToWString(pair.first)).append(L" (FIDO2)\n");
 				}
 				else
 				{
@@ -543,208 +573,280 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 	return hr;
 }
 
-// Determine the status of FIDO2 devices, the local config and the last response from privacyidea to return the scenario based on that.
+// Determine the status of FIDO2 devices, the local config and the last response from privacyidea to return the mode based on that.
 // It can be one of the following:
-// - SCENARIO::SECURITY_KEY_PIN
-// - SCENARIO::SECURITY_KEY_NO_PIN
-// - SCENARIO::SECURITY_KEY_NO_DEVICE
-SCENARIO CCredential::SelectWebAuthnScenario()
+// - Mode::SEC_KEY_PIN
+// - Mode::SEC_KEY_NO_PIN
+// - Mode::SEC_KEY_NO_DEVICE
+Mode CCredential::SelectFIDOMode(std::string userVerification, bool offline)
 {
 	PIDebug(__FUNCTION__);
-	const bool uvDiscouraged = _config->lastResponse.GetWebAuthnSignRequest().userVerification == "discouraged";
-	const bool offline = _config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() == 0;
-	auto devices = FIDO2Device::GetDevices();
+	bool uvDiscouraged = false;
+
+	if (userVerification.empty())
+	{
+		// WebAuthn / Passkey triggered by PIN, challenge is in last response
+		if (_config->lastResponse && _config->lastResponse->GetFIDOSignRequest())
+		{
+			offline = false;
+			uvDiscouraged = _config->lastResponse->GetFIDOSignRequest()->userVerification == "discouraged";
+		}
+		// Passkey standard, challenge is in _passkeyChallenge
+		else if (_passkeyChallenge.has_value())
+		{
+			offline = false;
+			uvDiscouraged = _passkeyChallenge->userVerification == "discouraged";
+		}
+		else
+		{
+			offline = true;
+		}
+	}
+	else
+	{
+		uvDiscouraged = userVerification == "discouraged";
+	}
+
+	PIDebug("isRemoteSession: " + to_string(_config->isRemoteSession));
+	const bool filterWindowsHello = !_config->isRemoteSession;
+	PIDebug("filterWindowsHello: " + to_string(filterWindowsHello));
+	auto devices = FIDODevice::GetDevices(filterWindowsHello, true);
 
 	if (devices.size() == 0)
 	{
 		PIDebug("No FIDO2 devices found");
-		return SCENARIO::SECURITY_KEY_NO_DEVICE;
+		return Mode::SEC_KEY_NO_DEVICE;
 	}
 	else if (devices.size() > 0)
 	{
 		if (devices.size() > 1)
 		{
-			PIDebug("Multiple FIDO2 devices found, using the first: " + devices[0].GetPath());
+			PIDebug("Multiple FIDO2 devices found, using the first: " + devices[0].ToString());
 		}
 
-		if (devices[0].HasPin() && ((!uvDiscouraged && !offline) || (!_config->webAuthnOfflineNoPIN && offline)))
+		if (devices[0].IsWinHello())
 		{
-			return SCENARIO::SECURITY_KEY_PIN;
+			return Mode::SEC_KEY_NO_PIN;
+		}
+
+		if (_config->isRemoteSession)
+		{
+			PIDebug("Not requesting PIN because it is a remote session");
+			return Mode::SEC_KEY_NO_PIN;
+		}
+		else if (devices[0].HasPin() && ((!uvDiscouraged && !offline) || (!_config->webAuthnOfflineNoPIN && offline)))
+		{
+			return Mode::SEC_KEY_PIN;
 		}
 		else
 		{
-			return SCENARIO::SECURITY_KEY_NO_PIN;
+			return Mode::SEC_KEY_NO_PIN;
 		}
 	}
-	return SCENARIO::NO_CHANGE;
+	return Mode::NO_CHANGE;
 }
 
-HRESULT CCredential::SetScenario(SCENARIO scenario)
+// TODO refactor this function by splitting it into smaller functions, like SetFIDOLinks, SetResetLink, SetOfflineLink etc.
+HRESULT CCredential::SetMode(Mode mode)
 {
+	PIDebug("SetMode: New Mode=" + _config->ModeToString(mode) + ", old Mode=" + _config->ModeString() +
+		", passkey = " + to_string(_config->usePasskey) + ", offlineFIDO = " + to_string(_config->useOfflineFIDO));
+	if (_pCredProvCredentialEvents == nullptr)
+	{
+		PIError("SetMode called without CredentialEvents available!");
+		return E_FAIL;
+	}
+	if (mode != Mode::NO_CHANGE)
+	{
+		_config->mode = mode;
+	}
 	HRESULT hr = S_OK;
+	const Mode oldMode = _config->mode;
 
-	if (scenario != SCENARIO::NO_CHANGE)
+	// Small text is used to display a prompt to the user, like "Please enter your username" or the message of 
+	// the last server response.
+	wstring smallText;
+
+	switch (mode)
 	{
-		_config->scenario = scenario;
-	}
-
-	// Reset some field states
-	_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_HIDDEN);
-
-	switch (scenario)
-	{
-		case SCENARIO::LOGON_BASE:
+		case Mode::USERNAME:
 		{
-			PIDebug("SetScenario: LOGON_BASE");
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioDisplayAllFields);
+			// Set the submit button next to the username field
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_USERNAME);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUsername);
+			smallText = _util.GetText(TEXT_ENTER_USERNAME);
+			// Since this is the first step and there is no user, use the login text instead of username
 			break;
 		}
-		case SCENARIO::UNLOCK_BASE:
+		case Mode::PASSWORD:
 		{
-			PIDebug("SetScenario: UNLOCK_BASE");
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUnlockPasswordOTP);
+			// Set the submit button next to the password field
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_PASSWORD);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPassword);
+			smallText = _util.GetText(TEXT_ENTER_PASSWORD);
 			break;
 		}
-		case SCENARIO::SECOND_STEP:
+		case Mode::USERNAMEPASSWORD:
 		{
-			PIDebug("SetScenario: SECOND_STEP");
-			// Set the submit button next to the OTP field for the second step
+			// Set the submit button next to the password field
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_PASSWORD);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUsernamePassword);
+			// Since this is the first step and there is no user, use the login text instead of username
+			smallText = _util.GetText(TEXT_ENTER_USERNAME_PASSWORD);
+			break;
+		}
+		case Mode::PRIVACYIDEA:
+		{
+			// Set the submit button next to the OTP field
+			_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_DISPLAY_IN_SELECTED_TILE);
 			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_OTP);
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecondStepOTP);
-			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_WEBAUTHN).c_str());
-			break;
-		}
-		case SCENARIO::CHANGE_PASSWORD:
-		{
-			PIDebug("SetScenario: CHANGE_PASSWORD");
-			// Set the submit button next to the repeat pw field
-			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPasswordChange);
-			break;
-		}
-		case SCENARIO::UNLOCK_TWO_STEP:
-		{
-			PIDebug("SetScenario: UNLOCK_TWO_STEP");
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUnlockFirstStepPassword);
-			break;
-		}
-		case SCENARIO::LOGON_TWO_STEP:
-		{
-			PIDebug("SetScenario: LOGON_TWO_STEP");
-			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_LDAP_PASS);
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioLogonFirstStepUserLDAP);
-			break;
-		}
-		case SCENARIO::SECURITY_KEY_PIN:
-		{
-			PIDebug("SetScenario: SECURITY_KEY_PIN");
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
-			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_WAN_PIN);
-			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_WAN_PIN, CPFIS_FOCUSED);
-			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_OTP).c_str());
-			break;
-		}
-		case SCENARIO::SECURITY_KEY_NO_DEVICE:
-		{
-			PIDebug("SetScenario: SECURITY_KEY_NO_DEVICE");
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
-			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_WAN_PIN);
-			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_WAN_PIN, CPFIS_FOCUSED);
-			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_OTP).c_str());
-			break;
-		}
-		case SCENARIO::SECURITY_KEY_NO_PIN:
-		{
-			PIDebug("SetScenario: SECURITY_KEY_NO_PIN");
-			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
-			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_WAN_PIN);
-			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_WAN_PIN, CPFIS_NONE);
-			_pCredProvCredentialEvents->SetFieldString(this, FID_WAN_LINK, _util.GetText(TEXT_USE_OTP).c_str());
-			// Reset with autologon to get to CCredential::Connect directly
-			PIDebug("Skipping to CCredential::Connect...");
-			_config->doAutoLogon = true;
-			_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
-			break;
-		}
-		case SCENARIO::NO_CHANGE:
-			PIDebug("SetScenario: NO_CHANGE");
-			break;
-		default:
-			PIError("SetScenario: Unknown scenario");
-			break;
-	}
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPrivacyIDEA);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_WEBAUTHN).c_str());
 
-	// Password change
-	if (_config->credential.passwordMustChange)
-	{
-		// Show username in large text, prefill old password
-		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _config->credential.username.c_str());
-		_pCredProvCredentialEvents->SetFieldString(this, FID_LDAP_PASS, _config->credential.password.c_str());
-	}
-	// Login or Unlock
-	else
-	{
-		const int hideFullName = _config->hideFullName;
-		const int hideDomain = _config->hideDomainName;
-
-		// Fill the textfields with text depending on configuration
-		// Large text for username@domain, username or nothing
-		// Small text for transaction message or default OTP message
-
-		// Large text
-		wstring text = _config->credential.username + L"@" + _config->credential.domain;
-		if (hideDomain)
-		{
-			text = _config->credential.username;
-		}
-		if (hideFullName)
-		{
-			text = L"";
-		}
-		//PIDebug(L"Setting large text: " + text);
-		if (text.empty() || _config->credential.username.empty())
-		{
-			_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _config->loginText.c_str());
-			//PIDebug(L"Setting large text: " + _config->loginText);
-		}
-		else
-		{
-			_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, text.c_str());
-			//PIDebug(L"Setting large text: " + text);
-		}
-
-		// If the username is already present (e.g. retry after wrong password) focus the password field
-		wstring input;
-		if (_config != nullptr && _config->provider.field_strings != nullptr)
-		{
-			input = wstring(_config->provider.field_strings[FID_USERNAME]);
-		}
-
-		if (!input.empty())
-		{
-			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_FOCUSED);
-		}
-
-		// Small text, use if 1st step or in 2nd step of 2step
-		if (!_config->twoStepHideOTP || (_config->twoStepHideOTP && _config->IsSecondStep()))
-		{
-			// Only set the message of the last server response if that response did not indicate success. The success message should not be shown.
-			if (!_config->lastResponse.message.empty() && !_config->lastResponse.value)
+			// Only set the message of the last server response if that response has challenges or errors.
+			// If hide_first_step_response is enabled, show the default message, but only when coming from the first step.
+			const bool hasLastResponse = _config->lastResponse.has_value();
+			const bool hasMessage = hasLastResponse && !_config->lastResponse->GetNonFIDOMessage().empty();
+			const bool isAuthUnsuccessful = hasLastResponse && !_config->lastResponse->isAuthenticationSuccessful();
+			const bool hideFirstStepError = _config->hideFirstStepResponseError;
+			const bool isOldModeUsername = IsModeOneOf(oldMode, Mode::USERNAME, Mode::USERNAMEPASSWORD);
+			const bool isRejected = hasLastResponse && _config->lastResponse->authenticationStatus == AuthenticationStatus::REJECT;
+			if (hideFirstStepError && isOldModeUsername && isRejected)
 			{
-				wstring wszMessage = Convert::ToWString(_config->lastResponse.GetDeduplicatedMessage());
-				//PIDebug(L"Setting message of challenge to small text: " + _config->challenge.message);
-				_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, wszMessage.c_str());
-				_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_DISPLAY_IN_BOTH);
+				smallText = _util.GetText(TEXT_OTP_PROMPT);
+			}
+			else if (hasLastResponse && hasMessage && isAuthUnsuccessful)
+			{
+				smallText = Convert::ToWString(_config->lastResponse->GetNonFIDOMessage());
 			}
 			else
 			{
-				_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, _util.GetText(TEXT_OTP_PROMPT).c_str());
+				smallText = _util.GetText(TEXT_OTP_PROMPT);
 			}
+
+			break;
 		}
-		else
+		case Mode::CHANGE_PASSWORD:
 		{
-			_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_HIDDEN);
+			// Set the submit button next to the repeat pw field
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPasswordChange);
+			// Show username in large text, prefill old password
+			_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _config->credential.username.c_str());
+			_pCredProvCredentialEvents->SetFieldString(this, FID_PASSWORD, _config->credential.password.c_str());
+			break;
 		}
+		// The following are pretty much the same, disabling fido links is below this switch
+		case Mode::SEC_KEY_REG_PIN:
+			if (_lastStatus == FIDO_ERR_PIN_INVALID)
+			{
+				smallText = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
+			}
+			else
+			{
+				smallText = _util.GetText(TEXT_PASSKEY_REGISTRATION) + L". " + _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
+			}
+			[[fallthrough]];
+		case Mode::SEC_KEY_REG:
+			[[fallthrough]];
+		case Mode::SEC_KEY_PIN:
+		{
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_FIDO_PIN);
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_FOCUSED);
+			if (_config->usePasskey)
+			{
+				_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_LOGIN_WITH_USERNAME).c_str());
+			}
+			else
+			{
+				_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
+			}
+			break;
+		}
+		case Mode::SEC_KEY_NO_DEVICE:
+		{
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_FIDO_PIN);
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_FOCUSED);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
+			break;
+		}
+		case Mode::SEC_KEY_NO_PIN:
+		{
+			hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
+			_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_FIDO_PIN);
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_NONE);
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
+			break;
+		}
+		case Mode::NO_CHANGE:
+			break;
+		default:
+			PIError("SetMode: Unknown mode");
+			break;
+	}
+
+	_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, L"Offline FIDO"); // TODO configurable text
+
+	// Large text is used to display the username that is currently loggin in like username@domain
+	// There are also settings to hide this, making it either username or nothing.
+	wstring largeText;
+	if (!_config->credential.username.empty())
+	{
+		largeText = _config->credential.username;
+	}
+	if (!_config->credential.domain.empty() && !largeText.empty())
+	{
+		largeText.append(L"@").append(_config->credential.domain);
+	}
+	if (_config->hideDomainName)
+	{
+		largeText = _config->credential.username;
+	}
+	if (_config->hideFullName)
+	{
+		largeText = L"";
+	}
+	// Default if none of the above is used
+	if (largeText.empty())
+	{
+		largeText = _util.GetText(TEXT_LOGIN_TEXT);
+	}
+
+	if (!largeText.empty())
+	{
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, largeText.c_str());
+	}
+	else
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_HIDDEN);
+	}
+
+	// Small Text set
+	if (mode == Mode::SEC_KEY_PIN)
+	{
+		smallText = _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
+	}
+	if (!smallText.empty())
+	{
+		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, smallText.c_str());
+	}
+	else
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_HIDDEN);
+	}
+
+	// If the username is already present (e.g. retry after wrong password) focus the password field
+	wstring input;
+	if (_config != nullptr && _config->provider.field_strings != nullptr)
+	{
+		input = wstring(_config->provider.field_strings[FID_USERNAME]);
+	}
+
+	if (!input.empty())
+	{
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_FOCUSED);
 	}
 
 	// Domain in FID_SUBTEXT, optional
@@ -758,22 +860,47 @@ HRESULT CCredential::SetScenario(SCENARIO scenario)
 		_pCredProvCredentialEvents->SetFieldState(this, FID_SUBTEXT, CPFS_HIDDEN);
 	}
 
-	// WebAuthn link: show if a sign request is present or if offline webauthn is available for the user
-	if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0)
+	// WebAuthn/Passkey Link: 
+	// In the first step, offer passkey login
+	// If a sign request is present or if offline webauthn is available for the user
+	bool enableFIDOOnline = mode > Mode::SEC_KEY_ANY;
+	// Passkey
+	if (_config->isFirstStep() && !_config->disablePasskey)
 	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
-		PIDebug("Enabling link for online webauthn");
+		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_PASSKEY).c_str());
+		enableFIDOOnline = true;
+		PIDebug("Enabling fido online link to offer passkey in first step");
 	}
 
-	if (!_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty()
-		&& scenario == SCENARIO::SECOND_STEP)
+	// FIDO Online
+	if (_config->lastResponse && _config->lastResponse->GetFIDOSignRequest())
 	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_WAN_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
-		PIDebug("Enabling link for offline webauthn");
+		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
+		enableFIDOOnline = true;
+		PIDebug("Enabling fido online link because of present sign request (challenge triggered)");
 	}
 
-	// Reset Link
-	if (_config->showResetLink)
+	if (enableFIDOOnline)
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
+	}
+
+	// FIDO Offline TODO when to show the link? only first step?
+	auto fidoOfflineData = _privacyIDEA.offlineHandler.GetAllFIDOData();
+	if (!fidoOfflineData.empty())
+	{
+		PIDebug("Enabling offline fido link because there is offline data");
+		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
+	}
+	else if (!_privacyIDEA.offlineHandler.GetFIDODataFor(Convert::ToString(_config->credential.username)).empty()
+		&& _config->isFirstStep())
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
+		PIDebug("Enabling offline fido link for user");
+	}
+
+	// Reset Link: Do not show in first step for both passkey and username/password mode
+	if (_config->showResetLink && !_config->isFirstStep() && !(_config->usePasskey && _config->mode > Mode::SEC_KEY_ANY))
 	{
 		_pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
 	}
@@ -786,42 +913,107 @@ HRESULT CCredential::SetScenario(SCENARIO scenario)
 		SetOfflineInfo(Convert::ToString(wstring(pwszUsername)));
 	}
 
-	return hr;
-}
 
-HRESULT CCredential::ResetScenario(__in bool resetToFirstStep)
-{
-	PIDebug(__FUNCTION__);
+	if (_config->ModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::PASSWORD))
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
+	}
 
-	// If resetToFirstStep is true, the scenario is reset to the first step regardless of the current scenario.
-	if (_config->twoStepHideOTP && (!_config->IsSecondStep() || (_config->IsSecondStep() && resetToFirstStep)))
+	// Disable offline FIDO and offline info in privacyidea step
+	if (mode == Mode::PRIVACYIDEA || mode > Mode::SEC_KEY_ANY)
 	{
-		_config->lastTransactionId = "";
-		_config->lastResponse = {};
-		_privacyIDEA.StopPoll();
-		SetScenario(SCENARIO::LOGON_TWO_STEP);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
+
 	}
-	else if (_config->twoStepHideOTP && _config->IsSecondStep())
+	if (mode > Mode::SEC_KEY_ANY)
 	{
-		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
-		{
-			SetScenario(_config->scenario);
-		}
-		else
-		{
-			SetScenario(SCENARIO::SECOND_STEP);
-		}
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
 	}
-	else if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+
+	// If enroll_via_multichallenge with either push or smartphone is happening, hide the OTP field
+	// Offer to cancel the enrollment, which is available with privacyIDEA 3.12+
+	const bool versionHigherThan312 = _config->lastResponse && _config->lastResponse->IsVersionHigherOrEqual(3, 12);
+	if ((_enrollmentInProgress || _pollEnrollmentInProgress) && versionHigherThan312 && _config->lastResponse->isEnrollCancellable)
 	{
-		SetScenario(SCENARIO::UNLOCK_BASE);
+		_pCredProvCredentialEvents->SetFieldString(this, FID_CANCEL_ENROLLMENT, _util.GetText(TEXT_CANCEL_ENROLLMENT).c_str());
+		_pCredProvCredentialEvents->SetFieldState(this, FID_CANCEL_ENROLLMENT, CPFS_DISPLAY_IN_SELECTED_TILE);
+	}
+
+	// CredUI no image setting
+	/*
+	if (_config->credui_no_image && _config->provider.cpu == CPUS_CREDUI)
+	{
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LOGO, CPFS_HIDDEN);
+		PIDebug("Hiding logo because of credui_no_image setting");
 	}
 	else
 	{
-		SetScenario(SCENARIO::LOGON_BASE);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LOGO, CPFS_DISPLAY_IN_BOTH);
+	}
+	*/
+	return hr;
+}
+
+HRESULT CCredential::FullReset()
+{
+	PIDebug(__FUNCTION__);
+	HRESULT hr = S_OK;
+	// Reset the credential to the initial state, clearing all fields and resetting the mode.
+	StopPoll();
+	_config->lastResponse = {};
+	_config->lastTransactionId = "";
+	_config->pushAuthenticationSuccess = false;
+	_privacyIDEASuccess = false;
+	_lastStatus = S_OK;
+	_enrollmentInProgress = false;
+	_pollEnrollmentInProgress = false;
+
+	_config->credential.username = L"";
+	_config->credential.password = L"";
+	_config->credential.domain = _initialDomain;
+
+	if (_pCredProvCredentialEvents != nullptr)
+	{
+		_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
+		if (_config->twoStepSendPassword || _config->usernamePassword)
+		{
+			hr = SetMode(Mode::USERNAMEPASSWORD);
+		}
+		else
+		{
+			hr = SetMode(Mode::USERNAME);
+		}
+		SetDefaultBitmap();
+	}
+	return hr;
+}
+
+/// <summary>
+/// Resets the credential provider's mode, optionally to the first step, and clears relevant fields as needed. If resetToFirstStep is true,
+/// the last response and transaction ID are cleared, and the mode is set to the first step.
+/// </summary>
+/// <param name="resetToFirstStep">If true, resets the mode to the first step regardless of the current mode; otherwise, restores the previous or default mode.</param>
+/// <returns>Returns S_OK on success, or an HRESULT error code on failure.</returns>
+HRESULT CCredential::ResetMode(bool resetToFirstStep)
+{
+	PIDebug(__FUNCTION__);
+	_privacyIDEA.StopPoll();
+	// If resetToFirstStep is true, the mode is reset to the first step regardless of the current mode.
+	if (resetToFirstStep)
+	{
+		FullReset();
+		SetMode(_config->isPasswordInFirstStep() ? Mode::USERNAMEPASSWORD : Mode::USERNAME);
+	}
+	else if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+	{
+		SetMode(Mode::USERNAMEPASSWORD);
+	}
+	else
+	{
+		SetMode(_config->mode);
 	}
 
-	// Do not clear the password for remote scenarios, because it is already checked when initializing the remote connection.
+	// Do not clear the password for remote sessions, because it is already checked when initializing the remote connection.
 	// The OTP field content has to be cleared manually.
 	if (_config->isRemoteSession)
 	{
@@ -868,10 +1060,7 @@ HRESULT CCredential::GetComboBoxValueCount(
 }
 
 // Called iteratively to fill the combobox with the string (ppwszItem) at index dwItem.
-HRESULT CCredential::GetComboBoxValueAt(
-	__in DWORD dwFieldID,
-	__in DWORD dwItem,
-	__deref_out PWSTR* ppwszItem)
+HRESULT CCredential::GetComboBoxValueAt(__in DWORD dwFieldID, __in DWORD dwItem, __deref_out PWSTR* ppwszItem)
 {
 	PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwItem);
@@ -882,10 +1071,7 @@ HRESULT CCredential::GetComboBoxValueAt(
 }
 
 // Called when the user changes the selected item in the combobox.
-HRESULT CCredential::SetComboBoxSelectedValue(
-	__in DWORD dwFieldID,
-	__in DWORD dwSelectedItem
-)
+HRESULT CCredential::SetComboBoxSelectedValue(__in DWORD dwFieldID, __in DWORD dwSelectedItem)
 {
 	PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwSelectedItem);
@@ -901,30 +1087,23 @@ HRESULT CCredential::SetComboBoxSelectedValue(
 	}
 }
 
-HRESULT CCredential::GetCheckboxValue(
-	__in DWORD dwFieldID,
-	__out BOOL* pbChecked,
-	__deref_out PWSTR* ppwszLabel
-)
+HRESULT CCredential::GetCheckboxValue(__in DWORD dwFieldID, __out BOOL* pbChecked, __deref_out PWSTR* ppwszLabel)
 {
 	// Called to check the initial state of the checkbox
-	PIDebug(__FUNCTION__);
-	UNREFERENCED_PARAMETER(dwFieldID);
+	//PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(ppwszLabel);
-	*pbChecked = FALSE;
-	//SHStrDupW(L"Use offline token.", ppwszLabel); // TODO custom text?
+	UNREFERENCED_PARAMETER(pbChecked);
+	UNREFERENCED_PARAMETER(dwFieldID);
+	//SHStrDupW(L"Use Offline FIDO2", ppwszLabel); 
 
 	return S_OK;
 }
 
-HRESULT CCredential::SetCheckboxValue(
-	__in DWORD dwFieldID,
-	__in BOOL bChecked
-)
+HRESULT CCredential::SetCheckboxValue(__in DWORD dwFieldID, __in BOOL bChecked)
 {
+	//PIDebug(__FUNCTION__);
 	UNREFERENCED_PARAMETER(dwFieldID);
 	UNREFERENCED_PARAMETER(bChecked);
-	PIDebug(__FUNCTION__);
 	return S_OK;
 }
 
@@ -934,31 +1113,91 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 	if (dwFieldID == FID_RESET_LINK)
 	{
 		PIDebug("Reset link clicked");
-		_privacyIDEA.StopPoll();
-		ResetScenario(true);
+		ResetMode(true);
 		_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
 	}
-	else if (dwFieldID == FID_WAN_LINK)
+	else if (dwFieldID == FID_FIDO_ONLINE || dwFieldID == FID_FIDO_OFFLINE)
 	{
-		_modeSwitched = true;
-		if (_config->scenario > SCENARIO::SECURITY_KEY_ANY)
+		// Switchting between FIDO and OTP modes in the privacyIDEA step
+		// Can also be passkey <-> username(/password) if it is the first step
+		_config->useOfflineFIDO = dwFieldID == FID_FIDO_OFFLINE;
+		string uv;
+		bool offline = false;
+
+		// Passkey
+		if (_config->isFirstStep() && !_config->useOfflineFIDO)
 		{
-			PIDebug("Switching to OTP mode");
-			SetScenario(SCENARIO::SECOND_STEP);
-			return S_OK;
+			PIDebug("CommandLinkClicked: Passkey Online");
+			// Passkey: We need to get the challenge here to have the uv which will decide the 
+			// next mode, with or without PIN
+			_config->usePasskey = true;
+			PIResponse res;
+			const auto hr = _privacyIDEA.ValidateInitialize(res);
+			if (FAILED(hr) || !res.passkeyChallenge)
+			{
+				// TODO ERROR
+				return S_OK;
+			}
+			_passkeyChallenge = res.passkeyChallenge.value();
+			uv = _passkeyChallenge.value().userVerification;
+		}
+		// FIDO Offline
+		else if (_config->isFirstStep() && _config->useOfflineFIDO)
+		{
+			uv = _config->webAuthnOfflineNoPIN ? "discouraged" : "required";
+			offline = true;
+			PIDebug("CommandLinkClicked: FIDO Offline with uv=" + uv);
+		}
+		// FIDO to OTP or Username/Password
+		else if (_config->mode > Mode::SEC_KEY_ANY)
+		{
+			if (!_config->usePasskey)
+			{
+				PIDebug("Switching to OTP mode");
+				SetMode(Mode::PRIVACYIDEA);
+				return S_OK;
+			}
+			else
+			{
+				PIDebug("Switching to username/password mode");
+				SetMode(_config->GetFirstStepMode());
+				_config->usePasskey = false;
+				_passkeyChallenge = std::nullopt;
+				return S_OK;
+			}
 		}
 		else
 		{
-			PIDebug("Switching to WebAuthn mode");
-			const auto scenario = SelectWebAuthnScenario();
-			SetScenario(scenario);
-			if (scenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
+			_modeSwitched = true;
+			PIDebug("Switching to security key mode");
+		}
+
+		const auto mode = SelectFIDOMode(uv, offline);
+		SetMode(mode);
+		if (mode == Mode::SEC_KEY_NO_DEVICE || mode == Mode::SEC_KEY_NO_PIN)
+		{
+			_config->doAutoLogon = true;
+			_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+		}
+	}
+	else if (dwFieldID == FID_CANCEL_ENROLLMENT)
+	{
+		PIDebug("Cancel enrollment link clicked");
+		if (!_config->lastTransactionId.empty())
+		{
+			if (_privacyIDEA.CancelEnrollmentViaMultichallenge(_config->lastTransactionId))
 			{
+				_enrollmentInProgress = false;
+				_pollEnrollmentInProgress = false;
+				_privacyIDEASuccess = true;
 				_config->doAutoLogon = true;
 				_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
 			}
-			return S_OK;
 		}
+	}
+	else
+	{
+		PIDebug("Unknown command link clicked: " + to_string(dwFieldID));
 	}
 
 	return S_OK;
@@ -974,8 +1213,7 @@ HRESULT CCredential::GetSerialization(
 	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
-	PIDebug(__FUNCTION__);
-	PIDebug("Last status: " + to_string(_lastStatus));
+	PIDebug("CCredential::GetSerialization Mode=" + _config->ModeString() + ", lastStatus=" + to_string(_lastStatus));
 	HRESULT hr = S_OK;
 	/*
 	CPGSR_NO_CREDENTIAL_NOT_FINISHED
@@ -1023,64 +1261,82 @@ HRESULT CCredential::GetSerialization(
 			_config->credential.username, _config->credential.newPassword1, _config->credential.domain);
 		_config->credential.passwordChanged = false;
 	}
-	// Normal authentication
+	// Normal authentication: Username, Password, PrivacyIDEA
 	else
 	{
-		// Pre 2nd step, challenge or failure
-		if (_authenticationComplete == false && _config->pushAuthenticationSuccessful == false)
+		// PrivacyIDEA
+		if (_privacyIDEASuccess == false && _config->pushAuthenticationSuccess == false)
 		{
-			const auto webAuthnScenario = SelectWebAuthnScenario();
-			const bool isSecondStep = _config->IsSecondStep();
 			auto& lastResponse = _config->lastResponse;
+			// Continue with fido in the following cases:
+			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request,
+			// or when continuing fido (e.g. from NO_DEVICE to PIN)
+			bool continueWithFIDO = false;
+			if (lastResponse)
+			{
+				continueWithFIDO = lastResponse->preferredMode == "webauthn"
+					|| (_config->webAuthnPreferred && (lastResponse->GetFIDOSignRequest())) || (_config->mode > Mode::SEC_KEY_ANY);
+			}
 
-			// Continue with WebAuthn as the second step if there is a sign request and it is configured to be preferred
-			// or if the current scenario is a webauthn one, e.g. to do NO_DEVICE -> PIN
-			const bool offlineWANAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(_config->credential.username)).empty();
-
-			// Continue with webauthn in the following cases:
-			// privacyIDEA says so with the preferred_client_mode, or the local setting is set and there is a sign request, or when continuing webauthn (e.g. from NO_DEVICE to PIN)
-			bool continueWithWebAuthn = lastResponse.preferredMode == "webauthn"
-				|| (_config->webAuthnPreferred && (lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 || offlineWANAvailable))
-				|| (_config->scenario > SCENARIO::SECURITY_KEY_ANY);
-
-			// If the user cancelled the operation, do not continue with webauthn
+			// If the user cancelled the operation, do not continue with FIDO
 			if (_fidoDeviceSearchCancelled)
 			{
-				continueWithWebAuthn = false;
+				continueWithFIDO = false;
 				_fidoDeviceSearchCancelled = false;
 			}
 
-			// Regular second step, asking for second factor. Can also be that the mode was switched (WebAuthn <-> OTP)
-			if (!isSecondStep && _config->twoStepHideOTP && _lastStatus == S_OK || _modeSwitched)
+			// Regular second step, asking for second factor. Can also be that the mode was switched (FIDO <-> OTP)
+			if ((_config->mode == Mode::USERNAME || _config->mode == Mode::USERNAMEPASSWORD)
+				&& (_lastStatus == S_OK || _modeSwitched))
 			{
+				PIDebug("Moving to privacyIDEA step");
 				_modeSwitched = false;
 				_config->clearFields = false;
-				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
+				SetMode(continueWithFIDO ? SelectFIDOMode() : Mode::PRIVACYIDEA);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-				if (continueWithWebAuthn && webAuthnScenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
+				if (continueWithFIDO && (SelectFIDOMode() == Mode::SEC_KEY_NO_DEVICE || _config->isRemoteSession))
 				{
 					_config->doAutoLogon = true;
 					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
 				}
 			}
-			// Another challenge was triggered: repeat the second step (privacyIDEA)
-			else if (isSecondStep && !lastResponse.challenges.empty() && _lastStatus == S_OK)
+			// Another challenge was triggered: repeat the privacyidea step
+			else if (lastResponse && !lastResponse->challenges.empty() && _lastStatus == S_OK)
 			{
-				SetScenario(continueWithWebAuthn ? webAuthnScenario : SCENARIO::SECOND_STEP);
+				PIDebug("Another challenge was triggered, repeating privacyIDEA step");
+				SetMode(continueWithFIDO ? SelectFIDOMode() : Mode::PRIVACYIDEA);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
+			// Passkey Registration
+			else if (lastResponse && lastResponse->passkeyRegistration && _lastStatus == S_OK)
+			{
+				// Go to Connect directly for the first time
+				if (!_passkeyRegistrationFailed && !_config->ModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN))
+				{
+					SetMode(Mode::SEC_KEY_REG);
+					_config->doAutoLogon = true;
+					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+					*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				}
+				else if (_config->ModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN))
+				{
+					// continue in this mode
+					*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				}
+			}
 			// Show an error message if authentication failed or there is an error
-			else if (_lastStatus != S_OK || (lastResponse.challenges.empty() && !lastResponse.value && isSecondStep))
+			else if (_lastStatus != S_OK || (lastResponse && lastResponse->challenges.empty() && !lastResponse->value &&
+				_config->mode >= Mode::PRIVACYIDEA))
 			{
 				bool resetToFirstStep = false;
 				wstring errorMessage = _util.GetText(TEXT_WRONG_OTP);
-				if (!lastResponse.errorMessage.empty())
+				if (lastResponse && !lastResponse->errorMessage.empty())
 				{
-					errorMessage = Convert::ToWString(lastResponse.errorMessage);
+					errorMessage = Convert::ToWString(lastResponse->errorMessage);
 				}
 				else if (_lastStatus == FIDO_ERR_NO_CREDENTIALS)
 				{
-					SetScenario(SCENARIO::SECOND_STEP);
+					SetMode(Mode::PRIVACYIDEA);
 					errorMessage = _util.GetText(TEXT_FIDO_NO_CREDENTIALS);
 				}
 				else if (_lastStatus == FIDO_ERR_PIN_AUTH_BLOCKED)
@@ -1088,12 +1344,13 @@ HRESULT CCredential::GetSerialization(
 					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_BLOCKED);
 					// If userVerificiation is discouraged, reset to the first step, otherwise there will be an infinite loop
 					// of directly retrying because no PIN is requested.
-					if (lastResponse.GetWebAuthnSignRequest().userVerification == "discouraged")
+					if (lastResponse && lastResponse->GetFIDOSignRequest()
+						&& lastResponse->GetFIDOSignRequest()->userVerification == "discouraged")
 					{
 						resetToFirstStep = true;
 					}
 				}
-				else if (_lastStatus == FIDO2DEVICE_ERR_TX)
+				else if (_lastStatus == FIDO_DEVICE_ERR_TX)
 				{
 					resetToFirstStep = true;
 					errorMessage = _util.GetText(TEXT_FIDO_ERR_TX);
@@ -1102,31 +1359,54 @@ HRESULT CCredential::GetSerialization(
 				{
 					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
 				}
+				else if (_lastStatus == FIDO_ERR_OPERATION_DENIED)
+				{
+					errorMessage = _util.GetText(TEXT_FIDO_CANCELLED);
+					SetMode(Mode::PRIVACYIDEA);
+				}
 				else if (_lastStatus != S_OK)
 				{
 					// Probably configuration or network error - details will be logged where the error occurs -> check log
 					errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
 				}
 
-				ShowErrorMessage(errorMessage, lastResponse.errorCode);
+				ShowErrorMessage(errorMessage, lastResponse ? lastResponse->errorCode : 0);
 				// 904 is "user not found in any resolver in this realm" so the user has to be changable -> reset to first step
-				if (lastResponse.errorCode == 904 || _config->otpFailReturnToFirstStep)
+				if ((lastResponse && lastResponse->errorCode == 904) || _config->otpFailReturnToFirstStep)
 				{
 					resetToFirstStep = true;
 					_config->clearFields = false; // Keep the inputs so the user does not have to repeat them
 				}
 
-				ResetScenario(resetToFirstStep);
+				ResetMode(resetToFirstStep);
 				*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 			}
 		}
-		// Authentication was successful - log in
-		else if (_authenticationComplete || _config->pushAuthenticationSuccessful)
+		// PrivacyIDEA completed, move to Password
+		else if ((_privacyIDEASuccess || _config->pushAuthenticationSuccess) && _config->credential.password.empty())
 		{
-			// Reset the authentication
-			_authenticationComplete = false;
-			_config->pushAuthenticationSuccessful = false;
-			_config->lastTransactionId = "";
+			PIDebug("privacyIDEA step completed, moving to Password step");
+			if (_enrollmentInProgress || _pollEnrollmentInProgress)
+			{
+				_enrollmentInProgress = false;
+				_pollEnrollmentInProgress = false;
+				SetDefaultBitmap();
+			}
+			SetMode(Mode::PASSWORD);
+			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+		}
+		// Username
+		else if (_config->credential.username.empty())
+		{
+			PIDebug("Username still empty, moving to Username step");
+			SetMode(Mode::USERNAME);
+			*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+		}
+		// Authentication was successful - log in
+		else if (_config->isCredentialComplete() && (_privacyIDEASuccess || _config->pushAuthenticationSuccess))
+		{
+
+			PIDebug("Last step completed, logging in...");
 			_privacyIDEA.StopPoll();
 
 			// Pack credentials for logon
@@ -1143,8 +1423,9 @@ HRESULT CCredential::GetSerialization(
 		}
 		else
 		{
+			PIDebug("GetSerialization: No case matches state.");
 			ShowErrorMessage(L"Unexpected error");
-			ResetScenario(true);
+			ResetMode(true);
 			hr = S_FALSE;
 		}
 	}
@@ -1188,36 +1469,108 @@ void CCredential::ShowErrorMessage(const std::wstring& message, const HRESULT& c
 }
 
 // If push is successful, reset the credential to do autologin
-void CCredential::PushAuthenticationCallback(bool success)
+void CCredential::PushAuthenticationCallback(const PIResponse& response)
 {
 	PIDebug(__FUNCTION__);
-	if (success)
+	if (response.isAuthenticationSuccessful())
 	{
-		_config->pushAuthenticationSuccessful = true;
+		_config->pushAuthenticationSuccess = true;
 		_config->doAutoLogon = true;
 		// When autologon is triggered, connect is called instantly, therefore bypass privacyIDEA on next run
 		_config->bypassPrivacyIDEA = true;
 		_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
 	}
+	_pollEnrollmentInProgress = false;
 }
 
-// Connect is called first after the submit button is pressed.
-HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
+bool CCredential::CheckExcludedAccount()
 {
-	PIDebug(string(__FUNCTION__) + ": CREDENTIAL SUBMITTED - step " + (_config->IsSecondStep() ? "2" : "1"));
+	PIDebug("CCredential::CheckExcludedAccount");
+	// Check if the user is in the excluded group
+	if (!_config->excludedGroup.empty())
+	{
+		std::vector<std::wstring> groups;
 
-	_lastStatus = S_OK;
-	// Copy the input fields to the config
-	_config->provider.field_strings = _rgFieldStrings;
-	_util.CopyInputFields();
-	wstring username = _config->credential.username;
-	wstring domain = _config->credential.domain;
-	// Leave the UPN empty if it should not be used
-	wstring upn = _config->piconfig.sendUPN ? _config->credential.upn : L"";
+		wstring tmp = wstring(_config->credential.domain + L"\\" + _config->credential.username);
+		LPCWSTR userAndDomain = tmp.c_str();
+		LPCWSTR userOnly = _config->credential.username.c_str();
+		// Global groups
+		DWORD entriesRead = 0, totalEntries = 0;
+		GROUP_USERS_INFO_0* pGroupInfo = nullptr;
+		NET_API_STATUS nStatus = NERR_Success;
+		// It is only possible to check global groups if the netbios address of the machine that should be queried is set
+		if (!_config->exludedGroupNetBIOSaddress.empty())
+		{
+			nStatus = NetUserGetGroups(
+				_config->exludedGroupNetBIOSaddress.c_str(),
+				userOnly,
+				0,
+				(LPBYTE*)&pGroupInfo,
+				MAX_PREFERRED_LENGTH,
+				&entriesRead,
+				&totalEntries
+			);
 
-	// Default message
-	pqcws->SetStatusMessage(_util.GetText(TEXT_CONNECTING).c_str());
+			if (nStatus == NERR_Success && pGroupInfo)
+			{
+				for (DWORD i = 0; i < entriesRead; ++i)
+				{
+					groups.push_back(pGroupInfo[i].grui0_name);
+				}
+				NetApiBufferFree(pGroupInfo);
+			}
+			else
+			{
+				std::wstringstream ss;
+				ss << L"NetUserGetGroups failed for user '" << userAndDomain << L"' with error: " << nStatus;
+				PIError(Convert::ToString(ss.str()));
+			}
+		}
+		else
+		{
+			PIDebug("Unable to check global groups, no netbios address set for excluded group");
+		}
 
+		// Local groups
+		LOCALGROUP_USERS_INFO_0* pLocalGroupInfo = nullptr;
+		entriesRead = totalEntries = 0;
+		nStatus = NetUserGetLocalGroups(
+			NULL,
+			userAndDomain,
+			0,
+			LG_INCLUDE_INDIRECT, // 0 would be only direct groups
+			(LPBYTE*)&pLocalGroupInfo,
+			MAX_PREFERRED_LENGTH,
+			&entriesRead,
+			&totalEntries
+		);
+
+		if (nStatus == NERR_Success && pLocalGroupInfo)
+		{
+			for (DWORD i = 0; i < entriesRead; ++i)
+			{
+				groups.push_back(pLocalGroupInfo[i].lgrui0_name);
+			}
+			NetApiBufferFree(pLocalGroupInfo);
+		}
+		else
+		{
+			std::wstringstream ss;
+			ss << L"NetUserGetLocalGroups failed for user '" << userAndDomain << L"' with error: " << nStatus;
+			PIError(Convert::ToString(ss.str()));
+		}
+
+		// Check if the user is in the excluded group
+		for (const auto& group : groups)
+		{
+			if (Convert::ToUpperCase(group) == Convert::ToUpperCase(_config->excludedGroup))
+			{
+				PIDebug(L"User is in excluded group: " + _config->excludedGroup);
+				return true;
+			}
+		}
+		PIDebug(L"User " + _config->credential.username + L" is not in excluded group: " + _config->excludedGroup);
+	}
 	// Check if the user is the excluded account
 	if (!_config->excludedAccount.empty())
 	{
@@ -1232,13 +1585,494 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		wstring exclUsername, exclDomain;
 		Utilities::SplitUserAndDomain(_config->excludedAccount, exclUsername, exclDomain);
 		wstring exclAccount = exclDomain + L"\\" + exclUsername;
-		PIDebug(L"Matching user with excluded account: " + exclAccount);
 		if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(exclAccount))
 		{
-			PIDebug("Login data matches excluded account, skipping 2FA...");
-			_authenticationComplete = true;
-			return S_OK;
+			PIDebug("Login data matches excluded account");
+			_privacyIDEASuccess = true;
+			return true;
 		}
+	}
+	return false;
+}
+
+HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
+{
+	PIDebug("FIDO2 Authentication " + std::string(_config->useOfflineFIDO ? "offline" : "online") + ", with mode " + _config->ModeString());
+	wstring username = _config->credential.username;
+	wstring domain = _config->credential.domain;
+	// Get the FIDO2SignRequest, either from the last response, passkey challenge, or offline data
+	std::optional<FIDOSignRequest> signRequest;
+	if (_config->useOfflineFIDO)
+	{
+		PIDebug("Getting FIDO2SignRequest from offline data");
+		signRequest = _privacyIDEA.GetOfflineFIDOSignRequest();
+	}
+	else if (_config->usePasskey)
+	{
+		PIDebug("Getting FIDO2SignRequest from passkey challenge");
+		signRequest = _passkeyChallenge;
+	}
+	else
+	{
+		PIDebug("Getting FIDO2SignRequest from last response");
+		signRequest = _config->lastResponse ? _config->lastResponse->GetFIDOSignRequest() : std::nullopt;
+	}
+
+	if (!signRequest)
+	{
+		PIDebug("No FIDO2SignRequest available or no offline data found for user " + Convert::ToString(username));
+		SetMode(Mode::PRIVACYIDEA);
+		return E_FAIL;
+	}
+
+	// DEVICE SEARCH
+	// Wait for a device to be connected if necessary. 
+	// Afterward, the mode might be reset to get the PIN input or will continue if no PIN is required.
+	if (_config->mode == Mode::SEC_KEY_NO_DEVICE)
+	{
+		auto dev = WaitForFIDODevice(pqcws);
+		if (!dev && _fidoDeviceSearchCancelled)
+		{
+			PIDebug("FIDO2 device search cancelled by user");
+			SetMode(Mode::PRIVACYIDEA);
+			return E_FAIL;
+		}
+		const auto mode = SelectFIDOMode();
+		if (mode != Mode::SEC_KEY_NO_PIN)
+		{
+			// Reset to get PIN input
+			SetMode(mode);
+			_modeSwitched = true;
+		}
+	}
+
+	// Find the device to use
+	const bool filterWindowsHello = !_config->isRemoteSession;
+	auto devices = FIDODevice::GetDevices(filterWindowsHello, true);
+	if (devices.size() == 0)
+	{
+		PIError("No FIDO2 device available");
+		return E_FAIL;
+	}
+
+	FIDODevice device = devices.front();
+	PIDebug("Using FIDO device: " + device.GetPath());
+	// Check if a PIN is required and present
+	auto pin = Convert::ToString(_config->credential.fido2PIN);
+	if (device.HasPin() && pin.empty() && _config->mode == Mode::SEC_KEY_PIN)
+	{
+		PIDebug("No FIDO2 PIN input, but pin is required");
+		return E_FAIL;
+	}
+	auto text = _util.GetText(TEXT_TOUCH_SEC_KEY);
+	// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message 
+	// to indicate what the user should do.
+	if (_config->provider.cpu == CPUS_CREDUI)
+	{
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT,text.c_str());
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_DISABLED);
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
+	}
+	else
+	{
+		pqcws->SetStatusMessage(text.c_str());
+	}
+	
+	FIDOSignResponse signResponse;
+	string origin = Convert::ToString(Utilities::ComputerName());
+
+	// Offline FIDO2
+	if (_config->useOfflineFIDO && _config->mode > Mode::SEC_KEY_ANY)
+	{
+		PIDebug("Trying offline FIDO2...");
+		auto offlineData = _privacyIDEA.offlineHandler.GetAllFIDOData();
+
+		string serialUsed;
+		HRESULT hr = device.SignAndVerifyAssertion(offlineData, origin, pin, serialUsed);
+		if (hr != FIDO_OK)
+		{
+			PIError("FIDO2 offline signing or verifying failed with error: " + to_string(hr));
+			if (hr == FIDO_ERR_TX)
+			{
+				// Use a more expressive error number
+				hr = FIDO_DEVICE_ERR_TX;
+			}
+			_lastStatus = hr;
+			SetMode(Mode::PRIVACYIDEA);
+			return hr;
+		}
+		auto new_username = _privacyIDEA.offlineHandler.GetUsernameForSerial(serialUsed);
+		if (!new_username)
+		{
+			PIError("No username found for serial " + serialUsed);
+			_lastStatus = E_FAIL;
+			SetMode(Mode::PRIVACYIDEA);
+			return E_FAIL;
+		}
+		username = Convert::ToWString(new_username.value());
+		_config->credential.username = username;
+		PIDebug(L"FIDO2 offline successful, using username: " + _config->credential.username);
+		if (hr == FIDO_OK)
+		{
+			_privacyIDEASuccess = true;
+			pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
+			_privacyIDEA.OfflineRefillFIDO(username, serialUsed);
+			_config->useOfflineFIDO = false;
+		}
+		else
+		{
+			PIError("FIDO2 offline signing or verifying failed with error: " + to_string(hr));
+			_lastStatus = hr;
+		}
+	}
+	// Passkey (online)
+	else if (_config->usePasskey && _config->mode > Mode::SEC_KEY_ANY)
+	{
+		if (!_passkeyChallenge)
+		{
+			PIError("Unable to get passkey challenge, cannot continue with passkey mode");
+			_lastStatus = E_FAIL;
+			SetMode(Mode::PRIVACYIDEA);
+			return E_FAIL;
+		}
+		else
+		{
+			PIDebug("Passkey challenge received: " + _passkeyChallenge.value().ToString());
+		}
+		HRESULT hr = device.Sign(_passkeyChallenge.value(), origin, pin, signResponse);
+		if (hr != 0)
+		{
+			PIError("Passkey signing failed with error: " + to_string(hr));
+			SetMode(Mode::PRIVACYIDEA);
+			if (hr == FIDO_ERR_TX)
+			{
+				// Use a more expressive error number
+				hr = FIDO_DEVICE_ERR_TX;
+			}
+			_lastStatus = hr;
+		}
+
+		if (hr == FIDO_ERR_NO_CREDENTIALS)
+		{
+			PIDebug("No credentials available on the device " + device.GetProduct());
+			_lastStatus = hr;
+			return E_FAIL;
+		}
+
+		if (hr == S_OK)
+		{
+			PIResponse response;
+			hr = _privacyIDEA.ValidateCheckFIDO(username, domain, signResponse, origin, response,
+				_passkeyChallenge.value().transactionId, std::wstring());
+			if (SUCCEEDED(hr))
+			{
+				if (response.username)
+				{
+					PIDebug("Passkey authentication successful, using username " + response.username.value());
+					_config->credential.username = Convert::ToWString(response.username.value());
+				}
+				else
+				{
+					PIError("Passkey authentication successful, but no username returned in response!");
+				}
+
+				EvaluateResponse(response);
+				_config->usePasskey = false;
+			}
+		}
+	}
+	// ONLINE WEBAUTHN
+	else if (_config->lastResponse && _config->lastResponse->GetFIDOSignRequest() && !_privacyIDEASuccess)
+	{
+		PIDebug("Trying online WebAuthn...");
+		HRESULT hr = device.Sign(_config->lastResponse->GetFIDOSignRequest().value(), origin, pin, signResponse);
+		if (hr != 0)
+		{
+			PIError("WebAuthn signing failed with error: " + to_string(hr));
+			if (hr == FIDO_ERR_TX)
+			{
+				// Use a more expressive error number
+				hr = FIDO_DEVICE_ERR_TX;
+			}
+			_lastStatus = hr;
+		}
+
+		if (hr == FIDO_ERR_NO_CREDENTIALS)
+		{
+			PIDebug("No credentials available on the device " + device.GetProduct());
+			_lastStatus = hr;
+			return E_FAIL;
+		}
+
+		if (pqcws->QueryContinue() != S_OK)
+		{
+			PIError("User cancelled WebAuthn");
+			SetMode(Mode::PRIVACYIDEA);
+			return E_FAIL;
+		}
+
+		if (hr == S_OK)
+		{
+			PIResponse response;
+			hr = _privacyIDEA.ValidateCheckFIDO(username, domain, signResponse, origin, response, _config->lastTransactionId, std::wstring());
+			if (SUCCEEDED(hr))
+			{
+				EvaluateResponse(response);
+			}
+		}
+	}
+	return S_OK;
+}
+
+HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
+{
+	PIDebug("FIDO2 registration with mode " + _config->ModeString());
+	HRESULT hr = S_OK;
+
+	if (!pqcws)
+	{
+		return E_POINTER;
+	}
+
+	if (_config->lastResponse && !_config->lastResponse->passkeyRegistration)
+	{
+		PIError("No passkey registration available, cannot continue with registration");
+		return E_FAIL;
+	}
+
+	if (_config->isRemoteSession)
+	{
+		PIDebug("Session is remote, no PIN input required in this CredentialProvider");
+	}
+	else if (_config->credential.fido2PIN.empty())
+	{
+		PIDebug("Requesting fido2 PIN for registration");
+		SetMode(Mode::SEC_KEY_REG_PIN);
+		return E_FAIL;
+	}
+
+	auto dev = WaitForFIDODevice(pqcws);
+	if (!dev && _fidoDeviceSearchCancelled)
+	{
+		PIDebug("FIDO2 device search cancelled by user");
+		SetMode(Mode::PRIVACYIDEA);
+		return E_FAIL;
+	}
+	else if (!dev)
+	{
+		PIDebug("No FIDO2 device found, cannot continue with registration");
+		SetMode(Mode::PRIVACYIDEA);
+		return E_FAIL; // TODO just log in anyway?  
+	}
+
+	pqcws->SetStatusMessage(_util.GetText(TEXT_PASSKEY_REGISTER_TOUCH).c_str());
+	const auto& request = _config->lastResponse->passkeyRegistration.value();
+
+	std::optional<FIDORegistrationResponse> response = std::nullopt;
+	try
+	{
+		response = dev->Register(_config->lastResponse->passkeyRegistration.value(), Convert::ToString(_config->credential.fido2PIN));
+	}
+	catch (FIDOException ex)
+	{
+		PIError("FIDO2 registration failed: " + std::string(ex.what()));
+		_lastStatus = ex.getErrorCode();
+		if (ex.getErrorCode() == FIDO_ERR_PIN_INVALID)
+		{
+
+		}
+		else if (ex.getErrorCode() == FIDO_ERR_PIN_AUTH_BLOCKED)
+		{
+			// We can not provide for all problems, so just show an info in GetSerialization and continue?  
+			//_privacyIDEASuccess = true;  
+			//return S_OK;  
+		}
+		else
+		{
+			SetMode(Mode::PRIVACYIDEA);
+			_passkeyRegistrationFailed = true;
+		}
+
+		hr = E_FAIL;
+	}
+
+	if (!response)
+	{
+
+	}
+	else
+	{
+		PIResponse piresponse;
+		hr = _privacyIDEA.ValidateCheckCompletePasskeyRegistration(request.transactionId, request.serial,
+			_config->credential.username, _config->credential.domain, response.value(), request.rpId, piresponse);
+
+		if (SUCCEEDED(hr) && piresponse.isAuthenticationSuccessful())
+		{
+			PIDebug("passkey enrollment complete!");
+			_privacyIDEASuccess = true;
+			_config->lastResponse = piresponse;
+			hr = S_OK;
+		}
+		else
+		{
+			hr = E_FAIL;
+		}
+	}
+	return hr;
+}
+
+HRESULT CCredential::EvaluateResponse(PIResponse& response)
+{
+	wstring username = _config->credential.username;
+	wstring domain = _config->credential.domain;
+	// Leave the UPN empty if it should not be used
+	wstring upn = _config->piconfig.sendUPN ? _config->credential.upn : L"";
+
+	// Always show the OTP field, if push was triggered, start polling in background
+	if (response.IsPushAvailable())
+	{
+		// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
+		_privacyIDEA.PollTransactionAsync(username, domain, upn, response.transactionId,
+			std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
+	}
+
+	// Save the lastTransactionId, so that the lastResponse can be overwritten with an error response and we still have the transactionId
+	if (!response.transactionId.empty())
+	{
+		_config->lastTransactionId = response.transactionId;
+		_enrollmentInProgress = false;
+	}
+
+	if (!response.challenges.empty())
+	{
+		// Only one image can be displayed so take the first challenge
+		// In the main use-case, token enrollment, there will only be a single challenge
+		// because the enrollment is only happening after the authentication is completed
+		auto& challenge = response.challenges.at(0);
+
+		// enroll_via_multichallenge setup, implicitly means there is only one challenge
+		if (!challenge.image.empty())
+		{
+			// Remove the leading "data:image/png;base64,"
+			auto base64image = challenge.image.substr(IMAGE_BASE64_PREFIX.length(), challenge.image.size());
+			if (!base64image.empty())
+			{
+				auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
+				if (hBitmap != nullptr)
+				{
+					// TODO add mode enrollment?
+					_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
+				}
+				else
+				{
+					PIDebug("Conversion to bitmap failed, image will not be displayed.");
+				}
+			}
+			if (challenge.type == "push" || challenge.type == "smartphone")
+			{
+				_pollEnrollmentInProgress = true;
+			}
+			else
+			{
+				_enrollmentInProgress = true;
+			}
+		}
+	}
+	else
+	{
+		_privacyIDEASuccess = response.isAuthenticationSuccessful();
+	}
+
+	_config->lastResponse = response;
+	return S_OK;
+}
+
+std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatus* pqcws, int timeoutMs)
+{
+	PIDebug("No FIDO2 device found, waiting for device");
+	if (pqcws)
+	{
+		pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
+	}
+
+	// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message 
+	// to indicate what the user should do.
+	if (_config->provider.cpu == CPUS_CREDUI)
+	{
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
+		_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_DISABLED);
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
+	}
+
+	// Check for changes in HID (USB) and Smartcard (NFC)
+	std::vector<FIDODevice> devices;
+	std::optional<FIDODevice> ret = std::nullopt;
+	int tries = static_cast<int>(std::ceil(static_cast<double>(timeoutMs) / 200.0));
+	const bool filterWindowsHello = !_config->isRemoteSession;
+	while (tries > 0)
+	{
+		this_thread::sleep_for(chrono::milliseconds(200));
+		if (pqcws->QueryContinue() != S_OK)
+		{
+			PIDebug("User cancelled device search");
+			SetMode(Mode::PRIVACYIDEA);
+			_fidoDeviceSearchCancelled = true;
+			return std::nullopt;
+		}
+		devices = FIDODevice::GetDevices(filterWindowsHello, false);
+		if (devices.size() > 0)
+		{
+			break;
+		}
+		tries--;
+	}
+	if (devices.size() > 0)
+	{
+		PIDebug("Found " + to_string(devices.size()) + " FIDO2 device(s)");
+		ret = devices.front();
+		PIDebug("Using device: " + ret->GetProduct());
+	}
+	else
+	{
+		PIDebug("No FIDO2 device found");
+	}
+	if (tries == 0)
+	{
+		PIDebug("No FIDO2 device found within the timeout period");
+	}
+
+	return ret;
+}
+
+// Connect is called first after the submit button is pressed.
+HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
+{
+	PIDebug("CCredential::Connect Mode=" + _config->ModeString());
+
+	_lastStatus = S_OK;
+	// Copy the input fields to the config
+	_config->provider.field_strings = _rgFieldStrings;
+	_util.CopyInputFields();
+	wstring username = _config->credential.username;
+	wstring domain = _config->credential.domain;
+	// Leave the UPN empty if it should not be used
+	wstring upn = _config->piconfig.sendUPN ? _config->credential.upn : L"";
+
+	// Default message
+	pqcws->SetStatusMessage(_util.GetText(TEXT_CONNECTING).c_str());
+
+	if (_config->mode == Mode::PASSWORD)
+	{
+		PIDebug("Mode is PASSWORD, skipping Connect");
+		return S_OK;
+	}
+
+	if (CheckExcludedAccount())
+	{
+		_privacyIDEASuccess = true;
+		return S_OK;
 	}
 
 	if (_config->bypassPrivacyIDEA)
@@ -1249,11 +2083,11 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	}
 
 	// Evaluate if and what should be sent to the server depending on the step and configuration
-	bool sendSomething = false, offlineCheck = false;
+	bool isSendRequest = false, isOfflineCheck = false;
 	wstring passToSend;
 
 	// 1st step
-	if (_config->twoStepHideOTP && !_config->IsSecondStep())
+	if (_config->mode == Mode::USERNAME || _config->mode == Mode::USERNAMEPASSWORD)
 	{
 		if (!_config->twoStepSendEmptyPassword && !_config->twoStepSendPassword)
 		{
@@ -1263,7 +2097,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		}
 		else
 		{
-			sendSomething = true;
+			isSendRequest = true;
 			if (!_config->twoStepSendEmptyPassword && _config->twoStepSendPassword)
 			{
 				passToSend = _config->credential.password;
@@ -1280,23 +2114,23 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 		PIDebug("2nd step: Sending OTP/Offline check");
 		// Second step or single step authentication, actually use the OTP and do offlineCheck before
 		passToSend = _config->credential.otp;
-		offlineCheck = true;
-		sendSomething = true;
+		isOfflineCheck = true;
+		isSendRequest = true;
 	}
 
-	// Send a request to privacyIDEA, try offline authentication or webauthn, depending on what happened before
-	if (sendSomething)
+	// Send a request to privacyIDEA, try offline authentication or fido2, depending on what happened before
+	if (isSendRequest)
 	{
-		HRESULT res = E_FAIL;
+		HRESULT hr = E_FAIL;
 		// Offline OTP check
-		if (offlineCheck && (_config->scenario < SCENARIO::SECURITY_KEY_ANY))
+		if (isOfflineCheck && (_config->mode < Mode::SEC_KEY_ANY))
 		{
 			string serialUsed;
-			res = _privacyIDEA.OfflineCheck(username, passToSend, serialUsed);
+			hr = _privacyIDEA.OfflineCheck(username, passToSend, serialUsed);
 			// Check if a OfflineRefill should be attempted. Either if offlineThreshold is not set, remaining OTPs are below the threshold, or no more OTPs are available.
-			if ((res == S_OK && _config->offlineTreshold == 0)
-				|| (res == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username), serialUsed) < _config->offlineTreshold)
-				|| res == PI_OFFLINE_DATA_NO_OTPS_LEFT)
+			if ((hr == S_OK && _config->offlineTreshold == 0)
+				|| (hr == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username), serialUsed) < _config->offlineTreshold)
+				|| hr == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 			{
 				pqcws->SetStatusMessage(_util.GetText(TEXT_OFFLINE_REFILL).c_str());
 				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend, serialUsed);
@@ -1307,240 +2141,69 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 
 			// Authentication is complete if offlineCheck succeeds, regardless of refill status
-			if (res == S_OK)
+			if (hr == S_OK)
 			{
-				_authenticationComplete = true;
+				_privacyIDEASuccess = true;
 			}
 		}
 
-		// WebAuthn
-		if (!_authenticationComplete && _config->scenario > SCENARIO::SECURITY_KEY_ANY)
+		// FIDO Authentication
+		if (!_privacyIDEASuccess && _config->ModeOneOf(Mode::SEC_KEY_NO_PIN, Mode::SEC_KEY_PIN, Mode::SEC_KEY_NO_DEVICE)
+			&& ((_config->lastResponse && !_config->lastResponse->passkeyRegistration) || _config->usePasskey || _config->useOfflineFIDO))
 		{
-			PIDebug("Trying WebAuthn...");
-			// Check if a WebAuthnSignRequest is available either from online or offline
-			const bool offlineWebAuthnAvailable = !_privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username)).empty();
-			const bool onlineWebAuthnAvailable = !_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.empty();
-			if (!onlineWebAuthnAvailable && !offlineWebAuthnAvailable)
+			hr = FIDOAuthentication(pqcws);
+			if (FAILED(hr))
 			{
-				PIDebug("No WebAuthnSignRequest available or no offline data found for user " + Convert::ToString(username));
-				return E_FAIL;
-			}
-
-			// DEVICE SEARCH
-			// Wait for a device to be connected if necessary. 
-			// Afterward, the scenario might be reset to get the PIN input or will continue if no PIN is required.
-			std::vector<FIDO2Device> devices;
-			if (_config->scenario == SCENARIO::SECURITY_KEY_NO_DEVICE)
-			{
-				PIDebug("No device found, waiting for device");
-				pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
-				// Check for changes in HID (USB) and Smartcard (NFC)
-				DeviceNotification::Register();
-				SmartcardListener sCardListener;
-
-				// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message to indicate what the user should do.
-				if (_config->provider.cpu == CPUS_CREDUI)
-				{
-					_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
-					_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
-					_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_LDAP_PASS, CPFIS_DISABLED);
-					_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
-				}
-
-				while (true)
-				{
-					this_thread::sleep_for(chrono::milliseconds(200));
-					if (pqcws->QueryContinue() != S_OK)
-					{
-						PIDebug("User cancelled device search");
-						DeviceNotification::Unregister();
-						SetScenario(SCENARIO::SECOND_STEP);
-						_fidoDeviceSearchCancelled = true;
-						return E_FAIL;
-					}
-					if (DeviceNotification::newDevices || sCardListener.CheckForSmartcardPresence())
-					{
-						DeviceNotification::newDevices = false;
-						devices = FIDO2Device::GetDevices();
-						if (devices.size() > 0)
-						{
-							break;
-						}
-						else
-						{
-							PIDebug("Inserted device is not a FIDO2 device");
-						}
-					}
-				}
-				DeviceNotification::Unregister();
-				const auto scenario = SelectWebAuthnScenario();
-				if (scenario != SCENARIO::SECURITY_KEY_NO_PIN)
-				{
-					// Reset to get PIN input
-					SetScenario(scenario);
-					_modeSwitched = true;
-				}
-			}
-
-			// Find the device to use
-			devices = FIDO2Device::GetDevices();
-			if (devices.size() == 0)
-			{
-				PIError("No FIDO2 device available");
-				return E_FAIL;
-			}
-
-			FIDO2Device device = devices.front();
-			// Check if a PIN is required. This can be different for on/offline.
-			auto pin = Convert::ToString(_config->credential.webAuthnPIN);
-			const bool pinOfflineRequired = _config->webAuthnOfflineNoPIN && offlineWebAuthnAvailable;
-			const bool pinOnlineRequired = _config->lastResponse.GetWebAuthnSignRequest().userVerification != "discouraged" && onlineWebAuthnAvailable;
-			if (device.HasPin() && pin.empty() && _config->scenario == SCENARIO::SECURITY_KEY_PIN)
-			{
-				PIDebug("No WebAuthn PIN input, but pin is required");
-				return E_FAIL;
-			}
-
-			pqcws->SetStatusMessage(_util.GetText(TEXT_TOUCH_SEC_KEY).c_str());
-			WebAuthnSignResponse signResponse;
-			string origin = Convert::ToString(Utilities::ComputerName());
-
-			// Try to do offline then online webauthn
-			// Prefer offline so that there is a chance to try refill
-			// That means once a user has offline data, webauthn online is not possible anymore
-			auto offlineData = _privacyIDEA.offlineHandler.GetWebAuthnOfflineData(Convert::ToString(username));
-			if (!offlineData.empty())
-			{
-				PIDebug("Trying offline WebAuthn...");
-				string serialUsed;
-				res = device.SignAndVerifyAssertion(offlineData, origin, pin, serialUsed);
-				if (res == FIDO_OK)
-				{
-					_authenticationComplete = true;
-					pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
-					_privacyIDEA.OfflineRefillWebAuthn(username, serialUsed);
-				}
-				else
-				{
-					PIError("WebAuthn offline signing or verifying failed with error: " + to_string(res));
-					_lastStatus = res;
-				}
-			}
-
-			if (_config->lastResponse.GetWebAuthnSignRequest().allowCredentials.size() > 0 && !_authenticationComplete)
-			{
-				PIDebug("Trying online WebAuthn...");
-				res = device.Sign(_config->lastResponse.GetWebAuthnSignRequest(), origin, pin, signResponse);
-				if (res != 0)
-				{
-					PIError("WebAuthn signing failed with error: " + to_string(res));
-					if (res == FIDO_ERR_TX)
-					{
-						// Use a more expressive error number
-						res = FIDO2DEVICE_ERR_TX;
-					}
-					_lastStatus = res;
-				}
-
-				if (res == FIDO_ERR_NO_CREDENTIALS)
-				{
-					PIDebug("No credentials available on the device " + device.GetProduct());
-					_lastStatus = res;
-					return E_FAIL;
-				}
-
-				if (pqcws->QueryContinue() != S_OK)
-				{
-					PIError("User cancelled WebAuthn");
-					SetScenario(SCENARIO::SECOND_STEP);
-					return E_FAIL;
-				}
-
-				if (res == S_OK)
-				{
-					PIResponse response;
-					res = _privacyIDEA.ValidateCheckWebAuthn(username, domain, signResponse, origin, response, _config->lastTransactionId);
-					if (SUCCEEDED(res))
-					{
-						_authenticationComplete = response.value;
-						_config->lastResponse = response;
-					}
-				}
+				return hr;
 			}
 		}
-		else if (!_authenticationComplete) // OTP
+		// FIDO Registration
+		else if (!_privacyIDEASuccess && _config->ModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::SEC_KEY_NO_DEVICE)
+			&& _config->lastResponse && _config->lastResponse->passkeyRegistration)
+		{
+			if (!_passkeyRegistrationFailed)
+			{
+				hr = FIDORegistration(pqcws);
+				if (SUCCEEDED(hr))
+				{
+					_privacyIDEASuccess = true;
+				}
+			}
+			else
+			{
+				SetMode(Mode::PRIVACYIDEA);
+				hr = E_FAIL;
+			}
+			return hr;
+		}
+		else if (!_privacyIDEASuccess) // OTP
 		{
 			PIResponse otpResponse;
 			// lastTransactionId can be empty
-			res = _privacyIDEA.ValidateCheck(username, domain, passToSend, otpResponse, _config->lastTransactionId, upn);
+			hr = _privacyIDEA.ValidateCheck(username, domain, passToSend, otpResponse, _config->lastTransactionId, upn);
 
 			// Evaluate the response
-			if (SUCCEEDED(res))
+			if (SUCCEEDED(hr))
 			{
-				// Always show the OTP field, if push was triggered, start polling in background
-				if (otpResponse.IsPushAvailable())
-				{
-					// When polling finishes, pushAuthenticationCallback is invoked with the finalization success value
-					_privacyIDEA.PollTransactionAsync(username, domain, upn, otpResponse.transactionId,
-						std::bind(&CCredential::PushAuthenticationCallback, this, std::placeholders::_1));
-				}
-
-				// Save the lastTransactionId, so that the lastResponse can be overwritten with an error response and we still have the transactionId
-				if (!otpResponse.transactionId.empty())
-				{
-					_config->lastTransactionId = otpResponse.transactionId;
-				}
-
-				if (!otpResponse.challenges.empty())
-				{
-					PIDebug("Challenges have been triggered");
-
-					// Only one image can be displayed so take the first challenge
-					// In the main use-case, token enrollment, there will only be a single challenge
-					// because the enrollment is only happening after the authentication is completed
-					auto& challenge = otpResponse.challenges.at(0);
-					if (!challenge.image.empty())
-					{
-						// Remove the leading "data:image/png;base64,"
-						auto base64image = challenge.image.substr(22, challenge.image.size());
-						if (!base64image.empty())
-						{
-							auto hBitmap = CreateBitmapFromBase64PNG(Convert::ToWString(base64image));
-							if (hBitmap != nullptr)
-							{
-								_pCredProvCredentialEvents->SetFieldBitmap(this, FID_LOGO, hBitmap);
-							}
-							else
-							{
-								PIDebug("Conversion to bitmap failed, image will not be displayed.");
-							}
-						}
-					}
-				}
-				else
-				{
-					_authenticationComplete = otpResponse.value;
-				}
-
-				_config->lastResponse = otpResponse;
+				EvaluateResponse(otpResponse);
 			}
 			else
 			{
 				// If an error occured during the first step (send pw/empty) ignore it
 				// so the next step, where offline could be done, will still be possible
-				if (_config->twoStepHideOTP && _config->scenario != SCENARIO::SECOND_STEP)
+				if (_config->mode < Mode::PRIVACYIDEA)
 				{
 					_lastStatus = S_OK;
 				}
 				else
 				{
-					_lastStatus = res;
+					_lastStatus = hr;
 				}
 			}
 		}
 	}
 
-	PIDebug("Authentication complete: " + Convert::ToString(_authenticationComplete));
+	PIDebug("Authentication complete: " + Convert::ToString(_privacyIDEASuccess));
 	PIDebug("Connect - END");
 	return S_OK;
 }
@@ -1567,7 +2230,7 @@ HBITMAP CCredential::CreateBitmapFromBase64PNG(const std::wstring& base64)
 	stream->Write(binaryData.data(), binaryDataSize, NULL);
 	Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(stream);
 	HBITMAP hBitmap;
-	auto status = bitmap->GetHBITMAP(Gdiplus::Color::White, &hBitmap);
+	const auto status = bitmap->GetHBITMAP(Gdiplus::Color::White, &hBitmap);
 	if (status != Gdiplus::Status::Ok)
 	{
 		PIError("Getting bitmap failed, gdiplus status: " + to_string(status));
@@ -1607,9 +2270,9 @@ HRESULT CCredential::ReportResult(
 		|| (ntsStatus == STATUS_ACCOUNT_RESTRICTION && ntsSubstatus != STATUS_PASSWORD_EXPIRED))
 	{
 		PIDebug("Complete reset!");
-		_authenticationComplete = false;
+		_privacyIDEASuccess = false;
 		_config->lastResponse = PIResponse();
-		ResetScenario(true);
+		ResetMode(true);
 		return S_OK;
 	}
 
@@ -1618,7 +2281,7 @@ HRESULT CCredential::ReportResult(
 		// Password change was successful, set this so SetSelected knows to autologon
 		_config->credential.passwordMustChange = false;
 		_config->credential.passwordChanged = true;
-		ResetScenario();
+		ResetMode();
 		return S_OK;
 	}
 
@@ -1647,6 +2310,5 @@ HRESULT CCredential::ReportResult(
 		_config->credential.passwordChanged = false;
 	}
 
-	//_util.ResetScenario(this, _pCredProvCredentialEvents);
 	return S_OK;
 }

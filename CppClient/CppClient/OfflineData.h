@@ -24,9 +24,27 @@
 class OfflineData
 {
 public:
-	int GetLowestKey();
+	int GetLowestKey()
+	{
+		int lowestKey = INT_MAX;
 
-	bool operator==(const OfflineData& other) const
+		for (auto& item : offlineOTPs)
+		{
+			try
+			{
+				const int key = stoi(item.first);
+				lowestKey = (lowestKey > key ? key : lowestKey);
+			}
+			catch (const std::invalid_argument& e)
+			{
+				PIDebug(e.what());
+			}
+		}
+
+		return lowestKey;
+	}
+
+	bool operator==(const OfflineData& other) const noexcept
 	{
 		return username == other.username && serial == other.serial && refilltoken == other.refilltoken;
 	}
@@ -44,6 +62,7 @@ public:
 	std::string pubKey;
 	std::string credId;
 	std::string rpId;
+	std::string userId;
 
-	bool isWebAuthn() const { return !pubKey.empty() && !credId.empty() && !rpId.empty(); }
+	bool isWebAuthn() const noexcept { return !pubKey.empty() && !credId.empty() && !rpId.empty(); }
 };
