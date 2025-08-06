@@ -93,7 +93,6 @@ void Configuration::Load()
 	showResetLink = rr.GetBool(L"enable_reset");
 	offlineTreshold = rr.GetInt(L"offline_threshold");
 	offlineShowInfo = rr.GetBool(L"offline_show_info");
-	creduiNoImage = rr.GetBool(L"credui_no_image");
 
 	piconfig.offlineFilePath = rr.GetWString(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetInt(L"offline_try_window");
@@ -225,12 +224,11 @@ static void PrintIfStringNotEmpty(wstring message, wstring value)
 
 void Configuration::LogConfig()
 {
-	// TODO update
-	PIDebug("-----------------------------");
+	PIDebug("---------------------------------");
 	PIDebug("CP Version: " + string(VER_FILE_VERSION_STR));
 	PIDebug(L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
 		+ L"." + to_wstring(winBuildNr));
-	PIDebug("------- Configuration -------");
+	PIDebug("--------- Configuration ---------");
 	PIDebug(L"Hostname: " + piconfig.hostname);
 	PrintIfStringNotEmpty(L"Path", piconfig.path);
 	PrintIfIntIsNotNull("Custom Port", piconfig.port);
@@ -240,23 +238,40 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("Send timeout", piconfig.sendTimeout);
 	PrintIfIntIsNotNull("Receive timeout", piconfig.receiveTimeout);
 
-	PrintIfStringNotEmpty(L"Locales Path", localesPath);
+	//PrintIfStringNotEmpty(L"Locales Path", localesPath);
 
-	PIDebug("Hide domain/full name: " + Convert::ToString(hideDomainName) + "/" + Convert::ToString(hideFullName));
-	PIDebug("SSL ignore unknown CA/invalid CN: " + Convert::ToString(piconfig.ignoreUnknownCA) + "/" + Convert::ToString(piconfig.ignoreInvalidCN));
+	PrintIfIntIsNotNull("Hide domain name", hideDomainName);
+	PrintIfIntIsNotNull("Hide full name", hideFullName);
+	PrintIfIntIsNotNull("SSL ignore unknown CA", piconfig.ignoreUnknownCA);
+	PrintIfIntIsNotNull("SSL ignore invalid CN", piconfig.ignoreInvalidCN);
+	PrintIfIntIsNotNull("Send empty password", twoStepSendEmptyPassword);
+	PrintIfIntIsNotNull("Send domain password", twoStepSendPassword);
+	PrintIfIntIsNotNull("Debug Log", debugLog);
+	PrintIfIntIsNotNull("Log sensitive data", piconfig.logPasswords);
+	PrintIfIntIsNotNull("No default", noDefault);
+	PrintIfIntIsNotNull("Show domain hint", showDomainHint);
+	PrintIfIntIsNotNull("Prefill username", prefillUsername);
+	PrintIfIntIsNotNull("Show reset link", showResetLink);
+	PrintIfIntIsNotNull("Offline show info", offlineShowInfo);
+	PrintIfIntIsNotNull("WebAuthn preferred", webAuthnPreferred);
+	PrintIfIntIsNotNull("WebAuthn offline no PIN", webAuthnOfflineNoPIN);
+	PrintIfIntIsNotNull("Disable passkey", disablePasskey);
+	PrintIfIntIsNotNull("OTP fail return to first step", otpFailReturnToFirstStep);
+	PrintIfIntIsNotNull("Username+Password Mode", usernamePassword);
 
-	PIDebug("send empty/domain password: " + Convert::ToString(twoStepSendEmptyPassword) + "/" + Convert::ToString(twoStepSendPassword));
-	PIDebug("Debug Log: " + Convert::ToString(debugLog));
-	PIDebug("Log sensitive data: " + Convert::ToString(piconfig.logPasswords));
-	PIDebug("No default: " + Convert::ToString(noDefault));
-	PIDebug("Show domain hint: " + Convert::ToString(showDomainHint));
 	PrintIfIntIsNotNull("Send UPN", piconfig.sendUPN);
 	PrintIfStringNotEmpty(L"Bitmap path", bitmapPath);
 	PrintIfStringNotEmpty(L"Offline file path", piconfig.offlineFilePath);
 	PrintIfIntIsNotNull("Offline try window", piconfig.offlineTryWindow);
 	PrintIfIntIsNotValue("Offline refill threshold", offlineTreshold, 10);
 	PrintIfStringNotEmpty(L"Default realm", piconfig.defaultRealm);
-	PIDebug("hideFirstStepResponseError: " + Convert::ToString(hideFirstStepResponseError));
+	PrintIfIntIsNotNull("Hide first step response error", hideFirstStepResponseError);
+	PIDebug("Language: " + language);
+	PrintIfIntIsNotNull("Is remote session", isRemoteSession);
+	PrintIfStringNotEmpty(L"Excluded account", excludedAccount);
+	PrintIfStringNotEmpty(L"Excluded group", excludedGroup);
+	PrintIfStringNotEmpty(L"Excluded group NetBIOS address", exludedGroupNetBIOSaddress);
+
 	if (piconfig.realmMap.size() > 0)
 	{
 		wstring tmp;
@@ -268,5 +283,5 @@ void Configuration::LogConfig()
 		PIDebug(tmp.substr(0, tmp.size() - 2).c_str());
 	}
 
-	PIDebug("-----------------------------");
+	PIDebug("---------------------------------");
 }

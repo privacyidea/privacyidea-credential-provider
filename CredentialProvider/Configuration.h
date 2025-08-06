@@ -35,7 +35,7 @@ public:
 	PIConfig piconfig;
 
 	template<typename... Modes>
-	bool ModeOneOf(Modes... modes) const noexcept
+	bool IsModeOneOf(Modes... modes) const noexcept
 	{
 		return ((mode == modes) || ...);
 	}
@@ -61,7 +61,7 @@ public:
 		}
 	}
 
-	bool isCredentialComplete() const noexcept
+	bool IsCredentialComplete() const noexcept
 	{
 		return !credential.username.empty() && !credential.password.empty() && !credential.domain.empty();
 	}
@@ -71,12 +71,12 @@ public:
 		return ModeToString(mode);
 	}
 
-	bool isPasswordInFirstStep() const noexcept
+	bool IsPasswordInFirstStep() const noexcept
 	{
 		return twoStepSendPassword || usernamePassword;
 	}
 
-	bool isFirstStep() const noexcept
+	bool IsFirstStep() const noexcept
 	{
 		return mode == Mode::USERNAME || mode == Mode::USERNAMEPASSWORD || mode == Mode::NO_CHANGE;
 	}
@@ -101,7 +101,7 @@ public:
 	std::wstring localesPath = L"";
 	std::string language = "";
 
-	bool usernamePassword = false; // TODO add to installer
+	bool usernamePassword = false;
 	bool twoStepSendPassword = false;
 	bool twoStepSendEmptyPassword = false;
 
@@ -139,7 +139,6 @@ public:
 
 	int offlineTreshold = 20;
 	bool offlineShowInfo = true;
-	bool creduiNoImage = false;
 
 	bool webAuthnPreferred = false;
 	bool webAuthnOfflineNoPIN = false;
