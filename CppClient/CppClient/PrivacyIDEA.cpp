@@ -440,4 +440,5 @@ bool PrivacyIDEA::CancelEnrollmentViaMultichallenge(std::string transactionId)
 	{
 		return pir.isAuthenticationSuccessful();
 	}
+	return false;
 }
