@@ -79,7 +79,7 @@ Specify a group whose members are excluded from 2FA. Can be a local, global or n
 
 **excluded_account_netbios_address**
 
-The NetBIOS address of the computer to query for global groups. You can get a list of candidates for example by running ``netdom query dc``, which will give you a list Domain Controllers.
+The NetBIOS address of the computer to query for global groups. You can get a list of candidates for example by running ``netdom query dc``, which will give you a list of Domain Controllers.
 
 ----------------------------------
 Login Behaviour and User Interface
