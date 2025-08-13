@@ -45,7 +45,7 @@ constexpr auto TEXT_RESET_LINK = 8;
 constexpr auto TEXT_AVAILABLE_OFFLINE_TOKEN = 9;
 constexpr auto TEXT_OTPS_REMAINING = 10;
 constexpr auto TEXT_GENERIC_ERROR = 11;
-constexpr auto TEXT_USE_WEBAUTHN = 12;
+constexpr auto TEXT_USE_ONLINE_FIDO = 12;
 constexpr auto TEXT_USE_OTP = 13;
 constexpr auto TEXT_FIDO_PIN_HINT = 14;
 constexpr auto TEXT_TOUCH_SEC_KEY = 15;
@@ -69,6 +69,8 @@ constexpr auto TEXT_PASSKEY_REGISTRATION = 32;
 constexpr auto TEXT_LOGIN_WITH_USERNAME = 33;
 constexpr auto TEXT_FIDO_CANCELLED = 34;
 constexpr auto TEXT_CANCEL_ENROLLMENT = 35;
+constexpr auto TEXT_USE_OFFLINE_FIDO = 36;
+constexpr auto TEXT_FIDO_ERR_NO_CREDENTIALS = 37;
 
 class Utilities
 {

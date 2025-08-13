@@ -275,11 +275,24 @@ Set to ``1`` to disable the option to log in with a passkey, that is offered in 
 
 **webauthn_preferred**
 
-Set to ``1`` to continue directly with webauthn mode after receiving a webauthn challenge. By default, the second step is OTP.
+Set to ``1`` to continue directly with webauthn mode after receiving a webauthn challenge. By default, the second step is OTP mode.
 
 **webauthn_offline_no_pin**
 
 Set this to ``1`` to not be prompted for the security key PIN when doing offline authentication with WebAuthn or Passkey. Online authentications remain controlled by privacyIDEA.
+
+**webauthn_offline_second_step**
+
+Set this to ``1`` to have the clickable link for a FIDO Authentication in the second step (privacyidea), in addition to the first step, which is enabled by default. In an offline scenario, the user can then enter username (+password), press enter and then will be offered to use the security, just like if an FIDO token had been triggered if the machine was online.
+If an online FIDO authentication has been triggered, this will obviously have no effect. If this setting has an effect, the link in the second step will use the same text as the online one would, so it looks the same to the user.
+
+**webauthn_offline_preferred**
+
+Set this to ``1`` to go directly to security key mode if **webauthn_offline_second_step** was used. Analog to **webauthn_preferred**, but dedicated for offline authentications.
+
+**webauthn_offline_hide_fist_step**
+
+Set this to ``1`` to hide the offline FIDO link in the first step.
 
 -------------
 Offline Token

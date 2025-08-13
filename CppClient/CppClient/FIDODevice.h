@@ -66,6 +66,7 @@ public:
 	bool HasUV() const noexcept { return _hasUV; }
 
 	static std::string GenerateRandomAsBase64URL(long size);
+
 	std::string ToString() const;
 
 	std::vector<std::string> GetRpIds(std::string pin) const;

@@ -34,5 +34,7 @@
   "32": "Passkey Registrierung",
   "33": "Mit Benutzername anmelden",
   "34": "FIDO-Authentifizierung abgebrochen. Versuchen Sie eine andere Methode.",
-  "35": "Nicht jetzt ausrollen"
+  "35": "Nicht jetzt ausrollen",
+  "36": "Offline FIDO",
+  "37": "Keine passenden Anmeldedaten auf dem Sicherheitsschlüssel."
 }

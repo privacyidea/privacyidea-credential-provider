@@ -25,6 +25,7 @@ Installing this version will remove unused registry entries automatically.
 * Added option to cancel enroll_via_multichallenge enrollments with privacyIDEA 3.12+
 * Added `register for safe mode` to installer
 * Updated installer to reflect most of the new configuration options and removed old options
+* Added options `webauthn_offline_second_step`, `webauthn_offline_preferred` and `webauthn_offline_hide_first_step` to customize the behavior of offline WebAuthn.
 
 ## Fixes
 * Fixed a bug where `prefill_username` would still overwrite another username that was entered after the field was prefilled, resulting in a logon attempt of the wrong user.

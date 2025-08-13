@@ -876,7 +876,8 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 		throw FIDOException(res, "Failed to set device timeout.");
 	}
 
-	// TODO fido_cred_exclude, fido_cred_empty_exclude_list
+	// TODO fido_cred_exclude, fido_cred_empty_exclude_list? Currently pointless as enroll_via_multichallenge only triggers if the user does
+	// not have a token of that kind yet.
 	// TODO credprot
 	// TODO extensions
 

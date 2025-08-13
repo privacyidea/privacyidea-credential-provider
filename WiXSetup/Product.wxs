@@ -210,6 +210,15 @@
 		<Property Id="LOCALES_PATH">
 			<RegistrySearch Id="SearchLocalesPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="locales_path" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="WEBAUTHN_OFFLINE_SECOND_STEP">
+			<RegistrySearch Id="SearchWebAuthnOfflineSecondStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_offline_second_step" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="WEBAUTHN_OFFLINE_PREFERRED">
+			<RegistrySearch Id="SearchWebAuthnOfflinePreferred" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_offline_preferred" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="WEBAUTHN_OFFLINE_HIDE_FIRST_STEP">
+			<RegistrySearch Id="SearchWebAuthnOfflineHideFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_offline_hide_first_step" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<!-- END PROPERTIES -->
 
 		<!-- Directory definitions -->
@@ -335,6 +344,9 @@
 						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
 						<RegistryValue Name="webauthn_offline_no_pin" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
 						<RegistryValue Name="disable_passkey" Type="string" Value="[DISABLE_PASSKEY]" />
+						<RegistryValue Name="webauthn_offline_second_step" Type="string" Value="[WEBAUTHN_OFFLINE_SECOND_STEP]" />
+						<RegistryValue Name="webauthn_offline_hide_first_step" Type="string" Value="[WEBAUTHN_OFFLINE_HIDE_FIRST_STEP]" />
+						<RegistryValue Name="webauthn_offline_preferred" Type="string" Value="[WEBAUTHN_OFFLINE_PREFERRED]" />
 						<!-- END FIDO -->
 
 						<!-- MISC -->

@@ -487,7 +487,7 @@ HRESULT Utilities::InitializeField(
 		}
 		case FID_FIDO_ONLINE:
 		{
-			hr = SHStrDupW(GetText(TEXT_USE_WEBAUTHN).c_str(), &rgFieldStrings[fieldIndex]);
+			hr = SHStrDupW(GetText(TEXT_USE_ONLINE_FIDO).c_str(), &rgFieldStrings[fieldIndex]);
 			break;
 		}
 		default:

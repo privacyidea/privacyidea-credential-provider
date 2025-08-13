@@ -171,7 +171,7 @@ private:
 	// An array holding the string value of each field. This is different from the name of 
 	// the field held in _rgCredProvFieldDescriptors.
 	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];
-	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
+	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents = nullptr;
 	DWORD _dwComboIndex;
 	PrivacyIDEA	_privacyIDEA;
 	std::shared_ptr<Configuration> _config;

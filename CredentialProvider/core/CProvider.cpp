@@ -47,6 +47,7 @@ CProvider::~CProvider()
 {
 	if (_credential != NULL)
 	{
+		PIDebug("CProvider destructor - releasing credential");
 		_credential->Release();
 	}
 	DllRelease();
@@ -85,12 +86,33 @@ HRESULT CProvider::SetUsageScenario(
 	}
 	HRESULT hr = E_INVALIDARG;
 
+	struct FlagInfo
+	{
+		DWORD flag;
+		const char* name;
+	};
+	const FlagInfo flagInfos[] = {
+		{ CREDUIWIN_GENERIC, "CREDUIWIN_GENERIC" },
+		{ CREDUIWIN_CHECKBOX, "CREDUIWIN_CHECKBOX" },
+		{ CREDUIWIN_AUTHPACKAGE_ONLY, "CREDUIWIN_AUTHPACKAGE_ONLY" },
+		{ CREDUIWIN_IN_CRED_ONLY, "CREDUIWIN_IN_CRED_ONLY" },
+		{ CREDUIWIN_ENUMERATE_ADMINS, "CREDUIWIN_ENUMERATE_ADMINS" },
+		{ CREDUIWIN_ENUMERATE_CURRENT_USER, "CREDUIWIN_ENUMERATE_CURRENT_USER" },
+		{ CREDUIWIN_PACK_32_WOW, "CREDUIWIN_PACK_32_WOW" }
+	};
+	for (const auto& info : flagInfos)
+	{
+		if (dwFlags & info.flag)
+		{
+			PIDebug(std::string("dwFlags contains: ") + info.name);
+		}
+	}
+
 	_config->provider.credPackFlags = dwFlags;
 	_config->provider.cpu = cpus;
 
 	// Decide which scenarios to support here. Returning E_NOTIMPL simply tells the caller
 	// that we're not designed for that scenario.
-
 	switch (cpus)
 	{
 		case CPUS_LOGON:
@@ -241,8 +263,7 @@ HRESULT CProvider::Advise(
 HRESULT CProvider::UnAdvise()
 {
 	PIDebug(std::string(__FUNCTION__) + " - AUTHENTICATION END");
-
-	_credential->StopPoll();
+	
 	if (_config->provider.pCredentialProviderEvents != nullptr)
 	{
 		_config->provider.pCredentialProviderEvents->Release();
@@ -250,7 +271,11 @@ HRESULT CProvider::UnAdvise()
 
 	_config->provider.pCredentialProviderEvents = nullptr;
 	_config->provider.upAdviseContext = NULL;
-	_credential->FullReset();
+	
+	if (_credential)
+	{
+		_credential->FullReset();
+	}
 	return S_OK;
 }
 

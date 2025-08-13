@@ -38,7 +38,7 @@ HRESULT CSample_CreateInstance(__in REFIID riid, __deref_out void** ppv)
 	Logger::Get().logDebug = rr.GetBool(L"debug_log");
 
 	PIDebug(std::string(__FUNCTION__) + " - FILTER START");
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	CCredentialProviderFilter* pProvider = new CCredentialProviderFilter();
 

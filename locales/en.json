@@ -34,5 +34,7 @@
   "32": "Passkey Registration",
   "33": "Log in with Username",
   "34": "FIDO Authentication cancelled. Try another way.",
-  "35": "Not now"
+  "35": "Not now",
+  "36": "Offline FIDO",
+  "37": "No matching credentials on the security key."
 }

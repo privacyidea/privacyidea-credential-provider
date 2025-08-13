@@ -75,16 +75,16 @@
             <Dialog Id="UIDlg" Width="370" Height="270">
                 <Control Id="V1BitmapPathLabel" Type="Text" X="20" Y="52" Width="200" Height="15" TabSkip="no" Text="&amp;Login Tile Image (*.bmp - 128px X 128px): (optional)" />
                 <Control Id="V1BitmapPathEdit" Type="Edit" X="20" Y="71" Width="200" Height="15" Property="V1_BITMAP_PATH" Text="{1024}" />
-                <Control Type="CheckBox" Id="UsernamePassword" Width="194" Height="17" X="20" Y="105" Property="USERNAME_PASSWORD" Text="Prompt for username and password in first step" />
+                <Control Type="CheckBox" Id="UsernamePassword" Width="194" Height="17" X="20" Y="105" CheckBoxValue="1" Property="USERNAME_PASSWORD" Text="Prompt for username and password in first step" />
                 <Control Id="TwoStepSendPassword" Type="CheckBox" X="20" Y="120" Width="220" Height="17" Property="TWO_STEP_SEND_PASSWORD" CheckBoxValue="1" Text="Send domain password to privacyIDEA.">
                     <Publish Property="TWO_STEP_SEND_EMPTY_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_PASSWORD</Publish>
                 </Control>
                 <Control Id="TwoStepSendEmptyPassword" Type="CheckBox" X="20" Y="135" Width="220" Height="17" Property="TWO_STEP_SEND_EMPTY_PASSWORD" CheckBoxValue="1" Text="Send empty password to privacyIDEA.">
                     <Publish Property="TWO_STEP_SEND_PASSWORD" Value="{}" Order="1">TWO_STEP_SEND_EMPTY_PASSWORD</Publish>
                 </Control>
-                <Control Type="CheckBox" Id="HideFirstStepResponseError" Width="208" Height="17" X="35" Y="150" Text="Hide response message of first step when failed" Property="HIDE_FIRST_STEP_RESPONSE_ERROR" />
-                <Control Type="CheckBox" Id="EnableReset" Width="190" Height="17" X="20" Y="165" Property="ENABLE_RESET" Text="Show an option to reset the authentication" />
-                <Control Type="CheckBox" Id="PrefillUsername" Width="182" Height="17" X="20" Y="180" Property="PREFILL_USERNAME" Text="Prefill username with last logged-in user" />
+                <Control Type="CheckBox" Id="HideFirstStepResponseError" Width="208" Height="17" X="35" Y="150" CheckBoxValue="1" Text="Hide response message of first step when failed" Property="HIDE_FIRST_STEP_RESPONSE_ERROR" />
+                <Control Type="CheckBox" Id="EnableReset" Width="190" Height="17" X="20" Y="165"  CheckBoxValue="1" Property="ENABLE_RESET" Text="Show an option to reset the authentication" />
+                <Control Type="CheckBox" Id="PrefillUsername" Width="182" Height="17" X="20" Y="180" CheckBoxValue="1" Property="PREFILL_USERNAME" Text="Prefill username with last logged-in user" />
                 <Control Id="DebugLog" Type="CheckBox" X="20" Y="195" Width="220" Height="17" Property="DEBUG_LOG" CheckBoxValue="1" Text="Create a detailed logfile. Use this for debugging." />
                 <Control Id="HideFullName" Type="CheckBox" X="20" Y="210" Width="183" Height="17" Property="HIDE_FULLNAME" CheckBoxValue="1" Text="Hide the username and domain when locked.">
                     <Publish Property="HIDE_DOMAINNAME" Value="{}" Order="1">HIDE_FULLNAME</Publish>
@@ -186,8 +186,8 @@
         <UI>
             <Dialog Id="FidoDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
                 <Control Type="CheckBox" Id="WebAuthnPreferred" Width="270" Height="20" X="20" Y="50" Property="WEBAUTHN_PREFERRED" CheckBoxValue="1" Text="Prefer to use FIDO if available. The Credential Provider will be in FIDO mode automatically if possible." />
-                <Control Type="CheckBox" Id="UserVerification" Width="255" Height="17" X="20" Y="80" Property="WEBAUTHN_OFFLINE_NO_PIN" Text="Do not request PIN when doing FIDO offline authentications." />
-                <Control Type="CheckBox" Id="DisablePasskey" Width="100" Height="17" X="20" Y="105" Property="DISABLE_PASSKEY" Text="Disable Passkey" />
+                <Control Type="CheckBox" Id="UserVerification" Width="255" Height="17" X="20" Y="80" Property="WEBAUTHN_OFFLINE_NO_PIN" CheckBoxValue="1" Text="Do not request PIN when doing FIDO offline authentications." />
+                <Control Type="CheckBox" Id="DisablePasskey" Width="100" Height="17" X="20" Y="105" Property="DISABLE_PASSKEY" CheckBoxValue="1" Text="Disable Passkey" />
                 <!-- Bottom Controls NEXT / BACK, Top Banner -->
                 <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
                     <Publish Event="NewDialog" Value="FilterDlg">1</Publish>

@@ -48,7 +48,7 @@ std::optional<FIDOSignRequest> PrivacyIDEA::GetOfflineFIDOSignRequest()
 			}
 			if (signRequest.challenge.empty())
 			{
-				signRequest.challenge = FIDODevice::GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE); // TODO
+				signRequest.challenge = FIDODevice::GenerateRandomAsBase64URL(OFFLINE_CHALLENGE_SIZE);
 			}
 		}
 		ret = signRequest;
@@ -441,4 +441,11 @@ bool PrivacyIDEA::CancelEnrollmentViaMultichallenge(std::string transactionId)
 		return pir.isAuthenticationSuccessful();
 	}
 	return false;
+}
+
+
+bool PrivacyIDEA::OfflineFIDODataExistsFor(std::wstring username)
+{
+	string szUsername = Convert::ToString(username);
+	return !offlineHandler.GetFIDODataFor(szUsername).empty();
 }

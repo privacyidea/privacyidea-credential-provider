@@ -148,6 +148,7 @@ public:
 	//
 	bool PollTransaction(std::string transactionId);
 
+	bool OfflineFIDODataExistsFor(std::wstring username);
 
 	bool CancelEnrollmentViaMultichallenge(std::string transactionId);
 

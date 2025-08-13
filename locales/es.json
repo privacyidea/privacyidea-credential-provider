@@ -34,5 +34,7 @@
   "32": "Registro de Passkey",
   "33": "Iniciar sesión con nombre de usuario",
   "34": "Autenticación FIDO cancelada. Pruebe otra forma.",
-  "35": "No ahora"
+  "35": "No ahora",
+  "36": "Offline FIDO",
+  "37": "¡No se encontraron credenciales coincidentes en la llave de seguridad!"
 }

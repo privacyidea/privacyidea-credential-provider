@@ -126,6 +126,9 @@ void Configuration::Load()
 	// FIDO / WebAuthn
 	webAuthnPreferred = rr.GetBool(L"webauthn_preferred");
 	webAuthnOfflineNoPIN = rr.GetBool(L"webauthn_offline_no_pin");
+	webAuthnOfflineSecondStep = rr.GetBool(L"webauthn_offline_second_step");
+	webAuthnOfflinePreferred = rr.GetBool(L"webauthn_offline_preferred");
+	webAuthnOfflineHideFirstStep = rr.GetBool(L"webauthn_offline_hide_first_step");
 	disablePasskey = rr.GetBool(L"disable_passkey");
 
 	// Validate that only one of hideDomainName OR hideFullName is active

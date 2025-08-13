@@ -127,7 +127,10 @@ public:
 
 	bool doAutoLogon = false;
 
+	// Save the last response and the last response with challenge, in case lastResponse is an error/fail to be able
+	// to show the challenges again
 	std::optional<PIResponse> lastResponse;
+	std::optional<PIResponse> lastResponseWithChallenge;
 	std::string lastTransactionId = "";
 
 	std::wstring excludedAccount = L"";
@@ -142,6 +145,12 @@ public:
 
 	bool webAuthnPreferred = false;
 	bool webAuthnOfflineNoPIN = false;
+	// If true, offer FIDO Authentication in the second step if there is offline data for the user.
+	// In that case, the link will take the text from the online variant, to look the same to the user,
+	// but will use the offline data
+	bool webAuthnOfflineSecondStep = false;
+	bool webAuthnOfflinePreferred = false;
+	bool webAuthnOfflineHideFirstStep = false;
 
 	bool otpFailReturnToFirstStep = false;
 

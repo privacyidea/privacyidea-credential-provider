@@ -22,6 +22,20 @@ In the installer, you can configure the most important options, but some less co
 ones are not in the installer. You can find all options and explanations here `ref:configuration`
 
 
+Automated Deployment
+--------------------
+
+If you want to deploy the privacyIDEA Credential Provider to a lot of targets with automation, here are some options on how
+to configure it automatically:
+1. You can set the properties of the installer via command line: ``c:\> msiexec /i yourmsi.msi THEPROPERTYNAME=valueofproperty``. 
+The properties are usually the registry entry name in all caps, so two_step_send_password would be TWO_STEP_SEND_PASSWORD.
+A list of properties can be found `Link here https://github.com/privacyidea/privacyidea-credential-provider/blob/196779ffe1df5e10cc7c79d9425a311b0172be97/WiXSetup/Product.wxs#L284`_
+
+2. Use the `Link Orca/SuperOrca Tool https://www.heise.de/download/product/superorca-56658`_ to prepare a MSI with the properties set:
+.. image:: /install_images/orca.png
+
+3. Automate the manual installation described in the next paragraph.
+
 Manual Installation
 -------------------
 
