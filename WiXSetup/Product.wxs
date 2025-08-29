@@ -219,6 +219,15 @@
 		<Property Id="WEBAUTHN_OFFLINE_HIDE_FIRST_STEP">
 			<RegistrySearch Id="SearchWebAuthnOfflineHideFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_offline_hide_first_step" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="AUTOLOGON_USERNAME">
+			<RegistrySearch Id="SearchAutologonUsername" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="autologon_username" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="AUTOLOGON_DOMAIN">
+			<RegistrySearch Id="SearchAutologonDomain" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="autologon_domain" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="AUTOLOGON_PASSWORD">
+			<RegistrySearch Id="SearchAutologonPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="autologon_password" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<!-- END PROPERTIES -->
 
 		<!-- Directory definitions -->
@@ -363,7 +372,12 @@
 						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
 						<RegistryValue Name="otp_fail_return_to_first_step" Type="string" Value="[OTP_FAIL_RETURN_TO_FIRST_STEP]" />
 						<!-- END MISC -->
-
+						
+						<!-- AUTOLOGON -->
+						<RegistryValue Name="autologon_username" Type="string" Value="[AUTOLOGON_USERNAME]" />
+						<RegistryValue Name="autologon_domain" Type="string" Value="[AUTOLOGON_DOMAIN]" />
+						<RegistryValue Name="autologon_password" Type="string" Value="[AUTOLOGON_PASSWORD]" />
+						
 						<!-- LOCALIZATION-->
 						<RegistryValue Name="localesPath" Type="string" Value="[$(var.PlatformProgramDataFolder)]$(var.Publisher)\$(var.ProductFolderName)\locales" />
 						<!-- END LOCALIZATION -->

@@ -354,3 +354,11 @@ If this setting is disabled, actual errors are still written to the log file.
 In some cases it can be useful to log sensitive data (e.g. passwords) to find the cause of a problem. 
 By default, sensitive data is not logged. Instead it is only logged if the password contains a value.
 To log sensitive data aswell, create a new registry key of type *REG_SZ* with the name *log_sensitive* and a value of *1*. This can be deleted after creating a log file.
+
+---------
+AutoLogon
+---------
+Windows has a AutoLogon Feature (https://learn.microsoft.com/en-us/troubleshoot/windows-server/user-profiles-and-logon/turn-on-automatic-logon) which is a security risk and should not be used.
+The privacyIDEA Credential Provider can do the same, but it is discouraged, so use it at your own peril!
+You need to create the following entries: `autologon_username`, `autologon_domain` and `autologon_password`, and set them to the corresponding values. Only if all three of these are set, the
+AutoLogon will be enabled.

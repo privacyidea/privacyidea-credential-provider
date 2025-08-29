@@ -76,6 +76,11 @@ public:
 		return twoStepSendPassword || usernamePassword;
 	}
 
+	bool IsAutoLogonConfigured() const noexcept
+	{
+		return !autoLogonUsername.empty() && !autoLogonPassword.empty() && !autoLogonDomain.empty();
+	}
+
 	bool IsFirstStep() const noexcept
 	{
 		return mode == Mode::USERNAME || mode == Mode::USERNAMEPASSWORD || mode == Mode::NO_CHANGE;
@@ -153,6 +158,11 @@ public:
 	bool webAuthnOfflineHideFirstStep = false;
 
 	bool otpFailReturnToFirstStep = false;
+
+	// Autologon like https://learn.microsoft.com/en-us/troubleshoot/windows-server/user-profiles-and-logon/turn-on-automatic-logon
+	std::wstring autoLogonUsername = L"";
+	std::wstring autoLogonDomain = L"";
+	std::wstring autoLogonPassword = L"";
 
 	// Track the current state
 	Mode mode = Mode::NO_CHANGE;

@@ -311,7 +311,7 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 	}
 
 	// Version
-	if (jRoot.contains("versionnumber")) 
+	if (jRoot.contains("versionnumber") && !jRoot["versionnumber"].is_null())
 	{
 		ParseVersionString(jRoot["versionnumber"].get<std::string>(), response);
 		PIDebug("Parsed version: " + 

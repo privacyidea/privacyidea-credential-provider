@@ -139,33 +139,42 @@ void CALLBACK WinHttpStatusCallback(
 	{
 		case WINHTTP_CALLBACK_STATUS_SECURE_FAILURE:
 			// Log more detailed information for this error case
-			// https://docs.microsoft.com/en-us/windows/win32/api/winhttp/nc-winhttp-winhttp_status_callback#winhttp_callback_status_shutdown_complete
-			if (lpvStatusInformation && dwStatusInformationLength == sizeof(ULONG))
+			if (lpvStatusInformation && dwStatusInformationLength == sizeof(DWORD))
 			{
+				DWORD statusFlags = *(DWORD*)lpvStatusInformation;
 				string strDetail;
-				switch (lStatus)
+
+				struct FlagString
 				{
-					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED";
-						break;
-					case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT";
-						break;
-					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED";
-						break;
-					case WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA";
-						break;
-					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID";
-						break;
-					case WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID";
-						break;
-					case WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR:
-						strDetail = "WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR";
-						break;
+					DWORD flag;
+					const char* name;
+				};
+
+				const FlagString flagStrings[] = {
+					{ WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED, "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED" },
+					{ WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT, "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT" },
+					{ WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED, "WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED" },
+					{ WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA, "WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA" },
+					{ WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID, "WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID" },
+					{ WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID, "WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID" },
+					{ WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR, "WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR" }
+				};
+
+				for (const auto& flagStr : flagStrings)
+				{
+					if (statusFlags & flagStr.flag)
+					{
+						if (!strDetail.empty())
+						{
+							strDetail += " | ";
+						}
+						strDetail += flagStr.name;
+					}
+				}
+
+				if (strDetail.empty())
+				{
+					strDetail = "Unknown SECURE_FAILURE flag(s): " + std::to_string(statusFlags);
 				}
 
 				PIError("SECURE_FAILURE with status info: " + strDetail);

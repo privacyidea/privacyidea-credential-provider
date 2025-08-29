@@ -233,6 +233,15 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 	*pbAutoLogon = false;
 	HRESULT hr = S_OK;
 
+	if (_config->IsAutoLogonConfigured() && _config->provider.cpu == CPUS_LOGON)
+	{
+		_config->credential.username = _config->autoLogonUsername;
+		_config->credential.domain = _config->autoLogonDomain;
+		_config->credential.password = _config->autoLogonPassword;
+		_config->doAutoLogon = true;
+		PIDebug("AutoLogon is configured");
+	}
+
 	if (_config->doAutoLogon)
 	{
 		// If auto login is enabled, something has happened before, so do not change the mode!

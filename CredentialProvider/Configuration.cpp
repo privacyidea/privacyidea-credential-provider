@@ -144,6 +144,11 @@ void Configuration::Load()
 
 	isRemoteSession = Shared::IsCurrentSessionRemote();
 
+	// Autologon
+	autoLogonUsername = rr.GetWString(L"autologon_username");
+	autoLogonDomain = rr.GetWString(L"autologon_domain");
+	autoLogonPassword = rr.GetWString(L"autologon_password");
+
 	// Get the Windows Version, deprecated 
 	OSVERSIONINFOEX info;
 	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
