@@ -190,7 +190,7 @@
 			<RegistrySearch Id="SearchDefaultRealm" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="default_realm" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="HIDE_FIRST_STEP_RESPONSE_ERROR">
-			<RegistrySearch Id="SearchHideFirstStepResponseError" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_fist_step_response_error" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchHideFirstStepResponseError" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_first_step_response_error" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="FALLBACK_HOSTNAME">
 			<RegistrySearch Id="SearchFallbackHostname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="fallback_hostname" Win64="$(var.Win64)" Type="raw" />
@@ -334,7 +334,7 @@
 
 						<RegistryValue Name="hide_fullname" Type="string" Value="[HIDE_FULLNAME]" />
 						<RegistryValue Name="hide_domainname" Type="string" Value="[HIDE_DOMAINNAME]" />
-						<RegistryValue Name="hide_fist_step_response_error" Type="string" Value="[HIDE_FIRST_STEP_RESPONSE_ERROR]" />
+						<RegistryValue Name="hide_first_step_response_error" Type="string" Value="[HIDE_FIRST_STEP_RESPONSE_ERROR]" />
 						<RegistryValue Name="show_domain_hint" Type="string" Value="[SHOW_DOMAIN_HINT]" />
 						<RegistryValue Name="prefill_username" Type="string" Value="[PREFILL_USERNAME]" />
 						<RegistryValue Name="enable_reset" Type="string" Value="[ENABLE_RESET]" />
