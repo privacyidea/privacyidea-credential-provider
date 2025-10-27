@@ -143,7 +143,7 @@ std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 	dwRet = RegQueryValueEx(hKey, name.c_str(), NULL, &dwType, (LPBYTE)&szValue, &dwValue);
 	if (dwRet != ERROR_SUCCESS)
 	{
-		PIError("Failed to read regisry value " + Convert::ToString(name) + ", error: " + Convert::LongToHexString(dwRet));
+		PIError("Failed to read registry value " + Convert::ToString(name) + ", error: " + Convert::LongToHexString(dwRet));
 		return L"";
 	}
 
