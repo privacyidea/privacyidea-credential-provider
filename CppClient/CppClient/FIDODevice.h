@@ -38,6 +38,7 @@ class FIDODevice
 {
 public:
 	static std::vector<FIDODevice> GetDevices(bool filterWindowsHello = true, bool log = true);
+	static std::optional<FIDODevice> GetWinHello();
 
 	FIDODevice(const fido_dev_info_t* devinfo, bool log = true);
 	FIDODevice() = default;

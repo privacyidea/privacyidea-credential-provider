@@ -156,6 +156,9 @@ private:
 
 	HRESULT SetDefaultBitmap();
 
+	bool IsRpIdAllowed(const std::string& rpId);
+	std::optional<FIDODevice> GetPreferredFIDODevice();
+
 	// Waits until a FIDO2 device is found or the search is cancelled. If the search is cancelled, an empty optional is returned
 	// and _fidoDeviceSearchCancelled is set to true.
 	// Checks every 200ms if a device is found. Default timeout is 5 minutes.

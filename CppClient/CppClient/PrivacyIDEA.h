@@ -47,7 +47,12 @@ public:
 	PrivacyIDEA(const PIConfig& config) :
 		_config(config),
 		_endpoint(config),
-		offlineHandler(config.offlineFilePath, config.offlineTryWindow)
+		offlineHandler(
+			config.offlineFilePath,
+			config.offlineTryWindow,
+			config.offlineExpirationDays,
+			config.offlineDeleteAfterDays
+		)
 	{};
 
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA) = delete;
@@ -180,5 +185,6 @@ private:
 
 	std::atomic<bool> _runPoll = false;
 	JsonParser _parser;
+	std::thread _workerThread;
 };
 

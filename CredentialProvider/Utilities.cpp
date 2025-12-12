@@ -181,6 +181,12 @@ HRESULT Utilities::KerberosChangePassword(
 						}
 					}
 				}
+				SecureZeroMemory(lpwszPasswordOld, (passwordOld.size() + 1) * sizeof(wchar_t));
+				SecureZeroMemory(lpwszPasswordNew, (passwordNew.size() + 1) * sizeof(wchar_t));
+
+				delete[] lpwszUsername;
+				delete[] lpwszPasswordOld;
+				delete[] lpwszPasswordNew;
 			}
 		}
 	}

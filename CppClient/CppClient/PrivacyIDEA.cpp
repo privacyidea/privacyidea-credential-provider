@@ -400,6 +400,9 @@ bool PrivacyIDEA::StopPoll()
 {
 	PIDebug("Stopping poll thread...");
 	_runPoll.store(false);
+	if (_workerThread.joinable()) {
+		_workerThread.join();
+	}
 	return true;
 }
 
@@ -411,8 +414,7 @@ void PrivacyIDEA::PollTransactionAsync(
 	std::function<void(const PIResponse&)> callback)
 {
 	_runPoll.store(true);
-	std::thread t(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);
-	t.detach();
+	_workerThread = std::thread(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);
 }
 
 bool PrivacyIDEA::PollTransaction(std::string transactionId)

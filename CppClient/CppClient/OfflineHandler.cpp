@@ -29,6 +29,12 @@
 
 using namespace std;
 
+bool IsExpired(const OfflineData& item)
+{
+	// expiration 0 means never expires (legacy or configured that way)
+	return item.expiration != 0 && time(nullptr) > item.expiration;
+}
+
 std::wstring getErrorText(DWORD err)
 {
 	LPWSTR msgBuf = nullptr;
@@ -44,19 +50,31 @@ std::wstring getErrorText(DWORD err)
 	return (msgBuf == nullptr) ? wstring() : wstring(msgBuf);
 }
 
-OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
+OfflineHandler::OfflineHandler(const std::wstring& filePath, int tryWindow, int expirationDays, int deleteDays)
 {
-	// Load the offline file on startup
 	_filePath = filePath.empty() ? _filePath : filePath;
-	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
+	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow; // Keep default if 0 is passed, or just use tryWindow
+	_expirationDays = expirationDays;
+
+	// Load the offline file
+	// Since _expirationDays is now set, LoadFromFile -> AddOfflineData will 
+	// correctly calculate expiration for legacy items (value 0) during this call.
 	const HRESULT hr = LoadFromFile();
+
 	if (hr == S_OK)
 	{
 		PIDebug("Offline data loaded successfully!");
+
+		// Run Garbage Collection immediately if configured
+		if (deleteDays > 0)
+		{
+			Prune(deleteDays);
+		}
 	}
 	else if (hr == ERROR_FILE_NOT_FOUND)
 	{
-		// File not found can be ignored as it expected when not using offline OTPs
+		// File not found can be ignored as it is expected when not using offline OTPs yet
+		PIDebug("No offline file found at " + Convert::ToString(_filePath));
 	}
 	else
 	{
@@ -148,6 +166,15 @@ HRESULT OfflineHandler::GetRefillToken(const std::string& username, const std::s
 
 HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 {
+	OfflineData dataToAdd = data;
+
+	// Set initial expiration for new data
+	// (Unless it was loaded from file, in which case expiration is already set. 
+	// We can check if data.expiration is 0, but for fresh enrollments it is 0).
+	if (dataToAdd.expiration == 0)
+	{
+		dataToAdd.expiration = CalculateNewExpiration();
+	}
 	// Check if the user already has data first, then add
 	bool done = false;
 	for (auto& existing : _dataSets)
@@ -156,7 +183,7 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 		{
 			PIDebug("Offline: Updating exsisting user data for " + data.username + " and token " + data.serial);
 			existing.refilltoken = data.refilltoken;
-
+			existing.expiration = dataToAdd.expiration;
 			for (const auto& newOTP : data.offlineOTPs)
 			{
 				existing.offlineOTPs.try_emplace(newOTP.first, newOTP.second);
@@ -200,30 +227,87 @@ std::vector<std::pair<std::string, size_t>> OfflineHandler::GetTokenInfo(const s
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetFIDODataFor(const std::string& username)
+std::vector<OfflineData> OfflineHandler::GetFIDODataFor(const std::string& username, bool includeExpired)
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
 	{
+		// Check username & type
 		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username) && item.isWebAuthn())
 		{
+			// NEW: Filter logic
+			if (!includeExpired && IsExpired(item))
+			{
+				PIDebug("Skipping expired offline token: " + item.serial);
+				continue;
+			}
 			ret.push_back(item);
 		}
 	}
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetAllFIDOData()
+std::vector<OfflineData> OfflineHandler::GetAllFIDOData(bool includeExpired)
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
 	{
 		if (item.isWebAuthn())
 		{
+			if (!includeExpired && IsExpired(item))
+			{
+				// Debug log optional here to avoid spam if many are expired
+				continue;
+			}
 			ret.push_back(item);
 		}
 	}
 	return ret;
+}
+
+void OfflineHandler::Prune(int days)
+{
+	// 0 = Feature disabled
+	if (days <= 0) return;
+
+	PIDebug("Running offline garbage collection. Purge threshold: " + to_string(days) + " days.");
+
+	time_t now = time(nullptr);
+	size_t initialSize = _dataSets.size();
+
+	// Iterate and remove: use the erase-remove idiom for efficient vector cleanup
+	_dataSets.erase(
+		std::remove_if(_dataSets.begin(), _dataSets.end(),
+			[days, now](const OfflineData& item) {
+				// Ignore legacy items (expiration == 0)
+				if (item.expiration == 0) return false;
+
+				// Calculate dead time
+				// expiration is the timestamp WHEN it expired.
+				// We want to delete if it has BEEN expired for > days.
+
+				// Example: Expired on Jan 1st. Today is Jan 5th. Diff = 4 days.
+				// If Prune(90), we keep it. 
+				// If Prune(3), we delete it.
+				double secondsPastExpiration = difftime(now, item.expiration);
+				double secondsAllowed = (double)days * 24 * 60 * 60;
+
+				if (secondsPastExpiration > secondsAllowed)
+				{
+					PIDebug("GC: Pruning stale token " + item.serial + " (Expired " + to_string((int)(secondsPastExpiration / 86400)) + " days ago)");
+					return true;
+				}
+				return false;
+			}),
+		_dataSets.end()
+	);
+
+	// Only save if we actually deleted something to avoid disk IO spam
+	if (_dataSets.size() < initialSize)
+	{
+		PIDebug("GC: Cleaned up " + to_string(initialSize - _dataSets.size()) + " stale tokens.");
+		SaveToFile();
+	}
 }
 
 bool OfflineHandler::RemoveOfflineData(const std::string& username, const std::string& serial)
@@ -254,6 +338,7 @@ bool OfflineHandler::UpdateRefilltoken(std::string serial, std::string refilltok
 		if (item.serial == serial)
 		{
 			item.refilltoken = refilltoken;
+			item.expiration = CalculateNewExpiration();
 			return true;
 		}
 	}

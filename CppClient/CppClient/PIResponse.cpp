@@ -18,6 +18,7 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "PIResponse.h"
+#include "Logger.h"
 
 bool PIResponse::IsPushAvailable()
 {
@@ -59,29 +60,84 @@ std::string PIResponse::GetPushMessage()
 std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 {
 	std::optional<FIDOSignRequest> ret = std::nullopt;
-	std::vector<AllowCredential> allowCredentials;
-	FIDOSignRequest signRequest;
+
+	// 1. PRE-SCAN: Detect types present
+	bool hasWebAuthn = false;
+	bool hasPasskey = false;
+
+	for (const auto& challenge : challenges)
+	{
+		if (challenge.type == "webauthn") hasWebAuthn = true;
+		else if (challenge.type == "passkey") hasPasskey = true;
+	}
+
+	// 2. DECIDE: Pick a winner (Modified: Passkey wins)
+	std::string targetType = "";
+
+	if (hasPasskey)
+	{
+		targetType = "passkey";
+		if (hasWebAuthn)
+		{
+			PIDebug("WARNING: Received mixed 'webauthn' and 'passkey' challenges.");
+			PIDebug("Prioritizing 'passkey' over 'webauthn' as per configuration.");
+		}
+	}
+	else if (hasWebAuthn)
+	{
+		targetType = "webauthn";
+	}
+	else
+	{
+		return std::nullopt; // No FIDO challenges found
+	}
+
+	// ---------------------------------------------------------
+	// 3. MERGE (Only process the target type)
+
+	std::vector<AllowCredential> accumulatedCredentials;
+	FIDOSignRequest baseRequest;
+	bool baseRequestInitialized = false;
+
 	for (auto& challenge : challenges)
 	{
-		if (challenge.type == "webauthn" || challenge.type == "passkey")
+		// FILTER: Skip challenges that don't match our chosen winner
+		if (challenge.type != targetType) continue;
+
+		if (!challenge.fidoSignRequest.has_value()) continue;
+
+		const auto& currentReq = challenge.fidoSignRequest.value();
+
+		// Safe Accumulation of credentials (if any exist)
+		if (!currentReq.allowCredentials.empty())
 		{
-			if (challenge.type == "webauthn" && challenge.fidoSignRequest
-				&& !challenge.fidoSignRequest.value().allowCredentials.empty())
-			{
-				allowCredentials.push_back(challenge.fidoSignRequest.value().allowCredentials.at(0));
-			}
-			// Set the RP ID only once
-			if (signRequest.rpId.empty())
-			{
-				signRequest = challenge.fidoSignRequest.value();
-			}
+			accumulatedCredentials.insert(
+				accumulatedCredentials.end(),
+				currentReq.allowCredentials.begin(),
+				currentReq.allowCredentials.end()
+			);
+		}
+
+		// Initialize Base Request from the first valid challenge of the correct type.
+		// We ensure we grab the challenge string/RPID from the correct type.
+		if (!baseRequestInitialized && !currentReq.rpId.empty())
+		{
+			baseRequest = currentReq;
+			// Force the type to match our decision explicitly
+			baseRequest.type = targetType;
+			baseRequestInitialized = true;
 		}
 	}
 
-	if (!signRequest.challenge.empty() && !signRequest.rpId.empty())
+	// 4. FINAL ASSEMBLY
+	// Only return if we successfully initialized the base request (have challenge + rpId)
+	if (baseRequestInitialized && !baseRequest.challenge.empty())
 	{
-		signRequest.allowCredentials = allowCredentials;
-		ret = signRequest;
+		// Overwrite credentials with the accumulated list
+		// Note: Passkeys typically have empty lists here (unless triggered as token), 
+		// but 'insert' handles empty/non-empty correctly regardless.
+		baseRequest.allowCredentials = accumulatedCredentials;
+		ret = baseRequest;
 	}
 
 	return ret;

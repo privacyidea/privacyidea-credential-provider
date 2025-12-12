@@ -23,6 +23,14 @@
 #include "Mode.h"
 #include <credentialprovider.h>
 
+struct WindowsInfo {
+	DWORD major;
+	DWORD minor;
+	DWORD build;
+	bool isServer;
+	std::string versionString;
+};
+
 class Configuration
 {
 public:
@@ -44,20 +52,20 @@ public:
 	{
 		switch (m)
 		{
-			case Mode::NO_CHANGE:						return "NO_CHANGE";
-			case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
-			case Mode::USERNAME:						return "USERNAME";
-			case Mode::PASSWORD:						return "PASSWORD";
-			case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
-			case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
-			case Mode::SEC_KEY_ANY:						return "SEC_KEY_ANY";
-			case Mode::PASSKEY:							return "PASSKEY";
-			case Mode::SEC_KEY_REG:						return "SEC_KEY_REG";
-			case Mode::SEC_KEY_REG_PIN:					return "SEC_KEY_REG_PIN";
-			case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
-			case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
-			case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
-			default:									return "UNKNOWN_MODE";
+		case Mode::NO_CHANGE:						return "NO_CHANGE";
+		case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
+		case Mode::USERNAME:						return "USERNAME";
+		case Mode::PASSWORD:						return "PASSWORD";
+		case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
+		case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
+		case Mode::SEC_KEY_ANY:						return "SEC_KEY_ANY";
+		case Mode::PASSKEY:							return "PASSKEY";
+		case Mode::SEC_KEY_REG:						return "SEC_KEY_REG";
+		case Mode::SEC_KEY_REG_PIN:					return "SEC_KEY_REG_PIN";
+		case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
+		case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
+		case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
+		default:									return "UNKNOWN_MODE";
 		}
 	}
 
@@ -122,9 +130,7 @@ public:
 	bool hideFirstStepResponseError = false;
 	bool noDefault = false;
 
-	int winVerMajor = 0;
-	int winVerMinor = 0;
-	int winBuildNr = 0;
+	WindowsInfo windowsVersion;
 
 	bool pushAuthenticationSuccess = false;
 
@@ -145,17 +151,22 @@ public:
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
+	// Offline
 	int offlineTreshold = 20;
 	bool offlineShowInfo = true;
+	bool checkAllOfflineCredentials = false;
 
+	// FIDO / WebAuthn
 	bool webAuthnPreferred = false;
 	bool webAuthnOfflineNoPIN = false;
+	std::vector<std::wstring> trustedRPIDs;
 	// If true, offer FIDO Authentication in the second step if there is offline data for the user.
 	// In that case, the link will take the text from the online variant, to look the same to the user,
 	// but will use the offline data
 	bool webAuthnOfflineSecondStep = false;
 	bool webAuthnOfflinePreferred = false;
 	bool webAuthnOfflineHideFirstStep = false;
+	bool useWindowsHelloForCredUI = true;
 
 	bool otpFailReturnToFirstStep = false;
 

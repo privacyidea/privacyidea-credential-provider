@@ -71,6 +71,7 @@ constexpr auto TEXT_FIDO_CANCELLED = 34;
 constexpr auto TEXT_CANCEL_ENROLLMENT = 35;
 constexpr auto TEXT_USE_OFFLINE_FIDO = 36;
 constexpr auto TEXT_FIDO_ERR_NO_CREDENTIALS = 37;
+constexpr auto TEXT_GUIDE_USE_WINDOWS_HELLO = 38;
 
 class Utilities
 {

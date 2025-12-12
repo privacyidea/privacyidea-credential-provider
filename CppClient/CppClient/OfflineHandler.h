@@ -34,7 +34,7 @@
 class OfflineHandler
 {
 public:
-	OfflineHandler(const std::wstring& filePath, int tryWindow = 10);
+	OfflineHandler(const std::wstring& filePath, int tryWindow, int expirationDays, int deleteDays);
 
 	~OfflineHandler();
 
@@ -61,9 +61,8 @@ public:
 
 	std::vector<std::pair<std::string, size_t>> GetTokenInfo(const std::string& username);
 
-	std::vector<OfflineData> GetFIDODataFor(const std::string& username);
-	
-	std::vector<OfflineData> GetAllFIDOData();
+	std::vector<OfflineData> GetFIDODataFor(const std::string& username, bool includeExpired = false);
+	std::vector<OfflineData> GetAllFIDOData(bool includeExpired = false);
 
 	bool RemoveOfflineData(const std::string& username, const std::string& serial);
 
@@ -71,7 +70,24 @@ public:
 
 	std::optional<std::string> GetUsernameForSerial(const std::string& serial);
 
+	time_t CalculateNewExpiration() const noexcept
+	{
+		PIDebug("CalculateNewExpiration: _expirationDays is " + std::to_string(_expirationDays));
+
+		if (_expirationDays <= 0) return 0;
+
+		time_t now = time(nullptr);
+		time_t exp = now + (_expirationDays * 24 * 60 * 60);
+
+		// Debug output of the calculated time
+		PIDebug("CalculateNewExpiration: Calculated " + std::to_string(exp) + " (Now + " + std::to_string(_expirationDays) + " days)");
+		return exp;
+	}
+
+	void Prune(int days);
+
 private:
+	int _expirationDays = 0;
 	std::vector<OfflineData> _dataSets = std::vector<OfflineData>();
 
 	std::wstring _filePath = L"C:\\offlineFile.json";

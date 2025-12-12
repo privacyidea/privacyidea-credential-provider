@@ -28,9 +28,9 @@
 #define STRINGIZE(s) STRINGIZE2(s)
 
 #define VERSION_MAJOR               3
-#define VERSION_MINOR               7
+#define VERSION_MINOR               8
 #define VERSION_BUILD               0
-#define VERSION_REVISION            3
+#define VERSION_REVISION            0
  
 #define VER_FILE_DESCRIPTION_STR    "privacyIDEA Credential Provider for Windows logon"
 #define VER_FILE_VERSION            VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_REVISION

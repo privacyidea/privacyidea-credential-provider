@@ -115,7 +115,7 @@ bool RegistryReader::GetAll(const std::wstring& pathToKey, std::map<std::wstring
 			}
 			else
 			{
-				PIError("Failed to read registry value at index " + to_string(i) + " in key " + Convert::ToString(pathToKey) +
+				PIDebug("Failed to read registry value at index " + to_string(i) + " in key " + Convert::ToString(pathToKey) +
 					", error: " + Convert::LongToHexString(retCode));
 			}
 		}
@@ -143,7 +143,7 @@ std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 	dwRet = RegQueryValueEx(hKey, name.c_str(), NULL, &dwType, (LPBYTE)&szValue, &dwValue);
 	if (dwRet != ERROR_SUCCESS)
 	{
-		PIError("Failed to read registry value " + Convert::ToString(name) + ", error: " + Convert::LongToHexString(dwRet));
+		PIDebug("Failed to read registry value " + Convert::ToString(name) + ", error: " + Convert::LongToHexString(dwRet));
 		return L"";
 	}
 
@@ -165,7 +165,51 @@ bool RegistryReader::GetBool(std::wstring name) noexcept
 
 int RegistryReader::GetInt(std::wstring name) noexcept
 {
-	return _wtoi(GetWString(name).c_str()); // Invalid parameter returns 0
+	HKEY hKey = nullptr;
+	DWORD dwRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_QUERY_VALUE, &hKey);
+	if (dwRet != ERROR_SUCCESS)
+	{
+		PIDebug("Failed to open registry key " + Convert::ToString(path) + ", error: " + Convert::LongToHexString(dwRet));
+		return 0;
+	}
+
+	DWORD dwType = 0;
+
+	// 1. Query for TYPE only (pass nullptr for data). 
+	// This succeeds regardless of data size.
+	dwRet = RegQueryValueEx(hKey, name.c_str(), nullptr, &dwType, nullptr, nullptr);
+
+	if (dwRet == ERROR_SUCCESS)
+	{
+		if (dwType == REG_DWORD)
+		{
+			DWORD dwData = 0;
+			DWORD dwSize = sizeof(dwData);
+			// 2a. Read DWORD
+			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&dwData, &dwSize) == ERROR_SUCCESS)
+			{
+				RegCloseKey(hKey);
+				return static_cast<int>(dwData);
+			}
+		}
+		else if (dwType == REG_SZ)
+		{
+			// 2b. It's a string. Close the key and use the existing helper 
+			// which handles variable length strings correctly.
+			RegCloseKey(hKey);
+			return _wtoi(GetWString(name).c_str());
+		}
+		else
+		{
+			PIDebug("Registry value " + Convert::ToString(name) + " exists but is not REG_DWORD or REG_SZ. Type: " + Convert::LongToHexString(dwType));
+		}
+	}
+
+	if (hKey)
+	{
+		RegCloseKey(hKey);
+	}
+	return 0;
 }
 
 std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueName) noexcept
@@ -190,7 +234,7 @@ std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueNa
 	result = RegQueryValueEx(hKey, valueName.c_str(), 0, &dwType, (LPBYTE)buffer.data(), &dwSize);
 	if (result != ERROR_SUCCESS)
 	{
-		PIError("Failed to read registry value " + Convert::ToString(valueName) + ", error: " + Convert::LongToHexString(result));
+		PIDebug("Failed to read registry value " + Convert::ToString(valueName) + ", error: " + Convert::LongToHexString(result));
 		return std::vector<std::wstring>();
 	}
 

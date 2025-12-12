@@ -228,6 +228,15 @@
 		<Property Id="AUTOLOGON_PASSWORD">
 			<RegistrySearch Id="SearchAutologonPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="autologon_password" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="TRUSTED_RPIDS">
+			<RegistrySearch Id="SearchTrustedRpids" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="trusted_rpids" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="OFFLINE_EXPIRATION_DAYS" Value="0" Secure="yes">
+			<RegistrySearch Id="SearchOfflineExpirationDays" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_expiration_days" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="OFFLINE_DELETE_AFTER_DAYS" Value="0" Secure="yes">
+			<RegistrySearch Id="SearchOfflineDeleteAfterDays" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_delete_after_days" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<!-- END PROPERTIES -->
 
 		<!-- Directory definitions -->
@@ -356,8 +365,18 @@
 						<RegistryValue Name="webauthn_offline_second_step" Type="string" Value="[WEBAUTHN_OFFLINE_SECOND_STEP]" />
 						<RegistryValue Name="webauthn_offline_hide_first_step" Type="string" Value="[WEBAUTHN_OFFLINE_HIDE_FIRST_STEP]" />
 						<RegistryValue Name="webauthn_offline_preferred" Type="string" Value="[WEBAUTHN_OFFLINE_PREFERRED]" />
+						<RegistryValue Name="trusted_rpids" Type="multiString" Value="[TRUSTED_RPIDS]" />
 						<!-- END FIDO -->
-
+						
+						<!-- OFFLINE -->
+						<RegistryValue Name="offline_file" Type="string" Value="[OFFLINE_FILE_PATH]" />
+						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
+						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
+						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
+						<RegistryValue Name="offline_expiration_days" Type="integer" Value="[OFFLINE_EXPIRATION_DAYS]" />
+						<RegistryValue Name="offline_delete_after_days" Type="integer" Value="[OFFLINE_DELETE_AFTER_DAYS]" />
+						<!-- END OFFLINE -->
+						
 						<!-- MISC -->
 						<RegistryValue Name="header_accept_language" Type="string" Value="system" />
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
@@ -366,10 +385,6 @@
 						<RegistryValue Name="no_default" Type="string" Value="[NO_DEFAULT]" />
 						<RegistryValue Name="log_sensitive" Type="string" Value="" />
 						<RegistryValue Name="default_realm" Type="string" Value="[DEFAULT_REALM]" />
-						<RegistryValue Name="offline_file" Type="string" Value="[OFFLINE_FILE_PATH]" />
-						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
-						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
-						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
 						<RegistryValue Name="otp_fail_return_to_first_step" Type="string" Value="[OTP_FAIL_RETURN_TO_FIRST_STEP]" />
 						<!-- END MISC -->
 						
@@ -469,10 +484,12 @@
 			<DialogRef Id="FilterDlg" />
 			<DialogRef Id="FidoDlg" />
 			<DialogRef Id="OfflineDlg" />
-			<!-- Skip the component dialog which would be between License and ServerConfig-->
+			<DialogRef Id="OfflineCleanupDlg" />
 			<Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerDlg">1</Publish>
-			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OfflineDlg" Order="1">NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )</Publish>
-			<!-- END Queue custom dialogs -->
+
+			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OfflineCleanupDlg" Order="1">
+				NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )
+			</Publish>
 		</UI>
 		<!-- END UI Configuration -->
 	</Product>

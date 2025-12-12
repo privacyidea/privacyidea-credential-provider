@@ -323,7 +323,22 @@ By default, refill is attempted after every successful offline authentication. H
 
 **offline_show_info**
 
-Set this to ``1`` to show information about available offline token for the current user. This will trigger as soon as the input from the username field matches a user for which offline token are available.
+Set this to ``1`` to show information about available offline token for the current user.
+This will trigger as soon as the input from the username field matches a user for which offline token are available.
+
+**offline_expiration_days**
+
+Sets the number of days an offline token remains valid after a successful online refill.
+Once this period elapses, the token is considered "expired" and cannot be used for offline authentication.
+However, the data remains in the offline file and can be reactivated (refilled) automatically if the user logs in online.
+Default is ``0``, which means the offline token never expires.
+
+**offline_delete_after_days**
+
+Sets the number of days *after expiration* that a stale token is retained before being permanently deleted.
+This acts as a garbage collection mechanism.
+The calculation is relative to the expiration date: ``Deletion Date = Expiration Date + offline_delete_after_days``.
+Default is ``0``, which means stale tokens are never deleted.
 
 ------
 Realms

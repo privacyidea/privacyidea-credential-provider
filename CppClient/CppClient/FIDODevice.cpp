@@ -230,6 +230,7 @@ namespace
 		// Allow Creds
 		for (auto& allowCred : signRequest.allowCredentials)
 		{
+			PIDebug("Adding allow credential with id: " + allowCred.id);
 			auto cred = Convert::Base64URLDecode(allowCred.id);
 			res = fido_assert_allow_cred(*assert, cred.data(), cred.size());
 			if (res != FIDO_OK)
@@ -420,6 +421,47 @@ namespace
 	}
 }
 
+std::optional<FIDODevice> FIDODevice::GetWinHello()
+{
+	fido_init(fidoFlags);
+	size_t ndevs;
+	int res = FIDO_OK;
+	fido_dev_info_t* deviceList = nullptr;
+	constexpr size_t maxDevices = 64;
+
+	if ((deviceList = fido_dev_info_new(maxDevices)) == NULL)
+	{
+		PIError("fido_dev_info_new returned NULL");
+		return std::nullopt;
+	}
+
+	if ((res = fido_dev_info_manifest(deviceList, maxDevices, &ndevs)) != FIDO_OK)
+	{
+		std::string fidoStrerr = fido_strerr(res);
+		PIError("fido_dev_info_manifest: " + fidoStrerr + " " + std::to_string(res));
+		fido_dev_info_free(&deviceList, maxDevices);
+		return std::nullopt;
+	}
+
+	std::optional<FIDODevice> foundDevice = std::nullopt;
+
+	for (size_t i = 0; i < ndevs; i++)
+	{
+		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
+		FIDODevice dev(di, false);
+
+		if (dev.IsWinHello())
+		{
+			foundDevice = dev;
+			break;
+		}
+	}
+
+	fido_dev_info_free(&deviceList, maxDevices);
+
+	return foundDevice;
+}
+
 std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log)
 {
 	if (log)
@@ -431,7 +473,8 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 	size_t ndevs;
 	int res = FIDO_OK;
 	fido_dev_info_t* deviceList = nullptr;
-	if ((deviceList = fido_dev_info_new(64)) == NULL)
+	constexpr size_t maxDevices = 64;
+	if ((deviceList = fido_dev_info_new(maxDevices)) == NULL)
 	{
 		PIError("fido_dev_info_new returned NULL");
 		return ret;
@@ -448,16 +491,22 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 	{
 		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
 		FIDODevice dev(di);
+
 		if (dev.IsWinHello() && filterWindowsHello)
 		{
 			continue;
 		}
 		ret.push_back(dev);
+
+		/*if (dev.IsWinHello()) {
+			ret.push_back(dev);
+		}*/
 	}
 	if (log)
 	{
 		PIDebug("Found " + std::to_string(ret.size()) + " FIDO device(s)");
 	}
+	fido_dev_info_free(&deviceList, maxDevices);
 	return ret;
 }
 
@@ -577,6 +626,7 @@ int FIDODevice::Sign(
 	const std::string& pin,
 	FIDOSignResponse& signResponse) const
 {
+	PIDebug("FIDODevice::Sign with device " + this->ToString());
 	fido_assert_t* assert = nullptr;
 	std::vector<unsigned char> vecClientData;
 	int res = GetAssert(signRequest, origin, pin, _path, &assert, vecClientData);
@@ -634,6 +684,7 @@ int FIDODevice::SignAndVerifyAssertion(
 	const std::string& pin,
 	std::string& serialUsed) const
 {
+	PIDebug("FIDODevice::SignAndVerifyAssertion with device " + this->ToString());
 	// Make a signRequest from the offlineData
 	FIDOSignRequest signRequest;
 	signRequest.rpId = offlineData.front().rpId;
@@ -741,6 +792,7 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 	const FIDORegistrationRequest& registration,
 	const std::string& pin)
 {
+	PIDebug("FIDODevice::Register with device " + this->ToString());
 	if (_path.empty())
 	{
 		PIError("No device path provided");

@@ -28,8 +28,67 @@
 #include "Convert.h"
 #include <Shared.h>
 #include <Translator.h>
+#include <sstream>
 
 using namespace std;
+
+typedef NTSTATUS(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+WindowsInfo GetOSVersion() {
+	HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+	if (!hMod) return { 0, 0, 0, false, "Error" };
+
+	RtlGetVersionPtr fxPtr = (RtlGetVersionPtr)GetProcAddress(hMod, "RtlGetVersion");
+	if (!fxPtr) return { 0, 0, 0, false, "Error" };
+
+	RTL_OSVERSIONINFOEXW rovi = { 0 };
+	rovi.dwOSVersionInfoSize = sizeof(rovi);
+
+	if (fxPtr((PRTL_OSVERSIONINFOW)&rovi) != 0x00000000) { // STATUS_SUCCESS
+		return { 0, 0, 0, false, "Error" };
+	}
+
+	WindowsInfo info;
+	info.major = rovi.dwMajorVersion;
+	info.minor = rovi.dwMinorVersion;
+	info.build = rovi.dwBuildNumber;
+
+	// VER_NT_WORKSTATION (1) is Client, others are Server/DC
+	info.isServer = (rovi.wProductType != VER_NT_WORKSTATION);
+
+	std::stringstream ss;
+
+	if (info.major == 10) {
+		if (info.isServer) {
+			// Server Mapping based on Build Number
+			if (info.build >= 26100) ss << "Windows Server 2025";
+			else if (info.build >= 20348) ss << "Windows Server 2022";
+			else if (info.build >= 17763) ss << "Windows Server 2019";
+			else if (info.build >= 14393) ss << "Windows Server 2016";
+			else ss << "Windows Server (Old/Unknown)";
+		}
+		else {
+			// Client Mapping
+			if (info.build >= 22000) ss << "Windows 11";
+			else ss << "Windows 10";
+		}
+	}
+	else {
+		// Fallback for older/newer unknown versions
+		ss << "Windows " << info.major << "." << info.minor;
+	}
+
+	info.versionString = ss.str();
+	return info;
+}
+
+std::string WindowsInfoToString(const WindowsInfo& info) {
+	std::stringstream ss;
+	ss << info.versionString
+		<< " (Version " << info.major << "." << info.minor << "." << info.build << ")"
+		<< (info.isServer ? " [Server]" : " [Workstation]");
+	return ss.str();
+}
 
 void Configuration::Load()
 {
@@ -40,7 +99,7 @@ void Configuration::Load()
 	wstring tmp = rr.GetWString(L"path");
 	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
 	piconfig.port = rr.GetInt(L"custom_port");
-
+	PIDebug("loading port: " + to_string(piconfig.port));
 	piconfig.ignoreUnknownCA = rr.GetBool(L"ssl_ignore_unknown_ca");
 	piconfig.ignoreInvalidCN = rr.GetBool(L"ssl_ignore_invalid_cn");
 
@@ -91,11 +150,16 @@ void Configuration::Load()
 
 	prefillUsername = rr.GetBool(L"prefill_username");
 	showResetLink = rr.GetBool(L"enable_reset");
+	
+	// Offline
 	offlineTreshold = rr.GetInt(L"offline_threshold");
 	offlineShowInfo = rr.GetBool(L"offline_show_info");
-
+	piconfig.offlineExpirationDays = rr.GetInt(L"offline_expiration_days");
+	piconfig.offlineDeleteAfterDays = rr.GetInt(L"offline_delete_after_days");
 	piconfig.offlineFilePath = rr.GetWString(L"offline_file");
 	piconfig.offlineTryWindow = rr.GetInt(L"offline_try_window");
+	checkAllOfflineCredentials = rr.GetBool(L"check_all_offline_credentials");
+	
 	piconfig.sendUPN = rr.GetBool(L"send_upn");
 
 	piconfig.acceptLanguage = ValidateAcceptLanguage(rr.GetWString(L"header_accept_language"));
@@ -130,7 +194,9 @@ void Configuration::Load()
 	webAuthnOfflinePreferred = rr.GetBool(L"webauthn_offline_preferred");
 	webAuthnOfflineHideFirstStep = rr.GetBool(L"webauthn_offline_hide_first_step");
 	disablePasskey = rr.GetBool(L"disable_passkey");
-
+	trustedRPIDs = rr.GetMultiSZ(L"trusted_rpids");
+	// invert name and logic for explicit disable
+	useWindowsHelloForCredUI = !rr.GetBool(L"disable_windows_hello_for_credui");
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
 	if (hideDomainName && hideFullName)
@@ -149,15 +215,7 @@ void Configuration::Load()
 	autoLogonDomain = rr.GetWString(L"autologon_domain");
 	autoLogonPassword = rr.GetWString(L"autologon_password");
 
-	// Get the Windows Version, deprecated 
-	OSVERSIONINFOEX info;
-	ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
-	info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	GetVersionEx((LPOSVERSIONINFO)&info);
-
-	winVerMajor = info.dwMajorVersion;
-	winVerMinor = info.dwMinorVersion;
-	winBuildNr = info.dwBuildNumber;
+	windowsVersion = GetOSVersion();
 }
 
 std::string Configuration::ValidateAcceptLanguage(std::wstring configEntry)
@@ -234,19 +292,23 @@ void Configuration::LogConfig()
 {
 	PIDebug("---------------------------------");
 	PIDebug("CP Version: " + string(VER_FILE_VERSION_STR));
-	PIDebug(L"Windows Version: " + to_wstring(winVerMajor) + L"." + to_wstring(winVerMinor)
-		+ L"." + to_wstring(winBuildNr));
+	PIDebug("Windows Version: " + WindowsInfoToString(windowsVersion));
 	PIDebug("--------- Configuration ---------");
 	PIDebug(L"Hostname: " + piconfig.hostname);
+	PIDebug("Port: " + to_string(piconfig.port));
 	PrintIfStringNotEmpty(L"Path", piconfig.path);
-	PrintIfIntIsNotNull("Custom Port", piconfig.port);
 
 	PrintIfIntIsNotNull("Resolve timeout", piconfig.resolveTimeout);
 	PrintIfIntIsNotNull("Connect timeout", piconfig.connectTimeout);
 	PrintIfIntIsNotNull("Send timeout", piconfig.sendTimeout);
 	PrintIfIntIsNotNull("Receive timeout", piconfig.receiveTimeout);
 
-	//PrintIfStringNotEmpty(L"Locales Path", localesPath);
+	// Recovery
+	PrintIfStringNotEmpty(L"Fallback Hostname", piconfig.fallbackHostname);
+	PrintIfStringNotEmpty(L"Fallback Path", piconfig.fallbackPath);
+	PrintIfIntIsNotNull("Fallback Port", piconfig.fallbackPort);
+
+	PrintIfStringNotEmpty(L"Locales Path", localesPath);
 
 	PrintIfIntIsNotNull("Hide domain name", hideDomainName);
 	PrintIfIntIsNotNull("Hide full name", hideFullName);
@@ -260,25 +322,49 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("Show domain hint", showDomainHint);
 	PrintIfIntIsNotNull("Prefill username", prefillUsername);
 	PrintIfIntIsNotNull("Show reset link", showResetLink);
-	PrintIfIntIsNotNull("Offline show info", offlineShowInfo);
+	
+	// FIDO / WebAuthn
 	PrintIfIntIsNotNull("WebAuthn preferred", webAuthnPreferred);
 	PrintIfIntIsNotNull("WebAuthn offline no PIN", webAuthnOfflineNoPIN);
+	PrintIfIntIsNotNull("WebAuthn offline second step", webAuthnOfflineSecondStep);
+	PrintIfIntIsNotNull("WebAuthn offline preferred", webAuthnOfflinePreferred);
+	PrintIfIntIsNotNull("WebAuthn offline hide first step", webAuthnOfflineHideFirstStep);
 	PrintIfIntIsNotNull("Disable passkey", disablePasskey);
+	if (!trustedRPIDs.empty())
+	{
+		PIDebug(L"Trusted RPIDs: " + Convert::JoinW(trustedRPIDs, L", "));
+	}
+	PIDebug("useWindowsHelloForCredUI: " + string(useWindowsHelloForCredUI ? "true" : "false"));
+	// Offline
+	PrintIfStringNotEmpty(L"Offline file path", piconfig.offlineFilePath);
+	PrintIfIntIsNotNull("Offline try window", piconfig.offlineTryWindow);
+	PrintIfIntIsNotValue("Offline refill threshold", offlineTreshold, 10);
+	PrintIfIntIsNotNull("Check all offline credentials", checkAllOfflineCredentials);
+	PrintIfIntIsNotNull("Offline show info", offlineShowInfo);
+	PrintIfIntIsNotNull("Offline expiration days", piconfig.offlineExpirationDays);
+	PrintIfIntIsNotNull("Offline delete after days", piconfig.offlineDeleteAfterDays);
 	PrintIfIntIsNotNull("OTP fail return to first step", otpFailReturnToFirstStep);
 	PrintIfIntIsNotNull("Username+Password Mode", usernamePassword);
 
 	PrintIfIntIsNotNull("Send UPN", piconfig.sendUPN);
 	PrintIfStringNotEmpty(L"Bitmap path", bitmapPath);
-	PrintIfStringNotEmpty(L"Offline file path", piconfig.offlineFilePath);
-	PrintIfIntIsNotNull("Offline try window", piconfig.offlineTryWindow);
-	PrintIfIntIsNotValue("Offline refill threshold", offlineTreshold, 10);
+	
+	
 	PrintIfStringNotEmpty(L"Default realm", piconfig.defaultRealm);
 	PrintIfIntIsNotNull("Hide first step response error", hideFirstStepResponseError);
+
 	PIDebug("Language: " + language);
+	PIDebug("Accept-Language: " + piconfig.acceptLanguage);
+
 	PrintIfIntIsNotNull("Is remote session", isRemoteSession);
 	PrintIfStringNotEmpty(L"Excluded account", excludedAccount);
 	PrintIfStringNotEmpty(L"Excluded group", excludedGroup);
 	PrintIfStringNotEmpty(L"Excluded group NetBIOS address", exludedGroupNetBIOSaddress);
+
+	// AutoLogon
+	PrintIfStringNotEmpty(L"AutoLogon Username", autoLogonUsername);
+	PrintIfStringNotEmpty(L"AutoLogon Domain", autoLogonDomain);
+	// We do NOT log the AutoLogon Password for security reasons
 
 	if (piconfig.realmMap.size() > 0)
 	{
