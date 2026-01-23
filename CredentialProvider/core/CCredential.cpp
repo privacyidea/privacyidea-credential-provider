@@ -660,303 +660,304 @@ Mode CCredential::SelectFIDOMode(std::string userVerification, bool offline)
 	return Mode::SEC_KEY_NO_PIN;
 }
 
-// TODO refactor this function by splitting it into smaller functions, like SetFIDOLinks, SetResetLink, SetOfflineLink etc.
 HRESULT CCredential::SetMode(Mode mode)
 {
 	PIDebug("SetMode: New Mode=" + _config->ModeToString(mode) + ", old Mode=" + _config->ModeString() +
 		", passkey = " + to_string(_config->usePasskey) + ", offlineFIDO = " + to_string(_config->useOfflineFIDO));
+
 	if (_pCredProvCredentialEvents == nullptr)
 	{
 		PIError("SetMode called without CredentialEvents available!");
 		return E_FAIL;
 	}
+
 	if (mode != Mode::NO_CHANGE)
 	{
 		_config->mode = mode;
 	}
-	HRESULT hr = S_OK;
-	const Mode oldMode = _config->mode;
 
-	// Small text is used to display a prompt to the user, like "Please enter your username" or the message of 
-	// the last server response.
-	wstring smallText;
+	const Mode oldMode = _config->mode; // Keep old mode for "Hide First Step Error" logic
+	HRESULT hr = S_OK;
+	std::wstring smallText;
+
+	// 1. Configure Fields & Submit Button based on Mode
+	// -------------------------------------------------
+	const FIELD_STATE_PAIR* pFieldStates = nullptr;
+	DWORD submitButtonField = FID_PASSWORD;
+	CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE pinState = CPFIS_FOCUSED;
 
 	switch (mode)
 	{
 	case Mode::USERNAME:
-	{
-		// Set the submit button next to the username field
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_USERNAME);
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUsername);
+		pFieldStates = s_rgScenarioUsername;
+		submitButtonField = FID_USERNAME;
 		smallText = _util.GetText(TEXT_ENTER_USERNAME);
-		// Since this is the first step and there is no user, use the login text instead of username
 		break;
-	}
+
 	case Mode::PASSWORD:
-	{
-		// Set the submit button next to the password field
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_PASSWORD);
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPassword);
+		pFieldStates = s_rgScenarioPassword;
+		submitButtonField = FID_PASSWORD;
 		smallText = _util.GetText(TEXT_ENTER_PASSWORD);
 		break;
-	}
+
 	case Mode::USERNAMEPASSWORD:
-	{
-		// Set the submit button next to the password field
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_PASSWORD);
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioUsernamePassword);
-		// Since this is the first step and there is no user, use the login text instead of username
+		pFieldStates = s_rgScenarioUsernamePassword;
+		submitButtonField = FID_PASSWORD;
 		smallText = _util.GetText(TEXT_ENTER_USERNAME_PASSWORD);
 		break;
-	}
+
 	case Mode::PRIVACYIDEA:
-	{
-		// Set the submit button next to the OTP field
+		pFieldStates = s_rgScenarioPrivacyIDEA;
+		submitButtonField = FID_OTP;
+
+		// Force OTP field visibility
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_DISPLAY_IN_SELECTED_TILE);
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_OTP);
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPrivacyIDEA);
 		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_ONLINE_FIDO).c_str());
 
-		// Only set the message of the last server response if that response has challenges or errors.
-		// If hide_first_step_response is enabled, show the default message, but only when coming from the first step.
-		// Use lastResponse for this, because it could be failure
-		const bool hasLastResponse = _config->lastResponse.has_value();
-		const bool hasMessage = hasLastResponse && !_config->lastResponse->GetNonFIDOMessage().empty();
-		const bool isAuthUnsuccessful = hasLastResponse && !_config->lastResponse->isAuthenticationSuccessful();
-		const bool hideFirstStepError = _config->hideFirstStepResponseError;
-		const bool isOldModeUsername = IsModeOneOf(oldMode, Mode::USERNAME, Mode::USERNAMEPASSWORD);
-		const bool isRejected = hasLastResponse && _config->lastResponse->authenticationStatus == AuthenticationStatus::REJECT;
-		if (hideFirstStepError && isOldModeUsername && isRejected)
+		// Determine small text based on errors/response
+		smallText = _util.GetText(TEXT_OTP_PROMPT);
+		if (_config->lastResponse.has_value())
 		{
-			smallText = _util.GetText(TEXT_OTP_PROMPT);
-		}
-		else if (hasLastResponse && hasMessage && isAuthUnsuccessful)
-		{
-			smallText = Convert::ToWString(_config->lastResponse->GetNonFIDOMessage());
-		}
-		else
-		{
-			smallText = _util.GetText(TEXT_OTP_PROMPT);
-		}
+			bool hideFirstStepError = _config->hideFirstStepResponseError && IsModeOneOf(oldMode, Mode::USERNAME, Mode::USERNAMEPASSWORD);
+			bool isRejected = _config->lastResponse->authenticationStatus == AuthenticationStatus::REJECT;
+			std::string serverMsg = _config->lastResponse->GetNonFIDOMessage();
 
+			if (!hideFirstStepError && !serverMsg.empty() && !_config->lastResponse->isAuthenticationSuccessful())
+			{
+				smallText = Convert::ToWString(serverMsg);
+			}
+		}
 		break;
-	}
+
 	case Mode::CHANGE_PASSWORD:
-	{
-		// Set the submit button next to the repeat pw field
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_NEW_PASS_2);
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioPasswordChange);
-		// Show username in large text, prefill old password
+		pFieldStates = s_rgScenarioPasswordChange;
+		submitButtonField = FID_NEW_PASS_2;
+		// Pre-fill user/pass for change flow
 		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _config->credential.username.c_str());
 		_pCredProvCredentialEvents->SetFieldString(this, FID_PASSWORD, _config->credential.password.c_str());
 		break;
-	}
-	// The following are pretty much the same, disabling fido links is below this switch
+	case Mode::SEC_KEY_SET_PIN:
+		// Reuse the password change scenario (New Password + Confirm Password fields)
+		pFieldStates = s_rgScenarioSetPin;
+		submitButtonField = FID_NEW_PASS_2; // Submit on the second box
+
+		// 3. Set Labels
+		// Ideally define TEXT_SET_FIDO_PIN in your resources. Using hardcoded fallback for now.
+		smallText = _util.GetText(TEXT_SET_NEW_SEC_KEY_PIN);
+		//_pCredProvCredentialEvents->SetFieldString(this, FID_NEW_PASS_1, L"New PIN");
+		//_pCredProvCredentialEvents->SetFieldString(this, FID_NEW_PASS_2, L"Confirm PIN");
+		
+		break;
 	case Mode::SEC_KEY_REG_PIN:
-		if (_lastStatus == FIDO_ERR_PIN_INVALID)
-		{
-			smallText = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
-		}
-		else
-		{
-			smallText = _util.GetText(TEXT_PASSKEY_REGISTRATION) + L". " + _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
-		}
-		[[fallthrough]];
 	case Mode::SEC_KEY_REG:
-		[[fallthrough]];
 	case Mode::SEC_KEY_PIN:
-	{
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_FIDO_PIN);
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_FOCUSED);
-		if (_config->usePasskey)
-		{
-			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_LOGIN_WITH_USERNAME).c_str());
-		}
-		else
-		{
-			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
-		}
-		break;
-	}
 	case Mode::SEC_KEY_NO_DEVICE:
-	{
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_FIDO_PIN);
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_FOCUSED);
-		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
-		break;
-	}
 	case Mode::SEC_KEY_NO_PIN:
-	{
-		hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, s_rgScenarioSecurityKey);
-		_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, FID_FIDO_PIN);
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_NONE);
-		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
+		pFieldStates = s_rgScenarioSecurityKey;
+		submitButtonField = FID_FIDO_PIN;
+
+		// PIN Field State logic
+		if (mode == Mode::SEC_KEY_NO_PIN) pinState = CPFIS_NONE;
+		else pinState = CPFIS_FOCUSED;
+
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, pinState);
+
+		// Link Text logic
+		if (_config->usePasskey)
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_LOGIN_WITH_USERNAME).c_str());
+		else
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
+
+		// Text Logic
+		if (mode == Mode::SEC_KEY_REG_PIN)
+		{
+			if (_lastStatus == FIDO_ERR_PIN_INVALID) smallText = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
+			else smallText = _util.GetText(TEXT_PASSKEY_REGISTRATION) + L". " + _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
+		}
+		else if (mode == Mode::SEC_KEY_PIN)
+		{
+			smallText = _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
+		}
 		break;
-	}
+
 	case Mode::NO_CHANGE:
-		break;
+		return S_OK;
+
 	default:
 		PIError("SetMode: Unknown mode");
-		break;
+		return E_FAIL;
 	}
 
+	// Batch Apply Field States & Submit Button
+	if (pFieldStates) hr = _util.SetFieldStatePairBatch(this, _pCredProvCredentialEvents, pFieldStates);
+	_pCredProvCredentialEvents->SetFieldSubmitButton(this, FID_SUBMIT_BUTTON, submitButtonField);
+
+	// Set Focus Logic
+	if (mode == Mode::SEC_KEY_SET_PIN)
+	{
+		// Force Old Password and OTP to hidden (overriding the scenario default)
+		_pCredProvCredentialEvents->SetFieldState(this, FID_PASSWORD, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
+		// Force focus to the New PIN field so the user can type immediately
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_NEW_PASS_1, CPFIS_FOCUSED);
+	}
+	if (mode == Mode::SEC_KEY_PIN) 
+	{
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_FIDO_PIN, CPFIS_FOCUSED);
+	}
+
+	// 2. Configure Common Text Elements
+	// -------------------------------------------------
+
+	// Offline Link Text
 	_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, _util.GetText(TEXT_USE_OFFLINE_FIDO).c_str());
 
-	// Large text is used to display the username that is currently loggin in like username@domain
-	// There are also settings to hide this, making it either username or nothing.
-	wstring largeText;
-	if (!_config->credential.username.empty())
+	// Large Text (Username or Login Text)
+	std::wstring largeText;
+	if (!_config->hideFullName)
 	{
-		largeText = _config->credential.username;
+		if (!_config->credential.username.empty())
+		{
+			largeText = _config->credential.username;
+			if (!_config->credential.domain.empty() && !_config->hideDomainName)
+			{
+				largeText.append(L"@").append(_config->credential.domain);
+			}
+		}
 	}
-	if (!_config->credential.domain.empty() && !largeText.empty())
-	{
-		largeText.append(L"@").append(_config->credential.domain);
-	}
-	if (_config->hideDomainName)
-	{
-		largeText = _config->credential.username;
-	}
-	if (_config->hideFullName)
-	{
-		largeText = L"";
-	}
-	// Default if none of the above is used
-	if (largeText.empty())
-	{
-		largeText = _util.GetText(TEXT_LOGIN_TEXT);
-	}
+	if (largeText.empty()) largeText = _util.GetText(TEXT_LOGIN_TEXT); // Default
 
-	if (!largeText.empty())
-	{
-		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, largeText.c_str());
-	}
-	else
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_HIDDEN);
-	}
+	_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, largeText.c_str());
+	_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, largeText.empty() ? CPFS_HIDDEN : CPFS_DISPLAY_IN_SELECTED_TILE);
 
-	// Small Text set
-	if (mode == Mode::SEC_KEY_PIN)
-	{
-		smallText = _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
-	}
-	if (!smallText.empty())
-	{
-		_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, smallText.c_str());
-	}
-	else
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, CPFS_HIDDEN);
-	}
+	// Small Text (Prompt)
+	_pCredProvCredentialEvents->SetFieldString(this, FID_SMALL_TEXT, smallText.c_str());
+	_pCredProvCredentialEvents->SetFieldState(this, FID_SMALL_TEXT, smallText.empty() ? CPFS_HIDDEN : CPFS_DISPLAY_IN_SELECTED_TILE);
 
-	// If the username is already present (e.g. retry after wrong password) focus the password field
-	wstring input;
-	if (_config != nullptr && _config->provider.field_strings != nullptr)
+	// Subtext (Domain Hint)
+	if (_config->showDomainHint && !_config->credential.domain.empty())
 	{
-		input = wstring(_config->provider.field_strings[FID_USERNAME]);
-	}
-
-	if (!input.empty())
-	{
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_FOCUSED);
-	}
-
-	// Domain in FID_SUBTEXT, optional
-	if (_config->showDomainHint)
-	{
-		wstring domaintext = _util.GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
-		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, domaintext.c_str());
+		std::wstring domainText = _util.GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
+		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, domainText.c_str());
 	}
 	else
 	{
 		_pCredProvCredentialEvents->SetFieldState(this, FID_SUBTEXT, CPFS_HIDDEN);
 	}
 
-	// WebAuthn/Passkey Link: 
-	// In the first step, offer passkey login
-	// If a sign request is present or if offline webauthn is available for the user
-	bool enableFIDOOnline = mode > Mode::SEC_KEY_ANY;
-	// Passkey
+	if (mode == Mode::SEC_KEY_SET_PIN)
+	{
+		// Now it is safe to hide them. The scenario has already been applied.
+		_pCredProvCredentialEvents->SetFieldState(this, FID_PASSWORD, CPFS_HIDDEN);
+		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
+
+		// Optional: Force focus to the New PIN field
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_NEW_PASS_1, CPFIS_FOCUSED);
+	}
+
+	// Focus Password field if Username is already present
+	PWSTR currentUsername = nullptr;
+	this->GetStringValue(FID_USERNAME, &currentUsername);
+	if (currentUsername && currentUsername[0] != 0)
+	{
+		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_FOCUSED);
+	}
+	CoTaskMemFree(currentUsername);
+
+
+	// 3. Configure Command Links (Visibility & Text)
+	// -------------------------------------------------
+
+	// Determine Link Visibility Flags
+	bool showFidoOnline = (mode > Mode::SEC_KEY_ANY);
+	bool showFidoOffline = false;
+	bool showReset = (_config->showResetLink && !_config->IsFirstStep());
+
+	// FIDO Online Link (Passkey / Challenge)
 	if (_config->IsFirstStep() && !_config->disablePasskey)
 	{
 		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_PASSKEY).c_str());
-		enableFIDOOnline = true;
-		//PIDebug("Enabling fido online link to offer passkey in first step");
+		showFidoOnline = true;
+	}
+	else if (_config->lastResponseWithChallenge && _config->lastResponseWithChallenge->GetFIDOSignRequest())
+	{
+		showFidoOnline = true;
 	}
 
-	// FIDO Online
-	if (_config->lastResponseWithChallenge && _config->lastResponseWithChallenge->GetFIDOSignRequest())
+	// FIDO Offline Link
+	if (_config->webAuthnOfflineSecondStep || _config->IsFirstStep())
 	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
-		enableFIDOOnline = true;
-		//PIDebug("Enabling fido online link because of present sign request (challenge triggered)");
+		// Check if explicitly hidden in config
+		const bool hiddenInFirstStep = (_config->IsModeOneOf(Mode::USERNAME, Mode::USERNAMEPASSWORD, Mode::PASSWORD) && _config->webAuthnOfflineHideFirstStep);
+
+		if (!hiddenInFirstStep)
+		{
+			// 1. First Step: Show if ANY data exists on the machine (generic) 
+			//    OR if the specifically typed user has data.
+			if (_config->IsFirstStep())
+			{
+				if (!_privacyIDEA.offlineHandler.GetAllFIDOData().empty())
+				{
+					showFidoOffline = true;
+				}
+			}
+			// 2. Second Step: Only show if the CURRENT user has data.
+			else
+			{
+				if (_privacyIDEA.OfflineFIDODataExistsFor(_config->credential.username))
+				{
+					showFidoOffline = true;
+				}
+			}
+		}
 	}
 
-	if (enableFIDOOnline)
+	// Special Case: "Fake" Offline link in Second Step
+	// Only show if the setting is enabled AND the current user actually has offline data.
+	if ((mode == Mode::PRIVACYIDEA || mode > Mode::SEC_KEY_ANY)
+		&& _config->webAuthnOfflineSecondStep
+		&& !showFidoOnline)
 	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
+		// Check if THIS user has data.
+		if (_privacyIDEA.OfflineFIDODataExistsFor(_config->credential.username))
+		{
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, _util.GetText(TEXT_USE_ONLINE_FIDO).c_str());
+			showFidoOffline = true;
+		}
 	}
 
-	// FIDO Offline TODO when to show the link? only first step?
-	auto fidoOfflineData = _privacyIDEA.offlineHandler.GetAllFIDOData();
-	if (!fidoOfflineData.empty())
-	{
-		//PIDebug("Enabling offline fido link because there is offline data");
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
-	}
-	else if (_privacyIDEA.OfflineFIDODataExistsFor(_config->credential.username) && _config->IsFirstStep())
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_DISPLAY_IN_SELECTED_TILE);
-		//PIDebug("Enabling offline fido link for user");
-	}
+	// Special Case: Hide Reset Link in Passkey mode
+	if (_config->usePasskey && _config->mode > Mode::SEC_KEY_ANY) showReset = false;
+	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && mode == Mode::PASSWORD) showReset = false;
 
-	if (_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::PASSWORD))
+	// Critical Overrides: Hide EVERYTHING during Enrollment or Change Password
+	if (_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::CHANGE_PASSWORD, Mode::SEC_KEY_SET_PIN))
 	{
+		showFidoOnline = false;
+		showFidoOffline = false;
+		showReset = false;
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
 	}
 
-	// Disable offline FIDO and offline info in privacyidea step, except when webAuthnOfflineSecondStep is enabled
-	// in that case, the offline link will have the online link text in the second step, so that offline use
-	// looks just like the online use.
-	if ((mode == Mode::PRIVACYIDEA || mode > Mode::SEC_KEY_ANY) && !_config->webAuthnOfflineSecondStep)
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
-	}
-	if ((mode == Mode::PRIVACYIDEA || mode > Mode::SEC_KEY_ANY) && _config->webAuthnOfflineSecondStep && !enableFIDOOnline)
-	{
-		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, _util.GetText(TEXT_USE_ONLINE_FIDO).c_str());
-	}
-	// If webauthn_offline_hide_first_step is enabled, hide the offline link in the first step
-	if (_config->IsModeOneOf(Mode::USERNAME, Mode::USERNAMEPASSWORD, Mode::PASSWORD) && _config->webAuthnOfflineHideFirstStep)
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
-	}
+	// Apply States
+	_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, showFidoOnline ? CPFS_DISPLAY_IN_SELECTED_TILE : CPFS_HIDDEN);
+	_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, showFidoOffline ? CPFS_DISPLAY_IN_SELECTED_TILE : CPFS_HIDDEN);
+	_pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, showReset ? CPFS_DISPLAY_IN_SELECTED_TILE : CPFS_HIDDEN);
 
-	if (mode > Mode::SEC_KEY_ANY)
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
-	}
 
-	// Reset Link: Do not show in first step for both passkey and username/password mode
-	if (_config->showResetLink && !_config->IsFirstStep() && !(_config->usePasskey && _config->mode > Mode::SEC_KEY_ANY))
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_DISPLAY_IN_SELECTED_TILE);
-	}
+	// 4. Misc Features
+	// -------------------------------------------------
 
-	// Offline info data
+	// Update Offline Info
 	if (_config->offlineShowInfo)
 	{
-		PWSTR pwszUsername;
-		this->GetStringValue(FID_USERNAME, &pwszUsername);
-		SetOfflineInfo(Convert::ToString(wstring(pwszUsername)));
+		PWSTR pwszUser = nullptr;
+		this->GetStringValue(FID_USERNAME, &pwszUser);
+		if (pwszUser) SetOfflineInfo(Convert::ToString(std::wstring(pwszUser)));
+		CoTaskMemFree(pwszUser);
 	}
 
-	// Cancel enrollment:
-	// If enroll_via_multichallenge with either push or smartphone is happening, hide the OTP field
-	// Offer to cancel the enrollment, which is available with privacyIDEA 3.12+
+	// Cancel Enrollment Link
 	const bool versionHigherThan312 = _config->lastResponseWithChallenge && _config->lastResponseWithChallenge->IsVersionHigherOrEqual(3, 12);
 	if ((_enrollmentInProgress || _pollEnrollmentInProgress) && versionHigherThan312 && _config->lastResponseWithChallenge->isEnrollCancellable)
 	{
@@ -964,23 +965,10 @@ HRESULT CCredential::SetMode(Mode mode)
 		_pCredProvCredentialEvents->SetFieldState(this, FID_CANCEL_ENROLLMENT, CPFS_DISPLAY_IN_SELECTED_TILE);
 	}
 
-	// When unlocking, hide the username field, because it is already set
+	// Unlock Workstation specific hiding
 	if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
 	{
 		_pCredProvCredentialEvents->SetFieldState(this, FID_USERNAME, CPFS_HIDDEN);
-		if (mode == Mode::PASSWORD)
-		{
-			_pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_HIDDEN);
-		}
-	}
-
-	// We don't want users switching to OTP or Offline mode while enrolling a token.
-	if (_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::CHANGE_PASSWORD))
-	{
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_ONLINE, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_FIDO_OFFLINE, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_RESET_LINK, CPFS_HIDDEN);
-		_pCredProvCredentialEvents->SetFieldState(this, FID_OFFLINE_INFO, CPFS_HIDDEN);
 	}
 
 	return hr;
@@ -1276,6 +1264,26 @@ HRESULT CCredential::GetSerialization(
 	_config->provider.status_icon = pcpsiOptionalStatusIcon;
 	_config->provider.status_text = ppwszOptionalStatusText;
 
+	// Only enter this block if we are in SET_PIN mode AND we haven't finished successfully yet.
+	if (_config->mode == Mode::SEC_KEY_SET_PIN && !_privacyIDEASuccess)
+	{
+		// 1. Display Error if one occurred during Connect
+		if (_lastStatus == FIDO_PINS_DO_NOT_MATCH)
+		{
+			ShowErrorMessage(L"PINs do not match or are empty.");
+			// Reset status so the error doesn't persist if we refresh for other reasons
+			_lastStatus = S_OK;
+			_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
+		}
+		// 2. Prevent fields from being cleared so the user doesn't have to re-type
+		//_config->clearFields = false;
+		
+		// 3. Stay in this mode and return
+		PIDebug("Maintaining SEC_KEY_SET_PIN mode waiting for input.");
+		*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+		return S_OK;
+	}
+
 	// Password change evaluation
 	if (_config->credential.passwordMustChange)
 	{
@@ -1355,9 +1363,26 @@ HRESULT CCredential::GetSerialization(
 				continueWithFIDO = false;
 				_fidoDeviceSearchCancelled = false;
 			}
-
+			// Passkey Registration
+			if (lastResponse && lastResponse->passkeyRegistration && _lastStatus == S_OK)
+			{
+				// Go to Connect directly for the first time
+				if (!_passkeyRegistrationFailed && !_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::SEC_KEY_SET_PIN))
+				{
+					SetMode(Mode::SEC_KEY_REG);
+					_config->doAutoLogon = true;
+					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+					*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				}
+				else if (_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::SEC_KEY_SET_PIN))
+				{
+					// continue in this mode
+					PIDebug("Continuing in mode: " + _config->ModeString());
+					*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
+				}
+			}
 			// Regular second step, asking for second factor. Can also be that the mode was switched (FIDO <-> OTP)
-			if (_config->IsModeOneOf(Mode::USERNAME, Mode::USERNAMEPASSWORD, Mode::PASSWORD)
+			else if (_config->IsModeOneOf(Mode::USERNAME, Mode::USERNAMEPASSWORD, Mode::PASSWORD)
 				&& (_lastStatus == S_OK || _modeSwitched))
 			{
 				PIDebug("Moving to privacyIDEA step");
@@ -1383,23 +1408,6 @@ HRESULT CCredential::GetSerialization(
 				{
 					_config->doAutoLogon = true;
 					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
-				}
-			}
-			// Passkey Registration
-			else if (lastResponse && lastResponse->passkeyRegistration && _lastStatus == S_OK)
-			{
-				// Go to Connect directly for the first time
-				if (!_passkeyRegistrationFailed && !_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN))
-				{
-					SetMode(Mode::SEC_KEY_REG);
-					_config->doAutoLogon = true;
-					_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
-					*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
-				}
-				else if (_config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN))
-				{
-					// continue in this mode
-					*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 				}
 			}
 			// Show an error message if authentication failed or there is an error
@@ -2064,20 +2072,10 @@ HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
 		PIError("No passkey registration available, cannot continue with registration");
 		return E_FAIL;
 	}
-
-	if (_config->isRemoteSession)
-	{
-		PIDebug("Session is remote, no PIN input required in this CredentialProvider");
-	}
-	else if (_config->credential.fido2PIN.empty())
-	{
-		PIDebug("Requesting fido2 PIN for registration");
-		SetMode(Mode::SEC_KEY_REG_PIN);
-		return E_FAIL;
-	}
-
+	
 	const auto& request = _config->lastResponseWithChallenge->passkeyRegistration.value();
-
+	HWND phwndOwner = nullptr;
+	_pCredProvCredentialEvents->OnCreatingWindow(&phwndOwner);
 	// RP ID check
 	if (!IsRpIdAllowed(request.rpId))
 	{
@@ -2098,6 +2096,85 @@ HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
 		SetMode(Mode::PRIVACYIDEA);
 		return E_FAIL; // TODO just log in anyway?  
 	}
+
+	// --- NEW LOGIC FOR SET PIN START ---
+	// Check if the device needs a PIN set
+	if (!dev->HasPin())
+	{
+		PIDebug("Device detected but has no PIN set.");
+
+		// Case A: User has already entered the new PIN (We are in the SET_PIN mode)
+		if (_config->mode == Mode::SEC_KEY_SET_PIN)
+		{
+			// Retrieve input from the UI fields
+			std::wstring newPin1 = _config->provider.field_strings[FID_NEW_PIN_1];
+			std::wstring newPin2 = _config->provider.field_strings[FID_NEW_PIN_2];
+
+			if (newPin1.empty() || newPin1 != newPin2)
+			{
+				_lastStatus = FIDO_PINS_DO_NOT_MATCH;
+				return E_FAIL; // Stay in this mode to let user retry
+			}
+
+			try
+			{
+				pqcws->SetStatusMessage(L"Setting PIN on device...");
+
+				// Call the function you added to FIDODevice
+				dev->SetPin(Convert::ToString(newPin1));
+
+				// Success! 
+				// Update the credential config so the Registration call below uses this new PIN immediately.
+				_config->credential.fido2PIN = newPin1;
+
+				PIDebug("PIN set successfully. Proceeding to registration...");
+			}
+			catch (FIDOException ex)
+			{
+				PIError("Failed to set PIN: " + std::string(ex.what()));
+				ShowErrorMessage(Convert::ToWString(ex.what()));
+				return E_FAIL;
+			}
+		}
+		// Case B: We just discovered the device has no PIN. Switch the UI.
+		else
+		{
+			SetMode(Mode::SEC_KEY_SET_PIN);
+			// Return failure to stop the current Connect() attempt and wait for user input
+			return E_FAIL;
+		}
+	}
+	else
+	{
+		// Device HAS a PIN. 
+		// Sanity Check: If we are in SET_PIN mode but the device has a PIN, 
+		// the user might have swapped keys or set it elsewhere. Revert to standard PIN entry.
+		if (_config->mode == Mode::SEC_KEY_SET_PIN)
+		{
+			SetMode(Mode::SEC_KEY_REG_PIN);
+			if (_config->provider.pCredentialProviderEvents)
+			{
+				_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+			}
+			return E_FAIL;
+		}
+
+		// --- MOVED CHECK HERE ---
+		// Now we know the device has a PIN, so we require the user to enter it.
+		if (!_config->isRemoteSession && _config->credential.fido2PIN.empty())
+		{
+			PIDebug("Device has PIN. Requesting fido2 PIN for registration.");
+			SetMode(Mode::SEC_KEY_REG_PIN);
+			// Ideally trigger an event update if we weren't already showing the field
+			if (_config->provider.pCredentialProviderEvents)
+			{
+				_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+			}
+			return E_FAIL;
+		}
+		// ------------------------
+	}
+	// --- NEW LOGIC END ---
 
 	pqcws->SetStatusMessage(_util.GetText(TEXT_PASSKEY_REGISTER_TOUCH).c_str());
 
@@ -2464,7 +2541,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 		}
 		// FIDO Registration
-		else if (!_privacyIDEASuccess && _config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::SEC_KEY_NO_DEVICE)
+		else if (!_privacyIDEASuccess && _config->IsModeOneOf(Mode::SEC_KEY_REG, Mode::SEC_KEY_REG_PIN, Mode::SEC_KEY_NO_DEVICE, Mode::SEC_KEY_SET_PIN)
 			&& _config->lastResponseWithChallenge && _config->lastResponseWithChallenge->passkeyRegistration)
 		{
 			if (!_passkeyRegistrationFailed)

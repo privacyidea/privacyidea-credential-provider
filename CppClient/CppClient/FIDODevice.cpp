@@ -620,6 +620,36 @@ std::vector<std::string> FIDODevice::GetUsersForRpId(std::string pin, std::strin
 	return ret;
 }
 
+void FIDODevice::SetPin(const std::string& newPin, const std::string& oldPin)
+{
+	PIDebug("FIDODevice::SetPin");
+	if (_path.empty())
+	{
+		throw FIDOException(FIDO_ERR_INVALID_ARGUMENT, "No device path provided");
+	}
+
+	unique_fido_dev_t dev(fido_dev_new());
+	int res = fido_dev_open(dev.get(), _path.c_str());
+	if (res != FIDO_OK)
+	{
+		throw FIDOException(res, "Failed to open FIDO device for PIN set.");
+	}
+
+	// fido_dev_set_pin requires the old PIN if one exists, or NULL if setting it for the first time.
+	const char* oldPinPtr = oldPin.empty() ? NULL : oldPin.c_str();
+
+	res = fido_dev_set_pin(dev.get(), newPin.c_str(), oldPinPtr);
+
+	if (res != FIDO_OK)
+	{
+		PIError("fido_dev_set_pin failed: " + std::string(fido_strerr(res)));
+		throw FIDOException(res, "Failed to set PIN on device.");
+	}
+
+	_hasPin = true;
+	PIDebug("PIN set successfully.");
+}
+
 int FIDODevice::Sign(
 	const FIDOSignRequest& signRequest,
 	const std::string& origin,

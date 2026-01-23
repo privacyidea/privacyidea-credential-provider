@@ -72,6 +72,9 @@ constexpr auto TEXT_CANCEL_ENROLLMENT = 35;
 constexpr auto TEXT_USE_OFFLINE_FIDO = 36;
 constexpr auto TEXT_FIDO_ERR_NO_CREDENTIALS = 37;
 constexpr auto TEXT_GUIDE_USE_WINDOWS_HELLO = 38;
+constexpr auto TEXT_SET_NEW_SEC_KEY_PIN = 39;
+constexpr auto TEXT_NEW_PIN_HINT = 40;
+constexpr auto TEXT_NEW_PIN_REPEAT_HINT = 41;
 
 class Utilities
 {

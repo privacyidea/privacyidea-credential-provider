@@ -37,5 +37,8 @@
   "35": "No ahora",
   "36": "Offline FIDO",
   "37": "¡No se encontraron credenciales coincidentes en la llave de seguridad!",
-  "38": "Utilice el aviso de seguridad de Windows para iniciar sesión con Passkey."
+  "38": "Utilice el aviso de seguridad de Windows para iniciar sesión con Passkey.",
+  "39": "Establezca un nuevo PIN para su llave de seguridad.",
+  "40": "Nuevo PIN",
+  "41": "Confirme el nuevo PIN"
 }

@@ -15,6 +15,7 @@ enum class Mode
 
 	SEC_KEY_REG = 17,
 	SEC_KEY_REG_PIN = 18,
+	SEC_KEY_SET_PIN = 19,
 
 	SEC_KEY_PIN = 21,
 	SEC_KEY_NO_PIN = 22, // Requires reset with autoLogon to get to CCredential::Connect directly

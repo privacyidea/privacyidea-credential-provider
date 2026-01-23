@@ -334,6 +334,12 @@ HRESULT CProvider::GetFieldDescriptorAt(
 			case FID_FIDO_PIN:
 				label = util.GetText(TEXT_FIDO_PIN_HINT);
 				break;
+			case FID_NEW_PIN_1:
+				label = util.GetText(TEXT_NEW_PIN_HINT);
+				break;
+			case FID_NEW_PIN_2:
+				label = util.GetText(TEXT_NEW_PIN_REPEAT_HINT);
+				break;
 			default: break;
 		}
 

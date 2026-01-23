@@ -34,6 +34,8 @@ constexpr auto FIDO_DEVICE_ERR_TX = 0x88809089;
 
 constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 
+constexpr auto FIDO_PINS_DO_NOT_MATCH = 0x88809091;
+
 class FIDODevice
 {
 public:
@@ -73,6 +75,8 @@ public:
 	std::vector<std::string> GetRpIds(std::string pin) const;
 
 	std::vector<std::string> GetUsersForRpId(std::string pin, std::string rpId) const;
+
+	void SetPin(const std::string& newPin, const std::string& oldPin = "");
 
 private:
 	int GetDeviceInfo();

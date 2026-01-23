@@ -197,6 +197,7 @@ void Configuration::Load()
 	trustedRPIDs = rr.GetMultiSZ(L"trusted_rpids");
 	// invert name and logic for explicit disable
 	useWindowsHelloForCredUI = !rr.GetBool(L"disable_windows_hello_for_credui");
+	
 	// Validate that only one of hideDomainName OR hideFullName is active
 	// In the installer it is exclusive but could be changed in the registry
 	if (hideDomainName && hideFullName)

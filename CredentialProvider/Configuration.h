@@ -65,6 +65,7 @@ public:
 		case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
 		case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
 		case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
+		case Mode::SEC_KEY_SET_PIN:					return "SEC_KEY_SET_PIN";
 		default:									return "UNKNOWN_MODE";
 		}
 	}
