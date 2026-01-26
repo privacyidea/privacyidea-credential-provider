@@ -86,10 +86,13 @@ public:
 	/// <param name="responseObj">This will be filled with the response of the server if no error occurred</param>
 	/// <param name="transaction_id">Required for this function. WebAuthn is always challenge-response</param>
 	/// <returns>S_OK if the request was processed correctly. Possible error codes: PI_ERROR_ENDPOINT_SETUP, PI_ERROR_SERVER_UNAVAILABLE, PI_JSON_PARSE_ERROR</returns>
-	HRESULT ValidateCheckFIDO(const std::wstring& username,
-		const std::wstring& domain, const FIDOSignResponse & fidoSignResponse,
+	HRESULT ValidateCheckFIDO(
+		const std::wstring& username,
+		const std::wstring& domain,
+		const FIDOAssertionData& fidoAssertion,
+		std::string clientData,
 		const std::string& origin,
-		PIResponse& response,
+		PIResponse& responseObj,
 		const std::string& transactionId,
 		const std::wstring& upn = std::wstring());
 

@@ -13,7 +13,7 @@ enum FIELD_ID
 	FID_FIDO_PIN = 6,
 	FID_NEW_PASS_1 = 7,
 	FID_NEW_PASS_2 = 8,
-	FID_NEW_PIN_1 = 9, 
+	FID_NEW_PIN_1 = 9,
 	FID_NEW_PIN_2 = 10,
 	FID_SUBMIT_BUTTON = 11,
 	FID_SUBTEXT = 12,
@@ -22,7 +22,8 @@ enum FIELD_ID
 	FID_FIDO_OFFLINE = 15,
 	FID_RESET_LINK = 16,
 	FID_CANCEL_ENROLLMENT = 17,
-	FID_NUM_FIELDS = 18
+	FID_USER_SELECT = 18,
+	FID_NUM_FIELDS = 19
 };
 
 // The first value indicates when the tile is displayed (selected, not selected)
@@ -54,6 +55,7 @@ static const FIELD_STATE_PAIR s_rgScenarioUsername[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // USERNAMEPASSWORD
@@ -77,6 +79,7 @@ static const FIELD_STATE_PAIR s_rgScenarioUsernamePassword[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // PRIVACYIDEA
@@ -100,6 +103,7 @@ static const FIELD_STATE_PAIR s_rgScenarioPrivacyIDEA[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // PASSWORD
@@ -123,6 +127,7 @@ static const FIELD_STATE_PAIR s_rgScenarioPassword[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // CHANGE PASSWORD
@@ -146,6 +151,7 @@ static const FIELD_STATE_PAIR s_rgScenarioPasswordChange[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // This automatically hides Old Password/OTP and shows only the two new PIN fields.
@@ -169,6 +175,30 @@ static const FIELD_STATE_PAIR s_rgScenarioSetPin[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
+};
+
+static const FIELD_STATE_PAIR s_rgScenarioSelectUser[] =
+{
+	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LOGO
+	{ CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },					// FID_LARGE_TEXT
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SMALL_TEXT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USERNAME
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_PASSWORD
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_OTP
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_PIN
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_NEW_PASS_1
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_NEW_PASS_2
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_NEW_PIN_1
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_NEW_PIN_2
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SUBMIT_BUTTON
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },			// FID_SUBTEXT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_OFFLINE_INFO
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_ONLINE
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_FOCUSED },		// FID_USER_SELECT
 };
 
 static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
@@ -191,6 +221,7 @@ static const FIELD_STATE_PAIR s_rgScenarioUnlockFirstStepPassword[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // Show only FID_PASSWORD to get the PIN of the Device
@@ -214,12 +245,10 @@ static const FIELD_STATE_PAIR s_rgScenarioSecurityKey[] =
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_FIDO_OFFLINE
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_RESET_LINK
 	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_CANCEL_ENROLLMENT
+	{ CPFS_HIDDEN, CPFIS_NONE },							// FID_USER_SELECT
 };
 
 // Field descriptors for unlock and logon.
-// The first field is the index of the field.
-// The second is the type of the field.
-// The third is the name of the field, NOT the value which will appear in the field.
 static CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors[] =
 {
 	{ FID_LOGO, CPFT_TILE_IMAGE, L"" },
@@ -240,4 +269,5 @@ static CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_rgScenarioCredProvFieldDescriptors
 	{ FID_FIDO_OFFLINE, CPFT_COMMAND_LINK, L"Use Security Key Offline"},
 	{ FID_RESET_LINK, CPFT_COMMAND_LINK, L"Reset Login"},
 	{ FID_CANCEL_ENROLLMENT, CPFT_COMMAND_LINK, L"Not now"},
+	{ FID_USER_SELECT, CPFT_COMBOBOX, L"Select User" },
 };

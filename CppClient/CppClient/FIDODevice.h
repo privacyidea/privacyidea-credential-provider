@@ -78,6 +78,8 @@ public:
 
 	void SetPin(const std::string& newPin, const std::string& oldPin = "");
 
+	bool libfidoDebug = false; // Enable libfido2 debug logging which will be redirected to PIDebug
+
 private:
 	int GetDeviceInfo();
 

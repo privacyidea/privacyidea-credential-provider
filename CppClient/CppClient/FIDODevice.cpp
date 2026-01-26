@@ -28,6 +28,7 @@
 #include "FIDOException.h"
 #include "FIDORegistrationResponse.h"
 
+
 struct FidoDevDeleter
 {
 	void operator()(fido_dev_t* dev) const
@@ -69,6 +70,20 @@ namespace
 	constexpr auto COSE_PUB_KEY_Y = -3;
 	constexpr auto COSE_PUB_KEY_E = -2;
 	constexpr auto COSE_PUB_KEY_N = -1;
+
+	static void FidoLogRedirect(const char* message)
+	{
+		if (message)
+		{
+			std::string msg(message);
+			// Remove trailing newline if present to avoid double spacing in logs
+			if (!msg.empty() && msg.back() == '\n')
+			{
+				msg.pop_back();
+			}
+			PIDebug("[libfido2] " + msg);
+		}
+	}
 
 	static int EcKeyFromCBOR(
 		const std::string& cborPubKey,
@@ -208,6 +223,48 @@ namespace
 		return dev;
 	}
 
+	// Retrieve a map of Resident Keys and their Username/DisplayName on the device for the given RPID
+	static std::map<std::string, std::pair<std::string, std::string>> GetResidentKeyMap(
+		const std::string& devicePath,
+		const std::string& pin,
+		const std::string& rpId)
+	{
+		std::map<std::string, std::pair<std::string, std::string>> rkMap;
+		int res = FIDO_OK;
+
+		auto dev = OpenFidoDevice(devicePath, res);
+		if (!dev || res != FIDO_OK) return rkMap;
+
+		fido_credman_rk_t* rk = fido_credman_rk_new();
+		if (rk)
+		{
+			// This requires the PIN!
+			if (fido_credman_get_dev_rk(dev.get(), rpId.c_str(), rk, pin.empty() ? NULL : pin.c_str()) == FIDO_OK)
+			{
+				size_t count = fido_credman_rk_count(rk);
+				for (size_t i = 0; i < count; i++)
+				{
+					const fido_cred_t* cred = fido_credman_rk(rk, i);
+
+					const unsigned char* ptrId = fido_cred_id_ptr(cred);
+					size_t lenId = fido_cred_id_len(cred);
+					std::string sId = Convert::Base64URLEncode(ptrId, lenId);
+
+					std::string sUser = fido_cred_user_name(cred) ? fido_cred_user_name(cred) : "";
+					std::string sDisplay = fido_cred_display_name(cred) ? fido_cred_display_name(cred) : "";
+
+					rkMap[sId] = { sUser, sDisplay };
+				}
+			}
+			else
+			{
+				PIDebug("fido_credman_get_dev_rk failed (device might not support it or PIN invalid)");
+			}
+			fido_credman_rk_free(&rk);
+		}
+		return rkMap;
+	}
+
 	static int GetAssert(
 		const FIDOSignRequest& signRequest,
 		const std::string& origin,
@@ -285,7 +342,6 @@ namespace
 				PIDebug("User verification set to 'discouraged'");
 			}
 		}
-
 		// Get assert and close
 		res = fido_dev_get_assert(dev.get(), *assert, pin.empty() ? NULL : pin.c_str());
 		return res;
@@ -659,6 +715,11 @@ int FIDODevice::Sign(
 	PIDebug("FIDODevice::Sign with device " + this->ToString());
 	fido_assert_t* assert = nullptr;
 	std::vector<unsigned char> vecClientData;
+	
+	if (libfidoDebug)
+		fido_set_log_handler(FidoLogRedirect);
+
+	// 1. Get Assertions (User Touch)
 	int res = GetAssert(signRequest, origin, pin, _path, &assert, vecClientData);
 
 	if (res != FIDO_OK)
@@ -669,26 +730,63 @@ int FIDODevice::Sign(
 	if (res == FIDO_OK)
 	{
 		signResponse.clientdata = Convert::Base64URLEncode(vecClientData);
+		size_t count = fido_assert_count(assert);
+		PIDebug("FIDO2 assertions returned: " + std::to_string(count));
 
-		auto pbId = fido_assert_id_ptr(assert, 0);
-		auto cbId = fido_assert_id_len(assert, 0);
-		signResponse.credentialid = Convert::Base64URLEncode(pbId, cbId);
+		// Only attempt this if there are results, a PIN is present (required for CredMan), and its not winhello
+		std::map<std::string, std::pair<std::string, std::string>> names;
+		if (count > 0 && !pin.empty() && !_isWinHello)
+		{
+			try {
+				names = GetResidentKeyMap(_path, pin, signRequest.rpId);
+			}
+			catch (...) {
+				PIDebug("Exception while fetching resident key metadata.");
+			}
+		}
 
-		auto pbAuthData = fido_assert_authdata_raw_ptr(assert, 0);
-		auto cbAuthData = fido_assert_authdata_raw_len(assert, 0);
-		signResponse.authenticatordata = Convert::Base64URLEncode(pbAuthData, cbAuthData);
+		// Assemble response vector
+		for (size_t i = 0; i < count; i++)
+		{
+			FIDOAssertionData assertion;
 
-		auto pbSig = fido_assert_sig_ptr(assert, 0);
-		auto cbSig = fido_assert_sig_len(assert, 0);
-		signResponse.signaturedata = Convert::Base64URLEncode(pbSig, cbSig);
+			auto pbId = fido_assert_id_ptr(assert, i);
+			auto cbId = fido_assert_id_len(assert, i);
+			assertion.credentialid = Convert::Base64URLEncode(pbId, cbId);
 
-		auto pbUserHandle = fido_assert_user_id_ptr(assert, 0);
-		auto cbUserHandle = fido_assert_user_id_len(assert, 0);
-		signResponse.userHandle = Convert::Base64URLEncode(pbUserHandle, cbUserHandle);
+			auto pbAuthData = fido_assert_authdata_raw_ptr(assert, i);
+			auto cbAuthData = fido_assert_authdata_raw_len(assert, i);
+			assertion.authenticatordata = Convert::Base64URLEncode(pbAuthData, cbAuthData);
+
+			auto pbSig = fido_assert_sig_ptr(assert, i);
+			auto cbSig = fido_assert_sig_len(assert, i);
+			assertion.signaturedata = Convert::Base64URLEncode(pbSig, cbSig);
+
+			auto pbUserHandle = fido_assert_user_id_ptr(assert, i);
+			auto cbUserHandle = fido_assert_user_id_len(assert, i);
+			assertion.userHandle = Convert::Base64URLEncode(pbUserHandle, cbUserHandle);
+			
+			// Username lookup
+			auto it = names.find(assertion.credentialid);
+			if (it != names.end())
+			{
+				assertion.username = it->second.first;
+				assertion.displayName = it->second.second;
+				PIDebug("Mapped Credential " + assertion.credentialid + " to User: " + assertion.username);
+			}
+			else
+			{
+				// Fallback if metadata lookup failed or credential wasnt in the list
+				assertion.username = "";
+				assertion.displayName = "";
+				PIDebug("No metadata found for Credential " + assertion.credentialid);
+			}
+
+			signResponse.assertions.push_back(assertion);
+		}
 	}
 
 	fido_assert_free(&assert);
-
 	return res;
 }
 
@@ -715,6 +813,8 @@ int FIDODevice::SignAndVerifyAssertion(
 	std::string& serialUsed) const
 {
 	PIDebug("FIDODevice::SignAndVerifyAssertion with device " + this->ToString());
+	if (libfidoDebug)
+		fido_set_log_handler(FidoLogRedirect);
 	// Make a signRequest from the offlineData
 	FIDOSignRequest signRequest;
 	signRequest.rpId = offlineData.front().rpId;
@@ -823,11 +923,15 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 	const std::string& pin)
 {
 	PIDebug("FIDODevice::Register with device " + this->ToString());
+
 	if (_path.empty())
 	{
 		PIError("No device path provided");
-		throw FIDOException("No device path available to register credential."); // Throw here
+		throw FIDOException("No device path available to register credential.");
 	}
+
+	if (libfidoDebug)
+		fido_set_log_handler(FidoLogRedirect);
 
 	unique_fido_dev_t dev(fido_dev_new());
 	if (!dev)

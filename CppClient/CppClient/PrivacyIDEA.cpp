@@ -201,8 +201,11 @@ std::string PrivacyIDEA::SendRequestWithFallback(
 	return response;
 }
 
-HRESULT PrivacyIDEA::ValidateCheckFIDO(const std::wstring& username,
-	const std::wstring& domain, const FIDOSignResponse& fidoSignResponse,
+HRESULT PrivacyIDEA::ValidateCheckFIDO(
+	const std::wstring& username,
+	const std::wstring& domain, 
+	const FIDOAssertionData& fidoAssertion, 
+	std::string clientData,
 	const std::string& origin,
 	PIResponse& responseObj,
 	const std::string& transactionId,
@@ -239,10 +242,10 @@ HRESULT PrivacyIDEA::ValidateCheckFIDO(const std::wstring& username,
 	}
 
 	// Add FIDO parameters, each member of the response is a parameter
-	parameters.try_emplace("credentialid", fidoSignResponse.credentialid);
-	parameters.try_emplace("clientdata", fidoSignResponse.clientdata);
-	parameters.try_emplace("signaturedata", fidoSignResponse.signaturedata);
-	parameters.try_emplace("authenticatordata", fidoSignResponse.authenticatordata);
+	parameters.try_emplace("credentialid", fidoAssertion.credentialid);
+	parameters.try_emplace("clientdata", clientData);
+	parameters.try_emplace("signaturedata", fidoAssertion.signaturedata);
+	parameters.try_emplace("authenticatordata", fidoAssertion.authenticatordata);
 
 	// TODO userhandle, exstensions
 

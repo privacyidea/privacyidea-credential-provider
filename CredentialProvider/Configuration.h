@@ -66,6 +66,7 @@ public:
 		case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
 		case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
 		case Mode::SEC_KEY_SET_PIN:					return "SEC_KEY_SET_PIN";
+		case Mode::SEC_KEY_SELECT_USER:				return "SEC_KEY_SELECT_USER";
 		default:									return "UNKNOWN_MODE";
 		}
 	}
@@ -168,6 +169,7 @@ public:
 	bool webAuthnOfflinePreferred = false;
 	bool webAuthnOfflineHideFirstStep = false;
 	bool useWindowsHelloForCredUI = true;
+	bool libfidoDebug = false;
 
 	bool otpFailReturnToFirstStep = false;
 

@@ -187,6 +187,9 @@ private:
 	std::optional<FIDOSignRequest> _passkeyChallenge = std::nullopt;
 	bool _passkeyRegistrationFailed = false;
 	
+	FIDOSignResponse _currentSignResponse;
+	DWORD _selectedAssertionIndex = 0;
+
 	// Flag to indicate that the FID_OTP field should be hidden
 	// TODO should be modes?
 	bool _pollEnrollmentInProgress = false;

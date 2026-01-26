@@ -133,7 +133,7 @@ void Configuration::Load()
 	usernamePassword = rr.GetBool(L"username_password");
 
 	// Set locales files path from registry
-	localesPath = rr.GetWString(L"localesPath");
+	localesPath = rr.GetWString(L"locales_path");
 
 	debugLog = rr.GetBool(L"debug_log");
 #ifdef _DEBUG
@@ -195,6 +195,8 @@ void Configuration::Load()
 	webAuthnOfflineHideFirstStep = rr.GetBool(L"webauthn_offline_hide_first_step");
 	disablePasskey = rr.GetBool(L"disable_passkey");
 	trustedRPIDs = rr.GetMultiSZ(L"trusted_rpids");
+	libfidoDebug = rr.GetBool(L"libfido_debug");
+
 	// invert name and logic for explicit disable
 	useWindowsHelloForCredUI = !rr.GetBool(L"disable_windows_hello_for_credui");
 	
@@ -350,7 +352,6 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("Send UPN", piconfig.sendUPN);
 	PrintIfStringNotEmpty(L"Bitmap path", bitmapPath);
 	
-	
 	PrintIfStringNotEmpty(L"Default realm", piconfig.defaultRealm);
 	PrintIfIntIsNotNull("Hide first step response error", hideFirstStepResponseError);
 
@@ -367,6 +368,7 @@ void Configuration::LogConfig()
 	PrintIfStringNotEmpty(L"AutoLogon Domain", autoLogonDomain);
 	// We do NOT log the AutoLogon Password for security reasons
 
+	PrintIfIntIsNotNull("Libfido debug", libfidoDebug);
 	if (piconfig.realmMap.size() > 0)
 	{
 		wstring tmp;

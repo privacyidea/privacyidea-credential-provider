@@ -18,12 +18,22 @@
 ** * * * * * * * * * * * * * * * * * * */
 #pragma once
 #include <string>
+#include <vector>
 
-struct FIDOSignResponse
+// Data specific to one credential found on the device
+struct FIDOAssertionData
 {
 	std::string credentialid;
-	std::string clientdata;
 	std::string authenticatordata;
 	std::string signaturedata;
 	std::string userHandle;
+	std::string username;
+	std::string displayName;
+};
+
+struct FIDOSignResponse
+{
+	// The client data is the same for all assertions
+	std::string clientdata;
+	std::vector<FIDOAssertionData> assertions;
 };
