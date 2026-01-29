@@ -40,12 +40,17 @@
 		</Condition>
 		<CustomAction Id="IsPrivileged" Error="You must be an admin to install this product" />
 		<CustomAction Id="PreventDowngrading" Error="Newer version already installed." />
+		
+		<CustomAction Id="SetLocalesDefault" Property="LOCALES_PATH" Value="[locales]" />
+		<CustomAction Id="SetLocalesFromOld" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_OLD]" />
+		<CustomAction Id="SetLocalesFromNew" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_NEW]" />
+
 		<InstallExecuteSequence>
-			<Custom Action="IsPrivileged" Before="AppSearch">
-				Not Privileged
-			</Custom>
-			<Custom Action="SetLocalesFromOld" After="AppSearch">REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
-			<Custom Action="SetLocalesFromNew" After="AppSearch">REG_LOCALES_PATH_NEW</Custom>
+			<Custom Action="IsPrivileged" Before="AppSearch">Not Privileged</Custom>
+
+			<Custom Action="SetLocalesDefault" After="CostFinalize">NOT REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
+			<Custom Action="SetLocalesFromOld" After="SetLocalesDefault">REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
+			<Custom Action="SetLocalesFromNew" After="SetLocalesFromOld">REG_LOCALES_PATH_NEW</Custom>
 		</InstallExecuteSequence>
 
 		<Icon Id="icon.ico" SourceFile="$(var.SolutionDir)icon.ico" />
@@ -98,6 +103,9 @@
 		</Property>
 		<Property Id="SEND_UPN">
 			<RegistrySearch Id="SearchSendUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="send_upn" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="RESOLVE_UPN">
+			<RegistrySearch Id="SearchSendUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="resolve_upn" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="ENABLE_FILTER">
 			<RegistrySearch Id="SearchEnableFilter" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_filter" Win64="$(var.Win64)" Type="raw" />
@@ -203,7 +211,7 @@
 			<RegistrySearch Id="SearchNetBiosAddress" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_address" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 
-		<Property Id="LOCALES_PATH" Value="[$(var.PlatformProgramDataFolder)]$(var.Publisher)\$(var.ProductFolderName)\locales" />
+		<Property Id="LOCALES_PATH" />
 		<Property Id="REG_LOCALES_PATH_OLD">
 			<RegistrySearch Id="SearchLocalesPathOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="localesPath" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -237,7 +245,6 @@
 		<Property Id="OFFLINE_DELETE_AFTER_DAYS" Value="0" Secure="yes">
 			<RegistrySearch Id="SearchOfflineDeleteAfterDays" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_delete_after_days" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
 		<Property Id="DISABLE_WINDOWS_HELLO_FOR_CREDUI">
 			<RegistrySearch Id="SearchDisableWindowsHelloCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="disable_windows_hello_for_credui" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -253,10 +260,9 @@
 		<Property Id="HEADER_ACCEPT_LANGUAGE" Value="system">
 			<RegistrySearch Id="SearchHeaderAcceptLanguage" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="header_accept_language" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
-		<CustomAction Id="SetLocalesFromOld" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_OLD]" />
-		<CustomAction Id="SetLocalesFromNew" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_NEW]" />
-
+		<Property Id="PASSKEY_FIRST_STEP">
+			<RegistrySearch Id="SearchPasskeyFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="passkey_first_step" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Directory Id="TARGETDIR" Name="SourceDir">
 			<?if $(var.Configuration) = Debug ?>
 			<?if $(var.Platform) = x64 ?>
@@ -346,6 +352,7 @@
 						<RegistryValue Name="prefill_username" Type="string" Value="[PREFILL_USERNAME]" />
 						<RegistryValue Name="enable_reset" Type="string" Value="[ENABLE_RESET]" />
 						<RegistryValue Name="send_upn" Type="string" Value="[SEND_UPN]" />
+						<RegistryValue Name="resolve_upn" Type="string" Value="[RESOLVE_UPN]" />
 						<RegistryValue Name="cpus_logon" Type="string" Value="[CPUS_LOGON]" />
 						<RegistryValue Name="cpus_unlock" Type="string" Value="[CPUS_UNLOCK]" />
 						<RegistryValue Name="cpus_credui" Type="string" Value="[CPUS_CREDUI]" />
@@ -368,7 +375,7 @@
 						<RegistryValue Name="check_all_offline_credentials" Type="string" Value="[CHECK_ALL_OFFLINE_CREDENTIALS]" />
 						<RegistryValue Name="header_accept_language" Type="string" Value="[HEADER_ACCEPT_LANGUAGE]" />
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
-
+						<RegistryValue Name="passkey_first_step" Type="string" Value="[PASSKEY_FIRST_STEP]" />
 						<RegistryValue Name="locales_path" Type="string" Value="[LOCALES_PATH]" />
 						<RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
 						<RegistryValue Name="no_default" Type="string" Value="[NO_DEFAULT]" />

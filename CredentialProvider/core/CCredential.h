@@ -125,13 +125,13 @@ public:
 
 	// Called when UnAdvise is called for the Provider.
 	// This happens when there is inactivity while logging in and the screen goes into "locked mode".
-	HRESULT FullReset(); 
+	HRESULT FullReset();
 
 private:
 	HRESULT SetMode(Mode mode);
-
+	std::wstring ResolveUpnToNetBios(const std::wstring& upn);
 	HRESULT ResetMode(bool resetToFirstStep = false);
-
+	bool AttemptStartPasskey();
 	HRESULT SetDomainHint(std::wstring domain);
 
 	HRESULT SetOfflineInfo(std::string username);
@@ -169,8 +169,8 @@ private:
 	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR _rgCredProvFieldDescriptors[FID_NUM_FIELDS];
 
 	// An array holding the state of each field in the tile.
-	FIELD_STATE_PAIR _rgFieldStatePairs[FID_NUM_FIELDS];				
-	
+	FIELD_STATE_PAIR _rgFieldStatePairs[FID_NUM_FIELDS];
+
 	// An array holding the string value of each field. This is different from the name of 
 	// the field held in _rgCredProvFieldDescriptors.
 	wchar_t* _rgFieldStrings[FID_NUM_FIELDS];
@@ -186,7 +186,7 @@ private:
 	bool _modeSwitched = false;
 	std::optional<FIDOSignRequest> _passkeyChallenge = std::nullopt;
 	bool _passkeyRegistrationFailed = false;
-	
+
 	FIDOSignResponse _currentSignResponse;
 	DWORD _selectedAssertionIndex = 0;
 

@@ -161,7 +161,7 @@ void Configuration::Load()
 	checkAllOfflineCredentials = rr.GetBool(L"check_all_offline_credentials");
 	
 	piconfig.sendUPN = rr.GetBool(L"send_upn");
-
+	resolveUPN = rr.GetBool(L"resolve_upn");
 	piconfig.acceptLanguage = ValidateAcceptLanguage(rr.GetWString(L"header_accept_language"));
 
 	language = Convert::ToString(rr.GetWString(L"language"));
@@ -194,6 +194,12 @@ void Configuration::Load()
 	webAuthnOfflinePreferred = rr.GetBool(L"webauthn_offline_preferred");
 	webAuthnOfflineHideFirstStep = rr.GetBool(L"webauthn_offline_hide_first_step");
 	disablePasskey = rr.GetBool(L"disable_passkey");
+	if (disablePasskey) {
+		PIDebug("Passkey usage is disabled via configuration, also disabling passkey_first_step.");
+	}
+	else {
+		passkeyFirstStep = rr.GetBool(L"passkey_first_step");
+	}
 	trustedRPIDs = rr.GetMultiSZ(L"trusted_rpids");
 	libfidoDebug = rr.GetBool(L"libfido_debug");
 
@@ -333,6 +339,7 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("WebAuthn offline preferred", webAuthnOfflinePreferred);
 	PrintIfIntIsNotNull("WebAuthn offline hide first step", webAuthnOfflineHideFirstStep);
 	PrintIfIntIsNotNull("Disable passkey", disablePasskey);
+	PrintIfIntIsNotNull("Passkey first step", passkeyFirstStep);
 	if (!trustedRPIDs.empty())
 	{
 		PIDebug(L"Trusted RPIDs: " + Convert::JoinW(trustedRPIDs, L", "));

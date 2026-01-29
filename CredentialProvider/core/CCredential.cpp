@@ -286,17 +286,31 @@ HRESULT CCredential::SetSelected(__out BOOL* pbAutoLogon)
 			// Only set the mode intially. Afterwards, keep the mode
 			if (_config->IsFirstStep())
 			{
-				// In CPUS_UNLOCK_WORKSTATION the username is already set, so we do not need to set it again.
-				// To be able to use two_step_send_(empty_)password, set mode to password then MFA.
-				if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+				bool passkeyStarted = false;
+
+				if (_config->passkeyFirstStep && !_config->disablePasskey)
 				{
-					hr = SetMode(Mode::PASSWORD);
-				}
-				else
-				{
-					hr = SetMode(_config->GetFirstStepMode());
+					if (AttemptStartPasskey())
+					{
+						passkeyStarted = true;
+						// Trigger immediate execution (Connect) to start device polling
+						*pbAutoLogon = TRUE;
+					}
 				}
 
+				if (!passkeyStarted)
+				{
+					// In CPUS_UNLOCK_WORKSTATION the username is already set, so we do not need to set it again.
+					// To be able to use two_step_send_(empty_)password, set mode to password then MFA.
+					if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION)
+					{
+						hr = SetMode(Mode::PASSWORD);
+					}
+					else
+					{
+						hr = SetMode(_config->GetFirstStepMode());
+					}
+				}
 			}
 		}
 	}
@@ -524,6 +538,10 @@ HRESULT CCredential::SetStringValue(
 		if (dwFieldID == FID_USERNAME)
 		{
 			wstring input(pwz);
+			if (_config->resolveUPN) {
+				input = ResolveUpnToNetBios(input);
+			}
+
 			// Write the value back to the field so that changes from elsewhere (e.g. prefill_username) are overwritten
 			_pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, pwz);
 			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
@@ -555,6 +573,29 @@ HRESULT CCredential::SetStringValue(
 	}
 
 	return hr;
+}
+
+bool CCredential::AttemptStartPasskey()
+{
+	PIDebug("Attempting to start Passkey flow...");
+	_config->usePasskey = true;
+	PIResponse res;
+
+	const auto hr = _privacyIDEA.ValidateInitialize(res);
+	if (FAILED(hr) || !res.passkeyChallenge)
+	{
+		PIDebug("Failed to initialize Passkey: " + Convert::LongToHexString(hr));
+		_config->usePasskey = false;
+		return false;
+	}
+
+	_passkeyChallenge = res.passkeyChallenge.value();
+	std::string uv = _passkeyChallenge.value().userVerification;
+
+	const auto mode = SelectFIDOMode(uv, false);
+	SetMode(mode);
+
+	return true;
 }
 
 HRESULT CCredential::SetOfflineInfo(std::string username)
@@ -1148,7 +1189,7 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 			PIDebug("CommandLinkClicked: Passkey Online");
 			// Passkey: We need to get the challenge here to have the uv which will decide the 
 			// next mode, with or without PIN
-			_config->usePasskey = true;
+			/*_config->usePasskey = true;
 			PIResponse res;
 			const auto hr = _privacyIDEA.ValidateInitialize(res);
 			if (FAILED(hr) || !res.passkeyChallenge)
@@ -1157,7 +1198,18 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 				return S_OK;
 			}
 			_passkeyChallenge = res.passkeyChallenge.value();
-			uv = _passkeyChallenge.value().userVerification;
+			uv = _passkeyChallenge.value().userVerification;*/
+			if (!AttemptStartPasskey())
+			{
+				return S_OK; // Failed, do nothing (error already logged)
+			}
+			// Trigger immediate execution
+			if (_config->IsModeOneOf(Mode::SEC_KEY_NO_DEVICE, Mode::SEC_KEY_NO_PIN))
+			{
+				_config->doAutoLogon = true;
+				_config->provider.pCredentialProviderEvents->CredentialsChanged(_config->provider.upAdviseContext);
+			}
+			return S_OK;
 		}
 		// FIDO Offline
 		else if (_config->IsFirstStep() && _config->useOfflineFIDO)
@@ -1830,7 +1882,8 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 		if (!dev && _fidoDeviceSearchCancelled)
 		{
 			PIDebug("FIDO2 device search cancelled by user");
-			SetMode(Mode::PRIVACYIDEA);
+			_lastStatus = FIDO_ERR_OPERATION_DENIED;
+			_config->usePasskey = false;
 			return E_FAIL;
 		}
 		const auto mode = SelectFIDOMode();
@@ -2210,6 +2263,48 @@ HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
 	return hr;
 }
 
+std::wstring CCredential::ResolveUpnToNetBios(const std::wstring& upn)
+{
+	// Quick sanity check: if no '@', it's not a UPN, return as-is.
+	if (upn.find(L"@") == std::wstring::npos)
+	{
+		return upn;
+	}
+
+	// 1. Get the required buffer size
+	// NameUserPrincipal = UPN (user@dns.com)
+	// NameSamCompatible = NetBIOS (DOMAIN\User)
+	DWORD size = 0;
+	BOOLEAN status = TranslateNameW(upn.c_str(), NameUserPrincipal, NameSamCompatible, NULL, &size);
+
+	// ERROR_INSUFFICIENT_BUFFER is expected because we passed NULL to get the size
+	if (!status && GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+	{
+		PIDebug("TranslateNameW failed to resolve UPN. Error: " + std::to_string(GetLastError()));
+		return upn; // Fallback: return original string on failure (e.g. offline)
+	}
+
+	if (size == 0) return upn;
+
+	// 2. Allocate buffer (size includes null terminator in some versions, but vector handles it safely)
+	std::vector<wchar_t> buffer(size);
+
+	// 3. Perform the translation
+	status = TranslateNameW(upn.c_str(), NameUserPrincipal, NameSamCompatible, buffer.data(), &size);
+
+	if (!status)
+	{
+		PIDebug("TranslateNameW execution failed. Error: " + std::to_string(GetLastError()));
+		return upn;
+	}
+
+	// Convert to wstring (buffer data is null-terminated by API)
+	std::wstring result(buffer.data());
+	PIDebug(L"Resolved UPN '" + upn + L"' to '" + result + L"'");
+
+	return result;
+}
+
 HRESULT CCredential::EvaluateResponse(PIResponse& response)
 {
 	_config->lastResponse = response;
@@ -2320,7 +2415,6 @@ std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatu
 		if (pqcws->QueryContinue() != S_OK)
 		{
 			PIDebug("User cancelled device search");
-			SetMode(Mode::PRIVACYIDEA);
 			_fidoDeviceSearchCancelled = true;
 			return std::nullopt;
 		}

@@ -109,6 +109,7 @@ public:
 	bool usePasskey = false;		// Online
 	bool useOfflineFIDO = false;	// Offline
 	bool disablePasskey = false;
+	bool passkeyFirstStep = false;
 
 	std::wstring bitmapPath = L"";
 
@@ -177,6 +178,8 @@ public:
 	std::wstring autoLogonUsername = L"";
 	std::wstring autoLogonDomain = L"";
 	std::wstring autoLogonPassword = L"";
+
+	bool resolveUPN;
 
 	// Track the current state
 	Mode mode = Mode::NO_CHANGE;

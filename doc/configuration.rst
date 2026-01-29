@@ -125,6 +125,12 @@ Enabling this will **not** cause the Credential Provider to automatically prompt
 Set to ``1`` to send the UPN instead of username and domain to privacyIDEA. The determination if the username input is a UPN is currently very basic and will assume an UPN if there is an @ and no \ contained in the input.
 If the input is not an UPN, the usual realm settings are applied.
 
+**resolve_upn**
+
+Set to ``1`` to attempt to resolve User Principal Names (UPN) (e.g., ``user@domain.com``) to the NetBIOS format (``DOMAIN\user``) using the Windows ``TranslateName`` API.
+This is useful in scenarios where the UPN suffix (e.g., ``.com``) does not match the internal local domain name (e.g., ``.local``).
+**Warning:** This may introduce latency during login if the Domain Controller is unreachable.
+
 **hide_domainname**
 
 Set to ``1`` if you want the privacyIDEA Credential Provider to hide only the domain name when the desktop is locked.
@@ -305,6 +311,12 @@ EVENTHOUGH THERE IS A CANCEL BUTTON, THE CONTROL IS TRANSFERED TO THE DEVICE UNT
 
 .. note:: WINDOWS HELLO IS NOT SUPPORTED FOR LOCAL LOGINS BECAUSE THE UI CAN NOT BE RENDERED IN LOGON/UNLOCK SCENARIOS.
 TO USE FIDO IN RDP SCENARIOS, ONLY WINDOWS HELLO WILL BE USED, BECAUSE IT HANDLES THE TUNNELING OF THE FIDO DATA TO THE LOCAL DEVICE.**
+
+**passkey_first_step**
+
+Set to ``1`` to have the Credential Provider start immediately in Passkey mode (Usernameless).
+Instead of seeing the Username/Password fields, the user will be prompted to touch their security key immediately.
+If the initialization fails (e.g., server unreachable), it falls back to the standard login fields.
 
 **disable_passkey**
 
