@@ -162,7 +162,6 @@
 		<Property Id="DISABLE_PASSKEY">
 			<RegistrySearch Id="SearchDisablePasskey" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="disable_passkey" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
 		<Property Id="SHOW_DOMAIN_HINT">
 			<RegistrySearch Id="SearchShowDomainHint" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="show_domain_hint" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -208,7 +207,6 @@
 		<Property Id="EXCLUDED_GROUP_NETBIOS_ADDRESS">
 			<RegistrySearch Id="SearchNetBiosAddress" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_address" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
 		<Property Id="LOCALES_PATH" />
 		<Property Id="REG_LOCALES_PATH_OLD">
 			<RegistrySearch Id="SearchLocalesPathOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="localesPath" Win64="$(var.Win64)" Type="raw" />

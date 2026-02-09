@@ -232,10 +232,9 @@ std::vector<OfflineData> OfflineHandler::GetFIDODataFor(const std::string& usern
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
 	{
-		// Check username & type
+		// Check if username and type match and expiry optionally. Expired ones might be included to have a chance to refill them.
 		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username) && item.isWebAuthn())
 		{
-			// NEW: Filter logic
 			if (!includeExpired && IsExpired(item))
 			{
 				PIDebug("Skipping expired offline token: " + item.serial);

@@ -915,7 +915,7 @@ HRESULT CCredential::SetMode(Mode mode)
 	bool showFidoOffline = false;
 	bool showReset = (_config->showResetLink && !_config->IsFirstStep());
 
-	// FIDO Online Link (Passkey / Challenge)
+	// FIDO Online Link: Passkey offered in first step or WebAuthn/Passkey challenge-response
 	if (_config->IsFirstStep() && !_config->disablePasskey)
 	{
 		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_PASSKEY).c_str());
@@ -934,8 +934,8 @@ HRESULT CCredential::SetMode(Mode mode)
 
 		if (!hiddenInFirstStep)
 		{
-			// 1. First Step: Show if ANY data exists on the machine (generic) 
-			//    OR if the specifically typed user has data.
+			// Show if ANY data exists on the machine (generic, for usernameless auth) 
+			// or if the specifically typed user has data (when username+password has already been entered, so second step here)
 			if (_config->IsFirstStep())
 			{
 				if (!_privacyIDEA.offlineHandler.GetAllFIDOData().empty())
@@ -943,7 +943,6 @@ HRESULT CCredential::SetMode(Mode mode)
 					showFidoOffline = true;
 				}
 			}
-			// 2. Second Step: Only show if the CURRENT user has data.
 			else
 			{
 				if (_privacyIDEA.OfflineFIDODataExistsFor(_config->credential.username))
@@ -954,7 +953,7 @@ HRESULT CCredential::SetMode(Mode mode)
 		}
 	}
 
-	// Special Case: Offline link in Second Step to make it look the same as online authentication.
+	// Special Case: Offline link in Second Step to make it look the same as online authentication ("seamless").
 	// Only show if the setting is enabled AND the current user actually has offline data.
 	if ((mode == Mode::PRIVACYIDEA || mode > Mode::SEC_KEY_ANY)
 		&& _config->webAuthnOfflineSecondStep
@@ -1187,23 +1186,11 @@ HRESULT CCredential::CommandLinkClicked(__in DWORD dwFieldID)
 		if (_config->IsFirstStep() && !_config->useOfflineFIDO)
 		{
 			PIDebug("CommandLinkClicked: Passkey Online");
-			// Passkey: We need to get the challenge here to have the uv which will decide the 
-			// next mode, with or without PIN
-			/*_config->usePasskey = true;
-			PIResponse res;
-			const auto hr = _privacyIDEA.ValidateInitialize(res);
-			if (FAILED(hr) || !res.passkeyChallenge)
-			{
-				// Just return, so when clicking the link nothing happens. The error is logged anyway.
-				return S_OK;
-			}
-			_passkeyChallenge = res.passkeyChallenge.value();
-			uv = _passkeyChallenge.value().userVerification;*/
 			if (!AttemptStartPasskey())
 			{
 				return S_OK; // Failed, do nothing (error already logged)
 			}
-			// Trigger immediate execution
+			// Trigger immediate execution via reenumeration -> autologon -> connect()
 			if (_config->IsModeOneOf(Mode::SEC_KEY_NO_DEVICE, Mode::SEC_KEY_NO_PIN))
 			{
 				_config->doAutoLogon = true;
@@ -1779,37 +1766,34 @@ bool CCredential::CheckExcludedAccount()
 
 bool CCredential::IsRpIdAllowed(const std::string& rpId)
 {
-	// 1. If the list is empty, feature is disabled -> Allow everything
+	// TODO no RP ID configuration is currently accepted.
 	if (_config->trustedRPIDs.empty())
 	{
 		return true;
 	}
 
-	// 2. Iterate and check
 	for (const auto& allowed : _config->trustedRPIDs)
 	{
 		std::string sAllowed = Convert::ToString(allowed);
 
-		// Case-insensitive comparison
+		// Case-insensitive comparison!
 		if (_stricmp(rpId.c_str(), sAllowed.c_str()) == 0)
 		{
 			return true;
 		}
 	}
 
-	// 3. Not found -> Log Security Alert
-	PIError("SECURITY ALERT: Operation blocked. Requested RPID '" + rpId +
-		"' is not in the allowed list (trusted_rpids).");
+	PIError("SECURITY ALERT: FIDO Operation blocked! Request contained RPID '" + rpId +
+		"' which is not in the configured allow list (trusted_rpids)!");
 
 	return false;
 }
 
 std::optional<FIDODevice> CCredential::GetPreferredFIDODevice()
 {
-	// 1. Check Priority: Windows Hello
-	// Use Hello if:
-	// A) We are in CredUI (UAC) mode AND the admin enabled the feature
-	// B) We are in a Remote Session (RDP must use Hello platform to tunnel)
+	// Check if Windows Hello should be used:
+	// We are in CredUI (UAC) mode AND the admin has not disabled the use of native Windows Hello
+	// We are in a Remote Session (RDP **must** use Hello platform to tunnel)
 	const bool prioritizeHello = (_config->provider.cpu == CPUS_CREDUI && _config->useWindowsHelloForCredUI) || _config->isRemoteSession;
 	if (prioritizeHello)
 	{
@@ -1821,7 +1805,7 @@ std::optional<FIDODevice> CCredential::GetPreferredFIDODevice()
 		}
 		PIDebug("GetPreferredFIDODevice: Windows Hello requested but not found. Falling back to standard search...");
 	}
-	// 2. Standard Search
+	// Standard Device Search
 	// If we are local, filter out Windows Hello (since we would have returned it above if we wanted it).
 	// If we are remote but Hello failed above, we check everything just in case.
 	const bool filterWindowsHello = !_config->isRemoteSession;
@@ -2068,7 +2052,7 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 
 			// Population of the combobox for username selection
 			// We must manually populate it because GetComboBoxValueCount won't be called by Windows
-			// since we arent triggering a credential re-enumeration.
+			// since we arent triggering a credential re-enumeration (because that would lead to more logic needed).
 			if (_pCredProvCredentialEvents)
 			{
 				// Just append items, assuming this happens only once per authentication attempt, so the combobox is empty.
@@ -2265,13 +2249,13 @@ HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
 
 std::wstring CCredential::ResolveUpnToNetBios(const std::wstring& upn)
 {
-	// Quick sanity check: if no '@', it's not a UPN, return as-is.
+	// If no '@', it's not a UPN, return as-is.
 	if (upn.find(L"@") == std::wstring::npos)
 	{
 		return upn;
 	}
 
-	// 1. Get the required buffer size
+	// Get the required buffer size
 	// NameUserPrincipal = UPN (user@dns.com)
 	// NameSamCompatible = NetBIOS (DOMAIN\User)
 	DWORD size = 0;
@@ -2286,10 +2270,8 @@ std::wstring CCredential::ResolveUpnToNetBios(const std::wstring& upn)
 
 	if (size == 0) return upn;
 
-	// 2. Allocate buffer (size includes null terminator in some versions, but vector handles it safely)
+	// Allocate buffer (size includes null terminator in some versions, but vector handles it safely) and translate name
 	std::vector<wchar_t> buffer(size);
-
-	// 3. Perform the translation
 	status = TranslateNameW(upn.c_str(), NameUserPrincipal, NameSamCompatible, buffer.data(), &size);
 
 	if (!status)
@@ -2419,14 +2401,12 @@ std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatu
 			return std::nullopt;
 		}
 
-		// --- NEW: Windows Hello Priority for CredUI ---
 		auto dev = GetPreferredFIDODevice();
 		if (dev.has_value())
 		{
 			PIDebug("WaitForFIDODevice: Found " + dev->GetProduct());
 			return dev;
 		}
-		// ----------------------------------------------
 
 		tries--;
 	}

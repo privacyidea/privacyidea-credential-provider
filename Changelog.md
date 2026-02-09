@@ -15,11 +15,13 @@
     - refill is done for all token of the user, as soon as the user is known. this is default. Previously, the refill was only done for the token that was actually used, which could easily cause stale credentials in the offline file.
     - 'check_all_offline_credentials=1' allows to remove the "refill per user" constraint, so that all offline credentials are checked. **only use this if you are sure there are a limited number of offline credentials on the maschine. checking too many credentials will add a significant delay to the login and degrade experience** (we are also working on improving this)
 
-* Always use Windows Hello (Credential Broker UI) for CredUI scenarios
+* Always use Windows Hello (Credential Broker UI) for CredUI scenarios:
     - Allows selection of used credential
     - Native implementation can be activated with 'disable_windows_hello_for_credui=1', not recommended
 
 * Added option ``passkey_first_step`` which will cause the Credential Provider to start passkey authentication instantly. Be aware that it can only be cancelled, if it is still waiting for a device. If a device is already inserted, and you are prompted to touch your security key, the operation can no longer be aborted because the control is already given to the security key. You can then either touch it and then cancel the authentication or wait for a timeout.
+
+* Added option ``resolve_upn``. If enabled, the Credential Provider will attempt resolve the UPN to the netbios name.
 
 ## Fixes
 * Fixed password change for machines that are not in a domain
