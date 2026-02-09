@@ -90,14 +90,12 @@
 		<Property Id="SSL_IGNORE_INVALID_CN">
 			<RegistrySearch Id="SearchSSLIgnoreInvalidCN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_ignore_invalid_cn" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
 		<Property Id="HIDE_DOMAINNAME">
 			<RegistrySearch Id="SearchHideDomainname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_domainname" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="HIDE_FULLNAME">
 			<RegistrySearch Id="SearchHideFullname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_fullname" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-
 		<Property Id="DEBUG_LOG">
 			<RegistrySearch Id="SearchDebugLog" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="debug_log" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -105,7 +103,7 @@
 			<RegistrySearch Id="SearchSendUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="send_upn" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="RESOLVE_UPN">
-			<RegistrySearch Id="SearchSendUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="resolve_upn" Win64="$(var.Win64)" Type="raw" />
+			<RegistrySearch Id="SearchResolveUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="resolve_upn" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="ENABLE_FILTER">
 			<RegistrySearch Id="SearchEnableFilter" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_filter" Win64="$(var.Win64)" Type="raw" />

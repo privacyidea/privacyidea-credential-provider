@@ -19,6 +19,8 @@
     - Allows selection of used credential
     - Native implementation can be activated with 'disable_windows_hello_for_credui=1', not recommended
 
+* Added option ``passkey_first_step`` which will cause the Credential Provider to start passkey authentication instantly. Be aware that it can only be cancelled, if it is still waiting for a device. If a device is already inserted, and you are prompted to touch your security key, the operation can no longer be aborted because the control is already given to the security key. You can then either touch it and then cancel the authentication or wait for a timeout.
+
 ## Fixes
 * Fixed password change for machines that are not in a domain
 * Fixed behavior when the passkey is not on the authenticator that is currently used:
