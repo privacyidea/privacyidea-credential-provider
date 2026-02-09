@@ -553,10 +553,6 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 			continue;
 		}
 		ret.push_back(dev);
-
-		/*if (dev.IsWinHello()) {
-			ret.push_back(dev);
-		}*/
 	}
 	if (log)
 	{

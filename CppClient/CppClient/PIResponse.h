@@ -47,6 +47,9 @@ public:
 
 	std::string GetPushMessage();
 
+	// Returns a single FIDOSignRequest in which, if there are multiple challenges, the credential ids have been merged
+	// However, challenges for passkey (trigger_by_pin can lead to having classic challenge-response like passkey) and webauthn are not compatible 
+	// for legacy encoding reasons. Therefore, if both types are present, passkey will be prioritized, a log message will be emitted and webauthn challenges ignored.
 	std::optional<FIDOSignRequest> GetFIDOSignRequest();
 
 	std::string GetFIDOMessage();

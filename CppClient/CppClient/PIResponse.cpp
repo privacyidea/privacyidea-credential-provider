@@ -61,7 +61,6 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 {
 	std::optional<FIDOSignRequest> ret = std::nullopt;
 
-	// 1. PRE-SCAN: Detect types present
 	bool hasWebAuthn = false;
 	bool hasPasskey = false;
 
@@ -71,9 +70,8 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 		else if (challenge.type == "passkey") hasPasskey = true;
 	}
 
-	// 2. DECIDE: Pick a winner (Modified: Passkey wins)
 	std::string targetType = "";
-
+	// Prioritize passkey over webauthn if both are present
 	if (hasPasskey)
 	{
 		targetType = "passkey";
@@ -89,11 +87,8 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 	}
 	else
 	{
-		return std::nullopt; // No FIDO challenges found
+		return std::nullopt;
 	}
-
-	// ---------------------------------------------------------
-	// 3. MERGE (Only process the target type)
 
 	std::vector<AllowCredential> accumulatedCredentials;
 	FIDOSignRequest baseRequest;
@@ -101,14 +96,12 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 
 	for (auto& challenge : challenges)
 	{
-		// FILTER: Skip challenges that don't match our chosen winner
 		if (challenge.type != targetType) continue;
 
 		if (!challenge.fidoSignRequest.has_value()) continue;
 
 		const auto& currentReq = challenge.fidoSignRequest.value();
 
-		// Safe Accumulation of credentials (if any exist)
 		if (!currentReq.allowCredentials.empty())
 		{
 			accumulatedCredentials.insert(
@@ -123,13 +116,11 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 		if (!baseRequestInitialized && !currentReq.rpId.empty())
 		{
 			baseRequest = currentReq;
-			// Force the type to match our decision explicitly
 			baseRequest.type = targetType;
 			baseRequestInitialized = true;
 		}
 	}
 
-	// 4. FINAL ASSEMBLY
 	// Only return if we successfully initialized the base request (have challenge + rpId)
 	if (baseRequestInitialized && !baseRequest.challenge.empty())
 	{

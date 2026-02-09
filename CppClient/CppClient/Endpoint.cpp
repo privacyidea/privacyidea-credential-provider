@@ -263,26 +263,6 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 		return "";
 	}
 
-	// --- PASTE THIS BLOCK START ---
-	if (hSession)
-	{
-		// Define flags if missing in your SDK
-#ifndef WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2
-#define WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 0x00000800
-#endif
-#ifndef WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3
-#define WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3 0x00002000
-#endif
-
-// Force TLS 1.2 or 1.3. 
-// This solves Error 12029 by ensuring the initial Handshake meets 
-// the modern security standards expected by the Linux Python server.
-		DWORD secure_protocols = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
-		WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS, &secure_protocols, sizeof(secure_protocols));
-	}
-	// --- PASTE THIS BLOCK END ---
-
-
 	// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 	if (hConnect)
 	{

@@ -175,8 +175,6 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 
 	DWORD dwType = 0;
 
-	// 1. Query for TYPE only (pass nullptr for data). 
-	// This succeeds regardless of data size.
 	dwRet = RegQueryValueEx(hKey, name.c_str(), nullptr, &dwType, nullptr, nullptr);
 
 	if (dwRet == ERROR_SUCCESS)
@@ -194,8 +192,6 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 		}
 		else if (dwType == REG_SZ)
 		{
-			// 2b. It's a string. Close the key and use the existing helper 
-			// which handles variable length strings correctly.
 			RegCloseKey(hKey);
 			return _wtoi(GetWString(name).c_str());
 		}
