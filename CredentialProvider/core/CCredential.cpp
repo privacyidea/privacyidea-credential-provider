@@ -2544,8 +2544,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 
 
 	// PRE-FLIGHT REFILL
-	// Validate offline credentials against the server before usage. Only of the user or all if configured.
-	// Run this if we are about to use FIDO, OR if the admin forces a global check
+	// Validate offline credentials against the server before usage. Only of the current user or all if configured.
+	// Run this if we are about to use FIDO, OR if the configuration forces a global check
 	const bool isFidoMode = _config->useOfflineFIDO || _config->mode > Mode::SEC_KEY_ANY;
 	const bool shouldCheck = (isSendRequest && !username.empty() && isFidoMode);
 

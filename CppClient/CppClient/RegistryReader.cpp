@@ -95,7 +95,6 @@ bool RegistryReader::GetAll(const std::wstring& pathToKey, std::map<std::wstring
 				TCHAR szData[SIZE] = _T("");
 				DWORD dwValue = SIZE;
 				DWORD dwType = 0;
-				DWORD dwRet = 0;
 
 				dwRet = RegQueryValueEx(
 					hKey,

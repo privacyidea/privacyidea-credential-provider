@@ -21,6 +21,8 @@
 #include <memory>
 #include <algorithm>
 #include <fido/credman.h>
+#include <iomanip>
+#include <sstream>
 #include "Convert.h"
 #include "FIDODevice.h"
 #include "Logger.h"
@@ -239,7 +241,8 @@ namespace
 		if (rk)
 		{
 			// This requires the PIN!
-			if (fido_credman_get_dev_rk(dev.get(), rpId.c_str(), rk, pin.empty() ? NULL : pin.c_str()) == FIDO_OK)
+			auto ret = fido_credman_get_dev_rk(dev.get(), rpId.c_str(), rk, pin.empty() ? NULL : pin.c_str());
+			if (ret == FIDO_OK)
 			{
 				size_t count = fido_credman_rk_count(rk);
 				for (size_t i = 0; i < count; i++)
@@ -258,7 +261,7 @@ namespace
 			}
 			else
 			{
-				PIDebug("fido_credman_get_dev_rk failed (device might not support it or PIN invalid)");
+				PIDebug("fido_credman_get_dev_rk failed (device might not support it or PIN invalid): " + std::string(fido_strerr(ret)) + " code: " + std::to_string(ret));
 			}
 			fido_credman_rk_free(&rk);
 		}
@@ -584,15 +587,15 @@ FIDODevice::FIDODevice(const fido_dev_info_t* devinfo, bool log)
 		_hasPin = fido_dev_has_pin(dev.get());
 		_isWinHello = fido_dev_is_winhello(dev.get());
 		_hasUV = fido_dev_has_uv(dev.get());
+		GetDeviceInfo();
 		if (log)
 			PIDebug("New FIDO device: " + ToString() + " hasPin: " + std::to_string(_hasPin) + " isWinHello: " + std::to_string(_isWinHello));
 	}
-	GetDeviceInfo();
 }
 
 std::string FIDODevice::ToString() const
 {
-	return "[" + _manufacturer + "][" + _product + "][" + _path + "]";
+	return "[" + _manufacturer + "][" + _product + "][" + GetFirmwareVersionString() + "][" + _path + "]";
 }
 
 std::vector<std::string> FIDODevice::GetRpIds(std::string pin) const
@@ -711,7 +714,7 @@ int FIDODevice::Sign(
 	PIDebug("FIDODevice::Sign with device " + this->ToString());
 	fido_assert_t* assert = nullptr;
 	std::vector<unsigned char> vecClientData;
-	
+
 	if (libfidoDebug)
 		fido_set_log_handler(FidoLogRedirect);
 
@@ -761,7 +764,7 @@ int FIDODevice::Sign(
 			auto pbUserHandle = fido_assert_user_id_ptr(assert, i);
 			auto cbUserHandle = fido_assert_user_id_len(assert, i);
 			assertion.userHandle = Convert::Base64URLEncode(pbUserHandle, cbUserHandle);
-			
+
 			// Username lookup
 			auto it = names.find(assertion.credentialid);
 			if (it != names.end())
@@ -1107,6 +1110,23 @@ std::optional<FIDORegistrationResponse> FIDODevice::Register(
 	return response;
 }
 
+std::string FIDODevice::GetFirmwareVersionString() const
+{
+	if (_firmwareVersion == 0) return "Unknown";
+
+	// Try to parse firmware version as major.minor.patch
+	unsigned int major = (_firmwareVersion >> 16) & 0xFF;
+	unsigned int minor = (_firmwareVersion >> 8) & 0xFF;
+	unsigned int patch = _firmwareVersion & 0xFF;
+
+	std::stringstream ss;
+	ss << std::dec << major << "." << minor << "." << patch;
+
+	ss << " (Raw: 0x" << std::hex << _firmwareVersion << ")";
+
+	return ss.str();
+}
+
 int FIDODevice::GetDeviceInfo()
 {
 	if (_path.empty())
@@ -1139,11 +1159,6 @@ int FIDODevice::GetDeviceInfo()
 	}
 	// This call may block
 	res = fido_dev_get_cbor_info(dev.get(), info);
-	if (res != FIDO_OK)
-	{
-		PIError("fido_dev_get_cbor_info: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
-		res = FIDO_ERR_INTERNAL;
-	}
 
 	if (res == FIDO_OK)
 	{
@@ -1158,7 +1173,7 @@ int FIDODevice::GetDeviceInfo()
 		auto remainingResidentKeys = fido_cbor_info_rk_remaining(info);
 		if (remainingResidentKeys == -1)
 		{
-			//PIDebug("Authenticator can not report remaining resident keys");
+			PIDebug("Authenticator can not report remaining resident keys");
 		}
 		else
 		{
@@ -1166,7 +1181,13 @@ int FIDODevice::GetDeviceInfo()
 		}
 		// New PIN required
 		_newPinRequired = fido_cbor_info_new_pin_required(info);
-
+		uint64_t fwVersion = fido_cbor_info_fwversion(info);
+		_firmwareVersion = fwVersion;
+	}
+	else
+	{
+		PIError("fido_dev_get_cbor_info: " + std::string(fido_strerr(res)) + " code: " + std::to_string(res));
+		res = FIDO_ERR_INTERNAL;
 	}
 
 	fido_cbor_info_free(&info);

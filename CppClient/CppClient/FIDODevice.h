@@ -80,11 +80,12 @@ public:
 
 	bool libfidoDebug = false; // Enable libfido2 debug logging which will be redirected to PIDebug
 
+	std::string GetFirmwareVersionString() const;
 private:
 	int GetDeviceInfo();
 
 	std::string BuildAttestationObject(fido_cred_t* cred);
-
+	uint64_t _firmwareVersion = 0;
 	std::string _path;
 	std::string _manufacturer;
 	std::string _product;

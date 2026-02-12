@@ -77,8 +77,7 @@ std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 		targetType = "passkey";
 		if (hasWebAuthn)
 		{
-			PIDebug("WARNING: Received mixed 'webauthn' and 'passkey' challenges.");
-			PIDebug("Prioritizing 'passkey' over 'webauthn' as per configuration.");
+			PIDebug("WARNING: Received mixed webauthn and passkey challenges. The webauthn challenges will not be used.");
 		}
 	}
 	else if (hasWebAuthn)
