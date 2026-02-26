@@ -1,11 +1,9 @@
-# Version 3.8.0 TBD
+# Version 3.8.0 2026-02-26
 ## Features
 * Security Key PIN setup is now possible before registration, if the key does not have a PIN set yet.
 * Selection of credential to use. If there are multiple matching credentials on the authenticator, a selection for the username will be displayed. To show the usernames, the device PIN is required. There is fallback implemented, but if the initial request did not want a PIN, you will have to touch your security key twice. See the FIDO section of the configuration documentation for more detail.
 
 ## Enhancements
-* Added 2 tier expiry system with lazy eviction (see refill behavior) for offline credentials
-    - The configuration can later be received from the privacyIDEA server if its implemented there
 * Added a two-tier expiry system with lazy eviction (see refill behavior) for offline credentials.
     - The configuration can later be received from the privacyIDEA server if it's implemented there.
     - 'offline_expiration_days': days without successful refill after which the credential will be inactive (not usable for authentication, but *not* deleted yet. Refill will still be attempted).

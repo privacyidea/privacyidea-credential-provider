@@ -713,7 +713,7 @@ HRESULT CCredential::SetMode(Mode mode)
 		PIError("SetMode called without CredentialEvents available!");
 		return E_FAIL;
 	}
-	
+
 	const Mode oldMode = _config->mode; // Keep old mode for "Hide First Step Error" logic
 	if (mode != Mode::NO_CHANGE)
 	{
@@ -901,10 +901,12 @@ HRESULT CCredential::SetMode(Mode mode)
 
 	// Focus Password field if Username is already present
 	PWSTR currentUsername = nullptr;
-	this->GetStringValue(FID_USERNAME, &currentUsername);
-	if (currentUsername && currentUsername[0] != 0)
+	if (SUCCEEDED(this->GetStringValue(FID_USERNAME, &currentUsername)))
 	{
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_FOCUSED);
+		if (currentUsername && currentUsername[0] != L'\0')
+		{
+			_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_FOCUSED);
+		}
 	}
 	CoTaskMemFree(currentUsername);
 
@@ -1385,7 +1387,7 @@ HRESULT CCredential::GetSerialization(
 					|| (_config->mode > Mode::SEC_KEY_ANY);
 			}
 
-			bool hasOnlineRequest = lastResponse && lastResponse->GetFIDOSignRequest().has_value();
+			const bool hasOnlineRequest = lastResponse && lastResponse->GetFIDOSignRequest().has_value();
 
 			// Alternatively, if webAuthnOfflineSecondStep is enabled, the user has offline FIDO data and the offlinePreferFIDO is set,
 			// continue with a FIDO mode aswell.
@@ -1458,51 +1460,55 @@ HRESULT CCredential::GetSerialization(
 				bool resetToFirstStep = false;
 				wstring errorMessage;
 
-				// 1. PRIORITY: Specific Local FIDO Errors
-				switch (_lastStatus)
+				if (_lastStatus != S_OK)
 				{
-				case FIDO_ERR_OPERATION_DENIED:
-					errorMessage = _util.GetText(TEXT_FIDO_CANCELLED);
-					if (_config->credential.username.empty())
+					// Local Errors (e.g., FIDO device failures)
+					switch (_lastStatus)
 					{
-						resetToFirstStep = true;
-					}
-					else
-					{
+					case FIDO_ERR_OPERATION_DENIED:
+						errorMessage = _util.GetText(TEXT_FIDO_CANCELLED);
+						if (_config->credential.username.empty())
+						{
+							resetToFirstStep = true;
+						}
+						else
+						{
+							SetMode(Mode::PRIVACYIDEA);
+						}
+						break;
+
+					case FIDO_ERR_NO_CREDENTIALS:
+						errorMessage = _util.GetText(TEXT_FIDO_ERR_NO_CREDENTIALS);
 						SetMode(Mode::PRIVACYIDEA);
-					}
-					break;
+						break;
 
-				case FIDO_ERR_NO_CREDENTIALS:
-					errorMessage = _util.GetText(TEXT_FIDO_ERR_NO_CREDENTIALS);
-					SetMode(Mode::PRIVACYIDEA);
-					break;
+					case FIDO_ERR_PIN_AUTH_BLOCKED:
+						errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_BLOCKED);
+						// If UV is discouraged, we must reset to avoid infinite loop
+						if (lastResponse && lastResponse->GetFIDOSignRequest()
+							&& lastResponse->GetFIDOSignRequest()->userVerification == "discouraged")
+						{
+							resetToFirstStep = true;
+						}
+						break;
 
-				case FIDO_ERR_PIN_AUTH_BLOCKED:
-					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_BLOCKED);
-					// If UV is discouraged, we must reset to avoid infinite loop
-					if (lastResponse && lastResponse->GetFIDOSignRequest()
-						&& lastResponse->GetFIDOSignRequest()->userVerification == "discouraged")
-					{
+					case FIDO_DEVICE_ERR_TX:
+						errorMessage = _util.GetText(TEXT_FIDO_ERR_TX);
 						resetToFirstStep = true;
+						break;
+
+					case FIDO_ERR_PIN_INVALID:
+						errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
+						break;
+
+					default:
+						errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
+						break;
 					}
-					break;
-
-				case FIDO_DEVICE_ERR_TX:
-					errorMessage = _util.GetText(TEXT_FIDO_ERR_TX);
-					resetToFirstStep = true;
-					break;
-
-				case FIDO_ERR_PIN_INVALID:
-					errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
-					break;
-				default:
-					break; // to go priority 2
 				}
-
-				// Server messages (Only if no local error message set)
-				if (errorMessage.empty())
+				else
 				{
+					// error message from privacyIDEA is present
 					if (lastResponse && !lastResponse->errorMessage.empty())
 					{
 						errorMessage = Convert::ToWString(lastResponse->errorMessage);
@@ -1511,17 +1517,10 @@ HRESULT CCredential::GetSerialization(
 					{
 						errorMessage = Convert::ToWString(lastResponse->message);
 					}
-					// Fallback to generic messages
+					// Fallback to generic authentication failure message
 					else
 					{
-						if (_lastStatus != S_OK)
-						{
-							errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
-						}
-						else
-						{
-							errorMessage = _util.GetText(TEXT_WRONG_OTP);
-						}
+						errorMessage = _util.GetText(TEXT_WRONG_OTP);
 					}
 				}
 
@@ -1784,7 +1783,7 @@ bool CCredential::IsRpIdAllowed(const std::string& rpId)
 		}
 	}
 
-	PIError("SECURITY ALERT: FIDO Operation blocked! Request contained RPID '" + rpId +
+	PIError("FIDO Operation blocked! Request contained RPID '" + rpId +
 		"' which is not in the configured allow list (trusted_rpids)!");
 
 	return false;

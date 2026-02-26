@@ -269,31 +269,26 @@ void OfflineHandler::Prune(int days)
 	// 0 = Feature disabled
 	if (days <= 0) return;
 
-	PIDebug("Running offline garbage collection. Purge threshold: " + to_string(days) + " days.");
+	PIDebug("Running offline credential cleanup. Purge threshold: " + to_string(days) + " days.");
 
 	time_t now = time(nullptr);
 	size_t initialSize = _dataSets.size();
 
-	// Iterate and remove: use the erase-remove idiom for efficient vector cleanup
 	_dataSets.erase(
 		std::remove_if(_dataSets.begin(), _dataSets.end(),
 			[days, now](const OfflineData& item) {
 				// Ignore legacy items (expiration == 0)
 				if (item.expiration == 0) return false;
 
-				// Calculate dead time
-				// expiration is the timestamp WHEN it expired.
-				// We want to delete if it has BEEN expired for > days.
-
-				// Example: Expired on Jan 1st. Today is Jan 5th. Diff = 4 days.
-				// If Prune(90), we keep it. 
-				// If Prune(3), we delete it.
+				// Expiration is the timestamp WHEN it expired.
+				// We want to delete if it has BEEN expired for more than the given days.
 				double secondsPastExpiration = difftime(now, item.expiration);
 				double secondsAllowed = (double)days * 24 * 60 * 60;
 
-				if (secondsPastExpiration > secondsAllowed)
+				// Ensure the expiration is actually in the past
+				if (secondsPastExpiration > 0 && secondsPastExpiration > secondsAllowed)
 				{
-					PIDebug("GC: Pruning stale token " + item.serial + " (Expired " + to_string((int)(secondsPastExpiration / 86400)) + " days ago)");
+					PIDebug("Removing stale credential " + item.serial + " (Expired " + to_string((int)(secondsPastExpiration / 86400)) + " days ago)");
 					return true;
 				}
 				return false;
@@ -301,10 +296,10 @@ void OfflineHandler::Prune(int days)
 		_dataSets.end()
 	);
 
-	// Only save if we actually deleted something to avoid disk IO spam
+	// Only save if we actually deleted something
 	if (_dataSets.size() < initialSize)
 	{
-		PIDebug("GC: Cleaned up " + to_string(initialSize - _dataSets.size()) + " stale tokens.");
+		PIDebug("Removed " + to_string(initialSize - _dataSets.size()) + " stale credentials.");
 		SaveToFile();
 	}
 }

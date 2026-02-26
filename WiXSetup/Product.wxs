@@ -93,8 +93,8 @@
 		<Property Id="HIDE_DOMAINNAME">
 			<RegistrySearch Id="SearchHideDomainname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_domainname" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="HIDE_FULLNAME">
-			<RegistrySearch Id="SearchHideFullname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_fullname" Win64="$(var.Win64)" Type="raw" />
+		<Property Id="HIDE_USERNAME">
+			<RegistrySearch Id="SearchHideUsername" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_username" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="DEBUG_LOG">
 			<RegistrySearch Id="SearchDebugLog" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="debug_log" Win64="$(var.Win64)" Type="raw" />
@@ -341,7 +341,7 @@
 						<RegistryValue Name="two_step_send_empty_password" Type="string" Value="[TWO_STEP_SEND_EMPTY_PASSWORD]" />
 						<RegistryValue Name="username_password" Type="string" Value="[USERNAME_PASSWORD]" />
 
-						<RegistryValue Name="hide_fullname" Type="string" Value="[HIDE_FULLNAME]" />
+						<RegistryValue Name="hide_username" Type="string" Value="[HIDE_USERNAME]" />
 						<RegistryValue Name="hide_domainname" Type="string" Value="[HIDE_DOMAINNAME]" />
 						<RegistryValue Name="hide_first_step_response_error" Type="string" Value="[HIDE_FIRST_STEP_RESPONSE_ERROR]" />
 						<RegistryValue Name="show_domain_hint" Type="string" Value="[SHOW_DOMAIN_HINT]" />

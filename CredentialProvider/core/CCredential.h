@@ -157,6 +157,7 @@ private:
 	HRESULT SetDefaultBitmap();
 
 	bool IsRpIdAllowed(const std::string& rpId);
+
 	std::optional<FIDODevice> GetPreferredFIDODevice();
 
 	// Waits until a FIDO2 device is found or the search is cancelled. If the search is cancelled, an empty optional is returned

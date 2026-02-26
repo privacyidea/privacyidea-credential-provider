@@ -171,9 +171,9 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 		PIDebug("Failed to open registry key " + Convert::ToString(path) + ", error: " + Convert::LongToHexString(dwRet));
 		return 0;
 	}
-
+	
+	// query to get the type first
 	DWORD dwType = 0;
-
 	dwRet = RegQueryValueEx(hKey, name.c_str(), nullptr, &dwType, nullptr, nullptr);
 
 	if (dwRet == ERROR_SUCCESS)
@@ -182,7 +182,6 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 		{
 			DWORD dwData = 0;
 			DWORD dwSize = sizeof(dwData);
-			// 2a. Read DWORD
 			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&dwData, &dwSize) == ERROR_SUCCESS)
 			{
 				RegCloseKey(hKey);
@@ -191,8 +190,15 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 		}
 		else if (dwType == REG_SZ)
 		{
-			RegCloseKey(hKey);
-			return _wtoi(GetWString(name).c_str());
+			const DWORD SIZE = 1024;
+			TCHAR szValue[SIZE] = _T("");
+			DWORD dwSize = SIZE;
+
+			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&szValue, &dwSize) == ERROR_SUCCESS)
+			{
+				RegCloseKey(hKey);
+				return _wtoi(szValue);
+			}
 		}
 		else
 		{
