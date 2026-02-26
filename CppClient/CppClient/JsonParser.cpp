@@ -18,6 +18,7 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include <regex>
+#include <optional>
 #include "Convert.h"
 #include "JsonParser.h"
 #include "Logger.h"
@@ -39,13 +40,15 @@ std::string TimeToISOString(time_t t)
 }
 
 // Convert ISO 8601 String back to time_t
-time_t ISOStringToTime(const std::string& iso)
+std::optional<time_t> ISOStringToTime(const std::string& iso)
 {
-	if (iso.empty()) return 0;
+	if (iso.empty()) return std::nullopt;
 	std::tm tm_buf = { 0 };
 	std::istringstream ss(iso);
 	ss >> std::get_time(&tm_buf, "%Y-%m-%dT%H:%M:%SZ");
-	if (ss.fail()) return 0;
+
+	if (ss.fail()) return std::nullopt;
+
 	return _mkgmtime(&tm_buf); // _mkgmtime is the inverse of gmtime (UTC)
 }
 
@@ -401,7 +404,17 @@ HRESULT ParseOfflineDataItem(json jRoot, OfflineData& data)
 	std::string expStr = GetStringOrEmpty(jRoot, "expiration_date");
 	if (!expStr.empty())
 	{
-		data.expiration = ISOStringToTime(expStr);
+		auto parsedTime = ISOStringToTime(expStr);
+		if (parsedTime.has_value())
+		{
+			data.expiration = parsedTime.value();
+		}
+		else
+		{
+			PIDebug("Failed to parse ISO 8601 expiration_date: " + expStr);
+			// Fallback if parsing fails to avoid accidentally defaulting to 0 (never expires) blindly
+			data.expiration = (time_t)GetIntOrZero(jRoot, "expiration");
+		}
 	}
 	else
 	{

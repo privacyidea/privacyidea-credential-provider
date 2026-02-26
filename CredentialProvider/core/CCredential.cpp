@@ -542,18 +542,15 @@ HRESULT CCredential::SetStringValue(
 		if (dwFieldID == FID_USERNAME)
 		{
 			wstring input(pwz);
-			if (_config->resolveUPN) {
-				input = ResolveUpnToNetBios(input);
-			}
 
-			// Write the value back to the field so that changes from elsewhere (e.g. prefill_username) are overwritten
-			// But dont use the resolved value to not irritate users who intentionally enter the UPN instead of the NetBIOS name
+			// Write the value back to the field so that changes from elsewhere are overwritten
 			_pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, pwz);
+
 			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
 			wstring domain, username;
 			Utilities::SplitUserAndDomain(input, username, domain);
-			// Set the domain hint to the domain that was found or to the initial domain that was provided
-			// when the credential was created
+
+			// Set the domain hint to the domain that was found or to the initial domain
 			if (!domain.empty())
 			{
 				SetDomainHint(domain);
@@ -565,7 +562,6 @@ HRESULT CCredential::SetStringValue(
 			}
 
 			// Set the serial and remaining offline OTPs as hint if the setting is enabled
-			// If no offline token are found for the current input, hide the field
 			if (_config->offlineShowInfo)
 			{
 				SetOfflineInfo(Convert::ToString(username));
