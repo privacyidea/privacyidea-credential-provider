@@ -179,7 +179,7 @@ public:
 	std::wstring autoLogonDomain = L"";
 	std::wstring autoLogonPassword = L"";
 
-	bool resolveUPN;
+	bool resolveUPN = false;
 
 	// Track the current state
 	Mode mode = Mode::NO_CHANGE;

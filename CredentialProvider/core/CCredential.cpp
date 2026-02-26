@@ -543,6 +543,7 @@ HRESULT CCredential::SetStringValue(
 			}
 
 			// Write the value back to the field so that changes from elsewhere (e.g. prefill_username) are overwritten
+			// But dont use the resolved value to not irritate users who intentionally enter the UPN instead of the NetBIOS name
 			_pCredProvCredentialEvents->SetFieldString(this, FID_USERNAME, pwz);
 			// Evaluate the input of FID_USERNAME for domain\user or user@domain input
 			wstring domain, username;
@@ -712,13 +713,13 @@ HRESULT CCredential::SetMode(Mode mode)
 		PIError("SetMode called without CredentialEvents available!");
 		return E_FAIL;
 	}
-
+	
+	const Mode oldMode = _config->mode; // Keep old mode for "Hide First Step Error" logic
 	if (mode != Mode::NO_CHANGE)
 	{
 		_config->mode = mode;
 	}
 
-	const Mode oldMode = _config->mode; // Keep old mode for "Hide First Step Error" logic
 	HRESULT hr = S_OK;
 	std::wstring smallText;
 
@@ -780,7 +781,7 @@ HRESULT CCredential::SetMode(Mode mode)
 
 	case Mode::SEC_KEY_SET_PIN:
 		pFieldStates = &s_rgScenarioSetPin[0];
-		submitButtonField = FID_NEW_PASS_2;
+		submitButtonField = FID_NEW_PIN_2;
 		smallText = _util.GetText(TEXT_SET_NEW_SEC_KEY_PIN);
 		break;
 
