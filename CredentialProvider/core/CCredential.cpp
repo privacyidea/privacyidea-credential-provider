@@ -2045,8 +2045,14 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 					std::string nameA = a.displayName.empty() ? a.username : a.displayName;
 					std::string nameB = b.displayName.empty() ? b.username : b.displayName;
 
-					// Case-insensitive string comparison
-					return _stricmp(nameA.c_str(), nameB.c_str()) < 0;
+					// Convert UTF-8 payload to UTF-16 wide strings for safe Unicode comparison
+					std::wstring wNameA = Convert::ToWString(nameA);
+					std::wstring wNameB = Convert::ToWString(nameB);
+
+					// Locale-aware, case-insensitive comparison
+					return CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE,
+						wNameA.c_str(), -1,
+						wNameB.c_str(), -1) == CSTR_LESS_THAN;
 				});
 
 			_currentSignResponse = signResponse;

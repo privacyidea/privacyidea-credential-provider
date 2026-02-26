@@ -31,6 +31,8 @@
 #include "FIDORegistrationResponse.h"
 
 
+constexpr size_t maxDevices = 64;
+
 struct FidoDevDeleter
 {
 	void operator()(fido_dev_t* dev) const
@@ -64,6 +66,18 @@ struct FidoAssertDeleter
 	}
 };
 using unique_fido_assert_t = std::unique_ptr<fido_assert_t, FidoAssertDeleter>;
+
+struct FidoDevInfoDeleter
+{
+	void operator()(fido_dev_info_t* info) const
+	{
+		if (info)
+		{
+			fido_dev_info_free(&info, maxDevices);
+		}
+	}
+};
+using unique_fido_dev_info_t = std::unique_ptr<fido_dev_info_t, FidoDevInfoDeleter>;
 
 namespace
 {
@@ -485,20 +499,20 @@ std::optional<FIDODevice> FIDODevice::GetWinHello()
 	fido_init(fidoFlags);
 	size_t ndevs;
 	int res = FIDO_OK;
-	fido_dev_info_t* deviceList = nullptr;
 	constexpr size_t maxDevices = 64;
 
-	if ((deviceList = fido_dev_info_new(maxDevices)) == NULL)
+	unique_fido_dev_info_t deviceList(fido_dev_info_new(maxDevices));
+
+	if (!deviceList)
 	{
 		PIError("fido_dev_info_new returned NULL");
 		return std::nullopt;
 	}
 
-	if ((res = fido_dev_info_manifest(deviceList, maxDevices, &ndevs)) != FIDO_OK)
+	if ((res = fido_dev_info_manifest(deviceList.get(), maxDevices, &ndevs)) != FIDO_OK)
 	{
 		std::string fidoStrerr = fido_strerr(res);
 		PIError("fido_dev_info_manifest: " + fidoStrerr + " " + std::to_string(res));
-		fido_dev_info_free(&deviceList, maxDevices);
 		return std::nullopt;
 	}
 
@@ -506,7 +520,7 @@ std::optional<FIDODevice> FIDODevice::GetWinHello()
 
 	for (size_t i = 0; i < ndevs; i++)
 	{
-		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
+		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList.get(), i);
 		FIDODevice dev(di, false);
 
 		if (dev.IsWinHello())
@@ -515,8 +529,6 @@ std::optional<FIDODevice> FIDODevice::GetWinHello()
 			break;
 		}
 	}
-
-	fido_dev_info_free(&deviceList, maxDevices);
 
 	return foundDevice;
 }
@@ -531,15 +543,17 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 	std::vector<FIDODevice> ret;
 	size_t ndevs;
 	int res = FIDO_OK;
-	fido_dev_info_t* deviceList = nullptr;
 	constexpr size_t maxDevices = 64;
-	if ((deviceList = fido_dev_info_new(maxDevices)) == NULL)
+
+	unique_fido_dev_info_t deviceList(fido_dev_info_new(maxDevices));
+
+	if (!deviceList)
 	{
 		PIError("fido_dev_info_new returned NULL");
 		return ret;
 	}
 
-	if ((res = fido_dev_info_manifest(deviceList, 64, &ndevs)) != FIDO_OK)
+	if ((res = fido_dev_info_manifest(deviceList.get(), maxDevices, &ndevs)) != FIDO_OK)
 	{
 		std::string fidoStrerr = fido_strerr(res);
 		PIError("fido_dev_info_manifest: " + fidoStrerr + " " + std::to_string(res));
@@ -548,7 +562,7 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 
 	for (size_t i = 0; i < ndevs; i++)
 	{
-		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList, i);
+		const fido_dev_info_t* di = fido_dev_info_ptr(deviceList.get(), i);
 		FIDODevice dev(di);
 
 		if (dev.IsWinHello() && filterWindowsHello)
@@ -557,11 +571,12 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 		}
 		ret.push_back(dev);
 	}
+
 	if (log)
 	{
 		PIDebug("Found " + std::to_string(ret.size()) + " FIDO device(s)");
 	}
-	fido_dev_info_free(&deviceList, maxDevices);
+
 	return ret;
 }
 

@@ -331,7 +331,6 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 						AllowCredential ac;
 						ac.id = cred_id;
 						signRequest.allowCredentials.push_back(ac);
-						PIDebug("Passkey challenge has credential id: " + cred_id);
 					}
 					c.fidoSignRequest = signRequest;
 				}
