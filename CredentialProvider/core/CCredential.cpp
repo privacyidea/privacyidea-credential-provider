@@ -2387,11 +2387,8 @@ std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatu
 		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
 	}
 
-	// Check for devices
-	std::vector<FIDODevice> devices;
-	std::optional<FIDODevice> ret = std::nullopt;
 	int tries = static_cast<int>(std::ceil(static_cast<double>(timeoutMs) / 200.0));
-	const bool filterWindowsHello = !_config->isRemoteSession;
+
 	while (tries > 0)
 	{
 		this_thread::sleep_for(chrono::milliseconds(200));
@@ -2411,22 +2408,10 @@ std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatu
 
 		tries--;
 	}
-	if (devices.size() > 0)
-	{
-		PIDebug("Found " + to_string(devices.size()) + " FIDO2 device(s)");
-		ret = devices.front();
-		PIDebug("Using device: " + ret->GetProduct());
-	}
-	else
-	{
-		PIDebug("No FIDO2 device found");
-	}
-	if (tries == 0)
-	{
-		PIDebug("No FIDO2 device found within the timeout period");
-	}
 
-	return ret;
+	// reaching this means tries hit 0
+	PIDebug("No FIDO2 device found within the timeout period");
+	return std::nullopt;
 }
 
 // Connect is called first after the submit button is pressed.
