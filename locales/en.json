@@ -40,5 +40,6 @@
   "38": "Use the Windows Security Prompt to log in with a Passkey.",
   "39": "Set a new PIN for your security key.",
   "40": "New PIN",
-  "41": "Repeat PIN"
+  "41": "Repeat PIN",
+  "42": "Select a user for login"
 }

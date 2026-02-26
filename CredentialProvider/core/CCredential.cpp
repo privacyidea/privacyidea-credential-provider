@@ -166,7 +166,7 @@ HRESULT CCredential::Initialize(
 	if (!wstrPassword.empty())
 	{
 		_config->credential.password = wstrPassword;
-		SecureZeroMemory(password, sizeof(password));
+		SecureZeroMemory(password, wcslen(password) * sizeof(wchar_t));
 	}
 
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
@@ -788,7 +788,7 @@ HRESULT CCredential::SetMode(Mode mode)
 	case Mode::SEC_KEY_SELECT_USER:
 		pFieldStates = &s_rgScenarioSelectUser[0];
 		submitButtonField = FID_USER_SELECT;
-		smallText = L"Select the user for this security key.";
+		smallText = _util.GetText(TEXT_SELECT_USER);
 		// Ensure the ComboBox is focused
 		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USER_SELECT, CPFIS_FOCUSED);
 		break;
@@ -843,8 +843,6 @@ HRESULT CCredential::SetMode(Mode mode)
 		// Force Old Password and OTP to hidden (overriding the scenario default)
 		_pCredProvCredentialEvents->SetFieldState(this, FID_PASSWORD, CPFS_HIDDEN);
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
-		// Force focus to the New PIN field so the user can type immediately
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_NEW_PASS_1, CPFIS_FOCUSED);
 	}
 	if (mode == Mode::SEC_KEY_PIN)
 	{
@@ -894,9 +892,6 @@ HRESULT CCredential::SetMode(Mode mode)
 		// Now it is safe to hide them. The scenario has already been applied.
 		_pCredProvCredentialEvents->SetFieldState(this, FID_PASSWORD, CPFS_HIDDEN);
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_HIDDEN);
-
-		// Focus to the New PIN field
-		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_NEW_PASS_1, CPFIS_FOCUSED);
 	}
 
 	// Focus Password field if Username is already present
@@ -2428,6 +2423,29 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	// Copy the input fields to the config
 	_config->provider.field_strings = _rgFieldStrings;
 	_util.CopyInputFields();
+
+	// Check if we should attempt to resolve the UPN to a NetBIOS name. 
+	// The resolution is done internally and does not change what the user entered (visibly), 
+	// it only changes what is sent to the server and used for group membership checks.
+	if (_config->resolveUPN && _rgFieldStrings[FID_USERNAME] != nullptr)
+	{
+		std::wstring rawInput(_rgFieldStrings[FID_USERNAME]);
+		std::wstring resolvedInput = ResolveUpnToNetBios(rawInput);
+
+		// If resolution succeeded and changed the string, apply the NetBIOS name internally
+		if (rawInput != resolvedInput)
+		{
+			PIDebug(L"Overriding internal credential state with resolved NetBIOS name: " + resolvedInput);
+			std::wstring rUser, rDomain;
+			Utilities::SplitUserAndDomain(resolvedInput, rUser, rDomain);
+			_config->credential.username = rUser;
+			if (!rDomain.empty())
+			{
+				_config->credential.domain = rDomain;
+			}
+		}
+	}
+
 	wstring username = _config->credential.username;
 	wstring domain = _config->credential.domain;
 	// Leave the UPN empty if it should not be used

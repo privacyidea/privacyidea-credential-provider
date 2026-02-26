@@ -292,6 +292,9 @@
 								<File Id="Localization_en"  Name="en.json" Source="$(var.SolutionDir)locales\en.json"  />
 								<File Id="Localization_es"  Name="es.json" Source="$(var.SolutionDir)locales\es.json"  />
 								<File Id="Localization_de"  Name="de.json" Source="$(var.SolutionDir)locales\de.json"  />
+								<File Id="Localization_fr"  Name="fr.json" Source="$(var.SolutionDir)locales\fr.json"  />
+								<File Id="Localization_zh_cn"  Name="zh_cn.json" Source="$(var.SolutionDir)locales\zh_cn.json"  />
+
 								<RemoveFile Id="RemoveLocalesFiles" Name="*" On="uninstall" />
 								<RemoveFolder Id="RemoveLocalization" On="uninstall" />
 								<RemoveFolder Id="RemovePublisherFolderIfEmpty" Directory="PublisherFolder" On="uninstall" />

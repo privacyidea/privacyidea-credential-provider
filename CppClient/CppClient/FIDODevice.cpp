@@ -499,8 +499,6 @@ std::optional<FIDODevice> FIDODevice::GetWinHello()
 	fido_init(fidoFlags);
 	size_t ndevs;
 	int res = FIDO_OK;
-	constexpr size_t maxDevices = 64;
-
 	unique_fido_dev_info_t deviceList(fido_dev_info_new(maxDevices));
 
 	if (!deviceList)
@@ -543,8 +541,6 @@ std::vector<FIDODevice> FIDODevice::GetDevices(bool filterWindowsHello, bool log
 	std::vector<FIDODevice> ret;
 	size_t ndevs;
 	int res = FIDO_OK;
-	constexpr size_t maxDevices = 64;
-
 	unique_fido_dev_info_t deviceList(fido_dev_info_new(maxDevices));
 
 	if (!deviceList)

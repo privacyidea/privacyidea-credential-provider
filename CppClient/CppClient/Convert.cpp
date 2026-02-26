@@ -17,8 +17,6 @@
 **
 ** * * * * * * * * * * * * * * * * * * */
 
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
-
 #include "Convert.h"
 #include "Logger.h"
 #include <codecvt>
@@ -28,20 +26,34 @@
 #include <iostream>
 #include <Windows.h>
 
-std::wstring Convert::ToWString(const std::string& s)
-{
-	using convert_typeX = std::codecvt_utf8<wchar_t>;
-	std::wstring_convert<convert_typeX, wchar_t> converterX;
-
-	return converterX.from_bytes(s);
-}
-
 std::string Convert::ToString(const std::wstring& ws)
 {
-	using convert_typeX = std::codecvt_utf8<wchar_t>;
-	std::wstring_convert<convert_typeX, wchar_t> converterX;
+	if (ws.empty()) return std::string();
 
-	return converterX.to_bytes(ws);
+	// Get the required buffer size
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, ws.data(), (int)ws.size(), NULL, 0, NULL, NULL);
+	if (size_needed <= 0) return std::string();
+
+	// Allocate the string and perform the conversion
+	std::string result(size_needed, 0);
+	WideCharToMultiByte(CP_UTF8, 0, ws.data(), (int)ws.size(), result.data(), size_needed, NULL, NULL);
+
+	return result;
+}
+
+std::wstring Convert::ToWString(const std::string& s)
+{
+	if (s.empty()) return std::wstring();
+
+	// Get the required buffer size
+	int size_needed = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), NULL, 0);
+	if (size_needed <= 0) return std::wstring();
+
+	// Allocate the wide string and perform the conversion
+	std::wstring result(size_needed, 0);
+	MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), result.data(), size_needed);
+
+	return result;
 }
 
 std::string Convert::ToString(const bool b)

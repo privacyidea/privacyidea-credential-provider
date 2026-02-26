@@ -55,6 +55,8 @@ public:
 		)
 	{};
 
+	~PrivacyIDEA();
+
 	PrivacyIDEA& operator=(const PrivacyIDEA& privacyIDEA) = delete;
 
 	/// <summary>

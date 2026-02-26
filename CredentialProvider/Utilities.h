@@ -75,6 +75,27 @@ constexpr auto TEXT_GUIDE_USE_WINDOWS_HELLO = 38;
 constexpr auto TEXT_SET_NEW_SEC_KEY_PIN = 39;
 constexpr auto TEXT_NEW_PIN_HINT = 40;
 constexpr auto TEXT_NEW_PIN_REPEAT_HINT = 41;
+constexpr auto TEXT_SELECT_USER = 42;
+
+struct SecureWString {
+	wchar_t* ptr;
+	size_t len;
+
+	SecureWString(const std::wstring& str) {
+		len = str.size() + 1;
+		ptr = new wchar_t[len];
+		wcscpy_s(ptr, len, str.c_str());
+	}
+
+	~SecureWString() {
+		if (ptr) {
+			SecureZeroMemory(ptr, len * sizeof(wchar_t));
+			delete[] ptr;
+		}
+	}
+
+	wchar_t* get() { return ptr; }
+};
 
 class Utilities
 {

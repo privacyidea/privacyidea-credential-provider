@@ -134,6 +134,11 @@ void PrivacyIDEA::PollThread(
 	}
 }
 
+PrivacyIDEA::~PrivacyIDEA()
+{
+	StopPoll();
+}
+
 HRESULT PrivacyIDEA::ValidateCheck(
 	const std::wstring& username,
 	const std::wstring& domain,
@@ -416,6 +421,7 @@ void PrivacyIDEA::PollTransactionAsync(
 	std::string transactionId,
 	std::function<void(const PIResponse&)> callback)
 {
+	StopPoll();
 	_runPoll.store(true);
 	_workerThread = std::thread(&PrivacyIDEA::PollThread, this, username, domain, upn, transactionId, callback);
 }

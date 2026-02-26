@@ -20,6 +20,7 @@
 #include "OfflineHandler.h"
 #include "JsonParser.h"
 #include "Convert.h"
+#include "SecureString.h"
 #include <iostream>
 #include <fstream>
 #include <atlenc.h>
@@ -65,7 +66,7 @@ OfflineHandler::OfflineHandler(const std::wstring& filePath, int tryWindow, int 
 	{
 		PIDebug("Offline data loaded successfully!");
 
-		// Run Garbage Collection immediately if configured
+		// Check for expired items and remove them on startup
 		if (deleteDays > 0)
 		{
 			Prune(deleteDays);
@@ -437,9 +438,13 @@ bool OfflineHandler::PBKDF2SHA512Verify(std::wstring password, std::string store
 	Base64Decode(salt.c_str(), (int)(salt.size() + 1), pbSalt, &cbSalt);
 
 	// The password is encoded into UTF-8 from Unicode
-	char* pszPassword = Convert::UnicodeToCodePage(65001, password.c_str());
-	const int cbPassword = (int)strnlen_s(pszPassword, INT_MAX);
-	BYTE* pbPassword = reinterpret_cast<unsigned char*>(pszPassword);
+	std::string utf8Password = Convert::ToString(password);
+	SecureString securePassword(utf8Password);
+
+	// securePassword.len includes the null terminator. 
+	// strnlen_s did not include the null terminator, so we subtract 1 to match the exact byte count.
+	const int cbPassword = static_cast<int>(securePassword.len - 1);
+	BYTE* pbPassword = reinterpret_cast<BYTE*>(securePassword.get());
 
 	// Get the size of the output from the stored value, which is also in abase64 encoding
 	Convert::Base64ToABase64(storedOTP);
@@ -501,8 +506,6 @@ bool OfflineHandler::PBKDF2SHA512Verify(std::wstring password, std::string store
 	}
 
 Exit:
-	SecureZeroMemory(pszPassword, sizeof(pszPassword));
-	SecureZeroMemory(pbPassword, sizeof(pbPassword));
 	CoTaskMemFree(pbDerivedKey);
 	CoTaskMemFree(pbStoredOTP);
 

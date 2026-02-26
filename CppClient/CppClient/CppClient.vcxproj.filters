@@ -45,6 +45,7 @@
     <ClInclude Include="FIDOException.h">
       <Filter>FIDO</Filter>
     </ClInclude>
+    <ClInclude Include="SecureString.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="FIDO">
