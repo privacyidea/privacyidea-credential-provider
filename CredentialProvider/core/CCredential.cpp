@@ -71,13 +71,17 @@ CCredential::~CCredential()
 	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, NULL, CLEAR_FIELDS_ALL_DESTROY);
 	DllRelease();
 	if (_config) {
-		// This is ugly but safe for now.
-		SecureZeroMemory((void*)_config->credential.password.data(),
-			_config->credential.password.capacity() * sizeof(wchar_t));
-		SecureZeroMemory((void*)_config->credential.otp.data(),
-			_config->credential.otp.capacity() * sizeof(wchar_t));
-		_config->credential.password.clear();
-		_config->credential.otp.clear();
+		if (!_config->credential.password.empty())
+		{
+			SecureZeroMemory(&_config->credential.password[0], _config->credential.password.size() * sizeof(wchar_t));
+			_config->credential.password.clear();
+		}
+
+		if (!_config->credential.otp.empty())
+		{
+			SecureZeroMemory(&_config->credential.otp[0], _config->credential.otp.size() * sizeof(wchar_t));
+			_config->credential.otp.clear();
+		}
 	}
 }
 
