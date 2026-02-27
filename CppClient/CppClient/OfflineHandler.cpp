@@ -195,8 +195,8 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 
 	if (!done)
 	{
-		_dataSets.push_back(data);
-		PIDebug("Offline: Adding new data for " + data.username + " and token " + data.serial);
+		_dataSets.push_back(dataToAdd);
+		PIDebug("Offline: Adding new data for " + dataToAdd.username + " and token " + dataToAdd.serial);
 	}
 
 	return S_OK;

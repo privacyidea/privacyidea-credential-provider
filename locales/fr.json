@@ -41,5 +41,9 @@
   "39": "Définissez un nouveau PIN pour votre clé de sécurité.",
   "40": "Nouveau PIN",
   "41": "Répétez le PIN",
-  "42": "Sélectionnez un utilisateur pour l'authentification"
+  "42": "Sélectionnez un utilisateur pour l'authentification",
+  "43": "Les PIN ne correspondent pas. Veuillez réessayer.",
+  "44": "Définition du PIN...",
+  "45": "Échec de l'authentification !",
+  "46": "Le profil utilisateur est verrouillé. Veuillez redémarrer l'ordinateur."
 }

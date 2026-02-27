@@ -7,26 +7,13 @@
 #include "Translator.h"
 #include <stdexcept>
 #include <Shlwapi.h>
+#include <SecureString.h>
 
 using namespace std;
 
 Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 {
 	_config = c;
-}
-
-std::wstring Utilities::GetText(int id)
-{
-	// Translate text.
-	try {
-		// Get translated text by ID using the Translator instance
-		return PITranslate(id);
-	}
-	catch (const std::out_of_range& oor) {
-		UNREFERENCED_PARAMETER(oor);
-		PIError("GetTranslatedText: No text for id: " + to_string(id));
-		return L"";
-	}
 }
 
 HRESULT Utilities::KerberosLogon(
@@ -352,7 +339,7 @@ HRESULT Utilities::InitializeField(
 	const int hide_fullname = _config->hideFullName;
 	const int hide_domainname = _config->hideDomainName;
 
-	wstring loginText = GetText(TEXT_LOGIN_TEXT);
+	wstring loginText = PITranslate(TEXT_LOGIN_TEXT);
 	wstring user_name = _config->credential.username;
 	wstring domain_name = _config->credential.domain;
 	wstring text;
@@ -383,7 +370,7 @@ HRESULT Utilities::InitializeField(
 	{
 		if (_config->showDomainHint)
 		{
-			text = GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
+			text = PITranslate(TEXT_DOMAIN_HINT) + _config->credential.domain;
 		}
 		hr = SHStrDupW(text.c_str(), &rgFieldStrings[fieldIndex]);
 		break;
@@ -452,12 +439,12 @@ HRESULT Utilities::InitializeField(
 	}*/
 	case FID_RESET_LINK:
 	{
-		hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[fieldIndex]);
+		hr = SHStrDupW(PITranslate(TEXT_RESET_LINK).c_str(), &rgFieldStrings[fieldIndex]);
 		break;
 	}
 	case FID_FIDO_ONLINE:
 	{
-		hr = SHStrDupW(GetText(TEXT_USE_ONLINE_FIDO).c_str(), &rgFieldStrings[fieldIndex]);
+		hr = SHStrDupW(PITranslate(TEXT_USE_ONLINE_FIDO).c_str(), &rgFieldStrings[fieldIndex]);
 		break;
 	}
 	default:

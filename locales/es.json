@@ -41,5 +41,9 @@
   "39": "Establezca un nuevo PIN para su llave de seguridad.",
   "40": "Nuevo PIN",
   "41": "Confirme el nuevo PIN",
-  "42": "Seleccione un usuario para iniciar sesión"
+  "42": "Seleccione un usuario para iniciar sesión",
+  "43": "Los PIN no coinciden. Por favor, inténtelo de nuevo.",
+  "44": "Estableciendo PIN...",
+  "45": "¡Autenticación fallida!",
+  "46": "El perfil de usuario está bloqueado. Por favor, reinicie el equipo."
 }

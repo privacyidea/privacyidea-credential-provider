@@ -41,5 +41,9 @@
   "39": "Setzen Sie eine neue PIN für Ihren Sicherheitsschlüssel.",
   "40": "Neuer PIN",
   "41": "PIN wiederholen",
-  "42": "Wählen Sie einen Benutzer für die Anmeldung aus"
+  "42": "Wählen Sie einen Benutzer für die Anmeldung aus",
+  "43": "Die PINs stimmen nicht überein. Bitte versuchen Sie es erneut.",
+  "44": "PIN wird gesetzt...",
+  "45": "Authentisierung fehlgeschlagen!",
+  "46": "Das Benutzerprofil ist gesperrt. Bitte starten Sie den Computer neu."
 }

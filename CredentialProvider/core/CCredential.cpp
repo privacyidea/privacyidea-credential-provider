@@ -47,6 +47,7 @@
 #define SECURITY_WIN32
 #include <security.h>
 #include <secext.h>
+#include <Translator.h>
 
 #pragma comment (lib, "Gdiplus.lib")
 #pragma comment(lib, "Netapi32.lib")
@@ -121,21 +122,34 @@ HRESULT CCredential::Initialize(
 
 	if (NOT_EMPTY(password))
 	{
-		PWSTR pwzProtectedPassword;
+		PWSTR pwzProtectedPassword = nullptr;
 		hr = SHStrDupW(password, &pwzProtectedPassword);
 		if (SUCCEEDED(hr))
 		{
-			// If the password is coming from a remote login, it is encrypted and has to be decrypted
-			// to be used e.g. for sending it to privacyIDEA prior to the OTP
-			// This function does nothing to unencrypted passwords
-			hr = UnProtectIfNecessaryAndCopyPassword(pwzProtectedPassword, &password);
-			if (FAILED(hr))
+			PWSTR pwzUnprotectedPassword = nullptr;
+			hr = UnProtectIfNecessaryAndCopyPassword(pwzProtectedPassword, &pwzUnprotectedPassword);
+
+			if (SUCCEEDED(hr) && pwzUnprotectedPassword != nullptr)
 			{
-				PIDebug("Failed to decrypt password " + GetLastError());
+				wstrPassword = std::wstring(pwzUnprotectedPassword);
+
+				// Clear temporary buffer (including the null terminator) and free it
+				SecureZeroMemory(pwzUnprotectedPassword, (wcslen(pwzUnprotectedPassword) + 1) * sizeof(wchar_t));
+				CoTaskMemFree(pwzUnprotectedPassword);
+			}
+			else
+			{
+				PIDebug("Failed to decrypt password " + std::to_string(GetLastError()));
+				// Fallback to the raw incoming password if decryption fails or returns null
+				wstrPassword = std::wstring(password);
 			}
 		}
+		else
+		{
+			wstrPassword = std::wstring(password);
+		}
+
 		CoTaskMemFree(pwzProtectedPassword);
-		wstrPassword = std::wstring(password);
 	}
 
 	PIDebug(L"Username from provider: " + (wstrUsername.empty() ? L"empty" : wstrUsername));
@@ -172,7 +186,8 @@ HRESULT CCredential::Initialize(
 	if (!wstrPassword.empty())
 	{
 		_config->credential.password = wstrPassword;
-		SecureZeroMemory(password, wcslen(password) * sizeof(wchar_t));
+		// +1 for the null terminator
+		SecureZeroMemory(password, (wcslen(password) + 1) * sizeof(wchar_t));
 	}
 
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
@@ -615,7 +630,7 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 		auto offlineInfo = _privacyIDEA.offlineHandler.GetTokenInfo(username);
 		if (!offlineInfo.empty())
 		{
-			wstring message = _util.GetText(TEXT_AVAILABLE_OFFLINE_TOKEN);
+			wstring message = PITranslate(TEXT_AVAILABLE_OFFLINE_TOKEN);
 			for (auto& pair : offlineInfo)
 			{
 				if (pair.first.rfind("WAN", 0) == 0 || pair.first.rfind("PIPK", 0) == 0)
@@ -627,7 +642,7 @@ HRESULT CCredential::SetOfflineInfo(std::string username)
 				{
 					// <serial> (XX OTPs remaining)
 					message.append(Convert::ToWString(pair.first)).append(L" (").append(to_wstring(pair.second)).append(L" ")
-						.append(_util.GetText(TEXT_OTPS_REMAINING)).append(L")\n");
+						.append(PITranslate(TEXT_OTPS_REMAINING)).append(L")\n");
 				}
 			}
 
@@ -739,19 +754,19 @@ HRESULT CCredential::SetMode(Mode mode)
 	case Mode::USERNAME:
 		pFieldStates = &s_rgScenarioUsername[0];
 		submitButtonField = FID_USERNAME;
-		smallText = _util.GetText(TEXT_ENTER_USERNAME);
+		smallText = PITranslate(TEXT_ENTER_USERNAME);
 		break;
 
 	case Mode::PASSWORD:
 		pFieldStates = &s_rgScenarioPassword[0];
 		submitButtonField = FID_PASSWORD;
-		smallText = _util.GetText(TEXT_ENTER_PASSWORD);
+		smallText = PITranslate(TEXT_ENTER_PASSWORD);
 		break;
 
 	case Mode::USERNAMEPASSWORD:
 		pFieldStates = &s_rgScenarioUsernamePassword[0];
 		submitButtonField = FID_PASSWORD;
-		smallText = _util.GetText(TEXT_ENTER_USERNAME_PASSWORD);
+		smallText = PITranslate(TEXT_ENTER_USERNAME_PASSWORD);
 		break;
 
 	case Mode::PRIVACYIDEA:
@@ -760,10 +775,10 @@ HRESULT CCredential::SetMode(Mode mode)
 
 		// Force OTP field visibility
 		_pCredProvCredentialEvents->SetFieldState(this, FID_OTP, CPFS_DISPLAY_IN_SELECTED_TILE);
-		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_ONLINE_FIDO).c_str());
+		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, PITranslate(TEXT_USE_ONLINE_FIDO).c_str());
 
 		// Determine small text based on errors/response
-		smallText = _util.GetText(TEXT_OTP_PROMPT);
+		smallText = PITranslate(TEXT_OTP_PROMPT);
 		if (_config->lastResponse.has_value())
 		{
 			const bool hideFirstStepError = _config->hideFirstStepResponseError && IsModeOneOf(oldMode, Mode::USERNAME, Mode::USERNAMEPASSWORD);
@@ -787,13 +802,13 @@ HRESULT CCredential::SetMode(Mode mode)
 	case Mode::SEC_KEY_SET_PIN:
 		pFieldStates = &s_rgScenarioSetPin[0];
 		submitButtonField = FID_NEW_PIN_2;
-		smallText = _util.GetText(TEXT_SET_NEW_SEC_KEY_PIN);
+		smallText = PITranslate(TEXT_SET_NEW_SEC_KEY_PIN);
 		break;
 
 	case Mode::SEC_KEY_SELECT_USER:
 		pFieldStates = &s_rgScenarioSelectUser[0];
 		submitButtonField = FID_USER_SELECT;
-		smallText = _util.GetText(TEXT_SELECT_USER);
+		smallText = PITranslate(TEXT_SELECT_USER);
 		// Ensure the ComboBox is focused
 		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USER_SELECT, CPFIS_FOCUSED);
 		break;
@@ -814,19 +829,19 @@ HRESULT CCredential::SetMode(Mode mode)
 
 		// Link Text logic
 		if (_config->usePasskey)
-			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_LOGIN_WITH_USERNAME).c_str());
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, PITranslate(TEXT_LOGIN_WITH_USERNAME).c_str());
 		else
-			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_OTP).c_str());
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, PITranslate(TEXT_USE_OTP).c_str());
 
 		// Text Logic
 		if (mode == Mode::SEC_KEY_REG_PIN)
 		{
-			if (_lastStatus == FIDO_ERR_PIN_INVALID) smallText = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
-			else smallText = _util.GetText(TEXT_PASSKEY_REGISTRATION) + L". " + _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
+			if (_lastStatus == FIDO_ERR_PIN_INVALID) smallText = PITranslate(TEXT_FIDO_ERR_PIN_INVALID);
+			else smallText = PITranslate(TEXT_PASSKEY_REGISTRATION) + L". " + PITranslate(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
 		}
 		else if (mode == Mode::SEC_KEY_PIN)
 		{
-			smallText = _util.GetText(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
+			smallText = PITranslate(TEXT_SEC_KEY_ENTER_PIN_PROMPT);
 		}
 		break;
 
@@ -857,7 +872,7 @@ HRESULT CCredential::SetMode(Mode mode)
 	// Configure Common Text Elements
 
 	// Offline Link Text
-	_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, _util.GetText(TEXT_USE_OFFLINE_FIDO).c_str());
+	_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, PITranslate(TEXT_USE_OFFLINE_FIDO).c_str());
 
 	// Large Text (Username or Login Text)
 	std::wstring largeText;
@@ -872,7 +887,7 @@ HRESULT CCredential::SetMode(Mode mode)
 			}
 		}
 	}
-	if (largeText.empty()) largeText = _util.GetText(TEXT_LOGIN_TEXT); // Default
+	if (largeText.empty()) largeText = PITranslate(TEXT_LOGIN_TEXT); // Default
 
 	_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, largeText.c_str());
 	_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, largeText.empty() ? CPFS_HIDDEN : CPFS_DISPLAY_IN_SELECTED_TILE);
@@ -884,7 +899,7 @@ HRESULT CCredential::SetMode(Mode mode)
 	// Subtext (Domain Hint)
 	if (_config->showDomainHint && !_config->credential.domain.empty())
 	{
-		std::wstring domainText = _util.GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
+		std::wstring domainText = PITranslate(TEXT_DOMAIN_HINT) + _config->credential.domain;
 		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, domainText.c_str());
 	}
 	else
@@ -921,7 +936,7 @@ HRESULT CCredential::SetMode(Mode mode)
 	// FIDO Online Link: Passkey offered in first step or WebAuthn/Passkey challenge-response
 	if (_config->IsFirstStep() && !_config->disablePasskey)
 	{
-		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, _util.GetText(TEXT_USE_PASSKEY).c_str());
+		_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_ONLINE, PITranslate(TEXT_USE_PASSKEY).c_str());
 		showFidoOnline = true;
 	}
 	else if (_config->lastResponseWithChallenge && _config->lastResponseWithChallenge->GetFIDOSignRequest())
@@ -965,7 +980,7 @@ HRESULT CCredential::SetMode(Mode mode)
 		// Check if THIS user has data.
 		if (_privacyIDEA.OfflineFIDODataExistsFor(_config->credential.username))
 		{
-			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, _util.GetText(TEXT_USE_ONLINE_FIDO).c_str());
+			_pCredProvCredentialEvents->SetFieldString(this, FID_FIDO_OFFLINE, PITranslate(TEXT_USE_ONLINE_FIDO).c_str());
 			showFidoOffline = true;
 		}
 	}
@@ -1001,7 +1016,7 @@ HRESULT CCredential::SetMode(Mode mode)
 	const bool versionHigherThan312 = _config->lastResponseWithChallenge && _config->lastResponseWithChallenge->IsVersionHigherOrEqual(3, 12);
 	if ((_enrollmentInProgress || _pollEnrollmentInProgress) && versionHigherThan312 && _config->lastResponseWithChallenge->isEnrollCancellable)
 	{
-		_pCredProvCredentialEvents->SetFieldString(this, FID_CANCEL_ENROLLMENT, _util.GetText(TEXT_CANCEL_ENROLLMENT).c_str());
+		_pCredProvCredentialEvents->SetFieldString(this, FID_CANCEL_ENROLLMENT, PITranslate(TEXT_CANCEL_ENROLLMENT).c_str());
 		_pCredProvCredentialEvents->SetFieldState(this, FID_CANCEL_ENROLLMENT, CPFS_DISPLAY_IN_SELECTED_TILE);
 	}
 
@@ -1093,7 +1108,7 @@ HRESULT CCredential::SetDomainHint(std::wstring domain)
 {
 	if (_config->showDomainHint && !domain.empty())
 	{
-		wstring text = _util.GetText(TEXT_DOMAIN_HINT) + domain;
+		wstring text = PITranslate(TEXT_DOMAIN_HINT) + domain;
 		_pCredProvCredentialEvents->SetFieldString(this, FID_SUBTEXT, text.c_str());
 	}
 	return S_OK;
@@ -1305,7 +1320,7 @@ HRESULT CCredential::GetSerialization(
 		// Display error if one occurred during connect
 		if (_lastStatus == FIDO_PINS_DO_NOT_MATCH)
 		{
-			ShowErrorMessage(L"PINs do not match or are empty.");
+			ShowErrorMessage(PITranslate(TEXT_PINS_DO_NOT_MATCH).c_str());
 			// Reset status so the error doesn't persist if we refresh for other reasons
 			_lastStatus = S_OK;
 			_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_CRYPT);
@@ -1466,7 +1481,7 @@ HRESULT CCredential::GetSerialization(
 					switch (_lastStatus)
 					{
 					case FIDO_ERR_OPERATION_DENIED:
-						errorMessage = _util.GetText(TEXT_FIDO_CANCELLED);
+						errorMessage = PITranslate(TEXT_FIDO_CANCELLED);
 						if (_config->credential.username.empty())
 						{
 							resetToFirstStep = true;
@@ -1478,12 +1493,12 @@ HRESULT CCredential::GetSerialization(
 						break;
 
 					case FIDO_ERR_NO_CREDENTIALS:
-						errorMessage = _util.GetText(TEXT_FIDO_ERR_NO_CREDENTIALS);
+						errorMessage = PITranslate(TEXT_FIDO_ERR_NO_CREDENTIALS);
 						SetMode(Mode::PRIVACYIDEA);
 						break;
 
 					case FIDO_ERR_PIN_AUTH_BLOCKED:
-						errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_BLOCKED);
+						errorMessage = PITranslate(TEXT_FIDO_ERR_PIN_BLOCKED);
 						// If UV is discouraged, we must reset to avoid infinite loop
 						if (lastResponse && lastResponse->GetFIDOSignRequest()
 							&& lastResponse->GetFIDOSignRequest()->userVerification == "discouraged")
@@ -1493,16 +1508,16 @@ HRESULT CCredential::GetSerialization(
 						break;
 
 					case FIDO_DEVICE_ERR_TX:
-						errorMessage = _util.GetText(TEXT_FIDO_ERR_TX);
+						errorMessage = PITranslate(TEXT_FIDO_ERR_TX);
 						resetToFirstStep = true;
 						break;
 
 					case FIDO_ERR_PIN_INVALID:
-						errorMessage = _util.GetText(TEXT_FIDO_ERR_PIN_INVALID);
+						errorMessage = PITranslate(TEXT_FIDO_ERR_PIN_INVALID);
 						break;
 
 					default:
-						errorMessage = _util.GetText(TEXT_GENERIC_ERROR);
+						errorMessage = PITranslate(TEXT_GENERIC_ERROR);
 						break;
 					}
 				}
@@ -1520,7 +1535,7 @@ HRESULT CCredential::GetSerialization(
 					// Fallback to generic authentication failure message
 					else
 					{
-						errorMessage = _util.GetText(TEXT_WRONG_OTP);
+						errorMessage = PITranslate(TEXT_WRONG_OTP);
 					}
 				}
 
@@ -1901,11 +1916,11 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 	std::wstring text;
 	if (device.IsWinHello())
 	{
-		text = _util.GetText(TEXT_GUIDE_USE_WINDOWS_HELLO);
+		text = PITranslate(TEXT_GUIDE_USE_WINDOWS_HELLO);
 	}
 	else
 	{
-		text = _util.GetText(TEXT_TOUCH_SEC_KEY);
+		text = PITranslate(TEXT_TOUCH_SEC_KEY);
 	}
 
 	if (_config->provider.cpu == CPUS_CREDUI)
@@ -1966,7 +1981,7 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 
 			PIDebug(L"FIDO2 offline successful, using username: " + _config->credential.username);
 			_privacyIDEASuccess = true;
-			pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
+			pqcws->SetStatusMessage(PITranslate(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
 			_privacyIDEA.OfflineRefillFIDO(username, serialUsed);
 			_config->useOfflineFIDO = false;
 			return S_OK;
@@ -2160,7 +2175,7 @@ HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
 
 			try
 			{
-				pqcws->SetStatusMessage(L"Setting PIN on device...");
+				pqcws->SetStatusMessage(PITranslate(TEXT_SETTING_PIN).c_str());
 
 				dev->SetPin(Convert::ToString(newPin1));
 
@@ -2203,7 +2218,7 @@ HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
 		}
 	}
 
-	pqcws->SetStatusMessage(_util.GetText(TEXT_PASSKEY_REGISTER_TOUCH).c_str());
+	pqcws->SetStatusMessage(PITranslate(TEXT_PASSKEY_REGISTER_TOUCH).c_str());
 
 	std::optional<FIDORegistrationResponse> response = std::nullopt;
 	try
@@ -2379,14 +2394,14 @@ std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatu
 	PIDebug("No FIDO2 device found, waiting for device");
 	if (pqcws)
 	{
-		pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
+		pqcws->SetStatusMessage(PITranslate(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
 	}
 
 	// In CPUS_CREDUI, pqcws is of no use. Disable UI elements and change the large text to the message 
 	// to indicate what the user should do.
 	if (_config->provider.cpu == CPUS_CREDUI)
 	{
-		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, _util.GetText(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
+		_pCredProvCredentialEvents->SetFieldString(this, FID_LARGE_TEXT, PITranslate(TEXT_FIDO_WAITING_FOR_DEVICE).c_str());
 		_pCredProvCredentialEvents->SetFieldState(this, FID_LARGE_TEXT, CPFS_DISPLAY_IN_BOTH);
 		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_PASSWORD, CPFIS_DISABLED);
 		_pCredProvCredentialEvents->SetFieldInteractiveState(this, FID_USERNAME, CPFIS_DISABLED);
@@ -2457,7 +2472,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	wstring upn = _config->piconfig.sendUPN ? _config->credential.upn : L"";
 
 	// Default message
-	pqcws->SetStatusMessage(_util.GetText(TEXT_CONNECTING).c_str());
+	pqcws->SetStatusMessage(PITranslate(TEXT_CONNECTING).c_str());
 
 	// Handle User Selection Submission
 	if (_config->mode == Mode::SEC_KEY_SELECT_USER)
@@ -2494,7 +2509,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			else
 			{
 				// Handle error
-				ShowErrorMessage(L"Authentication failed.");
+				ShowErrorMessage(PITranslate(TEXT_AUTHENTICATION_FAILED).c_str());
 			}
 		}
 		return S_OK;
@@ -2586,7 +2601,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			if (_config->useOfflineFIDO)
 			{
 				// Give user feedback if we are in a visible offline flow
-				pqcws->SetStatusMessage(_util.GetText(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
+				pqcws->SetStatusMessage(PITranslate(TEXT_FIDO_CHECKING_OFFLINE_STATUS).c_str());
 			}
 
 			int checkedCount = 0;
@@ -2625,7 +2640,7 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 				|| (hr == S_OK && _privacyIDEA.offlineHandler.GetOfflineOTPCount(Convert::ToString(username), serialUsed) < _config->offlineTreshold)
 				|| hr == PI_OFFLINE_DATA_NO_OTPS_LEFT)
 			{
-				pqcws->SetStatusMessage(_util.GetText(TEXT_OFFLINE_REFILL).c_str());
+				pqcws->SetStatusMessage(PITranslate(TEXT_OFFLINE_REFILL).c_str());
 				const HRESULT refillResult = _privacyIDEA.OfflineRefill(username, passToSend, serialUsed);
 				if (refillResult != S_OK)
 				{
@@ -2772,7 +2787,7 @@ HRESULT CCredential::ReportResult(
 
 		if (ppwszOptionalStatusText)
 		{
-			std::wstring msg = L"System Error: User profile is locked. Please restart the computer.";
+			std::wstring msg = PITranslate(TEXT_USER_PROFILE_LOCKED_RESTART_REQUIRED);
 			SHStrDupW(msg.c_str(), ppwszOptionalStatusText);
 		}
 
