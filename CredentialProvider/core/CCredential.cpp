@@ -77,19 +77,6 @@ CCredential::~CCredential()
 	PIDebug("CCredential destructor");
 	_util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, NULL, CLEAR_FIELDS_ALL_DESTROY);
 	DllRelease();
-	if (_config) {
-		if (!_config->credential.password.empty())
-		{
-			SecureZeroMemory(&_config->credential.password[0], _config->credential.password.size() * sizeof(wchar_t));
-			_config->credential.password.clear();
-		}
-
-		if (!_config->credential.otp.empty())
-		{
-			SecureZeroMemory(&_config->credential.otp[0], _config->credential.otp.size() * sizeof(wchar_t));
-			_config->credential.otp.clear();
-		}
-	}
 }
 
 // Initializes one credential with the field information passed in.
@@ -186,8 +173,8 @@ HRESULT CCredential::Initialize(
 	if (!wstrPassword.empty())
 	{
 		_config->credential.password = wstrPassword;
-		// +1 for the null terminator
-		SecureZeroMemory(password, (wcslen(password) + 1) * sizeof(wchar_t));
+		// Wipe after copy to config
+		SecureZeroMemory(&wstrPassword[0], wstrPassword.size() * sizeof(wchar_t));
 	}
 
 	for (DWORD i = 0; SUCCEEDED(hr) && i < FID_NUM_FIELDS; i++)
@@ -2123,16 +2110,12 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 		}
 		else
 		{
-			// --- FIX: Properly propagate the failure back to the state machine ---
-			PIError("ValidateCheckFIDO failed with error: " + std::to_string(hr));
 			_lastStatus = hr;
-			SetMode(Mode::PRIVACYIDEA); // Fallback to OTP input
+			SetMode(Mode::PRIVACYIDEA);
 			return E_FAIL;
-			// -------------------------------------------------------------------
 		}
 	}
 
-	// Catch-all for any missed paths that didn't process correctly
 	return E_FAIL;
 }
 

@@ -267,29 +267,40 @@ std::vector<OfflineData> OfflineHandler::GetAllFIDOData(bool includeExpired)
 
 void OfflineHandler::Prune(int days)
 {
-	// 0 = Feature disabled
+	// 0 = Feature disabled, or invalid negative days
 	if (days <= 0) return;
+	// Cap the maximum days to a reasonable value to prevent potential overflow issues
+	if (days > 3650) days = 3650;
+
+	// Check if the system clock is valid before proceeding (not reset to 1970-01-01)
+	time_t now = time(nullptr);
+	if (now <= 0)
+	{
+		PIDebug("Prune: System clock appears corrupted (time <= 0). Aborting cleanup.");
+		return;
+	}
 
 	PIDebug("Running offline credential cleanup. Purge threshold: " + to_string(days) + " days.");
 
-	time_t now = time(nullptr);
 	size_t initialSize = _dataSets.size();
 
 	_dataSets.erase(
 		std::remove_if(_dataSets.begin(), _dataSets.end(),
 			[days, now](const OfflineData& item) {
-				// Ignore legacy items (expiration == 0)
-				if (item.expiration == 0) return false;
+				// --- FIX: Ignore legacy items (== 0) AND corrupted negative timestamps (< 0) ---
+				if (item.expiration <= 0) return false;
 
 				// Expiration is the timestamp WHEN it expired.
 				// We want to delete if it has BEEN expired for more than the given days.
 				double secondsPastExpiration = difftime(now, item.expiration);
-				double secondsAllowed = (double)days * 24 * 60 * 60;
+
+				// --- FIX: Use double literal 86400.0 to guarantee floating point arithmetic ---
+				double secondsAllowed = static_cast<double>(days) * 86400.0;
 
 				// Ensure the expiration is actually in the past
 				if (secondsPastExpiration > 0 && secondsPastExpiration > secondsAllowed)
 				{
-					PIDebug("Removing stale credential " + item.serial + " (Expired " + to_string((int)(secondsPastExpiration / 86400)) + " days ago)");
+					PIDebug("Removing stale credential " + item.serial + " (Expired " + to_string((int)(secondsPastExpiration / 86400.0)) + " days ago)");
 					return true;
 				}
 				return false;
@@ -304,7 +315,6 @@ void OfflineHandler::Prune(int days)
 		SaveToFile();
 	}
 }
-
 bool OfflineHandler::RemoveOfflineData(const std::string& username, const std::string& serial)
 {
 	bool found = false;

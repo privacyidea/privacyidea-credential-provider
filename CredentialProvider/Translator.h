@@ -2,6 +2,8 @@
 #include "RegistryReader.h"
 #include <unordered_map>
 #include <string>
+#include <shared_mutex>
+#include <mutex>
 
 #define PITranslate(messageId)				Translator::GetInstance().Translate(messageId)
 
@@ -88,7 +90,7 @@ public:
 
 private:
     Translator();
-
+    static std::shared_mutex _mutex;
     static std::unordered_map<int, std::wstring> _translations;
     static std::string _currentLanguage;
     static std::string _currentRegion;

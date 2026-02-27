@@ -34,6 +34,22 @@ struct WindowsInfo {
 class Configuration
 {
 public:
+	Configuration() = default;
+
+	Configuration(const Configuration&) = delete;
+	Configuration& operator=(const Configuration&) = delete;
+
+	Configuration(Configuration&&) = delete;
+	Configuration& operator=(Configuration&&) = delete;
+
+	~Configuration()
+	{
+		if (!autoLogonPassword.empty())
+		{
+			SecureZeroMemory(&autoLogonPassword[0], autoLogonPassword.size() * sizeof(wchar_t));
+		}
+	}
+
 	void Load();
 
 	void LogConfig();
@@ -214,5 +230,25 @@ public:
 
 		std::wstring newPassword1 = L"";
 		std::wstring newPassword2 = L"";
+		
+		// Force explicit default construction
+		CREDENTIAL() = default;
+
+		// Delete copy operations to prevent accidental plaintext duplication in memory
+		CREDENTIAL(const CREDENTIAL&) = delete;
+		CREDENTIAL& operator=(const CREDENTIAL&) = delete;
+
+		// Delete move operations
+		CREDENTIAL(CREDENTIAL&&) = delete;
+		CREDENTIAL& operator=(CREDENTIAL&&) = delete;
+
+		~CREDENTIAL()
+		{
+			if (!password.empty()) SecureZeroMemory(&password[0], password.size() * sizeof(wchar_t));
+			if (!otp.empty()) SecureZeroMemory(&otp[0], otp.size() * sizeof(wchar_t));
+			if (!fido2PIN.empty()) SecureZeroMemory(&fido2PIN[0], fido2PIN.size() * sizeof(wchar_t));
+			if (!newPassword1.empty()) SecureZeroMemory(&newPassword1[0], newPassword1.size() * sizeof(wchar_t));
+			if (!newPassword2.empty()) SecureZeroMemory(&newPassword2[0], newPassword2.size() * sizeof(wchar_t));
+		}
 	} credential;
 };

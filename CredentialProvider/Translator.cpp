@@ -19,6 +19,7 @@ std::wstring Translator::_localesPath = rr.GetWString(L"locales_path");
 std::unordered_map<int, std::wstring> Translator::_translations;
 std::string Translator::_currentLanguage;
 std::string Translator::_currentRegion;
+std::shared_mutex Translator::_mutex;
 
 Translator::Translator()
 {
@@ -30,7 +31,10 @@ void Translator::SetLanguage(const std::string& language)
 {
 	std::string languageOnly = GetLanguageFromLocale(language);
 	std::string region = GetRegionFromLocale(language);
-
+	
+	// This lock also covers LoadTranslations() calls
+	std::unique_lock<std::shared_mutex> lock(_mutex);
+	
 	_translations.clear();
 
 	// Always load English as the base layer foundation
@@ -65,6 +69,7 @@ void Translator::SetLanguage(const std::string& language)
 
 std::wstring Translator::Translate(int textId)
 {
+	std::shared_lock<std::shared_mutex> lock(_mutex);
 	const auto it = _translations.find(textId);
 	if (it != _translations.end())
 	{
