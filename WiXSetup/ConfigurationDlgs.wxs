@@ -31,7 +31,7 @@
                 <Control Id="HttpsLabel" Type="Text" X="20" Y="48" Width="220" Height="15" TabSkip="no" Text="https://" />
                 <Control Id="HostnameEdit" Type="Edit" X="56" Y="45" Width="115" Height="15" Property="HOSTNAME" />
                 <Control Id="PathEdit" Type="Edit" X="176" Y="45" Width="90" Height="15" Property="PATH" />
-                <Control Id="PathOptLabel" Type="Text" X="274" Y="48" Width="220" Height="15" TabSkip="no" Text="(optional)" />
+                <Control Id="PathOptLabel" Type="Text" X="274" Y="48" Width="200" Height="15" TabSkip="no" Text="(optional)" />
                 <Control Id="SSLIgnoreCACheckBox" Type="CheckBox" X="20" Y="65" Width="101" Height="17" Property="SSL_IGNORE_UNKNOWN_CA" CheckBoxValue="1" Text="Ignore Unknown CA" />
                 <Control Id="SSLIgnoreCNCheckBox" Type="CheckBox" X="20" Y="80" Width="130" Height="17" Property="SSL_IGNORE_INVALID_CN" CheckBoxValue="1" Text="Ignore Invalid Common Name" />
                 <Control Type="Edit" Id="DefaultRealmEdit" Width="90" Height="15" X="82" Y="102" Property="DEFAULT_REALM" />

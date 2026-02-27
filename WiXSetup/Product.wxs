@@ -369,8 +369,8 @@
 						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
 						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
 						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
-						<RegistryValue Name="offline_expiration_days" Type="integer" Value="[OFFLINE_EXPIRATION_DAYS]" />
-						<RegistryValue Name="offline_delete_after_days" Type="integer" Value="[OFFLINE_DELETE_AFTER_DAYS]" />
+						<RegistryValue Name="offline_expiration_days" Type="string" Value="[OFFLINE_EXPIRATION_DAYS]" />
+						<RegistryValue Name="offline_delete_after_days" Type="string" Value="[OFFLINE_DELETE_AFTER_DAYS]" />
 						<RegistryValue Name="check_all_offline_credentials" Type="string" Value="[CHECK_ALL_OFFLINE_CREDENTIALS]" />
 						<RegistryValue Name="header_accept_language" Type="string" Value="[HEADER_ACCEPT_LANGUAGE]" />
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />

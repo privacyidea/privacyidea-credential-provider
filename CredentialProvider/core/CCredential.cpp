@@ -607,7 +607,9 @@ bool CCredential::AttemptStartPasskey()
 	if (FAILED(hr) || !res.passkeyChallenge)
 	{
 		PIDebug("Failed to initialize Passkey: " + Convert::LongToHexString(hr));
+		// Reset
 		_config->usePasskey = false;
+		_passkeyChallenge = std::nullopt;
 		return false;
 	}
 
@@ -1043,6 +1045,8 @@ HRESULT CCredential::FullReset()
 	_enrollmentInProgress = false;
 	_pollEnrollmentInProgress = false;
 
+	_config->usePasskey = false;
+	_passkeyChallenge = std::nullopt;
 	// Do not reset the username/domain in CPUS_UNLOCK_WORKSTATION, because it is "locked in".
 	if (_config->provider.cpu != CPUS_UNLOCK_WORKSTATION)
 	{
@@ -1335,6 +1339,11 @@ HRESULT CCredential::GetSerialization(
 	// Staying in USER_SELECT mode until successful
 	if (_config->mode == Mode::SEC_KEY_SELECT_USER && !_privacyIDEASuccess)
 	{
+		if (_lastStatus != S_OK)
+		{
+			ShowErrorMessage(PITranslate(TEXT_AUTHENTICATION_FAILED), _lastStatus);
+			_lastStatus = S_OK; // Reset so the error clears on the next attempt
+		}
 		PIDebug("Maintaining SEC_KEY_SELECT_USER mode waiting for selection.");
 		*pcpgsr = CPGSR_NO_CREDENTIAL_NOT_FINISHED;
 		// Prevent fields from being cleared so the UI stays stable
@@ -2112,9 +2121,19 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 			if (_config->usePasskey) _config->usePasskey = false;
 			return S_OK;
 		}
+		else
+		{
+			// --- FIX: Properly propagate the failure back to the state machine ---
+			PIError("ValidateCheckFIDO failed with error: " + std::to_string(hr));
+			_lastStatus = hr;
+			SetMode(Mode::PRIVACYIDEA); // Fallback to OTP input
+			return E_FAIL;
+			// -------------------------------------------------------------------
+		}
 	}
 
-	return S_OK;
+	// Catch-all for any missed paths that didn't process correctly
+	return E_FAIL;
 }
 
 HRESULT CCredential::FIDORegistration(IQueryContinueWithStatus* pqcws)
@@ -2508,8 +2527,9 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			}
 			else
 			{
-				// Handle error
-				ShowErrorMessage(PITranslate(TEXT_AUTHENTICATION_FAILED).c_str());
+				_privacyIDEASuccess = false;
+				_lastStatus = hr;
+				return hr;
 			}
 		}
 		return S_OK;

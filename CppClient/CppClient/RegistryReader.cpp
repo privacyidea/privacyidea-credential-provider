@@ -27,6 +27,17 @@ using namespace std;
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 1024
 
+struct ScopedHKEY {
+	HKEY hKey = nullptr;
+	~ScopedHKEY() {
+		if (hKey) {
+			RegCloseKey(hKey);
+		}
+	}
+	HKEY* operator&() { return &hKey; }
+	operator HKEY() const { return hKey; }
+};
+
 RegistryReader::RegistryReader(const std::wstring& pathToKey) noexcept
 {
 	path = pathToKey;
@@ -127,7 +138,8 @@ bool RegistryReader::GetAll(const std::wstring& pathToKey, std::map<std::wstring
 std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 {
 	DWORD dwRet = NULL;
-	HKEY hKey = nullptr;
+	ScopedHKEY hKey;
+
 	dwRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), NULL, KEY_QUERY_VALUE, &hKey);
 	if (dwRet != ERROR_SUCCESS)
 	{
@@ -149,10 +161,9 @@ std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 	if (dwType != REG_SZ)
 	{
 		PIError("Type of registry value " + Convert::ToString(name) + " is not REG_SZ, but " + Convert::LongToHexString(dwType));
-		return L"";
+		return L""; 
 	}
-	RegCloseKey(hKey);
-	hKey = NULL;
+
 	return wstring(szValue);
 }
 
@@ -164,14 +175,15 @@ bool RegistryReader::GetBool(std::wstring name) noexcept
 
 int RegistryReader::GetInt(std::wstring name) noexcept
 {
-	HKEY hKey = nullptr;
+	ScopedHKEY hKey;
+
 	DWORD dwRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_QUERY_VALUE, &hKey);
 	if (dwRet != ERROR_SUCCESS)
 	{
 		PIDebug("Failed to open registry key " + Convert::ToString(path) + ", error: " + Convert::LongToHexString(dwRet));
 		return 0;
 	}
-	
+
 	// query to get the type first
 	DWORD dwType = 0;
 	dwRet = RegQueryValueEx(hKey, name.c_str(), nullptr, &dwType, nullptr, nullptr);
@@ -184,7 +196,6 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 			DWORD dwSize = sizeof(dwData);
 			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&dwData, &dwSize) == ERROR_SUCCESS)
 			{
-				RegCloseKey(hKey);
 				return static_cast<int>(dwData);
 			}
 		}
@@ -196,7 +207,6 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 
 			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&szValue, &dwSize) == ERROR_SUCCESS)
 			{
-				RegCloseKey(hKey);
 				return _wtoi(szValue);
 			}
 		}
@@ -206,16 +216,13 @@ int RegistryReader::GetInt(std::wstring name) noexcept
 		}
 	}
 
-	if (hKey)
-	{
-		RegCloseKey(hKey);
-	}
 	return 0;
 }
 
 std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueName) noexcept
 {
-	HKEY hKey;
+	ScopedHKEY hKey;
+
 	LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_READ, &hKey);
 	if (result != ERROR_SUCCESS)
 	{
