@@ -99,7 +99,6 @@ void Configuration::Load()
 	wstring tmp = rr.GetWString(L"path");
 	piconfig.path = (tmp == L"/path/to/pi" ? L"" : tmp);
 	piconfig.port = rr.GetInt(L"custom_port");
-	PIDebug("loading port: " + to_string(piconfig.port));
 	piconfig.ignoreUnknownCA = rr.GetBool(L"ssl_ignore_unknown_ca");
 	piconfig.ignoreInvalidCN = rr.GetBool(L"ssl_ignore_invalid_cn");
 

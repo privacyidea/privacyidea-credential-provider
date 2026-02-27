@@ -172,7 +172,7 @@ Here is a list of the old configuration options and their corresponding ID in th
 
 You can overwrite the language of the Credential Provider by setting this to a valid language code, like "en" or "de". A translation file for that language has to exist in the locales folder.
 
-**localesPath**
+**locales_path**
 
 Override the default path where the Credential Provider looks for translation files.
 

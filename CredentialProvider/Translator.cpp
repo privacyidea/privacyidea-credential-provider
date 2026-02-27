@@ -8,12 +8,13 @@
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <Windows.h>
+#include <Convert.h>
 
 using namespace std;
 using json = nlohmann::json;
 
-RegistryReader rr(CONFIG_REGISTRY_PATH); // Gets registry keys
-std::wstring Translator::_localesPath = rr.GetWString(L"locales_path"); // Get locales path
+RegistryReader rr(CONFIG_REGISTRY_PATH);
+std::wstring Translator::_localesPath = rr.GetWString(L"locales_path");
 
 std::unordered_map<int, std::wstring> Translator::_translations;
 std::string Translator::_currentLanguage;
@@ -29,21 +30,34 @@ void Translator::SetLanguage(const std::string& language)
 {
 	std::string languageOnly = GetLanguageFromLocale(language);
 	std::string region = GetRegionFromLocale(language);
-	PIDebug("Translation language " + languageOnly + ", region " + region);
-	if (TryLoadTranslations(languageOnly, region))
+
+	_translations.clear();
+
+	// Always load English as the base layer foundation
+	LoadTranslations("en");
+
+	if (languageOnly != "en")
 	{
-		_currentLanguage = languageOnly;
-		_currentRegion = region;
-	}
-	else if (TryLoadTranslations(languageOnly))
-	{
-		_currentLanguage = languageOnly;
-		_currentRegion.clear();
+		// Layer the target language/region on top (overwrites English keys)
+		if (TryLoadTranslations(languageOnly, region))
+		{
+			_currentLanguage = languageOnly;
+			_currentRegion = region;
+		}
+		else if (TryLoadTranslations(languageOnly))
+		{
+			_currentLanguage = languageOnly;
+			_currentRegion.clear();
+		}
+		else
+		{
+			// If target language files are missing entirely, stay with English
+			_currentLanguage = "en";
+			_currentRegion.clear();
+		}
 	}
 	else
 	{
-		// Fallback to English
-		TryLoadTranslations("en");
 		_currentLanguage = "en";
 		_currentRegion.clear();
 	}
@@ -54,9 +68,9 @@ std::wstring Translator::Translate(int textId)
 	const auto it = _translations.find(textId);
 	if (it != _translations.end())
 	{
-		return it->second; // Return the translated wstring
+		return it->second;
 	}
-	// If translation not found, return "undefined"
+	// If ID is missing even in the English fallback, return "undefined"
 	return L"undefined";
 }
 
@@ -97,21 +111,17 @@ bool Translator::TryLoadTranslations(const std::string& language, const std::str
 
 bool Translator::LoadTranslations(const std::string& locale)
 {
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-	std::string path = converter.to_bytes(_localesPath);
-
+	std::string path = Convert::ToString(_localesPath);
 	std::string filePath = path + "\\" + locale + ".json";
 	std::ifstream file(filePath);
 
-	//PIDebug("Trying to open translation from " + filePath);
 	if (!file.is_open())
 	{
-		PIDebug("Can not load translation file: " + filePath);
+		PIDebug("Translation file not found: " + filePath);
 		return false;
 	}
 
 	json data{};
-
 	try
 	{
 		file >> data;
@@ -119,19 +129,22 @@ bool Translator::LoadTranslations(const std::string& locale)
 	catch (const std::exception& e)
 	{
 		UNREFERENCED_PARAMETER(e);
-		PIDebug("Error parsing translation file:" + filePath);
+		PIError("Error parsing translation file: " + filePath);
 		return false;
 	}
 
-	PIDebug("Loading translation from " + filePath);
+	PIDebug("Merging translations from " + filePath);
 
-	_translations.clear(); // Clear existing _translations
 	for (auto it = data.begin(); it != data.end(); ++it)
 	{
-		const int key = std::stoi(it.key());
-		std::string value = it.value();
-		//PIDebug("Loading translation: " + it.key() + ":" + value);
-		_translations[key] = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(value);
+		try {
+			const int key = std::stoi(it.key());
+			std::string value = it.value();
+			_translations[key] = Convert::ToWString(value);
+		}
+		catch (...) {
+			PIError("Invalid key in translation file: " + it.key());
+		}
 	}
 	return true;
 }

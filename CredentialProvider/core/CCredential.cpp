@@ -40,11 +40,17 @@
 #include "FIDODevice.h"
 #include "FIDOException.h"
 #include "Mode.h"
+
 #include <lm.h>
 #include <gdiplus.h>
 
+#define SECURITY_WIN32
+#include <security.h>
+#include <secext.h>
+
 #pragma comment (lib, "Gdiplus.lib")
 #pragma comment(lib, "Netapi32.lib")
+#pragma comment(lib, "Secur32.lib")
 
 const std::wstring IMAGE_BASE64_PREFIX = L"data:image/png;base64,";
 
@@ -761,7 +767,6 @@ HRESULT CCredential::SetMode(Mode mode)
 		if (_config->lastResponse.has_value())
 		{
 			const bool hideFirstStepError = _config->hideFirstStepResponseError && IsModeOneOf(oldMode, Mode::USERNAME, Mode::USERNAMEPASSWORD);
-			const bool isRejected = _config->lastResponse->authenticationStatus == AuthenticationStatus::REJECT;
 			std::string serverMsg = _config->lastResponse->GetNonFIDOMessage();
 
 			if (!hideFirstStepError && !serverMsg.empty() && !_config->lastResponse->isAuthenticationSuccessful())

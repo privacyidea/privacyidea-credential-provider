@@ -19,6 +19,9 @@
 
 #include <regex>
 #include <optional>
+#include <sstream>
+#include <iomanip>
+#include <ctime>
 #include "Convert.h"
 #include "JsonParser.h"
 #include "Logger.h"
