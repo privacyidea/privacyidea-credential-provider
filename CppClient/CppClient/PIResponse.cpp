@@ -18,6 +18,7 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include "PIResponse.h"
+#include "Logger.h"
 
 bool PIResponse::IsPushAvailable()
 {
@@ -59,29 +60,74 @@ std::string PIResponse::GetPushMessage()
 std::optional<FIDOSignRequest> PIResponse::GetFIDOSignRequest()
 {
 	std::optional<FIDOSignRequest> ret = std::nullopt;
-	std::vector<AllowCredential> allowCredentials;
-	FIDOSignRequest signRequest;
+
+	bool hasWebAuthn = false;
+	bool hasPasskey = false;
+
+	for (const auto& challenge : challenges)
+	{
+		if (challenge.type == "webauthn") hasWebAuthn = true;
+		else if (challenge.type == "passkey") hasPasskey = true;
+	}
+
+	std::string targetType = "";
+	// Prioritize passkey over webauthn if both are present
+	if (hasPasskey)
+	{
+		targetType = "passkey";
+		if (hasWebAuthn)
+		{
+			PIDebug("WARNING: Received mixed webauthn and passkey challenges. The webauthn challenges will not be used.");
+		}
+	}
+	else if (hasWebAuthn)
+	{
+		targetType = "webauthn";
+	}
+	else
+	{
+		return std::nullopt;
+	}
+
+	std::vector<AllowCredential> accumulatedCredentials;
+	FIDOSignRequest baseRequest;
+	bool baseRequestInitialized = false;
+
 	for (auto& challenge : challenges)
 	{
-		if (challenge.type == "webauthn" || challenge.type == "passkey")
+		if (challenge.type != targetType) continue;
+
+		if (!challenge.fidoSignRequest.has_value()) continue;
+
+		const auto& currentReq = challenge.fidoSignRequest.value();
+
+		if (!currentReq.allowCredentials.empty())
 		{
-			if (challenge.type == "webauthn" && challenge.fidoSignRequest
-				&& !challenge.fidoSignRequest.value().allowCredentials.empty())
-			{
-				allowCredentials.push_back(challenge.fidoSignRequest.value().allowCredentials.at(0));
-			}
-			// Set the RP ID only once
-			if (signRequest.rpId.empty())
-			{
-				signRequest = challenge.fidoSignRequest.value();
-			}
+			accumulatedCredentials.insert(
+				accumulatedCredentials.end(),
+				currentReq.allowCredentials.begin(),
+				currentReq.allowCredentials.end()
+			);
+		}
+
+		// Initialize Base Request from the first valid challenge of the correct type.
+		// We ensure we grab the challenge string/RPID from the correct type.
+		if (!baseRequestInitialized && !currentReq.rpId.empty())
+		{
+			baseRequest = currentReq;
+			baseRequest.type = targetType;
+			baseRequestInitialized = true;
 		}
 	}
 
-	if (!signRequest.challenge.empty() && !signRequest.rpId.empty())
+	// Only return if we successfully initialized the base request (have challenge + rpId)
+	if (baseRequestInitialized && !baseRequest.challenge.empty())
 	{
-		signRequest.allowCredentials = allowCredentials;
-		ret = signRequest;
+		// Overwrite credentials with the accumulated list
+		// Note: Passkeys typically have empty lists here (unless triggered as token), 
+		// but 'insert' handles empty/non-empty correctly regardless.
+		baseRequest.allowCredentials = accumulatedCredentials;
+		ret = baseRequest;
 	}
 
 	return ret;

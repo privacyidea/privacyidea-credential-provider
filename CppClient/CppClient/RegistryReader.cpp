@@ -27,6 +27,17 @@ using namespace std;
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 1024
 
+struct ScopedHKEY {
+	HKEY hKey = nullptr;
+	~ScopedHKEY() {
+		if (hKey) {
+			RegCloseKey(hKey);
+		}
+	}
+	HKEY* operator&() { return &hKey; }
+	operator HKEY() const { return hKey; }
+};
+
 RegistryReader::RegistryReader(const std::wstring& pathToKey) noexcept
 {
 	path = pathToKey;
@@ -95,7 +106,6 @@ bool RegistryReader::GetAll(const std::wstring& pathToKey, std::map<std::wstring
 				TCHAR szData[SIZE] = _T("");
 				DWORD dwValue = SIZE;
 				DWORD dwType = 0;
-				DWORD dwRet = 0;
 
 				dwRet = RegQueryValueEx(
 					hKey,
@@ -115,7 +125,7 @@ bool RegistryReader::GetAll(const std::wstring& pathToKey, std::map<std::wstring
 			}
 			else
 			{
-				PIError("Failed to read registry value at index " + to_string(i) + " in key " + Convert::ToString(pathToKey) +
+				PIDebug("Failed to read registry value at index " + to_string(i) + " in key " + Convert::ToString(pathToKey) +
 					", error: " + Convert::LongToHexString(retCode));
 			}
 		}
@@ -128,7 +138,8 @@ bool RegistryReader::GetAll(const std::wstring& pathToKey, std::map<std::wstring
 std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 {
 	DWORD dwRet = NULL;
-	HKEY hKey = nullptr;
+	ScopedHKEY hKey;
+
 	dwRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), NULL, KEY_QUERY_VALUE, &hKey);
 	if (dwRet != ERROR_SUCCESS)
 	{
@@ -143,17 +154,16 @@ std::wstring RegistryReader::GetWString(std::wstring name) noexcept
 	dwRet = RegQueryValueEx(hKey, name.c_str(), NULL, &dwType, (LPBYTE)&szValue, &dwValue);
 	if (dwRet != ERROR_SUCCESS)
 	{
-		PIError("Failed to read registry value " + Convert::ToString(name) + ", error: " + Convert::LongToHexString(dwRet));
+		PIDebug("Failed to read registry value " + Convert::ToString(name) + ", error: " + Convert::LongToHexString(dwRet));
 		return L"";
 	}
 
 	if (dwType != REG_SZ)
 	{
 		PIError("Type of registry value " + Convert::ToString(name) + " is not REG_SZ, but " + Convert::LongToHexString(dwType));
-		return L"";
+		return L""; 
 	}
-	RegCloseKey(hKey);
-	hKey = NULL;
+
 	return wstring(szValue);
 }
 
@@ -165,12 +175,54 @@ bool RegistryReader::GetBool(std::wstring name) noexcept
 
 int RegistryReader::GetInt(std::wstring name) noexcept
 {
-	return _wtoi(GetWString(name).c_str()); // Invalid parameter returns 0
+	ScopedHKEY hKey;
+
+	DWORD dwRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_QUERY_VALUE, &hKey);
+	if (dwRet != ERROR_SUCCESS)
+	{
+		PIDebug("Failed to open registry key " + Convert::ToString(path) + ", error: " + Convert::LongToHexString(dwRet));
+		return 0;
+	}
+
+	// query to get the type first
+	DWORD dwType = 0;
+	dwRet = RegQueryValueEx(hKey, name.c_str(), nullptr, &dwType, nullptr, nullptr);
+
+	if (dwRet == ERROR_SUCCESS)
+	{
+		if (dwType == REG_DWORD)
+		{
+			DWORD dwData = 0;
+			DWORD dwSize = sizeof(dwData);
+			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&dwData, &dwSize) == ERROR_SUCCESS)
+			{
+				return static_cast<int>(dwData);
+			}
+		}
+		else if (dwType == REG_SZ)
+		{
+			const DWORD SIZE = 1024;
+			TCHAR szValue[SIZE] = _T("");
+			DWORD dwSize = SIZE;
+
+			if (RegQueryValueEx(hKey, name.c_str(), nullptr, nullptr, (LPBYTE)&szValue, &dwSize) == ERROR_SUCCESS)
+			{
+				return _wtoi(szValue);
+			}
+		}
+		else
+		{
+			PIDebug("Registry value " + Convert::ToString(name) + " exists but is not REG_DWORD or REG_SZ. Type: " + Convert::LongToHexString(dwType));
+		}
+	}
+
+	return 0;
 }
 
 std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueName) noexcept
 {
-	HKEY hKey;
+	ScopedHKEY hKey;
+
 	LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_READ, &hKey);
 	if (result != ERROR_SUCCESS)
 	{
@@ -190,7 +242,7 @@ std::vector<std::wstring> RegistryReader::GetMultiSZ(const std::wstring& valueNa
 	result = RegQueryValueEx(hKey, valueName.c_str(), 0, &dwType, (LPBYTE)buffer.data(), &dwSize);
 	if (result != ERROR_SUCCESS)
 	{
-		PIError("Failed to read registry value " + Convert::ToString(valueName) + ", error: " + Convert::LongToHexString(result));
+		PIDebug("Failed to read registry value " + Convert::ToString(valueName) + ", error: " + Convert::LongToHexString(result));
 		return std::vector<std::wstring>();
 	}
 

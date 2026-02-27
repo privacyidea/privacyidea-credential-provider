@@ -41,9 +41,12 @@ struct PIConfig
 	std::map<std::wstring, std::wstring> realmMap = std::map<std::wstring, std::wstring>();
 	std::wstring defaultRealm = L"";
 	bool logPasswords = false;
+	bool sendUPN = false;
+	
 	std::wstring offlineFilePath = L"C:\\offlineFile.json";
 	int offlineTryWindow = 10;
-	bool sendUPN = false;
+	int offlineExpirationDays = 0;
+	int offlineDeleteAfterDays = 0;
 	
 	// optionals
 	int resolveTimeout = 0; // = infinite

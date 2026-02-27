@@ -63,6 +63,8 @@ public:
 	std::string credId;
 	std::string rpId;
 	std::string userId;
-
+	
+	time_t expiration = 0;
+	
 	bool isWebAuthn() const noexcept { return !pubKey.empty() && !credId.empty() && !rpId.empty(); }
 };

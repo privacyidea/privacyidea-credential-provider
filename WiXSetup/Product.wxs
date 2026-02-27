@@ -29,37 +29,37 @@
 		<MajorUpgrade AllowSameVersionUpgrades="yes"
 					  AllowDowngrades="no"
 					  MigrateFeatures="yes"
-					  DowngradeErrorMessage="A newer version of [ProductName] is already installed!" />
-		
+					  DowngradeErrorMessage="A newer version of [ProductName] is already installed!"
+		/>
+
 		<Property Id="ARPURLINFOABOUT" Value="$(var.AppURLInfoAbout)" />
-		<!-- Disable the modify/repair button in software explorer -->
 		<Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />
 		<Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
 		<Condition Message="You need to be an administrator to install this product.">
 			Privileged
 		</Condition>
-		<!-- Custom action definitions -->
 		<CustomAction Id="IsPrivileged" Error="You must be an admin to install this product" />
 		<CustomAction Id="PreventDowngrading" Error="Newer version already installed." />
-		<!-- END Custom action definitions-->
+		
+		<CustomAction Id="SetLocalesDefault" Property="LOCALES_PATH" Value="[locales]" />
+		<CustomAction Id="SetLocalesFromOld" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_OLD]" />
+		<CustomAction Id="SetLocalesFromNew" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_NEW]" />
+
 		<InstallExecuteSequence>
-			<Custom Action="IsPrivileged" Before="AppSearch">
-				Not Privileged
-			</Custom>
+			<Custom Action="IsPrivileged" Before="AppSearch">Not Privileged</Custom>
+
+			<Custom Action="SetLocalesDefault" After="CostFinalize">NOT REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
+			<Custom Action="SetLocalesFromOld" After="SetLocalesDefault">REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
+			<Custom Action="SetLocalesFromNew" After="SetLocalesFromOld">REG_LOCALES_PATH_NEW</Custom>
 		</InstallExecuteSequence>
-		<!-- Icons etc -->
+
 		<Icon Id="icon.ico" SourceFile="$(var.SolutionDir)icon.ico" />
 		<Property Id="ARPPRODUCTICON" Value="icon.ico" />
 		<Media Id="1" Cabinet="Sample.cab" EmbedCab="yes" DiskPrompt="DISK #1" />
 		<Property Id="DiskPrompt" Value="$(var.ProductName) Setup [1]" />
-		<!--<Binary Id='WiXCustomActions' SourceFile='$(var.WiXCustomActions.TargetPath)' />-->
 		<Binary Id="InfoIcon" SourceFile="$(var.SolutionDir)info.ico" />
 		<Binary Id="HelpIcon" SourceFile="$(var.SolutionDir)help.ico" />
 		<Binary Id="ExclamIcon" SourceFile="$(var.SolutionDir)exclam.ico" />
-		<!-- END  Icons etc -->
-		<!-- END Preconditions and pre-setups -->
-
-		<!-- PROPERTIES - Get values for the UI from registry if available. (What if unattended/silent install?)-->
 		<Property Id="HOSTNAME" Value="hostname">
 			<RegistrySearch Id="SearchHostname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hostname" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -90,17 +90,20 @@
 		<Property Id="SSL_IGNORE_INVALID_CN">
 			<RegistrySearch Id="SearchSSLIgnoreInvalidCN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_ignore_invalid_cn" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="HIDE_USERNAME">
-			<RegistrySearch Id="SearchHideUsername" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_username" Win64="$(var.Win64)" Type="raw" />
-		</Property>
 		<Property Id="HIDE_DOMAINNAME">
 			<RegistrySearch Id="SearchHideDomainname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_domainname" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="HIDE_FULLNAME">
+			<RegistrySearch Id="SearchHideFullname" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="hide_fullname" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="DEBUG_LOG">
 			<RegistrySearch Id="SearchDebugLog" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="debug_log" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="SEND_UPN">
 			<RegistrySearch Id="SearchSendUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="send_upn" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="RESOLVE_UPN">
+			<RegistrySearch Id="SearchResolveUPN" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="resolve_upn" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="ENABLE_FILTER">
 			<RegistrySearch Id="SearchEnableFilter" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="enable_filter" Win64="$(var.Win64)" Type="raw" />
@@ -129,7 +132,7 @@
 		<Property Id="OFFLINE_TRY_WINDOW">
 			<RegistrySearch Id="SearchOfflineTryWindow" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_try_window" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="OFFLINE_TRHESHOLD" Value="25">
+		<Property Id="OFFLINE_THRESHOLD" Value="25">
 			<RegistrySearch Id="SearchOfflineTreshold" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_threshold" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="OFFLINE_SHOW_INFO">
@@ -158,9 +161,6 @@
 		</Property>
 		<Property Id="DISABLE_PASSKEY">
 			<RegistrySearch Id="SearchDisablePasskey" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="disable_passkey" Win64="$(var.Win64)" Type="raw" />
-		</Property>
-		<Property Id="CREDUI_NO_IMAGE">
-			<RegistrySearch Id="SearchCreduiNoImage" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="credui_no_image" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="SHOW_DOMAIN_HINT">
 			<RegistrySearch Id="SearchShowDomainHint" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="show_domain_hint" Win64="$(var.Win64)" Type="raw" />
@@ -207,8 +207,12 @@
 		<Property Id="EXCLUDED_GROUP_NETBIOS_ADDRESS">
 			<RegistrySearch Id="SearchNetBiosAddress" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_address" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="LOCALES_PATH">
-			<RegistrySearch Id="SearchLocalesPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="locales_path" Win64="$(var.Win64)" Type="raw" />
+		<Property Id="LOCALES_PATH" />
+		<Property Id="REG_LOCALES_PATH_OLD">
+			<RegistrySearch Id="SearchLocalesPathOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="localesPath" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="REG_LOCALES_PATH_NEW">
+			<RegistrySearch Id="SearchLocalesPathNew" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="locales_path" Win64="$(var.Win64)" Type="raw" />
 		</Property>
 		<Property Id="WEBAUTHN_OFFLINE_SECOND_STEP">
 			<RegistrySearch Id="SearchWebAuthnOfflineSecondStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_offline_second_step" Win64="$(var.Win64)" Type="raw" />
@@ -228,11 +232,34 @@
 		<Property Id="AUTOLOGON_PASSWORD">
 			<RegistrySearch Id="SearchAutologonPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="autologon_password" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<!-- END PROPERTIES -->
-
-		<!-- Directory definitions -->
+		<Property Id="TRUSTED_RPIDS">
+			<RegistrySearch Id="SearchTrustedRpids" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="trusted_rpids" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="OFFLINE_EXPIRATION_DAYS" Value="0" Secure="yes">
+			<RegistrySearch Id="SearchOfflineExpirationDays" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_expiration_days" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="OFFLINE_DELETE_AFTER_DAYS" Value="0" Secure="yes">
+			<RegistrySearch Id="SearchOfflineDeleteAfterDays" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="offline_delete_after_days" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="DISABLE_WINDOWS_HELLO_FOR_CREDUI">
+			<RegistrySearch Id="SearchDisableWindowsHelloCredUI" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="disable_windows_hello_for_credui" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="CHECK_ALL_OFFLINE_CREDENTIALS">
+			<RegistrySearch Id="SearchCheckAllOffline" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="check_all_offline_credentials" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="LIBFIDO_DEBUG">
+			<RegistrySearch Id="SearchLibfidoDebug" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="libfido_debug" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="LANGUAGE">
+			<RegistrySearch Id="SearchLanguage" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="language" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="HEADER_ACCEPT_LANGUAGE" Value="system">
+			<RegistrySearch Id="SearchHeaderAcceptLanguage" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="header_accept_language" Win64="$(var.Win64)" Type="raw" />
+		</Property>
+		<Property Id="PASSKEY_FIRST_STEP">
+			<RegistrySearch Id="SearchPasskeyFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="passkey_first_step" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Directory Id="TARGETDIR" Name="SourceDir">
-			<!-- Visual Studio C++ Redistributable -->
 			<?if $(var.Configuration) = Debug ?>
 			<?if $(var.Platform) = x64 ?>
 			<Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC143_DebugCRT_x64.msm" DiskId="1" Language="0" />
@@ -246,9 +273,6 @@
 			<Merge Id="VCRedist" SourceFile="$(var.SolutionDir)lib\merge\Microsoft_VC143_CRT_x86.msm" DiskId="1" Language="0" />
 			<?endif ?>
 			<?endif ?>
-			<!-- END Visual Studio C++ Redistributable -->
-			<!-- Directories/Components to be placed in ProgramFiles-folder -->
-			<!-- Just remove the license file that was placed in the folder by versions < 3.2.0 -->
 			<Directory Id="$(var.PlatformProgramFilesFolder)">
 				<Directory Id="CompanyFolder" Name="$(var.Publisher)">
 					<Directory Id="INSTALLFOLDER" Name="$(var.ProductFolderName)">
@@ -260,8 +284,6 @@
 					</Directory>
 				</Directory>
 			</Directory>
-			<!-- END Directories/Components to be placed in ProgramFiles-folder -->
-			<!-- Directories/Components to be placed in ProgramData-folder (localization files)-->
 			<Directory Id="$(var.PlatformProgramDataFolder)" Name="$(var.PlatformProgramDataFolder)">
 				<Directory Id="PublisherFolder" Name ="$(var.Publisher)">
 					<Directory Id="ProductFolderName" Name="$(var.ProductFolderName)">
@@ -270,6 +292,9 @@
 								<File Id="Localization_en"  Name="en.json" Source="$(var.SolutionDir)locales\en.json"  />
 								<File Id="Localization_es"  Name="es.json" Source="$(var.SolutionDir)locales\es.json"  />
 								<File Id="Localization_de"  Name="de.json" Source="$(var.SolutionDir)locales\de.json"  />
+								<File Id="Localization_fr"  Name="fr.json" Source="$(var.SolutionDir)locales\fr.json"  />
+								<File Id="Localization_zh_cn"  Name="zh_cn.json" Source="$(var.SolutionDir)locales\zh_cn.json"  />
+
 								<RemoveFile Id="RemoveLocalesFiles" Name="*" On="uninstall" />
 								<RemoveFolder Id="RemoveLocalization" On="uninstall" />
 								<RemoveFolder Id="RemovePublisherFolderIfEmpty" Directory="PublisherFolder" On="uninstall" />
@@ -279,17 +304,11 @@
 				</Directory>
 			</Directory>
 
-			<!-- Directories/Components to be placed in System-folder -->
 			<Directory Id="$(var.PlatformSystemFolder)">
-				<!-- Core components -->
 				<Component Location="local" Guid="9944eca5-ac62-4a0e-82fa-5ec243a56b0d" Transitive="yes">
 					<Condition>1</Condition>
-					<!-- Files -->
 					<File Id="CredentialProvider" Name="$(var.CredentialProvider.TargetFileName)" Source="$(var.CredentialProvider.TargetPath)" KeyPath="yes" />
 					<RemoveFile Id="RemoveCredentialProviderFiles" Name="$(var.CredentialProvider.TargetFileName)" On="uninstall" />
-					<!-- END Files -->
-					<!-- Registry -->
-					<!-- Register the Provider -->
 					<RegistryKey Root="HKCR" Key="CLSID\{$(var.ProviderRegistryGUID)}" ForceCreateOnInstall="yes">
 						<RegistryValue Type="string" Value="$(var.CredentialProvider.TargetName)" />
 						<RegistryKey Key="InprocServer32">
@@ -300,9 +319,7 @@
 					<RemoveRegistryKey Root="HKCR" Key="CLSID\{$(var.ProviderRegistryGUID)}" Action="removeOnUninstall" />
 					<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}" Type="string" Value="PrivacyIDEA$(var.CredentialProvider.TargetName)" />
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{$(var.ProviderRegistryGUID)}" Action="removeOnUninstall" />
-					<!-- Configuration values (from dialogs/registry/unattended) -->
 					<RegistryKey Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" ForceCreateOnInstall="yes">
-						<!-- CONNECTION & RECOVERY -->
 						<RegistryValue Name="hostname" Type="string" Value="[HOSTNAME]" />
 						<RegistryValue Name="path" Type="string" Value="[PATH]" />
 						<RegistryValue Name="custom_port" Type="string" Value="[CUSTOM_PORT]" />
@@ -322,12 +339,7 @@
 						<RegistryValue Name="excluded_account" Type="string" Value="[EXCLUDED_ACCOUNT]" />
 						<RegistryValue Name="excluded_group" Type="string" Value="[EXCLUDED_GROUP]" />
 						<RegistryValue Name="excluded_group_netbios_address" Type="string" Value="[EXCLUDED_GROUP_NETBIOS_ADDRESS]" />
-						<!-- END CONNECTION -->
-
-						<!-- CUSTOMIZATION -->
 						<RegistryValue Name="v1_bitmap_path" Type="string" Value="[V1_BITMAP_PATH]" />
-						<RegistryValue Name="credui_no_image" Type="string" Value="[CREDUI_NO_IMAGE]" />
-
 						<RegistryValue Name="two_step_send_password" Type="string" Value="[TWO_STEP_SEND_PASSWORD]" />
 						<RegistryValue Name="two_step_send_empty_password" Type="string" Value="[TWO_STEP_SEND_EMPTY_PASSWORD]" />
 						<RegistryValue Name="username_password" Type="string" Value="[USERNAME_PASSWORD]" />
@@ -339,62 +351,48 @@
 						<RegistryValue Name="prefill_username" Type="string" Value="[PREFILL_USERNAME]" />
 						<RegistryValue Name="enable_reset" Type="string" Value="[ENABLE_RESET]" />
 						<RegistryValue Name="send_upn" Type="string" Value="[SEND_UPN]" />
-						<!-- END CUSTOMIZATION -->
-
-						<!-- CREDENTIAL PROVIDER USAGE SCENARIOS -->
+						<RegistryValue Name="resolve_upn" Type="string" Value="[RESOLVE_UPN]" />
 						<RegistryValue Name="cpus_logon" Type="string" Value="[CPUS_LOGON]" />
 						<RegistryValue Name="cpus_unlock" Type="string" Value="[CPUS_UNLOCK]" />
 						<RegistryValue Name="cpus_credui" Type="string" Value="[CPUS_CREDUI]" />
 						<RegistryValue Name="enable_filter" Type="string" Value="[ENABLE_FILTER]" />
 						<RegistryValue Name="filter_whitelist" Type="multiString" Value="[FILTER_WHITELIST]" />
-						<!-- END CREDENTIAL PROVIDER USAGE SCENARIOS -->
-
-						<!-- FIDO -->
 						<RegistryValue Name="webauthn_preferred" Type="string" Value="[WEBAUTHN_PREFERRED]" />
 						<RegistryValue Name="webauthn_offline_no_pin" Type="string" Value="[WEBAUTHN_OFFLINE_NO_PIN]" />
 						<RegistryValue Name="disable_passkey" Type="string" Value="[DISABLE_PASSKEY]" />
 						<RegistryValue Name="webauthn_offline_second_step" Type="string" Value="[WEBAUTHN_OFFLINE_SECOND_STEP]" />
 						<RegistryValue Name="webauthn_offline_hide_first_step" Type="string" Value="[WEBAUTHN_OFFLINE_HIDE_FIRST_STEP]" />
 						<RegistryValue Name="webauthn_offline_preferred" Type="string" Value="[WEBAUTHN_OFFLINE_PREFERRED]" />
-						<!-- END FIDO -->
-
-						<!-- MISC -->
-						<RegistryValue Name="header_accept_language" Type="string" Value="system" />
+						<RegistryValue Name="trusted_rpids" Type="multiString" Value="[TRUSTED_RPIDS]" />
+						<RegistryValue Name="libfido_debug" Type="string" Value="[LIBFIDO_DEBUG]" />
+						<RegistryValue Name="offline_file" Type="string" Value="[OFFLINE_FILE_PATH]" />
+						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
+						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
+						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
+						<RegistryValue Name="offline_expiration_days" Type="string" Value="[OFFLINE_EXPIRATION_DAYS]" />
+						<RegistryValue Name="offline_delete_after_days" Type="string" Value="[OFFLINE_DELETE_AFTER_DAYS]" />
+						<RegistryValue Name="check_all_offline_credentials" Type="string" Value="[CHECK_ALL_OFFLINE_CREDENTIALS]" />
+						<RegistryValue Name="header_accept_language" Type="string" Value="[HEADER_ACCEPT_LANGUAGE]" />
 						<RegistryValue Name="user_agent_hide_computer_name" Type="string" Value="" />
+						<RegistryValue Name="passkey_first_step" Type="string" Value="[PASSKEY_FIRST_STEP]" />
 						<RegistryValue Name="locales_path" Type="string" Value="[LOCALES_PATH]" />
 						<RegistryValue Name="debug_log" Type="string" Value="[DEBUG_LOG]" />
 						<RegistryValue Name="no_default" Type="string" Value="[NO_DEFAULT]" />
 						<RegistryValue Name="log_sensitive" Type="string" Value="" />
 						<RegistryValue Name="default_realm" Type="string" Value="[DEFAULT_REALM]" />
-						<RegistryValue Name="offline_file" Type="string" Value="[OFFLINE_FILE_PATH]" />
-						<RegistryValue Name="offline_try_window" Type="string" Value="[OFFLINE_TRY_WINDOW]" />
-						<RegistryValue Name="offline_threshold" Type="string" Value="[OFFLINE_THRESHOLD]" />
-						<RegistryValue Name="offline_show_info" Type="string" Value="[OFFLINE_SHOW_INFO]" />
 						<RegistryValue Name="otp_fail_return_to_first_step" Type="string" Value="[OTP_FAIL_RETURN_TO_FIRST_STEP]" />
-						<!-- END MISC -->
-						
-						<!-- AUTOLOGON -->
+						<RegistryValue Name="disable_windows_hello_for_credui" Type="string" Value="[DISABLE_WINDOWS_HELLO_FOR_CREDUI]" />
+						<RegistryValue Name="language" Type="string" Value="[LANGUAGE]" />
 						<RegistryValue Name="autologon_username" Type="string" Value="[AUTOLOGON_USERNAME]" />
 						<RegistryValue Name="autologon_domain" Type="string" Value="[AUTOLOGON_DOMAIN]" />
 						<RegistryValue Name="autologon_password" Type="string" Value="[AUTOLOGON_PASSWORD]" />
-						
-						<!-- LOCALIZATION-->
-						<RegistryValue Name="localesPath" Type="string" Value="[$(var.PlatformProgramDataFolder)]$(var.Publisher)\$(var.ProductFolderName)\locales" />
-						<!-- END LOCALIZATION -->
+
 					</RegistryKey>
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Action="removeOnUninstall" />
-					<!-- END Configuration values -->
-					<!-- END Registry -->
 				</Component>
-				<!-- END Core components -->
-
-				<!-- ProviderFilter component -->
 				<Component Location="local" Guid="a6d595a6-58b4-4541-8171-65f3f364b58c">
-					<!-- Files -->
 					<File Id="CredentialProviderFilter" Name="$(var.CredentialProviderFilter.TargetFileName)" Source="$(var.CredentialProviderFilter.TargetPath)" KeyPath="yes" />
 					<RemoveFile Id="RemoveCredentialProviderFilterFiles" Name="$(var.CredentialProviderFilter.TargetFileName)" On="uninstall" />
-					<!-- END Files -->
-					<!-- Registry -->
 					<RegistryKey Root="HKCR" Key="CLSID\{$(var.ProviderFilterRegistryGUID)}" ForceCreateOnInstall="yes">
 						<RegistryValue Type="string" Value="$(var.CredentialProviderFilter.TargetName)" />
 						<RegistryKey Key="InprocServer32">
@@ -402,18 +400,11 @@
 							<RegistryValue Name="ThreadingModel" Type="string" Value="Apartment" />
 						</RegistryKey>
 					</RegistryKey>
-					<!-- END Registry -->
 				</Component>
-				<!-- END ProviderFilter component -->
-
-				<!-- Activate ProviderFilter (InstallAsDefault) component -->
 				<Component Id="ActivateCredentialProviderFilter" Location="local" Guid="ddc94b52-e7f2-4632-9f04-37f1b2b3c7a3">
 					<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Type="string" Value="$(var.CredentialProviderFilter.TargetName)" KeyPath="yes" />
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Provider Filters\{$(var.ProviderFilterRegistryGUID)}" Action="removeOnUninstall" />
 				</Component>
-				<!-- END Activate ProviderFilter component -->
-
-				<!-- Remove old registry entries component -->
 				<Component Id="RemoveObsoleteRegistryValues" Location="local" Guid="1D247BD9-A548-4904-A3E0-3C6F3234A111">
 					<CreateFolder />
 					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="otp_link_text"/>
@@ -424,22 +415,16 @@
 					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="login_text"/>
 					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text"/>
 					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint"/>
+					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="localesPath"/>
 				</Component>
-				<!-- END remove old registry entries -->
-
-				<!-- Register for Safe Mode (optional) -->
 				<Component Id="RegisterForSafeMode" Location="local" Guid="49BB889F-6F08-48A9-9284-E0FF0F166F78">
 					<Condition>REGISTER_FOR_SAFEMODE=1</Condition>
 					<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers" Name="ProhibitFallbacks" Type="integer" Value="1" />
 					<RemoveRegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers" Name="ProhibitFallbacks"/>
 				</Component>
 
-				<!-- END register for Safe Mode -->
 			</Directory>
-			<!-- END Directories/Components to be placed in System-folder -->
 		</Directory>
-		<!-- END Directory definitions -->
-		<!-- Feature definitions -->
 		<Feature Id="Complete" Title="$(var.ProductName)" Description="Full install" Display="expand" Level="1" ConfigurableDirectory="INSTALLFOLDER" AllowAdvertise="no" Absent="disallow" InstallDefault="local">
 			<Feature Id="MainInstall" Title="Core components" Description="Core $(var.ProductName) components" Level="1" AllowAdvertise="no" Absent="disallow" InstallDefault="local">
 				<ComponentRef Id="CredentialProvider" />
@@ -449,19 +434,14 @@
 				<ComponentRef Id="RemoveObsoleteRegistryValues"/>
 				<ComponentRef Id="RegisterForSafeMode" />
 			</Feature>
-			<!-- These are installed anyway: -->
 			<Feature Id="VCRedist" Title="Visual C++ Runtime" AllowAdvertise="no" Display="hidden" Level="1">
 				<MergeRef Id="VCRedist" />
 			</Feature>
 			<ComponentRef Id="DefaultFilesInProgrammFolder" />
 		</Feature>
-		<!-- END Feature definitions -->
-		<!-- WiX Configuration -->
 		<WixVariable Id="WixUILicenseRtf" Value="$(var.SolutionDir)ApacheLicense.rtf" />
 		<WixVariable Id="WixUIBannerBmp" Value="$(var.SolutionDir)WixUIBannerBmp.bmp" />
 		<WixVariable Id="WixUIDialogBmp" Value="$(var.SolutionDir)WixUIDialogBmp.bmp" />
-		<!-- END WiX Configuration -->
-		<!-- UI Configuration -->
 		<UI Id="MyWixUI_FeatureTree">
 			<UIRef Id="WixUI_FeatureTree" />
 			<DialogRef Id="ServerDlg" />
@@ -469,11 +449,12 @@
 			<DialogRef Id="FilterDlg" />
 			<DialogRef Id="FidoDlg" />
 			<DialogRef Id="OfflineDlg" />
-			<!-- Skip the component dialog which would be between License and ServerConfig-->
+			<DialogRef Id="OfflineCleanupDlg" />
 			<Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerDlg">1</Publish>
-			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OfflineDlg" Order="1">NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )</Publish>
-			<!-- END Queue custom dialogs -->
+
+			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OfflineCleanupDlg" Order="1">
+				NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )
+			</Publish>
 		</UI>
-		<!-- END UI Configuration -->
 	</Product>
 </Wix>

@@ -34,10 +34,13 @@ constexpr auto FIDO_DEVICE_ERR_TX = 0x88809089;
 
 constexpr auto OFFLINE_CHALLENGE_SIZE = 64;
 
+constexpr auto FIDO_PINS_DO_NOT_MATCH = 0x88809091;
+
 class FIDODevice
 {
 public:
 	static std::vector<FIDODevice> GetDevices(bool filterWindowsHello = true, bool log = true);
+	static std::optional<FIDODevice> GetWinHello();
 
 	FIDODevice(const fido_dev_info_t* devinfo, bool log = true);
 	FIDODevice() = default;
@@ -73,11 +76,16 @@ public:
 
 	std::vector<std::string> GetUsersForRpId(std::string pin, std::string rpId) const;
 
+	void SetPin(const std::string& newPin, const std::string& oldPin = "");
+
+	bool libfidoDebug = false; // Enable libfido2 debug logging which will be redirected to PIDebug
+
+	std::string GetFirmwareVersionString() const;
 private:
 	int GetDeviceInfo();
 
 	std::string BuildAttestationObject(fido_cred_t* cred);
-
+	uint64_t _firmwareVersion = 0;
 	std::string _path;
 	std::string _manufacturer;
 	std::string _product;

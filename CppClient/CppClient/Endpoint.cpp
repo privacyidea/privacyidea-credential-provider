@@ -24,6 +24,7 @@
 #include <winhttp.h>
 #include <atlutil.h>
 #include <set>
+#include "SecureString.h"
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -193,6 +194,9 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	wstring fullPath = EncodeUTF16((Convert::ToString(path) + endpoint), CP_UTF8);
 
 	string encodedData = EncodeRequestParameters(parameters);
+	SecureString secureData(encodedData);
+	LPSTR data = secureData.get();
+	DWORD dataLen = static_cast<DWORD>(secureData.len - 1);
 
 	std::map<std::string, std::string> headersCopy = headers;
 	// Validation of _config.acceptLanguage is done prior to this
@@ -207,8 +211,6 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	}
 #endif //_DEBUG
 
-	LPSTR data = _strdup(encodedData.c_str());
-	DWORD dataLen = (DWORD)strnlen_s(encodedData.c_str(), MAXDWORD32);
 	LPCWSTR requestMethod = (method == RequestMethod::GET ? L"GET" : L"POST");
 
 	if (method == RequestMethod::GET)
@@ -262,6 +264,7 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 		_lastErrorCode = PI_ERROR_ENDPOINT_SETUP;
 		return "";
 	}
+
 	// Create an HTTPS request handle. SSL indicated by WINHTTP_FLAG_SECURE
 	if (hConnect)
 	{
@@ -415,8 +418,6 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	if (hRequest) WinHttpCloseHandle(hRequest);
 	if (hConnect) WinHttpCloseHandle(hConnect);
 	if (hSession) WinHttpCloseHandle(hSession);
-
-	SecureZeroMemory(data, dataLen);
 
 	if (std::find(_excludedEndpoints.begin(), _excludedEndpoints.end(), endpoint) == _excludedEndpoints.end())
 	{

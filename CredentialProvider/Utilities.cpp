@@ -7,26 +7,13 @@
 #include "Translator.h"
 #include <stdexcept>
 #include <Shlwapi.h>
+#include <SecureString.h>
 
 using namespace std;
 
 Utilities::Utilities(std::shared_ptr<Configuration> c) noexcept
 {
 	_config = c;
-}
-
-std::wstring Utilities::GetText(int id)
-{
-	// Translate text.
-	try {
-		// Get translated text by ID using the Translator instance
-		return PITranslate(id);
-	}
-	catch (const std::out_of_range& oor) {
-		UNREFERENCED_PARAMETER(oor);
-		PIError("GetTranslatedText: No text for id: " + to_string(id));
-		return L"";
-	}
 }
 
 HRESULT Utilities::KerberosLogon(
@@ -61,20 +48,15 @@ HRESULT Utilities::KerberosLogon(
 		if (SUCCEEDED(hr))
 		{
 			KERB_INTERACTIVE_UNLOCK_LOGON kiul;
-			LPWSTR lpwszDomain = new wchar_t[domain.size() + 1];
-			wcscpy_s(lpwszDomain, (domain.size() + 1), domain.c_str());
-
-			LPWSTR lpwszUsername = new wchar_t[username.size() + 1];
-			wcscpy_s(lpwszUsername, (username.size() + 1), username.c_str());
+			SecureWString secureDomain(domain);
+			SecureWString secureUsername(username);
 
 			// Initialize kiul with weak references to our credential.
-			hr = KerbInteractiveUnlockLogonInit(lpwszDomain, lpwszUsername, pwzProtectedPassword, cpus, &kiul);
+			hr = KerbInteractiveUnlockLogonInit(secureDomain.get(), secureUsername.get(), pwzProtectedPassword, cpus, &kiul);
 
 			if (SUCCEEDED(hr))
 			{
-				// We use KERB_INTERACTIVE_UNLOCK_LOGON in both unlock and logon scenarios.  It contains a
-				// KERB_INTERACTIVE_LOGON to hold the creds plus a LUID that is filled in for us by Winlogon
-				// as necessary.
+				// We use KERB_INTERACTIVE_UNLOCK_LOGON in both unlock and logon scenarios.
 				hr = KerbInteractiveUnlockLogonPack(kiul, &pcpcs->rgbSerialization, &pcpcs->cbSerialization);
 
 				if (SUCCEEDED(hr))
@@ -86,17 +68,10 @@ HRESULT Utilities::KerberosLogon(
 					{
 						pcpcs->ulAuthenticationPackage = ulAuthPackage;
 						pcpcs->clsidCredentialProvider = CLSID_CSample;
-						// At self point the credential has created the serialized credential used for logon
-						// By setting self to CPGSR_RETURN_CREDENTIAL_FINISHED we are letting logonUI know
-						// that we have all the information we need and it should attempt to submit the 
-						// serialized credential.
 						*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
 					}
 				}
 			}
-
-			delete[] lpwszDomain;
-			delete[] lpwszUsername;
 
 			CoTaskMemFree(pwzProtectedPassword);
 		}
@@ -148,37 +123,28 @@ HRESULT Utilities::KerberosChangePassword(
 		hr = UnicodeStringInitWithString(wsz, &kcpr.DomainName);
 		if (SUCCEEDED(hr))
 		{
-			PWSTR lpwszUsername = new wchar_t[(username.size() + 1)];
-			wcscpy_s(lpwszUsername, (username.size() + 1), username.c_str());
+			SecureWString secureUsername(username);
+			SecureWString secureOldPw(passwordOld);
+			SecureWString secureNewPw(passwordNew);
 
-			hr = UnicodeStringInitWithString(lpwszUsername, &kcpr.AccountName);
+			hr = UnicodeStringInitWithString(secureUsername.get(), &kcpr.AccountName);
+			if (SUCCEEDED(hr)) hr = UnicodeStringInitWithString(secureOldPw.get(), &kcpr.OldPassword);
+			if (SUCCEEDED(hr)) hr = UnicodeStringInitWithString(secureNewPw.get(), &kcpr.NewPassword);
+
 			if (SUCCEEDED(hr))
 			{
-				// These buffers cant be zeroed since they are passed to LSA
-				PWSTR lpwszPasswordOld = new wchar_t[(passwordOld.size() + 1)];
-				wcscpy_s(lpwszPasswordOld, (passwordOld.size() + 1), passwordOld.c_str());
-
-				PWSTR lpwszPasswordNew = new wchar_t[(passwordNew.size() + 1)];
-				wcscpy_s(lpwszPasswordNew, (passwordNew.size() + 1), passwordNew.c_str());
-				// vvvv they just copy the pointer vvvv
-				hr = UnicodeStringInitWithString(lpwszPasswordOld, &kcpr.OldPassword);
-				hr = UnicodeStringInitWithString(lpwszPasswordNew, &kcpr.NewPassword);
-
+				kcpr.MessageType = KerbChangePasswordMessage;
+				kcpr.Impersonating = FALSE;
+				hr = KerbChangePasswordPack(kcpr, &pcpcs->rgbSerialization, &pcpcs->cbSerialization);
 				if (SUCCEEDED(hr))
 				{
-					kcpr.MessageType = KerbChangePasswordMessage;
-					kcpr.Impersonating = FALSE;
-					hr = KerbChangePasswordPack(kcpr, &pcpcs->rgbSerialization, &pcpcs->cbSerialization);
+					ULONG ulAuthPackage;
+					hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
 					if (SUCCEEDED(hr))
 					{
-						ULONG ulAuthPackage;
-						hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
-						if (SUCCEEDED(hr))
-						{
-							pcpcs->ulAuthenticationPackage = ulAuthPackage;
-							pcpcs->clsidCredentialProvider = CLSID_CSample;
-							*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
-						}
+						pcpcs->ulAuthenticationPackage = ulAuthPackage;
+						pcpcs->clsidCredentialProvider = CLSID_CSample;
+						*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
 					}
 				}
 			}
@@ -218,7 +184,7 @@ HRESULT Utilities::CredPackAuthentication(
 	}
 	if (bGetCompName)
 	{
-        domain = std::wstring(wsz);
+		domain = std::wstring(wsz);
 	}
 
 	if (SUCCEEDED(hr))
@@ -238,15 +204,13 @@ HRESULT Utilities::CredPackAuthentication(
 			{
 				PIDebug("Logging of passwords is disabled.");
 			}
-
 			DWORD size = 0;
 			BYTE* rawbits = NULL;
 
-			LPWSTR lpwszPassword = new wchar_t[(password.size() + 1)];
-			wcscpy_s(lpwszPassword, (password.size() + 1), password.c_str());
+			SecureWString securePassword(password);
 
 			if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
-				domainUsername, lpwszPassword, rawbits, &size))
+				domainUsername, securePassword.get(), rawbits, &size))
 			{
 				// We received the necessary size, let's allocate some rawbits
 				if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
@@ -254,7 +218,7 @@ HRESULT Utilities::CredPackAuthentication(
 					rawbits = (BYTE*)HeapAlloc(GetProcessHeap(), 0, size);
 
 					if (!CredPackAuthenticationBufferW((CREDUIWIN_PACK_32_WOW & credPackFlags) ? CRED_PACK_WOW_BUFFER : 0,
-						domainUsername, lpwszPassword, rawbits, &size))
+						domainUsername, securePassword.get(), rawbits, &size))
 					{
 						HeapFree(GetProcessHeap(), 0, rawbits);
 						HeapFree(GetProcessHeap(), 0, domainUsername);
@@ -283,16 +247,9 @@ HRESULT Utilities::CredPackAuthentication(
 				{
 					pcpcs->ulAuthenticationPackage = ulAuthPackage;
 					pcpcs->clsidCredentialProvider = CLSID_CSample;
-
-					// At this point the credential has created the serialized credential used for logon
-					// By setting self to CPGSR_RETURN_CREDENTIAL_FINISHED we are letting logonUI know
-					// that we have all the information we need and it should attempt to submit the 
-					// serialized credential.
 					*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
 				}
 			}
-
-			SecureZeroMemory(lpwszPassword, sizeof(lpwszPassword));
 		}
 
 		CoTaskMemFree(pwzProtectedPassword);
@@ -382,119 +339,119 @@ HRESULT Utilities::InitializeField(
 	const int hide_fullname = _config->hideFullName;
 	const int hide_domainname = _config->hideDomainName;
 
-	wstring loginText = GetText(TEXT_LOGIN_TEXT);
+	wstring loginText = PITranslate(TEXT_LOGIN_TEXT);
 	wstring user_name = _config->credential.username;
 	wstring domain_name = _config->credential.domain;
 	wstring text;
 
 	switch (fieldIndex)
 	{
-		case FID_NEW_PASS_1:
-		case FID_NEW_PASS_2:
-		case FID_OTP:
-		case FID_SUBMIT_BUTTON:
+	case FID_NEW_PASS_1:
+	case FID_NEW_PASS_2:
+	case FID_OTP:
+	case FID_SUBMIT_BUTTON:
+	{
+		hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
+		break;
+	}
+	case FID_PASSWORD:
+	{
+		if (!_config->credential.password.empty())
+		{
+			hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[fieldIndex]);
+		}
+		else
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
-			break;
 		}
-		case FID_PASSWORD:
+		break;
+	}
+	case FID_SUBTEXT:
+	{
+		if (_config->showDomainHint)
 		{
-			if (!_config->credential.password.empty())
-			{
-				hr = SHStrDupW(_config->credential.password.c_str(), &rgFieldStrings[fieldIndex]);
-			}
-			else
-			{
-				hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
-			}
-			break;
+			text = PITranslate(TEXT_DOMAIN_HINT) + _config->credential.domain;
 		}
-		case FID_SUBTEXT:
+		hr = SHStrDupW(text.c_str(), &rgFieldStrings[fieldIndex]);
+		break;
+	}
+	case FID_USERNAME:
+	{
+		hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[fieldIndex]);
+		//PIDebug(L"Setting username: " + wstring(rgFieldStrings[field_index]));
+		break;
+	}
+	case FID_LARGE_TEXT:
+	{
+		// This is the USERNAME field which is displayed in the list of users to the right
+		if (!loginText.empty())
 		{
-			if (_config->showDomainHint)
-			{
-				text = GetText(TEXT_DOMAIN_HINT) + _config->credential.domain;
-			}
-			hr = SHStrDupW(text.c_str(), &rgFieldStrings[fieldIndex]);
-			break;
+			hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[fieldIndex]);
 		}
-		case FID_USERNAME:
+		else
 		{
-			hr = SHStrDupW((user_name.empty() ? L"" : user_name.c_str()), &rgFieldStrings[fieldIndex]);
-			//PIDebug(L"Setting username: " + wstring(rgFieldStrings[field_index]));
-			break;
+			hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[fieldIndex]);
 		}
-		case FID_LARGE_TEXT:
+		//PIDebug(L"Setting large text: " + wstring(rgFieldStrings[fieldIndex]));
+		break;
+	}
+	case FID_SMALL_TEXT:
+	{
+		// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
+		// and the name is displayed in this field instead (or hidden)
+		if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
+			&& !hide_fullname && !hide_domainname)
 		{
-			// This is the USERNAME field which is displayed in the list of users to the right
-			if (!loginText.empty())
+			if (!domain_name.empty())
 			{
-				hr = SHStrDupW(loginText.c_str(), &rgFieldStrings[fieldIndex]);
-			}
-			else
-			{
-				hr = SHStrDupW(L"privacyIDEA Login", &rgFieldStrings[fieldIndex]);
-			}
-			//PIDebug(L"Setting large text: " + wstring(rgFieldStrings[fieldIndex]));
-			break;
-		}
-		case FID_SMALL_TEXT:
-		{
-			// In CPUS_UNLOCK_WORKSTATION the username is already provided, therefore the field is disabled
-			// and the name is displayed in this field instead (or hidden)
-			if (_config->provider.cpu == CPUS_UNLOCK_WORKSTATION && !user_name.empty()
-				&& !hide_fullname && !hide_domainname)
-			{
-				if (!domain_name.empty())
-				{
-					wstring fullName = user_name + L"@" + domain_name;
+				wstring fullName = user_name + L"@" + domain_name;
 
-					hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[fieldIndex]);
-				}
-				else if (!user_name.empty())
-				{
-					hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[fieldIndex]);
-				}
-				else
-				{
-					hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
-				}
+				hr = SHStrDupW(fullName.c_str(), &rgFieldStrings[fieldIndex]);
 			}
-			else if (!user_name.empty() && hide_domainname && !hide_fullname)
+			else if (!user_name.empty())
 			{
 				hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[fieldIndex]);
 			}
-			else if (hide_fullname)
-			{
-				hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
-			}
 			else
 			{
 				hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
 			}
-			//PIDebug(L"Setting small text: " + wstring(rgFieldStrings[fieldIndex]));
-			break;
 		}
-		/*case FID_LOGO:
+		else if (!user_name.empty() && hide_domainname && !hide_fullname)
 		{
-			hr = S_OK;
-			break;
-		}*/
-		case FID_RESET_LINK:
-		{
-			hr = SHStrDupW(GetText(TEXT_RESET_LINK).c_str(), &rgFieldStrings[fieldIndex]);
-			break;
+			hr = SHStrDupW(user_name.c_str(), &rgFieldStrings[fieldIndex]);
 		}
-		case FID_FIDO_ONLINE:
-		{
-			hr = SHStrDupW(GetText(TEXT_USE_ONLINE_FIDO).c_str(), &rgFieldStrings[fieldIndex]);
-			break;
-		}
-		default:
+		else if (hide_fullname)
 		{
 			hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
-			break;
 		}
+		else
+		{
+			hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
+		}
+		//PIDebug(L"Setting small text: " + wstring(rgFieldStrings[fieldIndex]));
+		break;
+	}
+	/*case FID_LOGO:
+	{
+		hr = S_OK;
+		break;
+	}*/
+	case FID_RESET_LINK:
+	{
+		hr = SHStrDupW(PITranslate(TEXT_RESET_LINK).c_str(), &rgFieldStrings[fieldIndex]);
+		break;
+	}
+	case FID_FIDO_ONLINE:
+	{
+		hr = SHStrDupW(PITranslate(TEXT_USE_ONLINE_FIDO).c_str(), &rgFieldStrings[fieldIndex]);
+		break;
+	}
+	default:
+	{
+		hr = SHStrDupW(L"", &rgFieldStrings[fieldIndex]);
+		break;
+	}
 	}
 	return hr;
 }
@@ -504,23 +461,23 @@ HRESULT Utilities::CopyInputFields()
 	PIDebug(__FUNCTION__);
 	switch (_config->provider.cpu)
 	{
-		case CPUS_LOGON:
-		case CPUS_UNLOCK_WORKSTATION:
-		case CPUS_CREDUI:
+	case CPUS_LOGON:
+	case CPUS_UNLOCK_WORKSTATION:
+	case CPUS_CREDUI:
+	{
+		if (!_config->credential.passwordMustChange)
 		{
-			if (!_config->credential.passwordMustChange)
-			{
-				CopyUsernameField();
-				CopyPasswordField();
-				CopyOTPField();
-				CopyWANPinField();
-			}
-			else
-			{
-				CopyPasswordChangeFields();
-			}
-			break;
+			CopyUsernameField();
+			CopyPasswordField();
+			CopyOTPField();
+			CopyWANPinField();
 		}
+		else
+		{
+			CopyPasswordChangeFields();
+		}
+		break;
+	}
 	}
 
 	return S_OK;

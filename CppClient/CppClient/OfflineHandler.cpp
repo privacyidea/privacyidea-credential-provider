@@ -20,6 +20,7 @@
 #include "OfflineHandler.h"
 #include "JsonParser.h"
 #include "Convert.h"
+#include "SecureString.h"
 #include <iostream>
 #include <fstream>
 #include <atlenc.h>
@@ -28,6 +29,12 @@
 #pragma comment (lib, "bcrypt.lib")
 
 using namespace std;
+
+bool IsExpired(const OfflineData& item)
+{
+	// expiration 0 means never expires (legacy or configured that way)
+	return item.expiration != 0 && time(nullptr) > item.expiration;
+}
 
 std::wstring getErrorText(DWORD err)
 {
@@ -44,19 +51,31 @@ std::wstring getErrorText(DWORD err)
 	return (msgBuf == nullptr) ? wstring() : wstring(msgBuf);
 }
 
-OfflineHandler::OfflineHandler(const wstring& filePath, int tryWindow)
+OfflineHandler::OfflineHandler(const std::wstring& filePath, int tryWindow, int expirationDays, int deleteDays)
 {
-	// Load the offline file on startup
 	_filePath = filePath.empty() ? _filePath : filePath;
-	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow;
+	_tryWindow = tryWindow == 0 ? _tryWindow : tryWindow; // Keep default if 0 is passed, or just use tryWindow
+	_expirationDays = expirationDays;
+
+	// Load the offline file
+	// Since _expirationDays is now set, LoadFromFile -> AddOfflineData will 
+	// correctly calculate expiration for legacy items (value 0) during this call.
 	const HRESULT hr = LoadFromFile();
+
 	if (hr == S_OK)
 	{
 		PIDebug("Offline data loaded successfully!");
+
+		// Check for expired items and remove them on startup
+		if (deleteDays > 0)
+		{
+			Prune(deleteDays);
+		}
 	}
 	else if (hr == ERROR_FILE_NOT_FOUND)
 	{
-		// File not found can be ignored as it expected when not using offline OTPs
+		// File not found can be ignored as it is expected when not using offline OTPs yet
+		PIDebug("No offline file found at " + Convert::ToString(_filePath));
 	}
 	else
 	{
@@ -148,6 +167,15 @@ HRESULT OfflineHandler::GetRefillToken(const std::string& username, const std::s
 
 HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 {
+	OfflineData dataToAdd = data;
+
+	// Set initial expiration for new data
+	// (Unless it was loaded from file, in which case expiration is already set. 
+	// We can check if data.expiration is 0, but for fresh enrollments it is 0).
+	if (dataToAdd.expiration == 0)
+	{
+		dataToAdd.expiration = CalculateNewExpiration();
+	}
 	// Check if the user already has data first, then add
 	bool done = false;
 	for (auto& existing : _dataSets)
@@ -156,7 +184,7 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 		{
 			PIDebug("Offline: Updating exsisting user data for " + data.username + " and token " + data.serial);
 			existing.refilltoken = data.refilltoken;
-
+			existing.expiration = dataToAdd.expiration;
 			for (const auto& newOTP : data.offlineOTPs)
 			{
 				existing.offlineOTPs.try_emplace(newOTP.first, newOTP.second);
@@ -167,8 +195,8 @@ HRESULT OfflineHandler::AddOfflineData(const OfflineData& data)
 
 	if (!done)
 	{
-		_dataSets.push_back(data);
-		PIDebug("Offline: Adding new data for " + data.username + " and token " + data.serial);
+		_dataSets.push_back(dataToAdd);
+		PIDebug("Offline: Adding new data for " + dataToAdd.username + " and token " + dataToAdd.serial);
 	}
 
 	return S_OK;
@@ -200,32 +228,93 @@ std::vector<std::pair<std::string, size_t>> OfflineHandler::GetTokenInfo(const s
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetFIDODataFor(const std::string& username)
+std::vector<OfflineData> OfflineHandler::GetFIDODataFor(const std::string& username, bool includeExpired)
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
 	{
+		// Check if username and type match and expiry optionally. Expired ones might be included to have a chance to refill them.
 		if (Convert::ToUpperCase(item.username) == Convert::ToUpperCase(username) && item.isWebAuthn())
 		{
+			if (!includeExpired && IsExpired(item))
+			{
+				PIDebug("Skipping expired offline token: " + item.serial);
+				continue;
+			}
 			ret.push_back(item);
 		}
 	}
 	return ret;
 }
 
-std::vector<OfflineData> OfflineHandler::GetAllFIDOData()
+std::vector<OfflineData> OfflineHandler::GetAllFIDOData(bool includeExpired)
 {
 	std::vector<OfflineData> ret;
 	for (auto& item : _dataSets)
 	{
 		if (item.isWebAuthn())
 		{
+			if (!includeExpired && IsExpired(item))
+			{
+				// Debug log optional here to avoid spam if many are expired
+				continue;
+			}
 			ret.push_back(item);
 		}
 	}
 	return ret;
 }
 
+void OfflineHandler::Prune(int days)
+{
+	// 0 = Feature disabled, or invalid negative days
+	if (days <= 0) return;
+	// Cap the maximum days to a reasonable value to prevent potential overflow issues
+	if (days > 3650) days = 3650;
+
+	// Check if the system clock is valid before proceeding (not reset to 1970-01-01)
+	time_t now = time(nullptr);
+	if (now <= 0)
+	{
+		PIDebug("Prune: System clock appears corrupted (time <= 0). Aborting cleanup.");
+		return;
+	}
+
+	PIDebug("Running offline credential cleanup. Purge threshold: " + to_string(days) + " days.");
+
+	size_t initialSize = _dataSets.size();
+
+	_dataSets.erase(
+		std::remove_if(_dataSets.begin(), _dataSets.end(),
+			[days, now](const OfflineData& item) {
+				// --- FIX: Ignore legacy items (== 0) AND corrupted negative timestamps (< 0) ---
+				if (item.expiration <= 0) return false;
+
+				// Expiration is the timestamp WHEN it expired.
+				// We want to delete if it has BEEN expired for more than the given days.
+				double secondsPastExpiration = difftime(now, item.expiration);
+
+				// --- FIX: Use double literal 86400.0 to guarantee floating point arithmetic ---
+				double secondsAllowed = static_cast<double>(days) * 86400.0;
+
+				// Ensure the expiration is actually in the past
+				if (secondsPastExpiration > 0 && secondsPastExpiration > secondsAllowed)
+				{
+					PIDebug("Removing stale credential " + item.serial + " (Expired " + to_string((int)(secondsPastExpiration / 86400.0)) + " days ago)");
+					return true;
+				}
+				return false;
+			}),
+		_dataSets.end()
+	);
+
+	// Only save if we actually deleted something
+	if (_dataSets.size() < initialSize)
+	{
+		PIDebug("Removed " + to_string(initialSize - _dataSets.size()) + " stale credentials.");
+		SaveToFile();
+	}
+}
 bool OfflineHandler::RemoveOfflineData(const std::string& username, const std::string& serial)
 {
 	bool found = false;
@@ -254,6 +343,7 @@ bool OfflineHandler::UpdateRefilltoken(std::string serial, std::string refilltok
 		if (item.serial == serial)
 		{
 			item.refilltoken = refilltoken;
+			item.expiration = CalculateNewExpiration();
 			return true;
 		}
 	}
@@ -358,9 +448,13 @@ bool OfflineHandler::PBKDF2SHA512Verify(std::wstring password, std::string store
 	Base64Decode(salt.c_str(), (int)(salt.size() + 1), pbSalt, &cbSalt);
 
 	// The password is encoded into UTF-8 from Unicode
-	char* pszPassword = Convert::UnicodeToCodePage(65001, password.c_str());
-	const int cbPassword = (int)strnlen_s(pszPassword, INT_MAX);
-	BYTE* pbPassword = reinterpret_cast<unsigned char*>(pszPassword);
+	std::string utf8Password = Convert::ToString(password);
+	SecureString securePassword(utf8Password);
+
+	// securePassword.len includes the null terminator. 
+	// strnlen_s did not include the null terminator, so we subtract 1 to match the exact byte count.
+	const int cbPassword = static_cast<int>(securePassword.len - 1);
+	BYTE* pbPassword = reinterpret_cast<BYTE*>(securePassword.get());
 
 	// Get the size of the output from the stored value, which is also in abase64 encoding
 	Convert::Base64ToABase64(storedOTP);
@@ -422,8 +516,6 @@ bool OfflineHandler::PBKDF2SHA512Verify(std::wstring password, std::string store
 	}
 
 Exit:
-	SecureZeroMemory(pszPassword, sizeof(pszPassword));
-	SecureZeroMemory(pbPassword, sizeof(pbPassword));
 	CoTaskMemFree(pbDerivedKey);
 	CoTaskMemFree(pbStoredOTP);
 

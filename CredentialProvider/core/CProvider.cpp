@@ -32,6 +32,7 @@
 #include <tchar.h>
 #include <Wtsapi32.h>
 #include <Lm.h>
+#include <Translator.h>
 
 CProvider::CProvider() :
 	_cRef(1),
@@ -317,22 +318,28 @@ HRESULT CProvider::GetFieldDescriptorAt(
 		switch (dwIndex)
 		{
 			case FID_USERNAME:
-				label = util.GetText(TEXT_USERNAME);
+				label = PITranslate(TEXT_USERNAME);
 				break;
 			case FID_PASSWORD:
-				label = util.GetText(TEXT_PASSWORD);
+				label = PITranslate(TEXT_PASSWORD);
 				break;
 			case FID_NEW_PASS_1:
-				label = util.GetText(TEXT_NEW_PASSWORD);
+				label = PITranslate(TEXT_NEW_PASSWORD);
 				break;
 			case FID_NEW_PASS_2:
-				label = util.GetText(TEXT_CONFIRM_PASSWORD);
+				label = PITranslate(TEXT_CONFIRM_PASSWORD);
 				break;
 			case FID_OTP:
-				label = util.GetText(TEXT_OTP_FIELD);
+				label = PITranslate(TEXT_OTP_FIELD);
 				break;
 			case FID_FIDO_PIN:
-				label = util.GetText(TEXT_FIDO_PIN_HINT);
+				label = PITranslate(TEXT_FIDO_PIN_HINT);
+				break;
+			case FID_NEW_PIN_1:
+				label = PITranslate(TEXT_NEW_PIN_HINT);
+				break;
+			case FID_NEW_PIN_2:
+				label = PITranslate(TEXT_NEW_PIN_REPEAT_HINT);
 				break;
 			default: break;
 		}

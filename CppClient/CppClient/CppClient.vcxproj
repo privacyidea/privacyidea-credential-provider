@@ -157,6 +157,7 @@
     <ClInclude Include="RegistryReader.h" />
     <ClInclude Include="FIDOSignRequest.h" />
     <ClInclude Include="FIDOSignResponse.h" />
+    <ClInclude Include="SecureString.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

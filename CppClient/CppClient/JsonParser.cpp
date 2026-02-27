@@ -18,6 +18,10 @@
 ** * * * * * * * * * * * * * * * * * * */
 
 #include <regex>
+#include <optional>
+#include <sstream>
+#include <iomanip>
+#include <ctime>
 #include "Convert.h"
 #include "JsonParser.h"
 #include "Logger.h"
@@ -27,6 +31,29 @@
 using json = nlohmann::json;
 using namespace std;
 
+// Convert time_t to ISO 8601 String (e.g., "2025-12-11T14:30:00Z")
+std::string TimeToISOString(time_t t)
+{
+	if (t == 0) return "";
+	std::tm tm_buf;
+	gmtime_s(&tm_buf, &t); // Thread-safe gmtime on Windows
+	std::stringstream ss;
+	ss << std::put_time(&tm_buf, "%Y-%m-%dT%H:%M:%SZ");
+	return ss.str();
+}
+
+// Convert ISO 8601 String back to time_t
+std::optional<time_t> ISOStringToTime(const std::string& iso)
+{
+	if (iso.empty()) return std::nullopt;
+	std::tm tm_buf = { 0 };
+	std::istringstream ss(iso);
+	ss >> std::get_time(&tm_buf, "%Y-%m-%dT%H:%M:%SZ");
+
+	if (ss.fail()) return std::nullopt;
+
+	return _mkgmtime(&tm_buf); // _mkgmtime is the inverse of gmtime (UTC)
+}
 
 void ParseVersionString(const std::string& version, PIResponse& response)
 {
@@ -300,9 +327,17 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 				else if (type == "passkey")
 				{
 					FIDOSignRequest signRequest;
+					signRequest.type = "passkey";
 					signRequest.challenge = GetStringOrEmpty(jChallenge, "challenge");
 					signRequest.userVerification = GetStringOrEmpty(jChallenge, "userVerification");
 					signRequest.rpId = GetStringOrEmpty(jChallenge, "rpId");
+					auto cred_id = GetStringOrEmpty(jChallenge, "credential_id");
+					if (!cred_id.empty())
+					{
+						AllowCredential ac;
+						ac.id = cred_id;
+						signRequest.allowCredentials.push_back(ac);
+					}
 					c.fidoSignRequest = signRequest;
 				}
 				response.challenges.push_back(c);
@@ -314,10 +349,6 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 	if (jRoot.contains("versionnumber") && !jRoot["versionnumber"].is_null())
 	{
 		ParseVersionString(jRoot["versionnumber"].get<std::string>(), response);
-		PIDebug("Parsed version: " + 
-			std::to_string(response.privacyIDEAVersionMajor) + "." +
-			std::to_string(response.privacyIDEAVersionMinor) + "." +
-			std::to_string(response.privacyIDEAVersionPatch) + response.privacyIDEAVersionSuffix);
 	}
 
 	return S_OK;
@@ -372,6 +403,27 @@ HRESULT ParseOfflineDataItem(json jRoot, OfflineData& data)
 	// General info independent of token type
 	data.refilltoken = GetStringOrEmpty(jRoot, "refilltoken");
 	data.username = GetStringOrEmpty(jRoot, "username");
+
+	std::string expStr = GetStringOrEmpty(jRoot, "expiration_date");
+	if (!expStr.empty())
+	{
+		auto parsedTime = ISOStringToTime(expStr);
+		if (parsedTime.has_value())
+		{
+			data.expiration = parsedTime.value();
+		}
+		else
+		{
+			PIDebug("Failed to parse ISO 8601 expiration_date: " + expStr);
+			// Fallback if parsing fails to avoid accidentally defaulting to 0 (never expires) blindly
+			data.expiration = (time_t)GetIntOrZero(jRoot, "expiration");
+		}
+	}
+	else
+	{
+		// Fallback: Read old integer format
+		data.expiration = (time_t)GetIntOrZero(jRoot, "expiration");
+	}
 
 	// Token type specific info
 	auto& response = jRoot["response"];
@@ -443,6 +495,7 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 		jElement["refilltoken"] = item.refilltoken;
 		jElement["serial"] = item.serial;
 		jElement["username"] = item.username;
+		jElement["expiration_date"] = TimeToISOString(item.expiration);
 
 		const bool isWebAuthn = !item.pubKey.empty() && !item.credId.empty() && !item.rpId.empty();
 		json jResponse; // token type specific offline data is listed in the "response" object

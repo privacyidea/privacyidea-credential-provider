@@ -1,3 +1,37 @@
+# Version 3.8.0 2026-02-26
+## Features
+* Security Key PIN setup is now possible before registration, if the key does not have a PIN set yet.
+* Selection of credential to use. If there are multiple matching credentials on the authenticator, a selection for the username will be displayed. To show the usernames, the device PIN is required. There is fallback implemented, but if the initial request did not want a PIN, you will have to touch your security key twice. See the FIDO section of the configuration documentation for more detail.
+
+## Enhancements
+* Added a two-tier expiry system with lazy eviction (see refill behavior) for offline credentials.
+    - The configuration can later be received from the privacyIDEA server if it's implemented there.
+    - 'offline_expiration_days': days without successful refill after which the credential will be inactive (not usable for authentication, but *not* deleted yet. Refill will still be attempted).
+    - 'offline_delete_after_days': days *AFTER* becoming inactive, after which the credential will be deleted automatically.
+    - Example: expiry=3d, deletion=1d. The credential will expire after 3 days without successful refill. Then, after *another* day without refill, the credential will be deleted.
+
+* Improved refill behavior for FIDO credentials.
+    - Refill is checked before usage.
+    - Refill is done for all tokens of the user as soon as the user is known. This is the default behavior. Previously, the refill was only done for the token that was actually used, which could easily cause stale credentials in the offline file.
+    - 'check_all_offline_credentials=1' allows you to remove the "refill per user" constraint so that all offline credentials are checked. **Only use this if you are sure there is a limited number of offline credentials on the machine. Checking too many credentials will add a significant delay to the login and degrade the user experience.** (We are also working on improving this.)
+
+* Always use Windows Hello (Credential Broker UI) for CredUI scenarios.
+    - Allows selection of the credential to be used.
+    - The native implementation can be activated with 'disable_windows_hello_for_credui=1', which is not recommended.
+
+* Added option ``passkey_first_step`` which will cause the Credential Provider to start passkey authentication instantly. Be aware that it can only be cancelled, if it is still waiting for a device. If a device is already inserted, and you are prompted to touch your security key, the operation can no longer be aborted because the control is already given to the security key. You can then either touch it and then cancel the authentication or wait for a timeout.
+
+## Fixes
+* Fixed password change for machines that are not in a domain
+* Fixed behavior when the passkey is not on the authenticator that is currently used:
+    - Offline file exists with other credentials, and the machine is online, so a sign request is also present from the server:
+        - Tries offline first -> ERROR_NO_CREDENTIALS -> then tries online and succeeds
+    - Offline file exists with the correct credentials (being online or not does not matter in this case):
+        - Tries offline first -> success
+    - Offline file exists with other credentials, machine is offline:
+        - Tries offline -> ERROR_NO_CREDENTIALS as expected
+    - Offline credentials are not deleted just because the authenticator returns ERROR_NO_CREDENTIALS; it could just be the wrong YubiKey. Offline credentials are only deleted if the refill indicates that they should be, or by the expiry.
+
 # Version 3.7.0 2024-08-05
 This version introduces a few changes, especially in the order the user is prompted for inputs. Please take a moment to read the [updated configuration documentation](https://github.com/privacyidea/privacyidea-credential-provider/blob/master/doc/configuration.rst).
 ## Summary of Changes

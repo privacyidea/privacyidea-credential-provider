@@ -23,9 +23,33 @@
 #include "Mode.h"
 #include <credentialprovider.h>
 
+struct WindowsInfo {
+	DWORD major;
+	DWORD minor;
+	DWORD build;
+	bool isServer;
+	std::string versionString;
+};
+
 class Configuration
 {
 public:
+	Configuration() = default;
+
+	Configuration(const Configuration&) = delete;
+	Configuration& operator=(const Configuration&) = delete;
+
+	Configuration(Configuration&&) = delete;
+	Configuration& operator=(Configuration&&) = delete;
+
+	~Configuration()
+	{
+		if (!autoLogonPassword.empty())
+		{
+			SecureZeroMemory(&autoLogonPassword[0], autoLogonPassword.size() * sizeof(wchar_t));
+		}
+	}
+
 	void Load();
 
 	void LogConfig();
@@ -44,20 +68,22 @@ public:
 	{
 		switch (m)
 		{
-			case Mode::NO_CHANGE:						return "NO_CHANGE";
-			case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
-			case Mode::USERNAME:						return "USERNAME";
-			case Mode::PASSWORD:						return "PASSWORD";
-			case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
-			case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
-			case Mode::SEC_KEY_ANY:						return "SEC_KEY_ANY";
-			case Mode::PASSKEY:							return "PASSKEY";
-			case Mode::SEC_KEY_REG:						return "SEC_KEY_REG";
-			case Mode::SEC_KEY_REG_PIN:					return "SEC_KEY_REG_PIN";
-			case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
-			case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
-			case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
-			default:									return "UNKNOWN_MODE";
+		case Mode::NO_CHANGE:						return "NO_CHANGE";
+		case Mode::CHANGE_PASSWORD:					return "CHANGE_PASSWORD";
+		case Mode::USERNAME:						return "USERNAME";
+		case Mode::PASSWORD:						return "PASSWORD";
+		case Mode::USERNAMEPASSWORD:				return "USERNAMEPASSWORD";
+		case Mode::PRIVACYIDEA:						return "PRIVACYIDEA";
+		case Mode::SEC_KEY_ANY:						return "SEC_KEY_ANY";
+		case Mode::PASSKEY:							return "PASSKEY";
+		case Mode::SEC_KEY_REG:						return "SEC_KEY_REG";
+		case Mode::SEC_KEY_REG_PIN:					return "SEC_KEY_REG_PIN";
+		case Mode::SEC_KEY_PIN:						return "SEC_KEY_PIN";
+		case Mode::SEC_KEY_NO_PIN:					return "SEC_KEY_NO_PIN";
+		case Mode::SEC_KEY_NO_DEVICE:				return "SEC_KEY_NO_DEVICE";
+		case Mode::SEC_KEY_SET_PIN:					return "SEC_KEY_SET_PIN";
+		case Mode::SEC_KEY_SELECT_USER:				return "SEC_KEY_SELECT_USER";
+		default:									return "UNKNOWN_MODE";
 		}
 	}
 
@@ -99,6 +125,7 @@ public:
 	bool usePasskey = false;		// Online
 	bool useOfflineFIDO = false;	// Offline
 	bool disablePasskey = false;
+	bool passkeyFirstStep = false;
 
 	std::wstring bitmapPath = L"";
 
@@ -122,9 +149,7 @@ public:
 	bool hideFirstStepResponseError = false;
 	bool noDefault = false;
 
-	int winVerMajor = 0;
-	int winVerMinor = 0;
-	int winBuildNr = 0;
+	WindowsInfo windowsVersion;
 
 	bool pushAuthenticationSuccess = false;
 
@@ -145,17 +170,23 @@ public:
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;
 
+	// Offline
 	int offlineTreshold = 20;
 	bool offlineShowInfo = true;
+	bool checkAllOfflineCredentials = false;
 
+	// FIDO / WebAuthn
 	bool webAuthnPreferred = false;
 	bool webAuthnOfflineNoPIN = false;
+	std::vector<std::wstring> trustedRPIDs;
 	// If true, offer FIDO Authentication in the second step if there is offline data for the user.
 	// In that case, the link will take the text from the online variant, to look the same to the user,
 	// but will use the offline data
 	bool webAuthnOfflineSecondStep = false;
 	bool webAuthnOfflinePreferred = false;
 	bool webAuthnOfflineHideFirstStep = false;
+	bool useWindowsHelloForCredUI = true;
+	bool libfidoDebug = false;
 
 	bool otpFailReturnToFirstStep = false;
 
@@ -163,6 +194,8 @@ public:
 	std::wstring autoLogonUsername = L"";
 	std::wstring autoLogonDomain = L"";
 	std::wstring autoLogonPassword = L"";
+
+	bool resolveUPN = false;
 
 	// Track the current state
 	Mode mode = Mode::NO_CHANGE;
@@ -197,5 +230,25 @@ public:
 
 		std::wstring newPassword1 = L"";
 		std::wstring newPassword2 = L"";
+		
+		// Force explicit default construction
+		CREDENTIAL() = default;
+
+		// Delete copy operations to prevent accidental plaintext duplication in memory
+		CREDENTIAL(const CREDENTIAL&) = delete;
+		CREDENTIAL& operator=(const CREDENTIAL&) = delete;
+
+		// Delete move operations
+		CREDENTIAL(CREDENTIAL&&) = delete;
+		CREDENTIAL& operator=(CREDENTIAL&&) = delete;
+
+		~CREDENTIAL()
+		{
+			if (!password.empty()) SecureZeroMemory(&password[0], password.size() * sizeof(wchar_t));
+			if (!otp.empty()) SecureZeroMemory(&otp[0], otp.size() * sizeof(wchar_t));
+			if (!fido2PIN.empty()) SecureZeroMemory(&fido2PIN[0], fido2PIN.size() * sizeof(wchar_t));
+			if (!newPassword1.empty()) SecureZeroMemory(&newPassword1[0], newPassword1.size() * sizeof(wchar_t));
+			if (!newPassword2.empty()) SecureZeroMemory(&newPassword2[0], newPassword2.size() * sizeof(wchar_t));
+		}
 	} credential;
 };

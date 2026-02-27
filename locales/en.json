@@ -36,5 +36,14 @@
   "34": "FIDO Authentication cancelled. Try another way.",
   "35": "Not now",
   "36": "Offline FIDO",
-  "37": "No matching credentials on the security key."
+  "37": "No matching credentials on the security key.",
+  "38": "Use the Windows Security Prompt to log in with a Passkey.",
+  "39": "Set a new PIN for your security key.",
+  "40": "New PIN",
+  "41": "Repeat PIN",
+  "42": "Select a user for login",
+  "43": "The PINs do not match. Please try again.",
+  "44": "Setting PIN...",
+  "45": "Authentication failed!",
+  "46": "The user profile is locked. Please restart the computer."
 }

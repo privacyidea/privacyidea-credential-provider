@@ -32,58 +32,10 @@ constexpr auto CLEAR_FIELDS_ALL_DESTROY = 3;
 constexpr auto MAX_SIZE_DOMAIN = 64;
 constexpr auto MAX_SIZE_USERNAME = 512;
 
-// Text IDs
-constexpr auto TEXT_USERNAME = 0;
-constexpr auto TEXT_PASSWORD = 1;
-constexpr auto TEXT_OLD_PASSWORD = 2;
-constexpr auto TEXT_NEW_PASSWORD = 3;
-constexpr auto TEXT_CONFIRM_PASSWORD = 4;
-constexpr auto TEXT_DOMAIN_HINT = 5;
-constexpr auto TEXT_OTP_FIELD = 6;
-constexpr auto TEXT_WRONG_OTP = 7;
-constexpr auto TEXT_RESET_LINK = 8;
-constexpr auto TEXT_AVAILABLE_OFFLINE_TOKEN = 9;
-constexpr auto TEXT_OTPS_REMAINING = 10;
-constexpr auto TEXT_GENERIC_ERROR = 11;
-constexpr auto TEXT_USE_ONLINE_FIDO = 12;
-constexpr auto TEXT_USE_OTP = 13;
-constexpr auto TEXT_FIDO_PIN_HINT = 14;
-constexpr auto TEXT_TOUCH_SEC_KEY = 15;
-constexpr auto TEXT_CONNECTING = 16;
-constexpr auto TEXT_LOGIN_TEXT = 17;
-constexpr auto TEXT_OTP_PROMPT = 18;
-constexpr auto TEXT_FIDO_NO_CREDENTIALS = 19;
-constexpr auto TEXT_FIDO_WAITING_FOR_DEVICE = 20;
-constexpr auto TEXT_FIDO_CHECKING_OFFLINE_STATUS = 21;
-constexpr auto TEXT_OFFLINE_REFILL = 22;
-constexpr auto TEXT_FIDO_ERR_PIN_BLOCKED = 23;
-constexpr auto TEXT_FIDO_ERR_TX = 24;
-constexpr auto TEXT_FIDO_ERR_PIN_INVALID = 25;
-constexpr auto TEXT_USE_PASSKEY = 26;
-constexpr auto TEXT_ENTER_USERNAME = 27;
-constexpr auto TEXT_ENTER_PASSWORD = 28;
-constexpr auto TEXT_ENTER_USERNAME_PASSWORD = 29;
-constexpr auto TEXT_PASSKEY_REGISTER_TOUCH = 30;
-constexpr auto TEXT_SEC_KEY_ENTER_PIN_PROMPT = 31;
-constexpr auto TEXT_PASSKEY_REGISTRATION = 32;
-constexpr auto TEXT_LOGIN_WITH_USERNAME = 33;
-constexpr auto TEXT_FIDO_CANCELLED = 34;
-constexpr auto TEXT_CANCEL_ENROLLMENT = 35;
-constexpr auto TEXT_USE_OFFLINE_FIDO = 36;
-constexpr auto TEXT_FIDO_ERR_NO_CREDENTIALS = 37;
-
 class Utilities
 {
 public:
 	Utilities(std::shared_ptr<Configuration> c) noexcept;
-	
-	/// <summary>
-	/// If the text for the id is configurable and exists in the config, return that value.
-	/// Otherwise, return the default text for the id in english or german, depending on GetUserDefaultUILanguage.
-	/// </summary>
-	/// <param name="id"></param>
-	/// <returns></returns>
-	std::wstring GetText(int id);
 
 	HRESULT KerberosLogon(
 		__out CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE*& pcpgsr,
