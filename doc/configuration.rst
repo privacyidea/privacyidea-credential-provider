@@ -65,15 +65,24 @@ These settings allow you to specify a fallback URL. If at least the fallback hos
 
 **excluded_account**
 
+
 Specify an account that should be excluded from 2FA. The format is required to be ``domain\username`` or ``computername\username``.
+
 
 **excluded_group**
 
-Specify a group whose members are excluded from 2FA. Can be a local, global, or nested group.
+
+Specify a group whose members are excluded from 2FA. Can be a local or global group. 
+
+
+.. note:: Nested group resolution is only supported if the excluded group is a **Local Group** (e.g., a domain user inside a domain group that is nested inside the specified local group). Excluding a nested Global or Domain group is not supported; the user must be a *direct* member of the specified global group for the exclusion to trigger.
+
 
 .. note:: Global groups require **excluded_group_netbios_address** to be set.
 
+
 **excluded_group_netbios_address**
+
 
 The NetBIOS address of the computer to query for global groups. For example, you can get a list of candidates by running ``netdom query dc``, which will give you a list of Domain Controllers.
 
