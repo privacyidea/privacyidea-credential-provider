@@ -1666,52 +1666,85 @@ void CCredential::PushAuthenticationCallback(const PIResponse& response)
 bool CCredential::CheckExcludedAccount()
 {
 	PIDebug("CCredential::CheckExcludedAccount");
-	// Check if the user is in the excluded group
-	if (!_config->excludedGroup.empty())
+	
+	// Check if the user is in any excluded group
+	if (!_config->excludedGroups.empty())
 	{
 		std::vector<std::wstring> groups;
 
 		wstring tmp = wstring(_config->credential.domain + L"\\" + _config->credential.username);
 		LPCWSTR userAndDomain = tmp.c_str();
 		LPCWSTR userOnly = _config->credential.username.c_str();
-		// Global groups
+		
+		// Global groups - try multiple Domain Controllers with automatic failover
 		DWORD entriesRead = 0, totalEntries = 0;
 		GROUP_USERS_INFO_0* pGroupInfo = nullptr;
 		NET_API_STATUS nStatus = NERR_Success;
-		// It is only possible to check global groups if the netbios address of the machine that should be queried is set
-		if (!_config->exludedGroupNetBIOSaddress.empty())
-		{
-			nStatus = NetUserGetGroups(
-				_config->exludedGroupNetBIOSaddress.c_str(),
-				userOnly,
-				0,
-				(LPBYTE*)&pGroupInfo,
-				MAX_PREFERRED_LENGTH,
-				&entriesRead,
-				&totalEntries
-			);
+		bool globalGroupsRetrieved = false;
 
-			if (nStatus == NERR_Success && pGroupInfo)
+		if (!_config->excludedGroupDCs.empty())
+		{
+			// Try each DC until one succeeds
+			for (const auto& dcAddress : _config->excludedGroupDCs)
 			{
-				for (DWORD i = 0; i < entriesRead; ++i)
+				PIDebug(L"Attempting to query global groups from DC: " + dcAddress);
+				
+				nStatus = NetUserGetGroups(
+					dcAddress.c_str(),
+					userOnly,
+					0,
+					(LPBYTE*)&pGroupInfo,
+					MAX_PREFERRED_LENGTH,
+					&entriesRead,
+					&totalEntries
+				);
+
+				if (nStatus == NERR_Success && pGroupInfo)
 				{
-					groups.push_back(pGroupInfo[i].grui0_name);
+					PIDebug(L"Successfully retrieved " + std::to_wstring(entriesRead) + L" global groups from DC: " + dcAddress);
+					for (DWORD i = 0; i < entriesRead; ++i)
+					{
+						groups.push_back(pGroupInfo[i].grui0_name);
+					}
+					NetApiBufferFree(pGroupInfo);
+					globalGroupsRetrieved = true;
+					break; // Success - no need to try other DCs
 				}
-				NetApiBufferFree(pGroupInfo);
+				else
+				{
+					std::wstringstream ss;
+					ss << L"NetUserGetGroups failed for DC '" << dcAddress 
+					   << L"' user '" << userAndDomain << L"' with error: " << nStatus;
+					
+					// Log different severity based on whether we have more DCs to try
+					if (&dcAddress == &_config->excludedGroupDCs.back())
+					{
+						PIError(Convert::ToString(ss.str()) + " - all DCs failed");
+					}
+					else
+					{
+						PIDebug(Convert::ToString(ss.str()) + " - trying next DC");
+					}
+					
+					if (pGroupInfo)
+					{
+						NetApiBufferFree(pGroupInfo);
+						pGroupInfo = nullptr;
+					}
+				}
 			}
-			else
+
+			if (!globalGroupsRetrieved)
 			{
-				std::wstringstream ss;
-				ss << L"NetUserGetGroups failed for user '" << userAndDomain << L"' with error: " << nStatus;
-				PIError(Convert::ToString(ss.str()));
+				PIError("Failed to retrieve global groups from all configured Domain Controllers");
 			}
 		}
 		else
 		{
-			PIDebug("Unable to check global groups, no netbios address set for excluded group");
+			PIDebug("Unable to check global groups, no Domain Controllers configured in excluded_group_netbios_addresses");
 		}
 
-		// Local groups
+		// Local groups - always check regardless of global group success
 		LOCALGROUP_USERS_INFO_0* pLocalGroupInfo = nullptr;
 		entriesRead = totalEntries = 0;
 		nStatus = NetUserGetLocalGroups(
@@ -1727,6 +1760,7 @@ bool CCredential::CheckExcludedAccount()
 
 		if (nStatus == NERR_Success && pLocalGroupInfo)
 		{
+			PIDebug(L"Successfully retrieved " + std::to_wstring(entriesRead) + L" local groups");
 			for (DWORD i = 0; i < entriesRead; ++i)
 			{
 				groups.push_back(pLocalGroupInfo[i].lgrui0_name);
@@ -1740,19 +1774,37 @@ bool CCredential::CheckExcludedAccount()
 			PIError(Convert::ToString(ss.str()));
 		}
 
-		// Check if the user is in the excluded group
+		// Check if the user is in ANY of the excluded groups
+		// Groups are compared WITHOUT domain prefix (as returned by NetUserGetGroups/NetUserGetLocalGroups)
 		for (const auto& group : groups)
 		{
-			if (Convert::ToUpperCase(group) == Convert::ToUpperCase(_config->excludedGroup))
+			for (const auto& excludedGroup : _config->excludedGroups)
 			{
-				PIDebug(L"User is in excluded group: " + _config->excludedGroup);
-				return true;
+				if (Convert::ToUpperCase(group) == Convert::ToUpperCase(excludedGroup))
+				{
+					PIDebug(L"User is in excluded group: " + excludedGroup);
+					_privacyIDEASuccess = true;
+					return true;
+				}
 			}
 		}
-		PIDebug(L"User " + _config->credential.username + L" is not in excluded group: " + _config->excludedGroup);
+		
+		// Debug logging of all user groups
+		wstring groupsStr;
+		for (const auto& g : groups) 
+		{
+			groupsStr += g + L", ";
+		}
+		if (!groupsStr.empty()) 
+		{
+			groupsStr = groupsStr.substr(0, groupsStr.size() - 2);
+		}
+		
+		PIDebug(L"User " + _config->credential.username + L" groups: [" + groupsStr + L"] - not in any excluded group");
 	}
-	// Check if the user is the excluded account
-	if (!_config->excludedAccount.empty())
+	
+	// Check if the user is any of the excluded accounts
+	if (!_config->excludedAccounts.empty())
 	{
 		wstring toCompare;
 		if (!_config->credential.domain.empty())
@@ -1761,17 +1813,36 @@ bool CCredential::CheckExcludedAccount()
 		}
 		toCompare.append(_config->credential.username);
 
-		// Check if the excluded account from the registry contains '.' and resolve that to the computer name
-		wstring exclUsername, exclDomain;
-		Utilities::SplitUserAndDomain(_config->excludedAccount, exclUsername, exclDomain);
-		wstring exclAccount = exclDomain + L"\\" + exclUsername;
-		if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(exclAccount))
+		// Check each excluded account
+		for (const auto& excludedAccount : _config->excludedAccounts)
 		{
-			PIDebug("Login data matches excluded account");
-			_privacyIDEASuccess = true;
-			return true;
+			// Parse excluded account - supports DOMAIN\user, .\user, or user@domain formats
+			wstring exclUsername, exclDomain;
+			Utilities::SplitUserAndDomain(excludedAccount, exclUsername, exclDomain);
+			
+			// Build comparison string
+			wstring exclAccount;
+			if (!exclDomain.empty())
+			{
+				exclAccount = exclDomain + L"\\" + exclUsername;
+			}
+			else
+			{
+				// No domain specified - just username
+				exclAccount = exclUsername;
+			}
+			
+			// Case-insensitive comparison
+			if (Convert::ToUpperCase(toCompare) == Convert::ToUpperCase(exclAccount) ||
+			    Convert::ToUpperCase(_config->credential.username) == Convert::ToUpperCase(exclUsername))
+			{
+				PIDebug(L"Login data matches excluded account: " + excludedAccount);
+				_privacyIDEASuccess = true;
+				return true;
+			}
 		}
 	}
+	
 	return false;
 }
 
@@ -1826,7 +1897,7 @@ std::optional<FIDODevice> CCredential::GetPreferredFIDODevice()
 
 	if (!devices.empty())
 	{
-		// Just return the first valid device found
+		// Just return thefirst valid device found
 		return devices[0];
 	}
 
@@ -1883,7 +1954,7 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 		}
 		const auto mode = SelectFIDOMode();
 		if (mode != Mode::SEC_KEY_NO_PIN)
-		{
+		 {
 			// Reset to get PIN input
 			SetMode(mode);
 			_modeSwitched = true;
@@ -2578,8 +2649,8 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 	// PRE-FLIGHT REFILL
 	// Validate offline credentials against the server before usage. Only of the current user or all if configured.
 	// Run this if we are about to use FIDO, OR if the configuration forces a global check
-	const bool isFidoMode = _config->useOfflineFIDO || _config->mode > Mode::SEC_KEY_ANY;
-	const bool shouldCheck = (isSendRequest && !username.empty() && isFidoMode);
+	bool isFidoMode = _config->useOfflineFIDO || _config->mode > Mode::SEC_KEY_ANY;
+	bool shouldCheck = (isSendRequest && !username.empty() && isFidoMode);
 
 	if (shouldCheck)
 	{
@@ -2808,7 +2879,7 @@ HRESULT CCredential::ReportResult(
 
 	if (_config->credential.passwordMustChange && ntsStatus == 0 && ntsSubstatus == 0)
 	{
-		// Password change was successful, set this so SetSelected knows to autologon
+		// Password change was successful, set this so the lastResponse knows to autologon
 		_config->credential.passwordMustChange = false;
 		_config->credential.passwordChanged = true;
 		ResetMode();
