@@ -44,14 +44,75 @@
 		<CustomAction Id="SetLocalesDefault" Property="LOCALES_PATH" Value="[locales]" />
 		<CustomAction Id="SetLocalesFromOld" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_OLD]" />
 		<CustomAction Id="SetLocalesFromNew" Property="LOCALES_PATH" Value="[REG_LOCALES_PATH_NEW]" />
+    <CustomAction Id="SplitExcludedAccounts" Script="vbscript" Execute="immediate">
+      <![CDATA[
+	' Split semicolon-separated EXCLUDED_ACCOUNTS into multi-string format
+	Dim value, arr, result, i
+	value = Session.Property("EXCLUDED_ACCOUNTS")
+	If Len(value) > 0 Then
+		arr = Split(value, ";")
+		result = ""
+		For i = 0 To UBound(arr)
+			arr(i) = Trim(arr(i))
+			If Len(arr(i)) > 0 Then
+				result = result & arr(i) & Chr(0)
+			End If
+		Next
+		result = result & Chr(0)
+		Session.Property("EXCLUDED_ACCOUNTS") = result
+	End If
+]]>
+    </CustomAction>
 
+    <CustomAction Id="SplitExcludedGroups" Script="vbscript" Execute="immediate">
+      <![CDATA[
+	' Split semicolon-separated EXCLUDED_GROUPS into multi-string format
+	Dim value, arr, result, i
+	value = Session.Property("EXCLUDED_GROUPS")
+	If Len(value) > 0 Then
+		arr = Split(value, ";")
+		result = ""
+		For i = 0 To UBound(arr)
+			arr(i) = Trim(arr(i))
+			If Len(arr(i)) > 0 Then
+				result = result & arr(i) & Chr(0)
+			End If
+		Next
+		result = result & Chr(0)
+		Session.Property("EXCLUDED_GROUPS") = result
+	End If
+]]>
+    </CustomAction>
+
+    <CustomAction Id="SplitExcludedGroupDCs" Script="vbscript" Execute="immediate">
+      <![CDATA[
+	' Split semicolon-separated EXCLUDED_GROUP_DCS into multi-string format
+	Dim value, arr, result, i
+	value = Session.Property("EXCLUDED_GROUP_DCS")
+	If Len(value) > 0 Then
+		arr = Split(value, ";")
+		result = ""
+		For i = 0 To UBound(arr)
+			arr(i) = Trim(arr(i))
+			If Len(arr(i)) > 0 Then
+				result = result & arr(i) & Chr(0)
+			End If
+		Next
+		result = result & Chr(0)
+		Session.Property("EXCLUDED_GROUP_DCS") = result
+	End If
+]]>
+    </CustomAction>
 		<InstallExecuteSequence>
 			<Custom Action="IsPrivileged" Before="AppSearch">Not Privileged</Custom>
 
 			<Custom Action="SetLocalesDefault" After="CostFinalize">NOT REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
 			<Custom Action="SetLocalesFromOld" After="SetLocalesDefault">REG_LOCALES_PATH_OLD AND NOT REG_LOCALES_PATH_NEW</Custom>
 			<Custom Action="SetLocalesFromNew" After="SetLocalesFromOld">REG_LOCALES_PATH_NEW</Custom>
-		</InstallExecuteSequence>
+      <Custom Action="SplitExcludedAccounts" After="CostFinalize">EXCLUDED_ACCOUNTS</Custom>
+      <Custom Action="SplitExcludedGroups" After="SplitExcludedAccounts">EXCLUDED_GROUPS</Custom>
+      <Custom Action="SplitExcludedGroupDCs" After="SplitExcludedGroups">EXCLUDED_GROUP_DCS</Custom>
+    </InstallExecuteSequence>
 
 		<Icon Id="icon.ico" SourceFile="$(var.SolutionDir)icon.ico" />
 		<Property Id="ARPPRODUCTICON" Value="icon.ico" />
@@ -144,9 +205,9 @@
 		<Property Id="WEBAUTHN_LINK_TEXT">
 			<RegistrySearch Id="SearchWebAuthnLinkText" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_link_text" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="WEBAUTHN_PREFERRED">
-			<RegistrySearch Id="SearchWebAuthnPreferred" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_preferred" Win64="$(var.Win64)" Type="raw" />
-		</Property>
+    <Property Id="WEBAUTHN_PREFERRED">
+      <RegistrySearch Id="SearchWebAuthnPreferred" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_preferred" Win64="$(var.Win64)" Type="raw" />
+    </Property>
 		<Property Id="WEBAUTHN_PIN_HINT">
 			<RegistrySearch Id="SearchWebAuthnPinHint" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="webauthn_pin_hint" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -171,9 +232,12 @@
 		<Property Id="NO_DEFAULT">
 			<RegistrySearch Id="SearchNoDefault" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="no_default" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="EXCLUDED_ACCOUNT">
-			<RegistrySearch Id="SearchExcludedAccount" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_account" Win64="$(var.Win64)" Type="raw" />
-		</Property>
+    <Property Id="EXCLUDED_ACCOUNTS">
+      <RegistrySearch Id="SearchExcludedAccounts" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_accounts" Win64="$(var.Win64)" Type="raw" />
+    </Property>
+    <Property Id="EXCLUDED_ACCOUNTS_OLD">
+      <RegistrySearch Id="SearchExcludedAccountOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_account" Win64="$(var.Win64)" Type="raw" />
+    </Property>
 		<Property Id="RESOLVE_TIMEOUT">
 			<RegistrySearch Id="SearchResolveTimeout" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="resolve_timeout" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -198,15 +262,18 @@
 		<Property Id="FALLBACK_PORT">
 			<RegistrySearch Id="SearchFallbackPort" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="fallback_port" Win64="$(var.Win64)" Type="raw" />
 		</Property>
-		<Property Id="FALLBACK_PATH">
-			<RegistrySearch Id="SearchFallbackPath" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="fallback_path" Win64="$(var.Win64)" Type="raw" />
-		</Property>
-		<Property Id="EXCLUDED_GROUP">
-			<RegistrySearch Id="SearchExcludedGroup" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group" Win64="$(var.Win64)" Type="raw" />
-		</Property>
-		<Property Id="EXCLUDED_GROUP_NETBIOS_ADDRESS">
-			<RegistrySearch Id="SearchNetBiosAddress" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_address" Win64="$(var.Win64)" Type="raw" />
-		</Property>
+    <Property Id="EXCLUDED_GROUPS">
+      <RegistrySearch Id="SearchExcludedGroups" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_groups" Win64="$(var.Win64)" Type="raw" />
+    </Property>
+    <Property Id="EXCLUDED_GROUPS_OLD">
+      <RegistrySearch Id="SearchExcludedGroupOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group" Win64="$(var.Win64)" Type="raw" />
+    </Property>
+    <Property Id="EXCLUDED_GROUP_DCS">
+      <RegistrySearch Id="SearchExcludedGroupDCs" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_addresses" Win64="$(var.Win64)" Type="raw" />
+    </Property>
+    <Property Id="EXCLUDED_GROUP_DCS_OLD">
+      <RegistrySearch Id="SearchNetBiosAddressOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="excluded_group_netbios_address" Win64="$(var.Win64)" Type="raw" />
+    </Property>
 		<Property Id="LOCALES_PATH" />
 		<Property Id="REG_LOCALES_PATH_OLD">
 			<RegistrySearch Id="SearchLocalesPathOld" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="localesPath" Win64="$(var.Win64)" Type="raw" />
@@ -338,9 +405,9 @@
 						<RegistryValue Name="send_timeout" Type="string" Value="[SEND_TIMEOUT]" />
 						<RegistryValue Name="receive_timeout" Type="string" Value="[RECEIVE_TIMEOUT]" />
 
-						<RegistryValue Name="excluded_account" Type="string" Value="[EXCLUDED_ACCOUNT]" />
-						<RegistryValue Name="excluded_group" Type="string" Value="[EXCLUDED_GROUP]" />
-						<RegistryValue Name="excluded_group_netbios_address" Type="string" Value="[EXCLUDED_GROUP_NETBIOS_ADDRESS]" />
+            <RegistryValue Name="excluded_accounts" Type="multiString" Value="[EXCLUDED_ACCOUNTS]" />
+            <RegistryValue Name="excluded_groups" Type="multiString" Value="[EXCLUDED_GROUPS]" />
+            <RegistryValue Name="excluded_group_netbios_addresses" Type="multiString" Value="[EXCLUDED_GROUP_DCS]" />
 						<RegistryValue Name="v1_bitmap_path" Type="string" Value="[V1_BITMAP_PATH]" />
 						<RegistryValue Name="two_step_send_password" Type="string" Value="[TWO_STEP_SEND_PASSWORD]" />
 						<RegistryValue Name="two_step_send_empty_password" Type="string" Value="[TWO_STEP_SEND_EMPTY_PASSWORD]" />
@@ -452,8 +519,13 @@
 			<DialogRef Id="FidoDlg" />
 			<DialogRef Id="OfflineDlg" />
 			<DialogRef Id="OfflineCleanupDlg" />
-			<Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerDlg">1</Publish>
-
+      <DialogRef Id="ExclusionsDlg" />
+      
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ServerDlg">1</Publish>
+      <Publish Dialog="ServerDlg" Control="Next" Event="NewDialog" Value="ExclusionsDlg">1</Publish>
+      <Publish Dialog="ExclusionsDlg" Control="Back" Event="NewDialog" Value="ServerDlg">1</Publish>
+      <Publish Dialog="ExclusionsDlg" Control="Next" Event="NewDialog" Value="UIDlg">1</Publish>
+      <Publish Dialog="UIDlg" Control="Back" Event="NewDialog" Value="ExclusionsDlg">1</Publish>
 			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OfflineCleanupDlg" Order="1">
 				NOT Installed OR (WixUI_InstallMode = "Change" AND USER_IS_ADMINISTRATOR = "1" )
 			</Publish>

@@ -163,9 +163,9 @@ public:
 	std::optional<PIResponse> lastResponseWithChallenge;
 	std::string lastTransactionId = "";
 
-	std::wstring excludedAccount = L"";
-	std::wstring excludedGroup = L"";
-	std::wstring exludedGroupNetBIOSaddress = L"";
+	std::vector<std::wstring> excludedAccounts;  // Changed from single excludedAccount - supports multiple users in format: DOMAIN\user or .\user
+	std::vector<std::wstring> excludedGroups;     // Changed from single excludedGroup - supports multiple groups WITHOUT domain prefix
+	std::vector<std::wstring> excludedGroupDCs;   // Changed from single exludedGroupNetBIOSaddress - supports multiple DCs with automatic failover
 
 	bool clearFields = true;
 	bool bypassPrivacyIDEA = false;

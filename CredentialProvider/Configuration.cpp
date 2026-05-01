@@ -118,9 +118,44 @@ void Configuration::Load()
 	piconfig.fallbackPath = rr.GetWString(L"fallback_path");
 	piconfig.fallbackPort = rr.GetInt(L"fallback_port");
 
-	excludedAccount = rr.GetWString(L"excluded_account");
-	excludedGroup = rr.GetWString(L"excluded_group");
-	exludedGroupNetBIOSaddress = rr.GetWString(L"excluded_group_netbios_address");
+	// Excluded accounts - try new multi-value format first
+	excludedAccounts = rr.GetMultiSZ(L"excluded_accounts");
+	if (excludedAccounts.empty())
+	{
+		// Fallback to old single-account configuration for backward compatibility
+		std::wstring oldAccount = rr.GetWString(L"excluded_account");
+		if (!oldAccount.empty())
+		{
+			excludedAccounts.push_back(oldAccount);
+			PIDebug(L"Migrated old single excluded_account to new format: " + oldAccount);
+		}
+	}
+
+	// Excluded groups - try new multi-value format first
+	excludedGroups = rr.GetMultiSZ(L"excluded_groups");
+	if (excludedGroups.empty())
+	{
+		// Fallback to old single-group configuration for backward compatibility
+		std::wstring oldGroup = rr.GetWString(L"excluded_group");
+		if (!oldGroup.empty())
+		{
+			excludedGroups.push_back(oldGroup);
+			PIDebug(L"Migrated old single excluded_group to new format: " + oldGroup);
+		}
+	}
+
+	// Domain Controllers - try new multi-DC format first
+	excludedGroupDCs = rr.GetMultiSZ(L"excluded_group_netbios_addresses");
+	if (excludedGroupDCs.empty())
+	{
+		// Fallback to old single DC configuration for backward compatibility
+		std::wstring oldDC = rr.GetWString(L"excluded_group_netbios_address");
+		if (!oldDC.empty())
+		{
+			excludedGroupDCs.push_back(oldDC);
+			PIDebug(L"Migrated old single DC address to new format: " + oldDC);
+		}
+	}
 
 	// Credential Provider specific config
 	bitmapPath = rr.GetWString(L"v1_bitmap_path");
@@ -365,9 +400,39 @@ void Configuration::LogConfig()
 	PIDebug("Accept-Language: " + piconfig.acceptLanguage);
 
 	PrintIfIntIsNotNull("Is remote session", isRemoteSession);
-	PrintIfStringNotEmpty(L"Excluded account", excludedAccount);
-	PrintIfStringNotEmpty(L"Excluded group", excludedGroup);
-	PrintIfStringNotEmpty(L"Excluded group NetBIOS address", exludedGroupNetBIOSaddress);
+
+// Log excluded accounts
+if (!excludedAccounts.empty())
+{
+	wstring tmp;
+	for (const auto& account : excludedAccounts)
+	{
+		tmp += account + L", ";
+	}
+	PIDebug(L"Excluded accounts: " + tmp.substr(0, tmp.size() - 2));
+}
+
+// Log excluded groups
+if (!excludedGroups.empty())
+{
+	wstring tmp;
+	for (const auto& group : excludedGroups)
+	{
+		tmp += group + L", ";
+	}
+	PIDebug(L"Excluded groups: " + tmp.substr(0, tmp.size() - 2));
+}
+
+// Log Domain Controllers
+if (!excludedGroupDCs.empty())
+{
+	wstring tmp;
+	for (const auto& dc : excludedGroupDCs)
+	{
+		tmp += dc + L", ";
+	}
+	PIDebug(L"Excluded group Domain Controllers: " + tmp.substr(0, tmp.size() - 2));
+}
 
 	// AutoLogon
 	PrintIfStringNotEmpty(L"AutoLogon Username", autoLogonUsername);
