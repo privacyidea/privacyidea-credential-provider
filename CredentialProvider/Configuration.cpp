@@ -129,6 +129,7 @@ void Configuration::Load()
 	noDefault = rr.GetBool(L"no_default");
 	twoStepSendEmptyPassword = rr.GetBool(L"two_step_send_empty_password");
 	twoStepSendPassword = rr.GetBool(L"two_step_send_password");
+	twoStepExpectChallenge = rr.GetBool(L"two_step_expect_challenge");
 	usernamePassword = rr.GetBool(L"username_password");
 
 	// Set locales files path from registry
@@ -324,13 +325,14 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("SSL ignore invalid CN", piconfig.ignoreInvalidCN);
 	PrintIfIntIsNotNull("Send empty password", twoStepSendEmptyPassword);
 	PrintIfIntIsNotNull("Send domain password", twoStepSendPassword);
+	PrintIfIntIsNotNull("Two step expect challenge", twoStepExpectChallenge);
 	PrintIfIntIsNotNull("Debug Log", debugLog);
 	PrintIfIntIsNotNull("Log sensitive data", piconfig.logPasswords);
 	PrintIfIntIsNotNull("No default", noDefault);
 	PrintIfIntIsNotNull("Show domain hint", showDomainHint);
 	PrintIfIntIsNotNull("Prefill username", prefillUsername);
 	PrintIfIntIsNotNull("Show reset link", showResetLink);
-	
+
 	// FIDO / WebAuthn
 	PrintIfIntIsNotNull("WebAuthn preferred", webAuthnPreferred);
 	PrintIfIntIsNotNull("WebAuthn offline no PIN", webAuthnOfflineNoPIN);

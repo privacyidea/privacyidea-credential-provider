@@ -136,6 +136,7 @@ public:
 	bool usernamePassword = false;
 	bool twoStepSendPassword = false;
 	bool twoStepSendEmptyPassword = false;
+	bool twoStepExpectChallenge = false;
 
 	bool hideFullName = false;
 	bool hideDomainName = false;

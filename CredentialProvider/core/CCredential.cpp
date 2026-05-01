@@ -2696,6 +2696,19 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			// Evaluate the response
 			if (SUCCEEDED(hr))
 			{
+				// Check if this is the first step of two-step authentication with two_step_expect_challenge enabled
+				// If the server returns REJECT without a transaction_id, treat it as a hard error
+				if (_config->twoStepExpectChallenge && 
+					_config->IsModeOneOf(Mode::USERNAME, Mode::USERNAMEPASSWORD) &&
+					!otpResponse.value && 
+					otpResponse.transactionId.empty())
+				{
+					PIDebug("Two-step first step: Server rejected without challenge (two_step_expect_challenge=1)");
+					_lastStatus = E_FAIL;
+					_config->lastResponse = otpResponse;
+					return S_OK;
+				}
+
 				EvaluateResponse(otpResponse);
 			}
 			else
