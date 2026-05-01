@@ -2779,7 +2779,7 @@ HRESULT CCredential::ReportResult(
 	__in NTSTATUS ntsStatus,
 	__in NTSTATUS ntsSubstatus,
 	__deref_out_opt PWSTR* ppwszOptionalStatusText,
-	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcsiOptionalStatusIcon
+	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
 )
 {
 	PIDebug(__FUNCTION__);
@@ -2787,7 +2787,7 @@ HRESULT CCredential::ReportResult(
 		+ ", ntsSubstatus: " + Convert::LongToHexString(ntsSubstatus));
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
-	UNREFERENCED_PARAMETER(pcsiOptionalStatusIcon);
+	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
 	// Detect Fast User Switching / Profile Lock issue
 	if (ntsStatus == 0xC00000DA) // STATUS_USER_MAPPED_FILE_SYSTEM
@@ -2796,9 +2796,9 @@ HRESULT CCredential::ReportResult(
 		PIDebug("CAUSE: The user profile or registry hive is locked by another process.");
 		PIDebug("SOLUTION: This is often caused by Fast User Switching or background services. A system reboot is required to clear the lock.");
 
-		if (pcsiOptionalStatusIcon)
+		if (pcpsiOptionalStatusIcon)
 		{
-			*pcsiOptionalStatusIcon = CPSI_ERROR;
+			*pcpsiOptionalStatusIcon = CPSI_ERROR;
 		}
 
 		if (ppwszOptionalStatusText)
