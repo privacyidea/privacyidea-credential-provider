@@ -84,6 +84,9 @@
 		<Property Id="TWO_STEP_SEND_EMPTY_PASSWORD">
 			<RegistrySearch Id="SearchTwoStepSendEmptyPassword" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_send_empty_password" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+		<Property Id="TWO_STEP_EXPECT_CHALLENGE">
+			<RegistrySearch Id="SearchTwoStepExpectChallenge" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="two_step_expect_challenge" Win64="$(var.Win64)" Type="raw" />
+		</Property>
 		<Property Id="SSL_IGNORE_UNKNOWN_CA">
 			<RegistrySearch Id="SearchSSLIgnoreUnknownCA" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="ssl_ignore_unknown_ca" Win64="$(var.Win64)" Type="raw" />
 		</Property>
@@ -344,6 +347,7 @@
 						<RegistryValue Name="v1_bitmap_path" Type="string" Value="[V1_BITMAP_PATH]" />
 						<RegistryValue Name="two_step_send_password" Type="string" Value="[TWO_STEP_SEND_PASSWORD]" />
 						<RegistryValue Name="two_step_send_empty_password" Type="string" Value="[TWO_STEP_SEND_EMPTY_PASSWORD]" />
+						<RegistryValue Name="two_step_expect_challenge" Type="string" Value="[TWO_STEP_EXPECT_CHALLENGE]" />
 						<RegistryValue Name="username_password" Type="string" Value="[USERNAME_PASSWORD]" />
 
 						<RegistryValue Name="hide_fullname" Type="string" Value="[HIDE_FULLNAME]" />
