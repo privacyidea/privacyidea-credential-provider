@@ -129,6 +129,7 @@ void Configuration::Load()
 	noDefault = rr.GetBool(L"no_default");
 	twoStepSendEmptyPassword = rr.GetBool(L"two_step_send_empty_password");
 	twoStepSendPassword = rr.GetBool(L"two_step_send_password");
+	twoStepExpectChallenge = rr.GetBool(L"two_step_expect_challenge");
 	usernamePassword = rr.GetBool(L"username_password");
 
 	// Set locales files path from registry

@@ -2696,6 +2696,19 @@ HRESULT CCredential::Connect(__in IQueryContinueWithStatus* pqcws)
 			// Evaluate the response
 			if (SUCCEEDED(hr))
 			{
+				// Check if this is the first step of two-step authentication with two_step_expect_challenge enabled
+				// If the server returns REJECT without a transaction_id, treat it as a hard error
+				if (_config->twoStepExpectChallenge && 
+					_config->IsModeOneOf(Mode::USERNAME, Mode::USERNAMEPASSWORD) &&
+					!otpResponse.value && 
+					otpResponse.transactionId.empty())
+				{
+					PIDebug("Two-step first step: Server rejected without challenge (two_step_expect_challenge=1)");
+					_lastStatus = E_FAIL;
+					_config->lastResponse = otpResponse;
+					return S_OK;
+				}
+
 				EvaluateResponse(otpResponse);
 			}
 			else
@@ -2766,7 +2779,7 @@ HRESULT CCredential::ReportResult(
 	__in NTSTATUS ntsStatus,
 	__in NTSTATUS ntsSubstatus,
 	__deref_out_opt PWSTR* ppwszOptionalStatusText,
-	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon
+	__out CREDENTIAL_PROVIDER_STATUS_ICON* pcsiOptionalStatusIcon
 )
 {
 	PIDebug(__FUNCTION__);
@@ -2774,7 +2787,7 @@ HRESULT CCredential::ReportResult(
 		+ ", ntsSubstatus: " + Convert::LongToHexString(ntsSubstatus));
 
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
-	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
+	UNREFERENCED_PARAMETER(pcsiOptionalStatusIcon);
 
 	// Detect Fast User Switching / Profile Lock issue
 	if (ntsStatus == 0xC00000DA) // STATUS_USER_MAPPED_FILE_SYSTEM
@@ -2783,9 +2796,9 @@ HRESULT CCredential::ReportResult(
 		PIDebug("CAUSE: The user profile or registry hive is locked by another process.");
 		PIDebug("SOLUTION: This is often caused by Fast User Switching or background services. A system reboot is required to clear the lock.");
 
-		if (pcpsiOptionalStatusIcon)
+		if (pcsiOptionalStatusIcon)
 		{
-			*pcpsiOptionalStatusIcon = CPSI_ERROR;
+			*pcsiOptionalStatusIcon = CPSI_ERROR;
 		}
 
 		if (ppwszOptionalStatusText)
