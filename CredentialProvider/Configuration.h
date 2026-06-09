@@ -149,6 +149,9 @@ public:
 	bool hideFirstStepResponseError = false;
 	bool noDefault = false;
 
+	// Bool to set enable/disable the button show password in password field
+	bool passwordSeeable = false;
+
 	WindowsInfo windowsVersion;
 
 	bool pushAuthenticationSuccess = false;
