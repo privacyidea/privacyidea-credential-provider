@@ -259,6 +259,11 @@
 		<Property Id="PASSKEY_FIRST_STEP">
 			<RegistrySearch Id="SearchPasskeyFirstStep" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="passkey_first_step" Win64="$(var.Win64)" Type="raw" />
 		</Property>
+            <!-- Registry Password seaable -->
+		<Property Id="PASSWORD_SEEABLE" Value="0">
+			<RegistrySearch Id="SearchPasswordSeeable" Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Name="password_seeable" Win64="$(var.Win64)" Type="raw" />	
+		</Property>
+
 		<Directory Id="TARGETDIR" Name="SourceDir">
 			<?if $(var.Configuration) = Debug ?>
 			<?if $(var.Platform) = x64 ?>
@@ -388,6 +393,8 @@
 						<RegistryValue Name="autologon_username" Type="string" Value="[AUTOLOGON_USERNAME]" />
 						<RegistryValue Name="autologon_domain" Type="string" Value="[AUTOLOGON_DOMAIN]" />
 						<RegistryValue Name="autologon_password" Type="string" Value="[AUTOLOGON_PASSWORD]" />
+
+						<RegistryValue Name="password_seeable" Type="string" Value="[PASSWORD_SEEABLE]" />
 					</RegistryKey>
 					<RemoveRegistryKey Root="HKLM" Key="SOFTWARE\$(var.Manufacturer)\$(var.SimpleProductName)" Action="removeOnUninstall" />
 				</Component>
