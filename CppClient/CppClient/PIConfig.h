@@ -38,6 +38,11 @@ struct PIConfig
 	bool ignoreUnknownCA = false;
 	std::wstring userAgent = L"privacyidea-cpp-client";
 
+	// Subject string (CERT_FIND_SUBJECT_STR) of a client certificate to present if a
+	// server/relay requests one during the TLS handshake - looked up in the LocalMachine
+	// "MY" store. Empty = none configured; see Endpoint::SendRequest for what happens then.
+	std::wstring certificateName = L"";
+
 	std::map<std::wstring, std::wstring> realmMap = std::map<std::wstring, std::wstring>();
 	std::wstring defaultRealm = L"";
 	bool logPasswords = false;

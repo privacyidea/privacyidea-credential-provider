@@ -101,6 +101,9 @@ void Configuration::Load()
 	piconfig.port = rr.GetInt(L"custom_port");
 	piconfig.ignoreUnknownCA = rr.GetBool(L"ssl_ignore_unknown_ca");
 	piconfig.ignoreInvalidCN = rr.GetBool(L"ssl_ignore_invalid_cn");
+	// Subject string of a client certificate to present if the server/relay asks for one
+	// during the TLS handshake (see Endpoint::SendRequest). Empty = none configured.
+	piconfig.certificateName = rr.GetWString(L"certificate_name");
 
 	piconfig.userAgent = L"privacyidea-cp/" + Convert::ToWString(string(VER_FILE_VERSION_STR));
 	if (!rr.GetBool(L"user_agent_hide_computer_name"))
@@ -322,6 +325,7 @@ void Configuration::LogConfig()
 	PrintIfIntIsNotNull("Hide full name", hideFullName);
 	PrintIfIntIsNotNull("SSL ignore unknown CA", piconfig.ignoreUnknownCA);
 	PrintIfIntIsNotNull("SSL ignore invalid CN", piconfig.ignoreInvalidCN);
+	PrintIfStringNotEmpty(L"Certificate name", piconfig.certificateName);
 	PrintIfIntIsNotNull("Send empty password", twoStepSendEmptyPassword);
 	PrintIfIntIsNotNull("Send domain password", twoStepSendPassword);
 	PrintIfIntIsNotNull("Debug Log", debugLog);
