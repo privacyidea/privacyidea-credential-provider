@@ -23,10 +23,12 @@
 #include "Convert.h"
 #include <winhttp.h>
 #include <atlutil.h>
+#include <wincrypt.h>
 #include <set>
 #include "SecureString.h"
 
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "crypt32.lib")
 
 #define PRINT_ENDPOINT_RESPONSES
 
@@ -344,6 +346,62 @@ string Endpoint::SendRequest(const std::string& endpoint, const std::map<std::st
 	// Send the request
 	if (hRequest)
 	{
+		bResults = WinHttpSendRequest(
+			hRequest,
+			L"Content-Type: application/x-www-form-urlencoded\r\n",
+			(DWORD)-1,
+			(LPVOID)data,
+			dataLen,
+			dataLen,
+			0);
+	}
+
+	// The server/relay asked for a client certificate during the TLS handshake - this
+	// fires even if the request was only OPTIONAL (TLS CertificateRequest), because WinHTTP
+	// does not continue on its own: the caller must explicitly answer with a certificate or
+	// with WINHTTP_NO_CLIENT_CERT_CONTEXT before retrying, or WinHttpSendRequest keeps
+	// failing outright with this same error (see Microsoft's own WinHTTP SSL documentation).
+	if (!bResults && GetLastError() == ERROR_WINHTTP_CLIENT_AUTH_CERT_NEEDED)
+	{
+		PIDebug("Server requested a client certificate");
+		PCCERT_CONTEXT pCertContext = nullptr;
+		if (!_config.certificateName.empty())
+		{
+			HCERTSTORE hMyStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, NULL,
+				CERT_SYSTEM_STORE_LOCAL_MACHINE, L"MY");
+			if (hMyStore)
+			{
+				pCertContext = CertFindCertificateInStore(hMyStore,
+					X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, 0, CERT_FIND_SUBJECT_STR,
+					_config.certificateName.c_str(), NULL);
+				CertCloseStore(hMyStore, 0);
+			}
+			else
+			{
+				PIError("CertOpenStore failure: " + to_string(GetLastError()));
+			}
+		}
+
+		if (pCertContext)
+		{
+			PIDebug(L"Using client certificate " + _config.certificateName);
+			WinHttpSetOption(hRequest, WINHTTP_OPTION_CLIENT_CERT_CONTEXT, (LPVOID)pCertContext, sizeof(CERT_CONTEXT));
+			CertFreeCertificateContext(pCertContext);
+		}
+		else
+		{
+			// No certificate configured, or it was not found in the store: tell WinHTTP
+			// explicitly to continue without one instead of giving up. The request can
+			// still succeed if the server merely requested, but did not require, a
+			// certificate - only a server that REQUIRES one will then reject the request
+			// itself (visible as a normal HTTP-level failure, not a WinHTTP error).
+			if (!_config.certificateName.empty())
+			{
+				PIDebug(L"Configured client certificate not found: " + _config.certificateName);
+			}
+			WinHttpSetOption(hRequest, WINHTTP_OPTION_CLIENT_CERT_CONTEXT, WINHTTP_NO_CLIENT_CERT_CONTEXT, 0);
+		}
+
 		bResults = WinHttpSendRequest(
 			hRequest,
 			L"Content-Type: application/x-www-form-urlencoded\r\n",
