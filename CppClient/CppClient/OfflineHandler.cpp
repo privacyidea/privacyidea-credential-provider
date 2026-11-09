@@ -137,6 +137,11 @@ HRESULT OfflineHandler::VerifyOfflineOTP(const std::wstring& otp, const std::str
 				}
 				PIDebug("Offline authentication success with token " + item.serial + ", removing " + to_string(count) + " offline OTPs.");
 				serialUsed = item.serial;
+				// Persist the consumed OTPs immediately - otherwise only the destructor's
+				// SaveToFile() does, so a process that never reaches a clean shutdown (or a
+				// fresh process started before that happens) reloads the stale file and
+				// accepts the very same OTP again.
+				SaveToFile();
 				// If success, stop trying other dataSets
 				break;
 			}
