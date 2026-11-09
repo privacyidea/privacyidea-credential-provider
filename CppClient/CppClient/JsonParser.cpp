@@ -176,7 +176,7 @@ HRESULT JsonParser::ParseResponse(std::string serverResponse, PIResponse& respon
 		if (jResult.contains("error"))
 		{
 			auto& jError = jResult["error"];
-			response.errorCode = jError["code"].get<int>();
+			response.errorCode = GetIntOrZero(jError, "code");
 			response.errorMessage = GetStringOrEmpty(jError, "message");
 		}
 	}
