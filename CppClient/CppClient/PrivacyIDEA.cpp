@@ -348,9 +348,20 @@ HRESULT PrivacyIDEA::OfflineRefill(const std::wstring& username, const std::wstr
 
 	OfflineData data;
 	hr = _parser.ParseRefillResponse(response, szUsername, data);
-	// Add the serial off the token used to be able to identify it when adding new data
-	data.serial = serial;
-	offlineHandler.AddOfflineData(data);
+	if (hr == S_OK)
+	{
+		// Add the serial of the token used to be able to identify it when adding new data
+		data.serial = serial;
+		offlineHandler.AddOfflineData(data);
+	}
+	else
+	{
+		// A failed parse (e.g. the server rejected the refill - wrong/expired refilltoken)
+		// leaves data.username empty. Adding it anyway would create a dead, empty-OTP
+		// entry for this serial that AddOfflineData can never match again (it keys on
+		// username+serial), cluttering offlineFile.json for no benefit.
+		PIDebug("Offline refill failed, not adding data: " + Convert::LongToHexString(hr));
+	}
 	return hr;
 }
 
