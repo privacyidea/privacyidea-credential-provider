@@ -22,6 +22,7 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
+#include <algorithm>
 #include "Convert.h"
 #include "JsonParser.h"
 #include "Logger.h"
@@ -486,19 +487,26 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 {
 	// The data can be empty if a webauthn token has been removed as offline token.
 	if (data.empty()) return "";
-	json::array_t jArray;
+	// offlineOTPs is a std::map<string, string> keyed by the HOTP counter as a
+	// string, so it iterates lexicographically ("1", "10", "100", "11", ..., "2",
+	// ...) rather than in counter order - confusing for a tester reading the saved
+	// file by hand. nlohmann::ordered_json (instead of the plain, always
+	// alphabetically-sorted json type) preserves insertion order, so sorting the
+	// HOTP entries by their numeric counter value below actually carries through
+	// to the dumped file.
+	nlohmann::ordered_json jArray = nlohmann::ordered_json::array();
 
 	for (auto& item : data)
 	{
 		// General information not specific to token type
-		json jElement;
+		nlohmann::ordered_json jElement;
 		jElement["refilltoken"] = item.refilltoken;
 		jElement["serial"] = item.serial;
 		jElement["username"] = item.username;
 		jElement["expiration_date"] = TimeToISOString(item.expiration);
 
 		const bool isWebAuthn = !item.pubKey.empty() && !item.credId.empty() && !item.rpId.empty();
-		json jResponse; // token type specific offline data is listed in the "response" object
+		nlohmann::ordered_json jResponse; // token type specific offline data is listed in the "response" object
 
 		if (isWebAuthn)
 		{
@@ -510,7 +518,14 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 		else // HOTP
 		{
 			jElement["count"] = to_string(item.offlineOTPs.size());
-			for (auto& otpEntry : item.offlineOTPs)
+
+			vector<pair<string, string>> sortedOtps(item.offlineOTPs.begin(), item.offlineOTPs.end());
+			sort(sortedOtps.begin(), sortedOtps.end(), [](const pair<string, string>& a, const pair<string, string>& b)
+			{
+				return stoll(a.first) < stoll(b.first);
+			});
+
+			for (auto& otpEntry : sortedOtps)
 			{
 				jResponse[otpEntry.first] = otpEntry.second;
 			}
@@ -520,7 +535,7 @@ std::string JsonParser::OfflineDataToString(std::vector<OfflineData> data)
 		jArray.push_back(jElement);
 	}
 
-	json jRoot;
+	nlohmann::ordered_json jRoot;
 	jRoot["offline"] = jArray;
 
 	return jRoot.dump(4);
