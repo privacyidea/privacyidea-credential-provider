@@ -2414,7 +2414,9 @@ std::optional<FIDODevice> CCredential::WaitForFIDODevice(IQueryContinueWithStatu
 	while (tries > 0)
 	{
 		this_thread::sleep_for(chrono::milliseconds(200));
-		if (pqcws->QueryContinue() != S_OK)
+		// pqcws is checked for null above, so check it here as well. Without it the
+		// search cannot be cancelled by the user and simply runs until the timeout.
+		if (pqcws && pqcws->QueryContinue() != S_OK)
 		{
 			PIDebug("User cancelled device search");
 			_fidoDeviceSearchCancelled = true;
