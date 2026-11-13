@@ -40,7 +40,8 @@
 #define ZERO(NAME) \
 	SecureZeroMemory(NAME, sizeof(NAME))
 
-class CCredential : public IConnectableCredentialProviderCredential
+class CCredential : public IConnectableCredentialProviderCredential, 
+                    public ICredentialProviderCredentialWithFieldOptions
 {
 public:
 	// IUnknown
@@ -66,6 +67,7 @@ public:
 		{
 			QITABENT(CCredential, ICredentialProviderCredential), // IID_ICredentialProviderCredential
 			QITABENT(CCredential, IConnectableCredentialProviderCredential), // IID_IConnectableCredentialProviderCredential
+			QITABENT(CCredential, ICredentialProviderCredentialWithFieldOptions),
 			{ 0 },
 		};
 
@@ -104,6 +106,12 @@ public:
 		__in NTSTATUS ntsSubstatus,
 		__deref_out_opt PWSTR* ppwszOptionalStatusText,
 		__out CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon) override;
+
+	// ICredentialProviderCredentialWithFieldOptions
+	// Enables the password reveal button (the "eye" icon) on password fields.
+	// Requires Windows 8+ and the ICredentialProviderCredentialWithFieldOptions interface.
+	IFACEMETHODIMP GetFieldOptions(__in DWORD dwFieldID,
+		__out CREDENTIAL_PROVIDER_CREDENTIAL_FIELD_OPTIONS* pcpcfo);
 
 public:
 	// IConnectableCredentialProviderCredential 

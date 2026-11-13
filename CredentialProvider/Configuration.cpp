@@ -131,6 +131,8 @@ void Configuration::Load()
 	twoStepSendPassword = rr.GetBool(L"two_step_send_password");
 	usernamePassword = rr.GetBool(L"username_password");
 
+	passwordSeeable = rr.GetBool(L"password_seeable");
+
 	// Set locales files path from registry
 	localesPath = rr.GetWString(L"locales_path");
 
