@@ -1958,7 +1958,11 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 			{
 				if (hr == FIDO_ERR_TX) hr = FIDO_DEVICE_ERR_TX;
 				_lastStatus = hr;
-				SetMode(Mode::PRIVACYIDEA);
+				// On PIN errors, keep user on PIN screen to retry. On other errors, go back to OTP.
+				if (hr != FIDO_ERR_PIN_INVALID && hr != FIDO_ERR_PIN_AUTH_BLOCKED)
+				{
+					SetMode(Mode::PRIVACYIDEA);
+				}
 				return hr;
 			}
 		}
@@ -2008,7 +2012,11 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 			PIError("Signing failed with error: " + to_string(hr));
 			if (hr == FIDO_ERR_TX) hr = FIDO_DEVICE_ERR_TX;
 			_lastStatus = hr;
-			if (hr != FIDO_ERR_NO_CREDENTIALS) SetMode(Mode::PRIVACYIDEA);
+			// On PIN errors, keep user on PIN screen to retry. On other errors, go back to OTP.
+			if (hr != FIDO_ERR_NO_CREDENTIALS && hr != FIDO_ERR_PIN_INVALID && hr != FIDO_ERR_PIN_AUTH_BLOCKED)
+			{
+				SetMode(Mode::PRIVACYIDEA);
+			}
 			return E_FAIL;
 		}
 
