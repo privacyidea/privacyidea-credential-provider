@@ -362,11 +362,12 @@ HRESULT CCredential::SetDeselected()
 
 	hr = _util.Clear(_rgFieldStrings, _rgCredProvFieldDescriptors, this, _pCredProvCredentialEvents, CLEAR_FIELDS_EDIT_AND_CRYPT);
 	hr = SetOfflineInfo("");
-	hr = ResetMode();
-	_config->credential.domain = L"";
-	_config->credential.username = L"";
-	_config->credential.password = L"";
-	_config->lastTransactionId = "";
+	// Go back to the first step. Only clearing the username while keeping the current mode
+	// would leave the tile in the OTP step without a username when it is selected again, and
+	// every request would then be sent with an empty user. FullReset() also clears the
+	// username/domain (except in CPUS_UNLOCK_WORKSTATION, where the user is fixed), the password,
+	// the transaction and any running poll.
+	hr = ResetMode(true);
 	// Reset password changing in case another user wants to log in
 	_config->credential.passwordChanged = false;
 	_config->credential.passwordMustChange = false;
